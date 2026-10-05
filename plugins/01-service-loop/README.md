@@ -1,0 +1,41 @@
+# Nível 3 · Plugin AxManager (Service Loop)
+
+Plugin que aplica o pack e **fica rodando em segundo plano** reafirmando os tweaks
+em loop — o "liga e esquece". Funciona no **AxManager**, KernelSU, APatch e Magisk.
+
+## Como funciona
+
+- `customize.sh` — na instalação, aplica o pack uma vez.
+- `service.sh` — chamado no boot pelo gerenciador; aplica e entra num loop infinito.
+- `action.sh` — botão de ação: mostra status, RAM livre e o log recente.
+- `lib.sh` — funções compartilhadas (core, limpeza, doze).
+- `uninstall.sh` — para o loop e reverte os tweaks.
+
+## Configuração
+
+No primeiro boot é criado `/data/adb/packotm/config`:
+
+```sh
+LOAD_KILL=1        # fecha apps de fundo (1/0)
+CLEAN_INTERVAL=300 # segundos entre limpezas
+LOOP_INTERVAL=60   # segundos entre reaplicações
+ENABLE_DNS=1
+ENABLE_TOUCH=1
+ENABLE_DOZE=0
+```
+
+Edite e reinicie (ou rode `sh /data/adb/packotm/apply.sh`).
+
+## Parar
+
+```sh
+touch /data/adb/packotm/stop   # o loop encerra no próximo ciclo
+```
+
+## Instalar
+
+Empacote a pasta como zip e instale pelo gerenciador, ou:
+
+```sh
+sh scripts/build-modules.sh   # também empacota os plugins
+```

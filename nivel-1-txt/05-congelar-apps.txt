@@ -1,0 +1,21 @@
+# ============================================================
+#  NÍVEL 1 · CONGELAR APPS (funciona no Brevent)
+#  Congela apps de fundo para liberar RAM durante o jogo.
+#  Descongele depois com 06-descongelar-apps.txt
+# ============================================================
+
+# --- congelamento nativo de apps em cache ---
+settings put global cached_apps_freezer enabled
+
+# --- lista os apps instalados por você (para escolher) ---
+pm list packages -3
+
+# --- congela um app específico (troque o pacote) ---
+pm suspend --user 0 com.instagram.android
+pm suspend --user 0 com.facebook.katana
+pm suspend --user 0 com.facebook.orca
+pm suspend --user 0 com.ss.android.ugc.trill
+pm suspend --user 0 com.google.android.youtube
+pm suspend --user 0 com.android.chrome
+pm suspend --user 0 com.spotify.music
+pm suspend --user 0 com.discord

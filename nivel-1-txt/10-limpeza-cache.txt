@@ -1,0 +1,16 @@
+# ============================================================
+#  NÍVEL 1 · LIMPEZA (cache / dexopt)
+#  Libera RAM e disco. Seguro, pode rodar sempre.
+# ============================================================
+
+# --- limpa caches ---
+pm trim-caches 999999999999
+
+# --- encerra o compilador em background ---
+killall -9 dex2oat
+
+# --- grava tudo em disco (evita engasgo) ---
+sync
+
+# --- fragmentação do armazenamento ---
+sm fstrim

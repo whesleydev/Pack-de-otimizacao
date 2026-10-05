@@ -32,6 +32,9 @@ while :; do
     printf '  %s14%s Tela / refresh'                        "$C_A" "$C_R"; echo
     printf '  %s15%s Limpeza (caches/dexopt)'               "$C_A" "$C_R"; echo
     printf '  %s16%s AOT nos jogos (root)'                  "$C_A" "$C_R"; echo
+    printf '  %s17%s Salvar snapshot do estado atual'        "$C_A" "$C_R"; echo
+    printf '  %s18%s Listar snapshots'                       "$C_A" "$C_R"; echo
+    printf '  %s19%s Restaurar último snapshot'              "$C_A" "$C_R"; echo
     printf '  %s90%s Aplicar TUDO (all)'                    "$C_G" "$C_R"; echo
     printf '  %s91%s RESTAURAR tudo'                        "$C_Y" "$C_R"; echo
     printf '  %s0%s  Sair'                                  "$C_D" "$C_R"; echo
@@ -62,6 +65,9 @@ while :; do
         14) "$DIR/adb-tweaks.sh" screen ;;
         15) "$DIR/adb-tweaks.sh" clean ;;
         16) "$DIR/adb-tweaks.sh" aot ;;
+        17) "$DIR/snapshot.sh" save ;;
+        18) "$DIR/snapshot.sh" list ;;
+        19) "$DIR/snapshot.sh" restore latest ;;
         90) "$DIR/adb-tweaks.sh" all ;;
         91) "$DIR/adb-tweaks.sh" restore_all ;;
         0|q|sair) printf '\n  %svaleu!%s\n\n' "$C_A" "$C_R"; exit 0 ;;

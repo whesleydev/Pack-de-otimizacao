@@ -1,0 +1,13 @@
+# ============================================================
+#  NÍVEL 1 · TOUCH / SENSIBILIDADE (Free Fire)
+#  Ajustes de toque e mira. Variam por aparelho — teste no treino.
+#  Se trepidar, aumente o long_press_timeout ou diminua o touch_slop.
+# ============================================================
+
+# --- perfil HEADSHOT (mira rápida) ---
+settings put system touch_responsiveness 110
+settings put system long_press_timeout 350
+settings put system pointer_speed 0
+settings put system touch_slop 4
+setprop persist.sys.touch.sensitivity 1
+setprop persist.sys.input.touch.boost 1

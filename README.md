@@ -1,13 +1,26 @@
 # Pack de Otimização
 
-Pack de comandos ADB e perfis de sensibilidade para **desempenho, latência e Free Fire**
-no Android. Reúne, num só lugar, vários tweaks que normalmente ficam espalhados em
-vários tutoriais — prontos para rodar via **ADB**, **Brevent**, **Termux**, **Shizuku**
-ou **root (Magisk/KernelSU/APatch)**.
+Pack de otimização para Android em **4 níveis** — de copiar-e-colar no Brevent até um
+plugin com interface web no AxManager. Reúne comandos ADB, perfis de sensibilidade para
+**Free Fire** e um sistema de **snapshot** para reverter tudo quando quiser.
 
 > ⚠️ **Aviso:** alterações em `settings`, `prop` e `pm` podem afetar o comportamento do
-> aparelho. Use `restore_all` para reverter. Ajustes de toque variam por modelo/ROM —
-> teste no treino do Free Fire antes de jogar partida.
+> aparelho. **Salve um snapshot antes** (`sh scripts/snapshot.sh save`) e use
+> `restore_all` para reverter. Ajustes de toque variam por modelo/ROM — teste no treino.
+
+📖 **Tutorial completo:** [`docs/tutorial.md`](docs/tutorial.md) — explica cada nível e
+o que cada comando faz.
+
+---
+
+## Os 4 níveis
+
+| Nível | O que é | Precisa de | Pasta |
+|-------|---------|-----------|-------|
+| **1** | Arquivos `.txt` para copiar e colar | Brevent | [`nivel-1-txt/`](nivel-1-txt/) |
+| **2** | Scripts `sh` (automação) | Shizuku ou root | [`nivel-2-sh/`](nivel-2-sh/) |
+| **3** | Plugin AxManager em loop (roda 24h) | gerenciador | [`plugins/01-service-loop/`](plugins/01-service-loop/) |
+| **4** | Plugin AxManager configurável com WebUI | gerenciador | [`plugins/02-webui-control/`](plugins/02-webui-control/) |
 
 ---
 
@@ -23,6 +36,7 @@ ou **root (Magisk/KernelSU/APatch)**.
 | Sensibilidade | perfis de toque/mira (balanced, headshot, spray, sniper, speed) |
 | Freezer | `cached_apps_freezer` e congelamento de apps — funciona no Brevent |
 | Sistema | DND, refresh de tela, limpeza de cache |
+| Snapshot | salva o estado atual e reverte a qualquer momento |
 
 A pasta `modules/` guarda os módulos Magisk/KernelSU/AxManager que fazem parte do pack
 (origem de cada um nos créditos). A pasta `releases/` é para os zips publicados via
@@ -88,6 +102,27 @@ Detalhes em [`docs/termux-shizuku.md`](docs/termux-shizuku.md).
 su -c 'sh scripts/adb-tweaks.sh perf'
 ```
 
+### 5. Plugin AxManager (níveis 3 e 4)
+
+```sh
+sh scripts/build-modules.sh
+# instale releases/01-service-loop.zip ou releases/02-webui-control.zip
+```
+
+---
+
+## Snapshot (salvar / reverter)
+
+Antes de aplicar qualquer coisa, salve o estado atual. Se não gostar, volta com um
+comando:
+
+```sh
+sh scripts/snapshot.sh save              # salva
+sh scripts/snapshot.sh list              # lista
+sh scripts/snapshot.sh diff latest       # compara com o atual
+sh scripts/snapshot.sh restore latest    # volta tudo
+```
+
 ---
 
 ## Comandos
@@ -133,26 +168,35 @@ OTM_NO_COLOR=1 sh scripts/menu.sh   # sem cores
 
 ## Restaurar
 
-Tudo que o pack altera é guardado em `~/.packotm/off.sh`. Para reverter:
+Há duas formas de reverter:
 
 ```sh
-sh scripts/adb-tweaks.sh restore_all
+sh scripts/adb-tweaks.sh restore_all   # desfaz os tweaks do pack
+sh scripts/snapshot.sh restore latest  # volta ao snapshot que você salvou
 ```
 
-Isso desfaz os `settings`, desliga o `cached_apps_freezer` e solta o Doze. Apps
-congelados com `freeze_apps` são liberados por `unfreeze_apps`.
+O `restore_all` desfaz os `settings`, desliga o `cached_apps_freezer` e solta o Doze.
+Apps congelados com `freeze_apps` são liberados por `unfreeze_apps`. O `snapshot restore`
+devolve o estado exato salvo antes — inclusive coisas fora do pack.
 
 ---
 
 ## Estrutura
 
 ```
+nivel-1-txt/      arquivos .txt para copiar e colar no Brevent
+nivel-2-sh/       entry point sh (Shizuku/root)
 scripts/
   common.sh       biblioteca (transporte adb/rish/su/local + backup)
   adb-tweaks.sh   biblioteca de comandos ADB
   ff-touch.sh     perfis de sensibilidade
+  snapshot.sh     salvar / reverter o estado do aparelho
   menu.sh         menu unificado
-docs/             guias por método (brevent, termux-shizuku)
+  build-modules.sh empacota módulos e plugins
+plugins/
+  01-service-loop/  plugin AxManager com loop em background
+  02-webui-control/ plugin AxManager configurável com WebUI
+docs/             tutorial, guias por método (brevent, termux-shizuku)
 modules/          módulos Magisk/KernelSU/AxManager do pack
 releases/         zips publicados (via GitHub Releases)
 ```

@@ -1,0 +1,28 @@
+# ============================================================
+#  NÍVEL 1 · JOGO / FREE FIRE
+#  Prepara o aparelho antes de abrir o Free Fire.
+# ============================================================
+
+# --- Game Mode em performance ---
+cmd game set --mode performance com.dts.freefireth
+cmd game set --mode performance com.dts.freefiremax
+cmd game set --downscale-factor 1 com.dts.freefireth
+
+# --- força driver de jogo em todos os apps ---
+settings put global game_driver_all_apps 1
+
+# --- fecha apps pesados em segundo plano ---
+am force-stop com.instagram.android
+am force-stop com.facebook.katana
+am force-stop com.facebook.orca
+am force-stop com.ss.android.ugc.trill
+am force-stop com.ss.android.ugc.aweme
+am force-stop com.twitter.android
+am force-stop com.google.android.youtube
+am force-stop com.android.chrome
+am force-stop com.spotify.music
+am force-stop com.discord
+
+# --- abre o Free Fire (Normal ou Max) ---
+am start -n com.dts.freefireth/com.dts.freefireth.FFMainActivity
+am start -n com.dts.freefiremax/com.dts.freefireth.FFMainActivity

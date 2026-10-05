@@ -1,0 +1,11 @@
+# ============================================================
+#  NÍVEL 1 · BATERIA / DOZE
+#  Economia de bateria. NÃO use junto com o pack de performance
+#  em partidas longas (pode reduzir o desempenho).
+# ============================================================
+
+# --- modo economia + Doze agressivo ---
+settings put global low_power 1
+settings put global adaptive_battery_management_enabled 0
+dumpsys deviceidle enable
+dumpsys deviceidle force-idle

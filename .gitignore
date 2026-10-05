@@ -20,3 +20,7 @@ scratch/
 
 # releases empacotados
 releases/*.zip
+
+# estado local dos plugins
+plugins/*/state/
+plugins/*/loop.log

@@ -1,0 +1,7 @@
+id=packotm_service_loop
+name=Pack OTM · Service Loop
+version=1.0.0
+versionCode=100
+author=whesleydev
+description=Aplica o pack de otimização e mantém tudo ligado em segundo plano (loop). Compativel com AxManager, KernelSU, APatch e Magisk.
+axeronPlugin=>=10000
