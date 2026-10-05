@@ -1,0 +1,23 @@
+# vivo bloatware (FuntouchOS / OriginOS)
+# Marca separada mas historicamente compartilha base com OPPO.
+
+com.vivo.gallery
+com.vivo.weather
+com.vivo.browser
+com.vivo.email
+com.vivo.music
+com.vivo.video
+com.vivo.gamecenter
+com.vivo.appstore
+com.vivo.space
+com.vivo.assistant
+com.vivo.smartlife
+com.vivo.easyshare
+com.vivo.dream.clock
+com.vivo.hiboard
+com.vivo.pushservice
+com.iqoo.browser
+com.iqoo.gamecenter
+com.iqoo.legends
+com.iqoo.weather
+com.vivo.familycare

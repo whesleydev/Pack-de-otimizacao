@@ -1,0 +1,22 @@
+# arquivos pesados / gerados não versionados
+*.apk
+*.apks
+*.zip
+*.7z
+*.rar
+apps_otm.zip
+monster-ap10x-debug.apk
+
+# dumps de conversa (não fazem parte do pack)
+conversation_*.zip
+event_*.json
+
+# temporários
+.agent_tmp/
+scratch/
+*.tmp
+*.log
+.DS_Store
+
+# releases empacotados
+releases/*.zip

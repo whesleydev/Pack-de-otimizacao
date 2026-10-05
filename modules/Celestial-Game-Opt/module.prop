@@ -1,0 +1,8 @@
+id=CGO
+name=Celestial-Game-Opt
+version=3.4 (6986237-release)
+versionCode=34
+author=Kzyoo | kazuyoo-stuff
+description=Enhances game performance for smoother and more responsive gameplay.
+banner=https://raw.githubusercontent.com/Kazuyoo-stuff/CelestialGameOpt/refs/heads/main/docs/banner.png
+axeronPlugin=13000

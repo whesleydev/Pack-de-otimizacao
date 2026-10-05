@@ -1,0 +1,33 @@
+# Huawei / Honor bloatware
+# EMUI / MagicOS.
+
+# Huawei core
+com.huawei.appmarket
+com.huawei.systemmanager
+com.huawei.powermanager
+com.huawei.systemoptimizer
+com.huawei.health
+com.huawei.hwireader
+com.huawei.hwireader.app
+com.huawei.intelligent
+com.huawei.search
+com.huawei.trustcircle
+com.huawei.gameassistant
+com.huawei.gamebox
+
+# Browser / Services
+com.huawei.browser
+com.huawei.hwireader
+com.huawei.cloud
+com.huawei.music
+com.huawei.video
+com.huawei.wallet
+
+# Honor (sub-brand desde 2020)
+com.hihonor.appmarket
+com.hihonor.systemmanager
+com.hihonor.powermanager
+com.hihonor.health
+com.hihonor.browser
+com.hihonor.calendar
+com.hihonor.cloud
