@@ -1,9 +1,0 @@
-# ============================================================
-#  NÍVEL 1 · NOTIFICAÇÕES / DND
-#  Silencia notificações que atrapalham durante o jogo.
-# ============================================================
-
-# --- desliga heads-up e DND ativado ---
-settings put global heads_up_notifications_enabled 0
-cmd notification set_dnd off
-settings put global zen_mode 0

@@ -1,0 +1,21 @@
+# ============================================================
+#  17 · SISTEMA / LOGS / DEBUG
+#  Reduz o trabalho de log e depuração em segundo plano.
+#  Ganho pequeno de desempenho e bateria.
+# ============================================================
+
+# --- desliga o rastreamento de execução ---
+setprop persist.traced.enable 0
+
+# --- não mostrar erro de app em segundo plano ---
+settings put global anr_show_background 0
+
+# --- reduz o nível de log do sistema ---
+setprop log.tag.stats_log SUPPRESS
+setprop log.tag.art SUPPRESS
+
+# --- desativa o serviço de "bem-estar digital" (consome recursos) ---
+settings put global settings_enable_monitor_phantom_procs false
+
+# --- desativa a coleta de estatísticas de uso ---
+settings put global usage_stats_enabled 0

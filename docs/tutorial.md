@@ -54,13 +54,16 @@ Você abre, copia tudo e cola no Brevent.
 
 1. Instale o **Brevent** e conceda as permissões (ADB ou root — veja
    [`brevent.md`](brevent.md)).
-2. Abra, por exemplo, `nivel-1-txt/04-jogo-freefire.txt`.
+2. Abra, por exemplo, `nivel-1-txt/10-free-fire.txt`.
 3. Selecione tudo → copiar.
 4. Cole na área de execução do Brevent → rode.
-5. Para voltar: cole `99-restaurar.txt`.
+5. Para voltar: cole `99-restaurar-tudo.txt`.
 
-**Arquivos:** performance, rede/DNS, bateria, jogo/Free Fire, congelar/descongelar
-apps, toque, tela, notificações, limpeza e restaurar.
+**Arquivos (17 categorias):** performance geral, velocidade das animações, tela/display,
+RAM/memória, bateria, gráficos/GPU, rede/DNS, Wi-Fi/dados, jogo/game mode, Free Fire,
+sensibilidade/touch, congelar apps, descongelar apps, limpeza/cache, notificações/DND,
+bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
+[`nivel-1-txt/README.md`](../nivel-1-txt/README.md).
 
 > Neste nível não há automação: você roda quando quiser.
 

@@ -1,16 +1,20 @@
 # ============================================================
-#  NÍVEL 1 · LIMPEZA (cache / dexopt)
-#  Libera RAM e disco. Seguro, pode rodar sempre.
+#  14 · LIMPEZA / CACHE / I/O
+#  Libera RAM e disco, limpa cache e organiza o armazenamento.
+#  Seguro — pode rodar sempre.
 # ============================================================
 
-# --- limpa caches ---
+# --- limpa o cache de todos os apps ---
 pm trim-caches 999999999999
 
 # --- encerra o compilador em background ---
 killall -9 dex2oat
 
+# --- limpa os logs do sistema ---
+logcat -c
+
 # --- grava tudo em disco (evita engasgo) ---
 sync
 
-# --- fragmentação do armazenamento ---
+# --- desfragmenta/organiza o armazenamento (trim) ---
 sm fstrim

@@ -1,0 +1,21 @@
+# ============================================================
+#  05 · BATERIA / ECONOMIA
+#  Economiza bateria. NÃO use junto com performance em partidas
+#  longas (pode reduzir o desempenho).
+# ============================================================
+
+# --- modo economia de bateria ---
+settings put global low_power 1
+
+# --- desliga a bateria adaptativa (aprende seu uso) ---
+settings put global adaptive_battery_management_enabled 0
+
+# --- modo espera (Doze) agressivo ---
+dumpsys deviceidle enable
+dumpsys deviceidle force-idle
+
+# --- economia sem vibração (evita gasto) ---
+settings put global battery_saver_constants vibration_disabled=true
+
+# --- modo espera de apps (app standby) ---
+settings put global app_standby_enabled 1

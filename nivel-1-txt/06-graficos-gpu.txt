@@ -1,0 +1,24 @@
+# ============================================================
+#  06 · GRÁFICOS / GPU
+#  Força renderização por hardware/GPU e remove efeitos pesados.
+#  Ganho de FPS em jogos e fluidez na interface.
+# ============================================================
+
+# --- força renderização por GPU ---
+settings put global force_gpu_rendering 1
+
+# --- renderização por hardware (EGL/SurfaceFlinger) ---
+setprop debug.egl.hw 1
+setprop debug.sf.hw 1
+
+# --- remove desfoque de janelas (blur) ---
+settings put global disable_window_blurs 1
+
+# --- reduz transparência (menos trabalho de composição) ---
+settings put global accessibility_reduce_transparency 1
+
+# --- renderizador de UI SkiaGL (mais rápido) ---
+setprop debug.hwui.renderer skiagl
+
+# --- nível de detalhe do Skia ---
+setprop debug.hwui.renderer.disable_partial_updates false

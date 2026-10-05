@@ -1,0 +1,81 @@
+# ============================================================
+#  99 · RESTAURAR TUDO
+#  Volta o aparelho ao estado original (desfaz TODOS os .txt).
+#  Rode este arquivo se não gostou de algum ajuste.
+# ============================================================
+
+# --- 01 performance ---
+settings delete global anr_show_background
+setprop persist.traced.enable 1
+
+# --- 02 animações (volta ao padrão 1x) ---
+settings put global window_animation_scale 1
+settings put global transition_animation_scale 1
+settings put global animator_duration_scale 1
+
+# --- 03 tela ---
+settings delete system peak_refresh_rate
+settings delete system min_refresh_rate
+settings delete system screen_brightness_mode
+settings delete system display_color_mode
+
+# --- 04 RAM ---
+settings delete global activity_manager_constants
+
+# --- 05 bateria ---
+settings put global low_power 0
+settings put global adaptive_battery_management_enabled 1
+dumpsys deviceidle unforce
+settings delete global battery_saver_constants
+settings put global app_standby_enabled 0
+
+# --- 06 gráficos ---
+settings put global force_gpu_rendering 0
+settings put global disable_window_blurs 0
+settings put global accessibility_reduce_transparency 0
+setprop debug.egl.hw 0
+setprop debug.sf.hw 0
+setprop debug.hwui.renderer skiagl
+
+# --- 07 rede ---
+settings put global private_dns_mode opportunistic
+settings delete global private_dns_specifier
+settings put global captive_portal_mode 1
+
+# --- 08 wi-fi / dados ---
+settings put global wifi_scan_always_enabled 1
+settings put global wifi_sleep_policy 2
+settings put global wifi_power_save 1
+settings put global mobile_data_always_on 1
+settings delete global wifi_watchdog_on
+
+# --- 09/10 jogo / free fire ---
+settings put global game_driver_all_apps 0
+cmd power set-fixed-performance-mode-enabled false
+
+# --- 11 toque ---
+settings delete system touch_slop
+settings delete system touch_responsiveness
+settings delete system long_press_timeout
+settings delete system pointer_speed
+setprop persist.sys.touch.sensitivity 0
+setprop persist.sys.input.touch.boost 0
+
+# --- 12/13 congelamento ---
+settings put global cached_apps_freezer disabled
+
+# --- 15 notificações ---
+settings put global heads_up_notifications_enabled 1
+cmd notification set_dnd off
+settings put global zen_mode 0
+
+# --- 16 bloat (reativa o que o pack desativou) ---
+pm enable --user 0 com.samsung.android.game.gos
+pm enable --user 0 com.xiaomi.joyose
+pm enable --user 0 com.motorola.gamemode
+
+# --- 17 sistema/logs ---
+settings delete global settings_enable_monitor_phantom_procs
+settings put global usage_stats_enabled 1
+setprop log.tag.stats_log INFO
+setprop log.tag.art INFO

@@ -1,14 +1,15 @@
 # ============================================================
-#  NÍVEL 1 · REDE / DNS
-#  Reduz ping e melhora estabilidade em jogos online.
+#  07 · REDE / DNS / LATÊNCIA
+#  Reduz ping e melhora a estabilidade em jogos online.
+#  DNS privado do Cloudflare: rápido e sem registro.
 # ============================================================
 
-# --- DNS Cloudflare (mais rápido e privado) ---
+# --- DNS privado (Cloudflare) ---
 settings put global private_dns_mode hostname
 settings put global private_dns_specifier dns.cloudflare.com
 
-# --- desativa varredura de Wi-Fi em segundo plano ---
-settings put global wifi_scan_always_enabled 0
+# --- desativa a checagem de portal de rede (travava o Wi-Fi) ---
+settings put global captive_portal_mode 0
 
 # --- buffers TCP maiores (melhora throughput/ping) ---
 setprop net.tcp.buffersize.default 4096,87380,524288,4096,16384,110208

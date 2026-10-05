@@ -1,0 +1,21 @@
+# ============================================================
+#  02 · VELOCIDADE DA TELA / ANIMAÇÕES
+#  Controla a rapidez das animações do sistema.
+#  0 = instantâneo (mais seco) · 0.5 = rápido · 1 = normal
+#  Se não gostar, rode o 99-restaurar-tudo.txt.
+# ============================================================
+
+# --- animações rápidas (perfil recomendado p/ jogo) ---
+settings put global window_animation_scale 0.5
+settings put global transition_animation_scale 0.5
+settings put global animator_duration_scale 0.5
+
+# --- alternativa ULTRA (sem animação nenhuma) ---
+# settings put global window_animation_scale 0
+# settings put global transition_animation_scale 0
+# settings put global animator_duration_scale 0
+
+# --- alternativa NORMAL (padrão de fábrica) ---
+# settings put global window_animation_scale 1
+# settings put global transition_animation_scale 1
+# settings put global animator_duration_scale 1

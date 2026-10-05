@@ -9,29 +9,46 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 2. Abra o `.txt` da área que você quer.
 3. Selecione tudo, copie e cole na área de execução do Brevent.
 4. Rode.
+5. Se não gostar, cole o `99-restaurar-tudo.txt`.
 
-## Arquivos
+## Os arquivos (17 categorias)
 
-| Arquivo | O que faz |
-|---------|-----------|
-| `01-performance.txt` | animações rápidas, GPU, sem blur (mais FPS) |
-| `02-rede-dns.txt` | DNS Cloudflare e buffers TCP (menos ping) |
-| `03-bateria-doze.txt` | economia de bateria e Doze |
-| `04-jogo-freefire.txt` | prepara e abre o Free Fire |
-| `05-congelar-apps.txt` | congela apps de fundo (Brevent) |
-| `06-descongelar-apps.txt` | libera os apps congelados |
-| `07-touch-sensibilidade.txt` | perfil de toque/mira headshot |
-| `08-tela-refresh.txt` | refresh alto e tela sempre ligada |
-| `09-notificacoes-dnd.txt` | silencia notificações |
-| `10-limpeza-cache.txt` | limpa cache/dexopt |
-| `99-restaurar.txt` | **desfaz tudo** e volta ao original |
-
-> Dica: os arquivos `setprop` (rede/touch) não persistem após reiniciar. Os `settings put`
-> persistem.
+| # | Arquivo | O que faz |
+|---|---------|-----------|
+| 01 | `01-performance-geral.txt` | ajuste de desempenho, cache de processos, renderizador |
+| 02 | `02-velocidade-da-tela-animacoes.txt` | velocidade das animações (0 / 0.5 / 1) |
+| 03 | `03-tela-display.txt` | refresh rate, tempo de tela, brilho, cor |
+| 04 | `04-ram-memoria.txt` | limites de processos, libera RAM, zram |
+| 05 | `05-bateria-economia.txt` | economia, Doze, app standby |
+| 06 | `06-graficos-gpu.txt` | GPU forçada, hardware rendering, blur off |
+| 07 | `07-rede-dns-latencia.txt` | DNS Cloudflare, buffers TCP, captive portal |
+| 08 | `08-wifi-dados.txt` | Wi-Fi scan off, sleep policy, dados móveis |
+| 09 | `09-jogo-game-mode.txt` | Game Mode, performance fixo, fecha apps |
+| 10 | `10-free-fire.txt` | prepara e abre o Free Fire |
+| 11 | `11-sensibilidade-touch.txt` | perfis de toque/mira (headshot, sniper, speed) |
+| 12 | `12-congelar-apps.txt` | congela apps de fundo |
+| 13 | `13-descongelar-apps.txt` | libera os apps congelados |
+| 14 | `14-limpeza-cache-io.txt` | limpa cache, logs, trim do armazenamento |
+| 15 | `15-notificacoes-dnd.txt` | silencia notificações (DND) |
+| 16 | `16-bloat-privacidade.txt` | desativa apps inúteis (com aviso de cuidado) |
+| 17 | `17-sistema-logs-debug.txt` | reduz logs e depuração em background |
+| 99 | `99-restaurar-tudo.txt` | **desfaz tudo** e volta ao original |
 
 ## Ordem sugerida para jogar
 
-1. `10-limpeza-cache.txt` (limpa)
-2. `02-rede-dns.txt` (rede)
-3. `04-jogo-freefire.txt` (prepara + abre o jogo)
-4. Depois de jogar: `06-descongelar-apps.txt` e/ou `99-restaurar.txt`
+1. `14-limpeza-cache-io.txt` (limpa)
+2. `07-rede-dns-latencia.txt` (rede)
+3. `09-jogo-game-mode.txt` (modo jogo)
+4. `10-free-fire.txt` (abre o jogo)
+5. Depois de jogar: `13-descongelar-apps.txt` e/ou `99-restaurar-tudo.txt`
+
+## Avisos importantes
+
+- **`setprop` não persiste após reiniciar.** Só os `settings put` ficam salvos. Os
+  arquivos já avisam quando o comando é `setprop`.
+- **Comandos específicos de aparelho** (refresh rate, zram, brilho, cor) estão marcados
+  no arquivo. Descubra o valor do seu: `settings get system peak_refresh_rate`.
+- **`16-bloat-privacidade.txt` exige cuidado**: desativar o app errado quebra o sistema.
+  Desative um por vez.
+- Sempre que puder, rode `sh scripts/snapshot.sh save` (nível 2) antes de mexer, para
+  poder reverter com um comando.

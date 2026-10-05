@@ -1,12 +1,12 @@
 # ============================================================
-#  NÍVEL 1 · DESCONGELAR APPS
-#  Libera de volta os apps congelados pelo 05-congelar-apps.txt
+#  13 · DESCONGELAR APPS
+#  Libera de volta os apps congelados pelo 12-congelar-apps.txt.
 # ============================================================
 
 # --- desliga o congelamento nativo ---
 settings put global cached_apps_freezer disabled
 
-# --- descongela um app específico (troque o pacote) ---
+# --- descongela um app específico (troque o pacote pelos seus) ---
 pm unsuspend --user 0 com.instagram.android
 pm unsuspend --user 0 com.facebook.katana
 pm unsuspend --user 0 com.facebook.orca
@@ -16,7 +16,7 @@ pm unsuspend --user 0 com.android.chrome
 pm unsuspend --user 0 com.spotify.music
 pm unsuspend --user 0 com.discord
 
-# --- garante reativação ---
+# --- garante que os apps voltem a funcionar ---
 pm enable --user 0 com.instagram.android
 pm enable --user 0 com.facebook.katana
 pm enable --user 0 com.facebook.orca
