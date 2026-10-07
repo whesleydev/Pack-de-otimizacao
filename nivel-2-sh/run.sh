@@ -30,6 +30,7 @@ case "$1" in
     all)      exec sh "$SCRIPTS/adb-tweaks.sh" all ;;
     restore)  exec sh "$SCRIPTS/snapshot.sh" restore latest ;;
     save)     exec sh "$SCRIPTS/snapshot.sh" save ;;
+    fluidez)  exec sh "$SCRIPTS/adb-tweaks.sh" fluidez ;;
     status)   exec sh "$SCRIPTS/adb-tweaks.sh" raw "dumpsys battery | grep -E 'level|temperature'" ;;
     headshot|spray|sniper|speed|balanced)
               exec sh "$SCRIPTS/ff-touch.sh" "$1" ;;

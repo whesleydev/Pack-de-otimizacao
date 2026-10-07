@@ -77,7 +77,7 @@ bkp_begin() {
     [ -f "$MARK" ] && return 0
     : > "$OFF_SH"
     printf '#!/system/bin/sh\n' >> "$OFF_SH"
-    touch "$MARK"
+    command touch "$MARK"
 }
 
 # bkp_set <tipo> <chave> <novo_valor> -> aplica e guarda o valor antigo

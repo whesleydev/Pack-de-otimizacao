@@ -35,6 +35,7 @@ while :; do
     printf '  %s17%s Salvar snapshot do estado atual'        "$C_A" "$C_R"; echo
     printf '  %s18%s Listar snapshots'                       "$C_A" "$C_R"; echo
     printf '  %s19%s Restaurar último snapshot'              "$C_A" "$C_R"; echo
+    printf '  %s20%s Fluidez (animações 0, toque 0 delay, Hz max)' "$C_A" "$C_R"; echo
     printf '  %s90%s Aplicar TUDO (all)'                    "$C_G" "$C_R"; echo
     printf '  %s91%s RESTAURAR tudo'                        "$C_Y" "$C_R"; echo
     printf '  %s0%s  Sair'                                  "$C_D" "$C_R"; echo
@@ -68,6 +69,9 @@ while :; do
         17) "$DIR/snapshot.sh" save ;;
         18) "$DIR/snapshot.sh" list ;;
         19) "$DIR/snapshot.sh" restore latest ;;
+        20) printf '  long_press (100-250) e Hz (ex 120.0): '
+            read -r lp hz
+            "$DIR/adb-tweaks.sh" fluidez "$lp" "$hz" ;;
         90) "$DIR/adb-tweaks.sh" all ;;
         91) "$DIR/adb-tweaks.sh" restore_all ;;
         0|q|sair) printf '\n  %svaleu!%s\n\n' "$C_A" "$C_R"; exit 0 ;;

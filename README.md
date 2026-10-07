@@ -140,7 +140,7 @@ sh scripts/adb-tweaks.sh restore_all          # reverte tudo
 ```
 
 Grupos: `perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open
-freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch clean aot restore_all`
+freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez clean aot restore_all`
 
 ### `scripts/ff-touch.sh`
 

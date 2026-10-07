@@ -137,6 +137,32 @@ settings delete system touch_responsiveness
 setprop persist.sys.touch.sensitivity 0
 ```
 
+## Fluidez (animações 0, toque sem atraso, Hz máximo)
+
+Inspirado no que o Sam Helper ajusta no Samsung — os nomes de settings são padrão,
+então funciona em qualquer Android.
+
+```sh
+# animações zeradas (efeito instantâneo)
+settings put global window_animation_scale 0
+settings put global transition_animation_scale 0
+settings put global animator_duration_scale 0
+
+# long press: 100-250 ms (depende do aparelho; padrão = 500)
+settings put system long_press_timeout 150
+
+# multi press: 0 = sem espera entre toques (padrão = 300)
+settings put system multi_press_timeout 0
+
+# Hz no máximo permitido (troque pela taxa do seu aparelho)
+settings put system peak_refresh_rate 120.0
+settings put system min_refresh_rate 120.0
+```
+
+> Descubra o Hz máximo do seu aparelho: `settings get system peak_refresh_rate`.
+> Em `multi_press_timeout 0`, apps que usam duplo-toque (zoom, curtir) podem registrar
+> como dois toques separados — se incomodar, use `100`.
+
 ## Limpeza
 
 ```sh

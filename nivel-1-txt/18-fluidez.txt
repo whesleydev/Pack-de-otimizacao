@@ -1,0 +1,59 @@
+# ============================================================
+#  18 · FLUIDEZ
+#  Deixa o sistema "liso": animações zeradas, toque sem atraso
+#  e tela na maior taxa de atualização (Hz) que o aparelho permite.
+#  Baseado no que o Sam Helper ajusta no Samsung (serve em qualquer
+#  Android — os nomes de settings são padrão).
+#
+#  Se algo bugar: rode o 99-restaurar-tudo.txt.
+# ============================================================
+
+# ------------------------------------------------------------
+#  1) ANIMAÇÕES ZERADAS  →  efeito instantâneo, zero atraso
+# ------------------------------------------------------------
+settings put global window_animation_scale 0
+settings put global transition_animation_scale 0
+settings put global animator_duration_scale 0
+
+# ------------------------------------------------------------
+#  2) LONG PRESS  →  tempo de "segurar o dedo"
+#     Faixa segura: 100 a 250 ms. Comece em 250 e vá baixando.
+#     - abre menu sozinho? AUMENTE.
+#     - parece travado?    DIMINUA.
+#     (padrão de fábrica = 500)
+# ------------------------------------------------------------
+settings put system long_press_timeout 150
+
+# ------------------------------------------------------------
+#  3) MULTI PRESS  →  espera entre toques múltiplos (duplo-toque)
+#     0 = resposta imediata, sem atraso nenhum.
+#     Obs.: em 0, apps que usam DUPLO-TOQUE (zoom, curtir) podem
+#     registrar como dois toques separados. Se usar muito, deixe 100.
+#     (padrão de fábrica = 300)
+# ------------------------------------------------------------
+settings put system multi_press_timeout 0
+
+# ------------------------------------------------------------
+#  4) HZ NO MÁXIMO PERMITIDO
+#     Descubra o máximo do SEU aparelho antes:
+#         settings get system peak_refresh_rate
+#     Troque 120.0 pela taxa que aparecer (90, 120, 144, 165...).
+#     min = peak  →  trava no máximo (mais fluido, gasta mais bateria).
+#     Só o peak  →  sobe ao máximo quando precisa (equilíbrio).
+# ------------------------------------------------------------
+settings put system peak_refresh_rate 120.0
+settings put system min_refresh_rate 120.0
+
+# ------------------------------------------------------------
+#  5) TOQUE MAIS RESPONSIVO (complemento)
+# ------------------------------------------------------------
+settings put system touch_responsiveness 110
+settings put system touch_slop 4
+settings put system pointer_speed 0
+
+# ------------------------------------------------------------
+#  6) RENDERIZAÇÃO MAIS RÁPIDA (complemento)
+# ------------------------------------------------------------
+settings put global disable_window_blurs 1
+settings put global accessibility_reduce_transparency 1
+setprop debug.hwui.renderer skiagl

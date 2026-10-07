@@ -59,7 +59,7 @@ Você abre, copia tudo e cola no Brevent.
 4. Cole na área de execução do Brevent → rode.
 5. Para voltar: cole `99-restaurar-tudo.txt`.
 
-**Arquivos (17 categorias):** performance geral, velocidade das animações, tela/display,
+**Arquivos (18 categorias):** performance geral, velocidade das animações, tela/display,
 RAM/memória, bateria, gráficos/GPU, rede/DNS, Wi-Fi/dados, jogo/game mode, Free Fire,
 sensibilidade/touch, congelar apps, descongelar apps, limpeza/cache, notificações/DND,
 bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
@@ -191,9 +191,16 @@ Ficam em `~/.packotm/snapshots/<id>/` (`settings`, `props` e `meta`).
 
 ### Toque / sensibilidade
 - `touch_responsiveness` — quão responsivo o toque é.
-- `long_press_timeout` — tempo para "segurar".
+- `long_press_timeout` — tempo para "segurar". Faixa útil: 100–250 ms.
+- `multi_press_timeout` — espera entre toques múltiplos. 0 = sem atraso.
 - `pointer_speed` — velocidade do ponteiro.
 - `touch_slop` — distância mínima para contar como arrasto (menor = mais preciso).
+
+### Fluidez
+- `window/transition/animator_duration_scale 0` — animações zeradas (efeito instantâneo).
+- `long_press_timeout` — 100–250 ms (depende do aparelho; padrão 500).
+- `multi_press_timeout 0` — sem espera entre toques.
+- `peak_refresh_rate` / `min_refresh_rate` — trava a tela no Hz máximo permitido.
 
 ### Tela
 - `peak_refresh_rate` / `min_refresh_rate` — taxa de atualização.

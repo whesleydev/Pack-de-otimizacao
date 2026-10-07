@@ -61,6 +61,15 @@ settings delete system pointer_speed
 setprop persist.sys.touch.sensitivity 0
 setprop persist.sys.input.touch.boost 0
 
+# --- 18 fluidez (animações, long/multi press, Hz) ---
+settings put global window_animation_scale 1
+settings put global transition_animation_scale 1
+settings put global animator_duration_scale 1
+settings delete system long_press_timeout
+settings delete system multi_press_timeout
+settings delete system peak_refresh_rate
+settings delete system min_refresh_rate
+
 # --- 12/13 congelamento ---
 settings put global cached_apps_freezer disabled
 

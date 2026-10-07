@@ -239,6 +239,26 @@ touch() {
     say "aplicado (requer reiniciar o jogo)"
 }
 
+# --- fluidez (animações 0, long/multi press, Hz máximo) -----------------------
+fluidez() {
+    # fluidez [long_press_timeout] [hz]
+    lpt="${1:-150}"; hz="${2:-120.0}"
+    bkp_begin
+    say "Fluidez (animações 0, long_press=$lpt, multi_press=0, ${hz}Hz)"
+    bkp_set global window_animation_scale 0
+    bkp_set global transition_animation_scale 0
+    bkp_set global animator_duration_scale 0
+    bkp_set system long_press_timeout "$lpt"
+    bkp_set system multi_press_timeout 0
+    bkp_set system peak_refresh_rate "$hz"
+    bkp_set system min_refresh_rate "$hz"
+    sh_run "settings put system touch_responsiveness 110" >/dev/null
+    sh_run "settings put system touch_slop 4" >/dev/null
+    sh_run "settings put global disable_window_blurs 1" >/dev/null
+    sh_run "settings put global accessibility_reduce_transparency 1" >/dev/null
+    say "pronto (efeito instantâneo, toque sem atraso, Hz máximo)"
+}
+
 # --- dexopt / limpeza ---------------------------------------------------------
 clean() {
     say "Limpeza (dexopt / logs)"
@@ -278,7 +298,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch clean aot restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez clean aot restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
@@ -287,7 +307,7 @@ list() {
 }
 
 all() {
-    for g in perf gpu net wifi game freezer dnd screen clean; do
+    for g in perf gpu net wifi game freezer dnd screen fluidez clean; do
         eval "$g"
         echo
     done

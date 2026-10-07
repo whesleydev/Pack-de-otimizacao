@@ -11,7 +11,7 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 4. Rode.
 5. Se não gostar, cole o `99-restaurar-tudo.txt`.
 
-## Os arquivos (17 categorias)
+## Os arquivos (18 categorias)
 
 | # | Arquivo | O que faz |
 |---|---------|-----------|
@@ -32,6 +32,7 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 | 15 | `15-notificacoes-dnd.txt` | silencia notificações (DND) |
 | 16 | `16-bloat-privacidade.txt` | desativa apps inúteis (com aviso de cuidado) |
 | 17 | `17-sistema-logs-debug.txt` | reduz logs e depuração em background |
+| 18 | `18-fluidez.txt` | **fluidez**: animações 0, long/multi press, Hz máximo |
 | 99 | `99-restaurar-tudo.txt` | **desfaz tudo** e volta ao original |
 
 ## Ordem sugerida para jogar
