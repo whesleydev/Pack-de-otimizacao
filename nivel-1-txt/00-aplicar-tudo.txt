@@ -1,0 +1,61 @@
+# ============================================================
+#  00 · APLICAR TUDO (arquivo único)
+#  Cole ESTE arquivo no Brevent para aplicar o pack inteiro
+#  de uma vez. É seguro e reversível.
+#
+#  Para voltar ao original: cole o 99-restaurar-tudo.txt
+#
+#  ⚠️ O que este arquivo NÃO faz (de propósito):
+#     - não desativa apps (isso é o 16, mexe um por um)
+#     - não congela apps específicos (12/13)
+#     - não mexe no tuning por jogo (19, é por jogo)
+# ============================================================
+
+# ===== 01 PERFORMANCE GERAL =====
+setprop debug.performance.tuning 1
+settings put global activity_manager_constants max_cached_processes=32
+setprop debug.hwui.renderer skiagl
+setprop persist.traced.enable 0
+settings put global anr_show_background 0
+
+# ===== 06 GRÁFICOS / GPU =====
+settings put global force_gpu_rendering 1
+settings put global disable_window_blurs 1
+settings put global accessibility_reduce_transparency 1
+
+# ===== 07 REDE / DNS =====
+settings put global private_dns_mode hostname
+settings put global private_dns_specifier dns.cloudflare.com
+settings put global wifi_scan_always_enabled 0
+
+# ===== 09 JOGO / GAME MODE =====
+settings put global game_driver_all_apps 1
+
+# ===== 11 SENSIBILIDADE / TOQUE (headshot) =====
+settings put system touch_responsiveness 110
+settings put system long_press_timeout 350
+settings put system pointer_speed 0
+settings put system touch_slop 4
+
+# ===== 18 FLUIDEZ =====
+# animações zeradas (efeito instantâneo)
+settings put global window_animation_scale 0
+settings put global transition_animation_scale 0
+settings put global animator_duration_scale 0
+# toque sem atraso (long press: 100-250 · multi press: 0)
+settings put system long_press_timeout 150
+settings put system multi_press_timeout 0
+# Hz no máximo — troque 120.0 pelo máximo do SEU aparelho
+# (veja com: settings get system peak_refresh_rate)
+settings put system peak_refresh_rate 120.0
+settings put system min_refresh_rate 120.0
+
+# ===== 14 LIMPEZA =====
+pm trim-caches 999999999999
+logcat -c
+sync
+
+# ============================================================
+#  PRONTO. Reinicie o aparelho para tudo valer.
+#  Não gostou? Cole o 99-restaurar-tudo.txt.
+# ============================================================

@@ -1,5 +1,8 @@
 # Pack de Otimização
 
+> 🚀 **Novo por aqui?** Comece pelo **[COMECE AQUI](COMECE-AQUI.md)** — guia rápido,
+> sem jargão, para deixar o celular mais rápido em 5 minutos.
+
 Pack de otimização para Android em **4 níveis** — de copiar-e-colar no Brevent até um
 plugin com interface web no AxManager. Reúne comandos ADB, perfis de sensibilidade para
 **Free Fire** e um sistema de **snapshot** para reverter tudo quando quiser.
@@ -202,6 +205,7 @@ devolve o estado exato salvo antes — inclusive coisas fora do pack.
 ## Estrutura
 
 ```
+COMECE-AQUI.md    guia rapido para quem esta comecando
 nivel-1-txt/      arquivos .txt para copiar e colar no Brevent
 nivel-2-sh/       entry point sh (Shizuku/root)
 scripts/

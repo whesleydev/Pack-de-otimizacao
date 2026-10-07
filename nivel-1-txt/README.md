@@ -11,10 +11,11 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 4. Rode.
 5. Se não gostar, cole o `99-restaurar-tudo.txt`.
 
-## Os arquivos (19 categorias)
+## Os arquivos (20 arquivos)
 
 | # | Arquivo | O que faz |
 |---|---------|-----------|
+| 00 | `00-aplicar-tudo.txt` | **aplica o pack inteiro** de uma vez (comece por aqui) |
 | 01 | `01-performance-geral.txt` | ajuste de desempenho, cache de processos, renderizador |
 | 02 | `02-velocidade-da-tela-animacoes.txt` | velocidade das animações (0 / 0.5 / 1) |
 | 03 | `03-tela-display.txt` | refresh rate, tempo de tela, brilho, cor |
