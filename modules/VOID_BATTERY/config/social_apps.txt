@@ -1,0 +1,19 @@
+# VOID BATTERY v8.0 — Social Apps (IDLE/BALANCED)
+com.facebook.katana
+com.instagram.android
+com.twitter.android
+com.zhiliaoapp.musically
+com.snapchat.android
+com.reddit.frontpage
+com.pinterest
+com.linkedin.android
+com.tumblr
+com.spotify.music
+com.google.android.youtube
+com.netflix.mediaclient
+com.amazon.avod
+tv.twitch.android.app
+com.disney.disneyplus
+com.flipboard.app
+com.google.android.apps.magazines
+com.medium.reader

@@ -1,0 +1,527 @@
+Nekootan.kfkj|KFKJ
+adventure.rpg.anime.game.vng.ys6|Ys VI Mobile
+age.of.civilizations2.jakowski.lukasz|Age of Civilizations II
+air.com.ubisoft.brawl.halla.platform.fighting.action.pvp|Brawlhalla
+Brownmonster.app.game.rushrally3|Brownmonster Rushrally3
+com.AlfaBravo.Combat|Combat (AlfaBravo)
+com.CarXTech.highWay|CarX Highway Racing
+com.CarXTech.street|CarX Street
+com.ChillyRoom.DungeonShooter|Dungeon Shooter
+com.EndlessClouds.Treeverse|Treeverse
+com.EtherGaming.PocketRogues|Pocket Rogues
+com.Flanne.MinutesTillDawn.roguelike.shooting.gp|20 Minutes Till Dawn
+com.FosFenes.Sonolus|Sonolus
+com.GameCoaster.ProtectDungeon|Protect the Dungeon
+com.HoYoverse.Nap|Zenless Zone Zero
+com.HoYoverse.hkrpgoversea|Honkai: Star Rail (OS)
+com.LanPiaoPiao.PlantsVsZombiesRH|PvZ: Restored Horror
+com.Nekootan.kfkjos.google|KFKJ
+com.MOBGames.PoppyMobileChap1|Poppy Playtime Ch.1
+com.OxGames.Pluvia|Pluvia
+com.PigeonGames.Phigros|Phigros
+com.PigeonGames.Rizline|Rizline
+com.ProjectMoon.LimbusCompany|Limbus Company
+com.Psyonix.RL2D|Rocket League Sideswipe
+com.RickyG.DONTFORGET|DONTFORGET
+com.RoamingStar.BlueArchive|Blue Archive (CN)
+com.ShinyShoe.MonsterTrain.mtap|Monster Train
+com.Shooter.ModernWarfront|Modern Warfront
+com.Shooter.ModernWarship|Modern Warship
+com.Shooter.ModernWarships|Modern Warships
+com.Sunborn.SnqxExilium|Girls' Frontline 2: Exilium CN
+com.Sunborn.SnqxExilium.Glo|Girls' Frontline 2: Exilium
+com.TeamCherry.HollowKnight|Hollow Knight
+com.TechTreeGames.TheTower|The Tower
+com.Vince.AlamobileFormula|Ala Mobile Formula
+com.WandaSoftware.TruckersofEurope3|Truckers of Europe 3
+com.Wispwood.ArrowQuest|Arrow Quest
+com.YoStarEN.Arknights|Arknights EN
+com.YoStarEN.HBR|Heaven Burns Red EN
+com.YoStarEN.MahjongSoul|Mahjong Soul EN
+com.YoStarEN.StellaSora|Stella Sora
+com.YoStarJP.MajSoul|Mahjong Soul JP
+com.YoStar.AetherGazer|Aether Gazer
+com.YostarJP.BlueArchive|Blue Archive JP
+com.YoStarJP.Arknights|Arknights JP
+com.ZeroCastleGameStudioINTL.StrikeBusterPrototype|Strike Buster Prototype
+com.ZeroCastleGameStudio.StrikeBusterPrototype|Strike Buster Prototype (CN)
+com.actgames.bbee|BBee
+com.activision.callofduty.shooter|Call of Duty: Mobile
+com.activision.callofduty.warzone|CoD Warzone Mobile
+com.albiononline|Albion Online
+com.aligames.kuang.kybc|Kybc
+com.aligames.kuang.kybc.huawei|Kybc (Huawei)
+com.alightcreative.motion|Alight Motion
+com.android.test.uibench|UI Bench
+com.andromeda.androbench2|AndroMark 2
+com.and.games505.Terraria|Terraria (free)
+com.and.games505.TerrariaPaid|Terraria
+com.archosaur.sea.dr.gp|DragonRaja SEA
+com.asobimo.toramonline|Toram Online
+com.autumn.skullgirls|Skullgirls
+com.axlebolt.standoff2|Standoff 2
+com.bairimeng.dmmdzz|DMMDZZ
+com.bandainamcoent.opbrww|One Piece: Bounty Rush
+com.bandainamcoent.sao|SAO: Alicization Rising Steel
+com.bandainamcoent.shinycolorsprism|Shiny Colors Prism
+com.bandainamcoent.tensuramrkww|Tensura: King of Monsters
+com.bandainamcoent.ultimateninjastorm|Naruto: Ultimate Ninja Storm
+com.bandainamcogames.dbzdokkanww|Dragon Ball Z Dokkan
+com.bf.sgs.hdexp.bd|SGS BD
+com.bhvr.deadbydaylight|Dead by Daylight Mobile
+com.bilibiligame.heglgp|Hegl GP
+com.bilibili.azurlane|Azur Lane CN
+com.bilibili.deadcells.mobile|Dead Cells (bili)
+com.bilibili.fatego|Fate/Grand Order CN
+com.bilibili.heaven|Heaven Burns Red CN
+com.bilibili.priconne|Princess Connect CN
+com.bilibili.star.bili|Bili Star
+com.bilibili.warmsnow|Warm Snow
+com.biligamekr.aggp|AG GP KR
+com.bingkolo.kleins.cn|Klein's CN
+com.blizzard.diablo.immortal|Diablo Immortal
+com.blizzard.wtcg.hearthstone|Hearthstone
+com.bluepoch.m.en.reverse1999|Reverse: 1999 EN
+com.bscotch.crashlands2|Crashlands 2
+com.bushiroad.d4dj|D4DJ Groovy Mix
+com.bushiroad.en.bangdreamgbp|BanG Dream! GP
+com.bushiroad.lovelive.schoolidolfestival2|Love Live! SIFAS
+com.carxtech.sr|CarX Street
+com.chillyroom.soulknightprequel|Soul Knight Prequel
+com.chucklefish.stardewvalley|Stardew Valley
+com.citra.emu|Citra Emulator
+com.cnvcs.xiangqi|Xiangqi
+com.com2us.starseedgl.android.google.global.normal|Starseed: Asnia Trigger
+com.companyname.AM2RWrapper|AM2R
+com.criticalforceentertainment.criticalops|Critical Ops
+com.crunchyroll.princessconnectredive|Princess Connect Re:Dive
+com.denachina.g13002010|DeNA Game CN
+com.dena.a12026801|DeNA Game
+com.denchi.vtubestudio|VTube Studio
+com.devsisters.ck|Cookie Run: Kingdom
+com.dfjz.moba|MOBA (DFJZ)
+com.dgames.g15002002|DGames G15002002
+com.dishii.mm|Dishii MM
+com.dishii.soh|Dishii SOH
+com.dois.greedgame|Greed Game
+com.dolphinemu.dolphinemu|Dolphin Emulator
+com.dragonli.projectsnow.lhm|Project Snow
+com.drivezone.car.race.game|Drive Zone Online
+com.dts.freefireadv|Free Fire Advance
+com.dts.freefiremax|Free Fire MAX
+com.dts.freefireth|Free Fire
+com.dts.freefireth.huawei|Free Fire (Huawei)
+com.dxx.firenow|Firenow
+com.ea.gp.apexlegendsmobilefps|Apex Legends Mobile
+com.ea.gp.fifamobile|EA FC Mobile
+com.ea.gp.nfsm|Need for Speed Mobile
+com.emulator.fpse64|FPSE64
+com.epicgames.fortnite|Fortnite
+com.epicgames.portal|Epic Games Portal
+com.epsxe.ePSXe|ePSXe
+com.eyougame.msen|Eyou MSEN
+com.fantablade.icey|ICEY
+com.farlightgames.igame.gp|Farlight 84
+com.feralinteractive.gridas|GRID Autosport
+com.firewick.p42.bilibili|P42 Bili
+com.firsttouchgames.dls7|Dream League Soccer
+com.fizzd.connectedworlds|Connected Worlds
+com.futuremark.dmandroid.application|3DMark
+com.gabama.monopostolite|Monopost Lite
+com.gaijingames.wtm|War Thunder Mobile
+com.gakpopuler.gamekecil|Game Kecil
+com.gameark.ggplay.lonsea|Lon Sea
+com.gamedevltd.wwh|WWH
+com.gameloft.android.ANMP.GloftA9HM|Gameloft Game
+com.gameloft.android.ANMP.GloftMVHM|Modern Combat Versus
+com.gameloft.android.SAMS.GloftA9SS|Gameloft (Samsung)
+com.garena.game.codm|CoD Mobile (Garena)
+com.garena.game.df|Free Fire (Garena)
+com.garena.game.kgid|Arena of Valor ID
+com.garena.game.kgtw|Arena of Valor TW
+com.garena.game.kgvn|Arena of Valor VN
+com.garena.game.lmjx|Liên Minh Huyền Thoại: Tốc Chiến
+com.garena.game.nfsm|NFS Mobile (Garena)
+com.gbits.funnyfighter.android.overseas|Funny Fighter
+com.gravity.romg|Ragnarok M: Eternal Love
+com.gravity.roo.sea|Ragnarok Online: Odyssey
+com.gryphline.endfield.gp|Arknights: Endfield
+com.gryphline.exastris.gp|Arknights: Endfield
+com.guigugame.guigubahuang|GuiguBahuang
+com.guyou.deadstrike|Dead Strike
+com.h73.jhqyna|H73
+com.halo.windf.hero|Wind Fantasy Hero
+com.heavenburnsred|Heaven Burns Red
+com.hermes.j1game|J1 Game
+com.hermes.mk|MK (Hermes)
+com.herogame.gplay.magicminecraft.mmorpg|Magic Minecraft
+com.hg.cosmicshake|SpongeBob: Cosmic Shake
+com.hg.lbw|LBW
+com.hottapkgs.hotta|Tower of Fantasy
+com.humo.yqqsqz.yw|YQ QSZ YW
+com.hypergryph.arknights|Arknights CN
+com.hypergryph.exastris|Arknights: Endfield
+com.idreamsky.klbqm|IDreamSky Game
+com.idreamsky.strinova|Strinova
+com.igg.android.doomsdaylastsurvivors|Doomsday: Last Survivors
+com.ignm.raspberrymash.jp|Raspberry Mash JP
+com.ilongyuan.implosion|Implosion (CN)
+com.infoldgames.infinitynikkien|Infinity Nikki EN
+com.jacksparrow.jpmajiang|Mahjong JP
+com.japan.datealive.gp|Date A Live
+com.je.supersus|Super Sus
+com.jumpw.mobile300|Mobile 300
+com.kakaogames.eversoul|Eversoul
+com.kakaogames.gdts|Guardian Tales
+com.kakaogames.wdfp|Witchdom Frontier
+com.kiloo.subwaysurf|Subway Surfers
+com.kog.grandchaseglobal|Grand Chase
+com.komoe.kmumamusumegp|Uma Musume (Korea)
+com.kurogame.aki|Kuro Game
+com.kurogame.gplay.punishing.grayraven.en|Punishing: Gray Raven
+com.kurogame.haru|Wuthering Waves CN
+com.kurogame.haru.bilibili|Wuthering Waves (bili)
+com.kurogame.haru.hero|Wuthering Waves
+com.kurogame.mingchao|Wuthering Waves CN
+com.kurogame.wutheringwaves.global|Wuthering Waves
+com.leiting.wf|War Frenzy
+com.lemcnsun.soultide.android|Soul Tide
+com.levelinfinite.hotta.gp|Tower of Fantasy
+com.levelinfinite.sgameGlobal|Honor of Kings
+com.levelinfinite.sgameGlobal.midaspay|Honor of Kings
+com.lilithgames.hgame.cn|AFK Journey CN
+com.lilithgame.hgame.gp|AFK Journey
+com.lilithgame.roc.gp|Rise of Kingdoms
+com.linecorp.LGGRTHN|LINE Game
+com.linegames.sl|Fate/Grand Order
+com.longe.allstarhmt|AllStar HMT
+com.lrgame.dldl.sea|DLDL SEA
+com.madfingergames.legends|Dead Trigger 2
+com.maleo.bussimulatorid|Bus Simulator Indonesia
+com.miHoYo.GI.samsung|Genshin Impact (Samsung)
+com.miHoYo.GenshinImpact|Genshin Impact
+com.miHoYo.HSoDv2JPOriginalEx|Honkai Impact 3rd JP
+com.miHoYo.Nap|Zenless Zone Zero CN
+com.miHoYo.Yuanshen|Genshin Impact CN
+com.miHoYo.bh3|Honkai Impact 3rd CN
+com.miHoYo.bh3global|Honkai Impact 3rd
+com.miHoYo.bh3oversea|Honkai Impact 3rd
+com.miHoYo.bh3rdJP|Honkai Impact 3rd JP
+com.miHoYo.bh3.bilibili|Honkai Impact 3rd (bili)
+com.miHoYo.bh3.mi|Honkai Impact 3rd (mi)
+com.miHoYo.bh3.uc|Honkai Impact 3rd (uc)
+com.miHoYo.enterprise.NGHSoD|Honkai: New Herrscher
+com.miHoYo.hkrpg|Honkai: Star Rail
+com.miHoYo.ys|Genshin Impact
+com.miHoYo.zenless|Zenless Zone Zero
+com.minidragon.idlefantasy|Idle Fantasy
+com.miniworldgame.creata.vn|Creata VN
+com.miraclegames.farlight84|Farlight 84
+com.mobiin.gp|Mobiin GP
+com.mobilechess.gp|Mobile Chess
+com.mobilelegends.hwag|Mobile Legends (Huawei)
+com.mobilelegends.mi|Mobile Legends (MI)
+com.mobilelegends.taptest|Mobile Legends (TapTest)
+com.mobile.legends|Mobile Legends
+com.modx.daluandou|Daluandou
+com.mojang.hostilegg|Hostile Egg
+com.mojang.minecraftpe|Minecraft
+com.mojang.minecraftpe.patch|Minecraft (patch)
+com.morizero.milthm|MILTHM
+com.nanostudios.games.twenty.minutes|20 Minutes Till Dawn
+com.ncsoft.lineagen|Lineage 2: Revolution (LineageN)
+com.nebulajoy.act.dmcpoc.asia|Devil May Cry: Peak of Combat
+com.nekki.shadowfight|Shadow Fight
+com.nekki.shadowfight3|Shadow Fight 3
+com.neowizgames.game.browndust2|Brown Dust 2
+com.neowiz.game.idolypride.en|Idoly Pride EN
+com.netease.AVALON|Revelation Mobile
+com.netease.EVE|EVE Echoes (CN)
+com.netease.aceracer|Ace Racer
+com.netease.allstar|All-Star
+com.netease.dfjs|Dungeon Fighter (CN)
+com.netease.dunkcd|Dunk City Dynasty
+com.netease.dwrg|Perfect World Mobile (CN)
+com.netease.eve.en|EVE Echoes
+com.netease.frxyna|Farlight 84 (CN)
+com.netease.g78na.gb|Netease G78 NA
+com.netease.g93na|G93 NA
+com.netease.h73hmt|H73 HMT
+com.netease.h75na|H75 NA
+com.netease.hyxd|Hayou Xiado
+com.netease.idv|Identity V
+com.netease.jddsaef|JDD SAEF
+com.netease.ko|KO (NetEase)
+com.netease.l22|L22 (NetEase)
+com.netease.lagrange|Lagrange (NetEase)
+com.netease.lglr|Legendary Looter
+com.netease.lztgglobal|LZTG Global
+com.netease.ma84|Farlight 84 (CN)
+com.netease.ma100asia|MA100 Asia
+com.netease.moba|NetEase MOBA
+com.netease.mrzh|Marvel Rivals (CN)
+com.netease.newspike|New Spike
+com.netease.nshm|Naruto: Slugfest Mobile
+com.netease.nshmhmt|Naruto: Slugfest (HMT)
+com.netease.onmyoji|Onmyoji
+com.netease.party|Party Animals (CN)
+com.netease.partyglobal|Party Animals
+com.netease.pes|PES Mobile (NetEase)
+com.netease.qrsj|QR Sage (CN)
+com.netease.race|Ace Racer
+com.netease.racerna|Ace Racer NA
+com.netease.sky|Sky: Children of the Light (CE)
+com.netease.soulofhunter|Soul of Hunter
+com.netease.tj|TJ (NetEase)
+com.netease.tom|Tom (NetEase)
+com.netease.wotb|World of Tanks Blitz (CN)
+com.netease.wyclx|Wildfire (NetEase)
+com.netease.x19|X19 (NetEase)
+com.netease.yhtj|YH TJ (NetEase)
+com.netease.yyslscn|YYSL (CN)
+com.netflix.NGP.GTAIIIDefinitiveEdition|GTA III DE (Netflix)
+com.netflix.NGP.GTASanAndreasDefinitiveEdition|GTA SA DE (Netflix)
+com.netflix.NGP.GTAViceCityDefinitiveEdition|GTA VC DE (Netflix)
+com.netmarble.skiagb|Ni No Kuni Cross Worlds
+com.netmarble.sololv|Solo Leveling Arise
+com.netmarble.tog|Tower of God: New World
+com.nexon.bluearchive|Blue Archive EN
+com.nexon.kartdrift|KartRider: Drift
+com.nexon.konosuba|KonoSuba Fantastic Days
+com.nexon.mdnf|Dungeon & Fighter Mobile
+com.nexon.mod|MapleStory Worlds
+com.ngame.allstar.eu|AllStar EU
+com.nianticlabs.monsterhunter|Monster Hunter Now
+com.nianticproject.ingress|Ingress
+com.noctuagames.android.ashechoes|Ash Echoes
+com.noctua.android.crazyones|Crazy Ones
+com.npixel.GranSagaGB|Gran Saga
+com.olzhass.carparking.multyplayer|Car Parking Multiplayer
+com.oninou.FAPI|FAPI
+com.papegames.infinitynikki|Infinity Nikki
+com.papegames.nn4.en|Nikki (EN)
+com.pearlabyss.blackdesertm|Black Desert Mobile
+com.pearlabyss.blackdesertm.gl|Black Desert Mobile (GL)
+com.pinkcore.tkfm|TKFM
+com.plarium.raidlegends|RAID: Shadow Legends
+com.playdigious.deadcells.mobile|Dead Cells
+com.playmini.miniworld|Mini World
+com.play.rosea|Rosea
+com.popcap.pvz|Plants vs. Zombies
+com.primatelabs.geekbench6|Geekbench 6
+com.proximabeta.dn2.global|Dragon Nest 2
+com.proximabeta.mf.aceforce2|AceForce 2
+com.proximabeta.mf.liteuamo|Arena of Miracles Lite
+com.proximabeta.mf.uamo|Arena of Miracles
+com.proximabeta.nikke|NIKKE
+com.proxima.dfm|Arena of Miracles
+com.prpr.musedash|Muse Dash
+com.pubg|PUBG Mobile
+com.pubg.imobile|PUBG Mobile (India)
+com.pubg.krmobile|PUBG Mobile KR
+com.pubg.newstate|PUBG: New State
+com.pwrd.hotta.laohu|Tower of Fantasy CN
+com.pwrd.huanta|Tower of Fantasy
+com.pwrd.opmwsea|One Punch Man: World
+com.pwrd.p5x|Persona 5: The Phantom X
+com.pwrd.persona5x.laohu|Persona 5: The Phantom X CN
+com.r2games.myhero.bilibili|My Hero (Bili)
+com.rayark.cytus2|Cytus II
+com.rayark.deemo2|Deemo II
+com.rayark.deemoreborn|Deemo Reborn
+com.rayark.implosion|Implosion
+com.rayark.sdorica|Sdorica
+com.rekoo.pubgm|PUBG Mobile (rekoo)
+com.retroarch|RetroArch
+com.rinzz.projectmuse|Project Muse
+com.riotgames.league.teamfighttactics|Teamfight Tactics
+com.riotgames.league.teamfighttacticstw|TFT (TW)
+com.riotgames.league.teamfighttacticsvn|TFT (VN)
+com.riotgames.league.wildrift|Wild Rift
+com.roblox.client|Roblox
+com.roblox.client.vnggames|Roblox (VNG)
+com.robtopx.geometryjump|Geometry Dash
+com.rockstargames.gta3|GTA III
+com.rockstargames.gta3.de|GTA III: DE
+com.rockstargames.gtasa|GTA: San Andreas
+com.rockstargames.gtasa.de|GTA SA: DE
+com.rockstargames.gtavc|GTA: Vice City
+com.rockstargames.gtavc.de|GTA VC: DE
+com.rsg.myheroesen|My Hero Academia (EN)
+com.sandboxinteractive.albiononline|Albion Online
+com.sandboxol.blockymods|Blocky Mods
+com.seasun.jx3|JX3 Online
+com.seasun.snowbreak.google|Snowbreak: Containment Zone
+com.sega.ColorfulStage.en|Hatsune Miku: Colorful Stage EN
+com.sega.pjsekai|Hatsune Miku: Colorful Stage JP
+com.sega.soniccd.classic|Sonic CD Classic
+com.sgra.dragon|Dragon (SGRA)
+com.shangyoo.neon|Neon (Shangyoo)
+com.shatteredpixel.shatteredpixeldungeon|Shattered Pixel Dungeon
+com.shenlan.m.reverse1999|Reverse: 1999 CN
+com.silverstarstudio.angellegion|Angel Legion
+com.smokoko.race|Race (Smokoko)
+com.sofunny.Sausage|Sausage Man
+com.soulgamechst.majsoul|Mahjong Soul (CN)
+com.spaceapegames.beatstar|Beat Star
+com.sprduck.garena.vn|Garena VN
+com.squareenix.lis|Life is Strange
+com.starform.metalstorm|Metal Storm
+com.stove.epic7.google|Epic Seven
+com.studiobside.CounterSide|Counter: Side
+com.studiowildcard.wardrumstudios.ark|ARK: Survival Evolved
+com.studiowildcard.wardrumstudios.ark.ncr|ARK (No Crash Report)
+com.sugarfun.gp.sea.lzgwy|SugarFun SEA
+com.sunborn.girlsfrontline.en|Girls' Frontline EN
+com.sunborn.net|Sunborn Network
+com.sunborn.neuralcloud|Neural Cloud CN
+com.sunborn.neuralcloud.en|Neural Cloud EN
+com.superb.rhv|RHV
+com.supercell.boombeach|Boom Beach
+com.supercell.brawlstars|Brawl Stars
+com.supercell.clashofclans|Clash of Clans
+com.supercell.clashroyale|Clash Royale
+com.supercell.hayday|Hay Day
+com.supercell.squad|Squad Busters
+com.sybogames.subway.surfers.game|Subway Surfers
+com.sy.dldlhsdj|DLDL HSDJ
+com.t2ksports.nba2k20and|NBA 2K20
+com.tencent.KiHan|KiHan
+com.tencent.af|Aether Gazer (TW)
+com.tencent.baiyeint|Baiyi Int
+com.tencent.hhw|Age of Empires Mobile
+com.tencent.ig|PUBG Mobile
+com.tencent.iglite|PUBG Mobile Lite
+com.tencent.jkchess|Chinese Chess
+com.tencent.letsgo|Let's Go Luna
+com.tencent.lolm|League of Legends: Wild Rift
+com.tencent.mf.uam|Arena of Miracles (TW)
+com.tencent.msgame|MSG Game
+com.tencent.nba2kx|NBA 2K Mobile (TW)
+com.tencent.nfsonline|NFS Online
+com.tencent.tmgp.WePop|WePop
+com.tencent.tmgp.bh3|Honkai Impact 3rd (TW)
+com.tencent.tmgp.cf|CrossFire Mobile
+com.tencent.tmgp.cod|CoD Mobile (TW)
+com.tencent.tmgp.dfjs|Dungeon Fighter Mobile
+com.tencent.tmgp.dfm|Arena of Miracles (TW)
+com.tencent.tmgp.dnf|DNF Mobile
+com.tencent.tmgp.dwrg|Perfect World Mobile
+com.tencent.tmgp.ffom|FF Origin Mobile
+com.tencent.tmgp.gnyx|Game Naruto
+com.tencent.tmgp.kr.codm|CoD Mobile KR
+com.tencent.tmgp.pubgmhd|PUBG Mobile HD
+com.tencent.tmgp.sgame|Honor of Kings
+com.tencent.tmgp.sgamece|Honor of Kings (CE)
+com.tencent.tmgp.speedmobile|Need for Speed Mobile (TW)
+com.tencent.tmgp.sskeus|Standoff 2 (Tencent)
+com.tencent.tmgp.supercell.boombeach|Boom Beach (TW)
+com.tencent.tmgp.wuxia|Wuxia RPG
+com.tencent.tmgp.yys.zqb|Onmyoji Arena
+com.tencent.toaa|Tower of Ants
+com.tgc.sky.android|Sky: Children of the Light
+com.the10tons.dysmantle|Dysmantle
+com.tinybuildgames.helloneighbor|Hello Neighbor
+com.tipsworks.android.pascalswager|Pascal's Wager
+com.tipsworks.pascalswager|Pascal's Wager
+com.trampolinetales.lbal|Like a Ball
+com.tumuyan.ncnn.realsr|Real SR
+com.tungsten.fcl|FCL
+com.cygames.umamusume|Uma Musume
+com.ubisoft.rainbowsixmobile.r6.fps.pvp.shooter|Rainbow Six Mobile
+com.unity.mmd|MMD (Unity)
+com.valvesoftware.cswgsm|CS GO Mobile
+com.valvesoftware.source|Source Engine
+com.vng.mlbbvn|Mobile Legends VN
+com.vng.pubgmobile|PUBG Mobile VN
+com.vng.speedvn|Speed VN
+com.wb.goog.scribblenauts3|Scribblenauts Unmasked
+com.winlator|Winlator
+com.winlator.cmod|Winlator CMOD
+com.ludashi.benchmark|Ludashi Benchmark
+com.wondergames.warpath.gp|Warpath
+com.xd.TLglobal|The Legend of Neverland
+com.xd.dxlzz.taptap|Project Drifter
+com.xd.muffin.gp.global|Muffin
+com.xd.rotaeno.googleplay|Rotaeno
+com.xd.rotaeno.tapcn|Rotaeno (TapTap)
+com.xd.ssrpgen|SSR RPG
+com.xd.terraria|Terraria (TapTap)
+com.xd.xdt|XDT
+com.xindong.torchlight|Torchlight: Infinite
+com.yinhan.hunter|Hunter (YinHan)
+com.yongshi.tenojo|Tenojo
+com.yoozoo.jgame.global|League of Angels: Heaven's Fury
+com.yoozoo.jgame.us|League of Angels (US)
+com.zlongame.mhmnz|MHMNZ (Zlong)
+com.ztgame.bob|Blade of God
+com.ztgame.yyzy|YYZY (Ztgame)
+com.zy.wqmt.cn|WQMT CN
+com.bandainamcoent.dblegends_ww|Dragon Ball Legends
+com.bandainamcoent.idolmaster_gakuen|Idolmaster Gakuen
+com.bandainamcoent.imas_millionlive_theaterdays|iDOLM@STER Million Live
+com.ea.games.r3_row|Real Racing 3
+com.ea.game.pvz2_rfl|Plants vs. Zombies 2
+com.ea.game.pvz2_row|Plants vs. Zombies 2
+com.ea.game.pvzfree_row|Plants vs. Zombies
+com.feralinteractive.gridautosport_edition_android|GRID Autosport
+com.miHoYo.bh3oversea_vn|Honkai Impact 3rd VN
+cyou.joiplay.joiplay|JoiPlay
+hg.toriteling.neetchan|Neet-chan
+game.qualiarts.idolypride|Idoly Pride
+gplay.punishing.grayraven|Punishing: Gray Raven
+id.rj01117883.liomeko|Liomeko
+jp.co.bandainamcoent.BNEI0242|Taiko no Tatsujin
+jp.co.craftegg.band|BanG Dream! JP
+jp.co.cygames.princessconnectredive|Princess Connect Re:Dive JP
+jp.co.cygames.umamusume|Uma Musume JP
+jp.co.koeitecmo.ReslerianaGL|Atelier Resleriana
+jp.garud.ssimulator|SS Simulator JP
+jp.konami.duellinks|Yu-Gi-Oh! Duel Links
+jp.konami.masterduel|Yu-Gi-Oh! Master Duel
+jp.konami.pesam|eFootball Mobile
+jp.pokemon.pokemonunite|Pokémon UNITE
+jp.goodsmile.touhoulostwordglobal_android|Touhou LostWord
+lega.feisl.hhera|HHERA
+me.magnum.melonds.nightly|melonDS
+me.mugzone.emiria|Emiria
+me.pou.app|Pou
+me.tigerhix.cytoid|Cytoid
+minitech.miniworld|Mini World (minitech)
+moe.low.arc|Arcaea
+net.kdt.pojavlaunch|PojavLauncher
+net.kdt.pojavlaunch.debug|PojavLauncher Debug
+net.kdt.pojavlaunch.firefly|PojavLauncher Firefly
+net.wargaming.wot.blitz|World of Tanks Blitz
+nlch.game.Imouto|Imouto Game
+org.citra.emu|Citra Emulator
+org.dolphinemu.dolphinemu|Dolphin Emulator
+org.flos.phira|Phira
+org.godotengine.godot4|Godot Engine
+org.maxbytes.lfs|LFS (MaxBytes)
+org.mm.jr|JR (MM)
+org.mupen64plusae.v3.alpha|Mupen64Plus
+org.mupen64plusae.v3.fzurita.pro|Mupen64Plus FZ Pro
+org.openttd.sdl|OpenTTD
+org.ppsspp.ppsspp|PPSSPP
+org.ppsspp.ppssppgold|PPSSPP Gold
+org.vita3k.emulator|Vita3K
+org.citron.citron_emu|Citron Emulator
+org.sudachi.sudachi_emu.ea|Sudachi
+org.uzuy.uzuy_emu.ea|Uzuy
+org.yuzu.yuzu_emu|Yuzu
+ro.alyn_sampmobile.game|SAMP Mobile
+ru.nsu.ccfit.zuev.osuplus|osu!plus
+ru.unisamp_mobile.game|UniSAMP Mobile
+sh.ppy.osulazer|osu!lazer
+skyline.emu|Skyline
+skyline.purple|Skyline Purple
+skynet.cputhrottlingtest|CPU Throttling Test
+tw.sonet.allbw|Allbw (TW)
+tw.sonet.princessconnect|Princess Connect TW
+tw.txwy.and.arknights|Arknights TW
+uk.co.powdertoy.tpt|The Powder Toy
+vng.games.revelation.mobile|Revelation Mobile
+www.townofmagic.com|Town of Magic
+xd.sce.promotion|XD Promotion
+xyz.aethersx2.android|AetherSX2

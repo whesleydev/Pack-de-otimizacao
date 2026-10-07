@@ -1,0 +1,40 @@
+# Carrier bloatware (operadoras globais)
+# Apps pre-instalados por VZW, AT&T, T-Mobile, Sprint, Claro, Vivo, TIM, Oi, etc.
+
+# USA
+com.vzw.hss.myverizon
+com.vzw.hss.myaudi
+com.vzw.hss.mypictures
+com.vzw.hss.mymusic
+com.vzw.hss.myvideomessaging
+com.vzw.apnservice
+com.att.android.atten
+com.att.mobilesecurity
+com.att.dh
+com.att.tv
+com.tmobile.pr.mytmobile
+com.tmobile.services.nameid
+com.tmobile.echolocate
+com.sprint.care
+com.sprint.zone
+com.sprint.extension
+
+# Brasil
+com.celular.claro
+br.com.claro.myclaro
+br.com.vivo.vivoapp
+br.com.tim.meutim
+br.com.oi.meuoi
+br.com.nextel.canal
+
+# Mexico
+mx.ideas.telcel
+com.telcel.cursosonline
+
+# Europa / Asia genericos
+com.orange.myservices
+com.vodafone.android.services
+com.three.mymobile
+ee.co.uk.myaccount
+com.huawei.cmas
+com.att.iqi.invoker

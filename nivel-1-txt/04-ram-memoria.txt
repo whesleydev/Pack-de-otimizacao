@@ -1,0 +1,23 @@
+# ============================================================
+#  04 · RAM / MEMÓRIA
+#  Controla quantos processos ficam em memória e libera RAM.
+#  Mais processos em cache = troca de app rápida.
+#  Menos processos = mais RAM livre pro jogo.
+# ============================================================
+
+# --- limites de processos (cache + fantasma) numa só linha ---
+#     mais processos em cache = troca de app rápida
+settings put global activity_manager_constants max_cached_processes=32,max_phantom_processes=2147483647
+
+# --- encerra todos os apps em segundo plano AGORA ---
+am kill-all
+
+# --- limpa o cache de todos os apps ---
+pm trim-caches 999999999999
+
+# --- libera memória do sistema ---
+sync
+
+# --- zram / memória virtual (SÓ SE O APARELHO ACEITAR) ---
+# setprop persist.zram.size 1024
+# setprop persist.zram.enabled 1

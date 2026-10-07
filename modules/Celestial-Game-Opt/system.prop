@@ -1,0 +1,40 @@
+#!/system/bin/sh
+# This file will be read by setprop
+# Example: Change dpi
+# ro.sf.lcd_density=320
+
+# SurfaceFlinger
+debug.sf.multithreaded_present=1
+debug.sf.use_frame_rate_priority=1
+debug.sf.no_vsyncs_on_screen_off=1
+debug.sf.use_phase_offsets_as_durations=1
+sys.surfaceflinger.idle_reduce_framerate_enable=yes
+
+# Hwui
+debug.hwui.use_buffer_age=true
+debug.hwui.initialize_gl_always=true
+debug.hwui.use_partial_updates=true
+debug.hwui.early_preload_gl_context=true
+debug.hwui.skip_eglmanager_telemetry=true
+
+# Renderengine
+debug.egl.swapinterval=1
+debug.renderengine.restore_blur_step=false
+
+# set binder thread rt (maybe for xos devices)
+debug.sf.set_binder_thread_rt=1
+
+# pnp game mode (maybe for mediatek)
+persist.vendor.pnpmgr.gamemode.enable=1
+
+# boostfwk (maybe for infinix)
+vendor.boostfwk.scroll.policy.mode=1
+
+# enable perf boosts from System Server
+vendor.perf.gestureflingboost.enable=true
+
+# enable WorkloadClassifier
+vendor.perf.workloadclassifier.enable=true
+
+# for qcom
+sys.hwc.gpu_perf_mode=1

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pack OTM · Controle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <header>
+    <div class="logo">◆</div>
+    <div>
+      <h1>PACK OTM</h1>
+      <p class="sub">Painel de otimização</p>
+    </div>
+  </header>
+
+  <section class="status">
+    <div class="stat"><span id="s-ram">–</span><label>RAM livre (MB)</label></div>
+    <div class="stat"><span id="s-bat">–</span><label>Bateria (%)</label></div>
+    <div class="stat"><span id="s-temp">–</span><label>Temp (°C)</label></div>
+    <div class="stat"><span id="s-hz">–</span><label>Refresh (Hz)</label></div>
+  </section>
+
+  <section class="card">
+    <h2>Módulos</h2>
+    <label class="row"><span>Performance (animações, GPU)</span><input type="checkbox" id="t-perf"></label>
+    <label class="row"><span>Efeitos gráficos (blur/transparência)</span><input type="checkbox" id="t-gfx"></label>
+    <label class="row"><span>Rede / DNS Cloudflare</span><input type="checkbox" id="t-net"></label>
+    <label class="row"><span>Game Mode performance</span><input type="checkbox" id="t-game"></label>
+    <label class="row"><span>Congelar apps em cache</span><input type="checkbox" id="t-freeze"></label>
+    <label class="row"><span>Silenciar notificações (DND)</span><input type="checkbox" id="t-dnd"></label>
+    <label class="row"><span>Tela / refresh</span><input type="checkbox" id="t-tv"></label>
+    <label class="row"><span>Sensibilidade / toque</span><input type="checkbox" id="t-touch"></label>
+    <label class="row"><span>Loop em segundo plano</span><input type="checkbox" id="t-loop"></label>
+  </section>
+
+  <section class="card">
+    <h2>Ajustes</h2>
+    <div class="field"><label>Animação (0 · 0.5 · 1)</label><input type="number" id="i-anim" step="0.5" min="0" max="1"></div>
+    <div class="field"><label>Touch responsiveness</label><input type="number" id="i-tr"></div>
+    <div class="field"><label>Long press (ms)</label><input type="number" id="i-lp"></div>
+    <div class="field"><label>Pointer speed</label><input type="number" id="i-ps"></div>
+    <div class="field"><label>Touch slop</label><input type="number" id="i-slop"></div>
+    <div class="field"><label>Refresh (Hz · 0 = não mexer)</label><input type="number" id="i-hz"></div>
+  </section>
+
+  <section class="card">
+    <h2>Tuning por jogo <span class="tag">só no app</span></h2>
+    <p class="hint">Resolução/FPS do jogo via Game Mode (Android 12+). Não altera o telefone.</p>
+    <label class="row"><span>Ativar tuning por jogo</span><input type="checkbox" id="t-gametune"></label>
+    <div class="field"><label>Pacote do jogo</label><input type="text" id="i-gt-pkg" placeholder="com.dts.freefireth"></div>
+    <div class="field"><label>Downscale (0.5 · 0.75 · 0.9)</label><input type="number" id="i-gt-ds" step="0.05" min="0.3" max="1"></div>
+    <div class="field"><label>Teto de FPS (0 = padrão)</label><input type="number" id="i-gt-fps"></div>
+  </section>
+
+  <section class="actions">
+    <button id="btn-apply" class="primary">Aplicar</button>
+    <button id="btn-save">Salvar config</button>
+    <button id="btn-refresh">Atualizar status</button>
+    <button id="btn-restore" class="danger">Restaurar tudo</button>
+  </section>
+
+  <footer>Pack OTM · roda em AxManager / KernelSU / APatch / Magisk</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

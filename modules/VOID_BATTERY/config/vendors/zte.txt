@@ -1,0 +1,23 @@
+# ZTE / Nubia / Red Magic bloatware (MiFavor / RedMagic OS)
+
+# ZTE core
+com.zte.heartyservice
+com.zte.weather
+com.zte.gallery
+com.zte.email
+com.zte.calendar
+com.zte.notebook
+com.zte.manual
+com.zte.voiceassist
+
+# Nubia
+cn.nubia.browser
+cn.nubia.gallery
+cn.nubia.weather
+cn.nubia.calendar
+cn.nubia.health
+
+# Red Magic (gaming phones)
+cn.nubia.gamecenter
+cn.nubia.gamespace
+cn.nubia.redmagic

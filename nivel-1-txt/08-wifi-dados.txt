@@ -1,0 +1,20 @@
+# ============================================================
+#  08 · WI-FI / DADOS MÓVEIS
+#  Evita que o Wi-Fi fique "dormindo" e reduz varreduras.
+#  Alguns comandos variam por fabricante.
+# ============================================================
+
+# --- desativa varredura de Wi-Fi em segundo plano ---
+settings put global wifi_scan_always_enabled 0
+
+# --- não deixa o Wi-Fi dormir quando a tela apaga ---
+settings put global wifi_sleep_policy 2
+
+# --- desativa economia de energia do Wi-Fi ---
+settings put global wifi_power_save 0
+
+# --- não mantém dados móveis sempre ligados ---
+settings put global mobile_data_always_on 0
+
+# --- desativa "Wi-Fi assist" (troca pra dados sem avisar) ---
+settings put global wifi_watchdog_on 0

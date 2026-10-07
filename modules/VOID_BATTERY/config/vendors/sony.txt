@@ -1,0 +1,26 @@
+# Sony Xperia bloatware
+
+# Sony core
+com.sony.snei.video.hhe
+com.sony.snei.video
+com.sony.tvsideview.phone
+com.sony.snei.video.thumbnail
+com.sony.snei.video.peatap
+com.sony.snei.video.aa
+com.sony.snei.video.hh
+com.sony.snei.photo
+com.sony.snei.music
+com.sony.snei.player
+
+# Xperia specific
+com.sonymobile.email
+com.sonymobile.gallery
+com.sonymobile.calendar
+com.sonymobile.entrance
+com.sonymobile.smartconnect.smartwatch2
+com.sonymobile.smartconnect.extension
+com.sonymobile.wifi.softap
+
+# PlayStation / Sony
+com.sony.playstation.network
+com.sony.snei.video.hh2

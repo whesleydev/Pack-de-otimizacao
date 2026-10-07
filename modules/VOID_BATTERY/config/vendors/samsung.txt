@@ -1,0 +1,56 @@
+# Samsung bloatware & vendor apps
+# Samsung One UI vem com dezenas de apps próprios. Estes sao os
+# mais comuns em Galaxy A, S, Note, M, F, Tab series.
+
+# Bixby & AI
+com.samsung.android.bixby
+com.samsung.android.bixby.agent
+com.samsung.android.bixby.wakeup
+com.samsung.android.app.spage
+com.samsung.android.svoiceime
+com.samsung.android.aremoji
+com.samsung.android.app.routines
+
+# Samsung apps / stores
+com.sec.android.app.samsungapps
+com.samsung.android.samsungpass
+com.samsung.android.spay
+com.samsung.android.scloud
+com.samsung.android.email.provider
+com.samsung.android.dialer
+com.samsung.android.messaging
+com.samsung.android.contacts
+com.samsung.android.calendar
+com.samsung.android.gallery
+
+# Gaming
+com.samsung.android.game.gametools
+com.samsung.android.game.gamehome
+com.samsung.android.game.driver
+com.samsung.android.gametuner.thumbnail
+
+# DeX & PC
+com.samsung.android.kidsinstaller
+com.samsung.android.mdx
+com.samsung.android.bixbyvision.framework
+
+# Wearables / Buds / Watch
+com.samsung.android.gear
+com.samsung.android.gearoplugin
+com.samsung.android.app.watchmanager
+com.samsung.accessibility
+com.samsung.android.bixby.touch
+
+# Samsung Internet (opcional - muitos usam)
+# com.sec.android.app.sbrowser
+
+# AR / Virtual
+com.samsung.android.aremoji
+com.samsung.android.app.camera.AR
+
+# Generic Samsung (S Club, Members etc)
+com.samsung.android.scloud.backup
+com.samsung.android.smartswitchassistant
+com.samsung.android.beaconmanager
+com.samsung.android.bixby.home
+com.samsung.android.wellbeing

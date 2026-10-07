@@ -1,0 +1,20 @@
+# ============================================================
+#  14 · LIMPEZA / CACHE / I/O
+#  Libera RAM e disco, limpa cache e organiza o armazenamento.
+#  Seguro — pode rodar sempre.
+# ============================================================
+
+# --- limpa o cache de todos os apps ---
+pm trim-caches 999999999999
+
+# --- encerra o compilador em background ---
+killall -9 dex2oat
+
+# --- limpa os logs do sistema ---
+logcat -c
+
+# --- grava tudo em disco (evita engasgo) ---
+sync
+
+# --- desfragmenta/organiza o armazenamento (trim) ---
+sm fstrim

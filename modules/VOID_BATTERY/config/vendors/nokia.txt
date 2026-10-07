@@ -1,0 +1,18 @@
+# Nokia / HMD Global bloatware (Android One / stock-ish)
+
+# Nokia specific
+com.nokia.mobilenetworkdiagnostics
+com.nokia.camera
+com.nokia.gallery
+com.nokia.calendar
+com.nokia.email
+com.nokia.weather
+com.nokia.notes
+com.nokia.support
+com.nokia.mobilesite
+com.hmdglobal.support
+
+# Android One minimal extras
+com.nokia.music
+com.nokia.ringtones
+com.nokia.facebeauty

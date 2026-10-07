@@ -1,0 +1,28 @@
+# ============================================================
+#  09 · JOGO / GAME MODE
+#  Coloca o aparelho em modo jogo e melhora a alocação de recursos.
+#  Rode ANTES de abrir o jogo.
+# ============================================================
+
+# --- Game Mode em performance ---
+cmd game set --mode performance com.dts.freefireth
+cmd game set --mode performance com.dts.freefiremax
+cmd game set --downscale-factor 1 com.dts.freefireth
+
+# --- força driver de jogo em todos os apps ---
+settings put global game_driver_all_apps 1
+
+# --- modo de desempenho fixo (segura o clock alto) ---
+cmd power set-fixed-performance-mode-enabled true
+
+# --- fecha apps pesados em segundo plano ---
+am force-stop com.instagram.android
+am force-stop com.facebook.katana
+am force-stop com.facebook.orca
+am force-stop com.ss.android.ugc.trill
+am force-stop com.ss.android.ugc.aweme
+am force-stop com.twitter.android
+am force-stop com.google.android.youtube
+am force-stop com.android.chrome
+am force-stop com.spotify.music
+am force-stop com.discord

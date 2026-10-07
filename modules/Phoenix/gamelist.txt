@@ -1,0 +1,28 @@
+# Phoenix Boost — Game List
+# Add one package per line
+com.tencent.ig
+com.pubg.imobile
+com.pubg.krmobile
+com.rekoo.pubgm
+com.vng.pubgmobile
+com.tencent.tmgp.pubgmhd
+com.garena.game.freefire
+com.dts.freefireth
+com.mobile.legends
+com.mobilelegends.mi
+com.miHoYo.GenshinImpact
+com.HoYoverse.GenshinImpactA
+com.miHoYo.hkrpg
+com.HoYoverse.hkrpgoversea
+com.activision.callofduty.shooter
+com.epicgames.fortnite
+com.riotgames.league.wildrift
+com.tencent.tmgp.lolm
+com.netease.moba.mi
+com.tencent.tmgp.cod
+com.mojang.minecraftpe
+com.supercell.clashofclans
+com.supercell.clashroyale
+com.supercell.brawlstars
+com.ea.games.r3_row
+com.ea.game.nfs14_row

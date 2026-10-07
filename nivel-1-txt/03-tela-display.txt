@@ -1,0 +1,19 @@
+# ============================================================
+#  03 · TELA / DISPLAY
+#  Refresh rate, tempo de tela ligada e brilho.
+#  ATENÇÃO: o valor do refresh muda por aparelho.
+#  Descubra o seu: settings get system peak_refresh_rate
+# ============================================================
+
+# --- mantém a tela ligada por 10 minutos ---
+settings put system screen_off_timeout 600000
+
+# --- força o refresh máximo (troque 120.0 pela taxa do seu aparelho) ---
+settings put system peak_refresh_rate 120.0
+settings put system min_refresh_rate 120.0
+
+# --- brilho automático (1 = ligado, 0 = manual) ---
+settings put system screen_brightness_mode 1
+
+# --- modo de cor / saturação (varia por aparelho) ---
+settings put system display_color_mode 0

@@ -1,0 +1,25 @@
+# Motorola bloatware (Moto UI / My UX)
+# Mais limpo que MIUI/ColorOS, mas ainda tem bastante coisa.
+
+# Moto core
+com.motorola.motocare
+com.motorola.genie
+com.motorola.brandedwallpaper
+com.motorola.gallery
+com.motorola.weather
+com.motorola.calendar
+com.motorola.email
+com.motorola.actions
+
+# Moto apps
+com.motorola.ccc.notification
+com.motorola.timeweatherwidget
+com.motorola.gesture
+com.motorola.fmplayer
+com.motorola.coreservices
+
+# Lenovo (dono da Motorola) apps que vem em alguns devices
+com.lenovo.anyshare
+com.lenovo.cloudsync
+com.lenovo.browser
+com.lenovo.email

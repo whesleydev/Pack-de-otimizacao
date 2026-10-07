@@ -1,0 +1,23 @@
+# OnePlus bloatware (OxygenOS / ColorOS for OnePlus)
+# OnePlus migrou pra base OPPO ColorOS em modelos recentes (2022+),
+# entao herda muito de OPPO. Listamos o que e EXCLUSIVO OnePlus.
+
+# OxygenOS core
+com.oneplus.brickmode
+com.oneplus.gallery
+com.oneplus.weather
+com.oneplus.soundrecorder
+com.oneplus.OPCommunity
+com.oneplus.account
+com.oneplus.camera
+
+# Shelf / OnePlus Switch
+com.oneplus.shelf
+com.oneplus.switch
+com.oneplus.opbackup
+com.oneplus.gamespace
+
+# OxygenOS specific
+com.oneplus.diagnostics
+com.oneplus.security
+com.oneplus.setupwizard

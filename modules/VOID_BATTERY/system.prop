@@ -1,0 +1,9 @@
+# VOID BATTERY v9.1 — System Properties
+persist.sys.strictmode.disable=1
+persist.sys.strictmode.visual=0
+log.tag.all=W
+persist.log.tag=W
+# IMPROVED: Reduce background sensor power
+persist.sys.sensors.daemon=0
+# IMPROVED: Disable verbose radio logging
+persist.radio.adb_log_on=0
