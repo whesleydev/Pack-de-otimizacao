@@ -11,6 +11,9 @@ plugin com interface web no AxManager. Reúne comandos ADB, perfis de sensibilid
 > aparelho. **Salve um snapshot antes** (`sh scripts/snapshot.sh save`) e use
 > `restore_all` para reverter. Ajustes de toque variam por modelo/ROM — teste no treino.
 
+📦 **Baixar pronto:** os plugins dos níveis 3 e 4 estão na
+[Release v1.0](https://github.com/whesleydev/Pack-de-otimizacao/releases/latest).
+
 📖 **Tutorial completo:** [`docs/tutorial.md`](docs/tutorial.md) — explica cada nível e
 o que cada comando faz.
 
