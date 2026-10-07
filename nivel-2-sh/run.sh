@@ -18,7 +18,7 @@ SCRIPTS="$DIR/../scripts"
 # prefere Shizuku; cai para root se não houver rish
 if command -v rish >/dev/null 2>&1; then
     OTM_MODE=rish
-elif command -v su >/dev/null 2>&1; then
+elif command -v su >/dev/null 2>&1 && [ "$(id -u 2>/dev/null)" != "0" ]; then
     OTM_MODE=su
 else
     OTM_MODE=local
@@ -31,6 +31,7 @@ case "$1" in
     restore)  exec sh "$SCRIPTS/snapshot.sh" restore latest ;;
     save)     exec sh "$SCRIPTS/snapshot.sh" save ;;
     fluidez)  exec sh "$SCRIPTS/adb-tweaks.sh" fluidez ;;
+    game)     exec sh "$SCRIPTS/game-per-app.sh" "${2:-list}" "${3:-}" "${4:-}" ;;
     status)   exec sh "$SCRIPTS/adb-tweaks.sh" raw "dumpsys battery | grep -E 'level|temperature'" ;;
     headshot|spray|sniper|speed|balanced)
               exec sh "$SCRIPTS/ff-touch.sh" "$1" ;;

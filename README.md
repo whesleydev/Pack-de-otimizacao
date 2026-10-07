@@ -34,6 +34,8 @@ o que cada comando faz.
 | Jogo | Game Mode performance, downscale, AOT |
 | Free Fire | preparar/abrir, fechar apps de fundo |
 | Sensibilidade | perfis de toque/mira (balanced, headshot, spray, sniper, speed) |
+| Fluidez | animações 0, toque sem atraso, Hz máximo (estilo Sam Helper) |
+| Tuning por jogo | resolução (downscale), teto de FPS e engine — **só no app**, sem mexer no telefone |
 | Freezer | `cached_apps_freezer` e congelamento de apps — funciona no Brevent |
 | Sistema | DND, refresh de tela, limpeza de cache |
 | Snapshot | salva o estado atual e reverte a qualquer momento |
@@ -140,7 +142,23 @@ sh scripts/adb-tweaks.sh restore_all          # reverte tudo
 ```
 
 Grupos: `perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open
-freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez clean aot restore_all`
+freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez
+game_tune clean aot restore_all`
+
+### `scripts/game-per-app.sh` (tuning por jogo)
+
+```sh
+sh scripts/game-per-app.sh list
+sh scripts/game-per-app.sh apply com.dts.freefireth fps       # 0.9
+sh scripts/game-per-app.sh apply com.dts.freefireth balanced  # 0.75
+sh scripts/game-per-app.sh apply com.dts.freefireth max       # 0.5
+sh scripts/game-per-app.sh custom com.dts.freefireth 0.75 60  # downscale + teto FPS
+sh scripts/game-per-app.sh show com.dts.freefireth
+sh scripts/game-per-app.sh reset com.dts.freefireth
+sh scripts/game-per-app.sh reset-all
+```
+
+> Mexe só no jogo (Game Mode interventions, Android 12+). Reinicie o jogo depois.
 
 ### `scripts/ff-touch.sh`
 
@@ -190,6 +208,7 @@ scripts/
   common.sh       biblioteca (transporte adb/rish/su/local + backup)
   adb-tweaks.sh   biblioteca de comandos ADB
   ff-touch.sh     perfis de sensibilidade
+  game-per-app.sh tuning por jogo (resolução/FPS, só no app)
   snapshot.sh     salvar / reverter o estado do aparelho
   menu.sh         menu unificado
   build-modules.sh empacota módulos e plugins

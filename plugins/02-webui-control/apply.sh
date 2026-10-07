@@ -34,6 +34,10 @@ cfg_defaults() {
     CFG_PS=0
     CFG_SLOP=4
     CFG_HZ=0
+    CFG_GAMETUNE=0
+    CFG_GT_PKG=com.dts.freefireth
+    CFG_GT_DS=0.9
+    CFG_GT_FPS=0
 }
 
 cfg_defaults
@@ -42,7 +46,8 @@ cfg_defaults
 save_cfg() {
     {
         for k in CFG_PERF CFG_GFX CFG_NET CFG_GAME CFG_FREEZE CFG_DND CFG_TV \
-                 CFG_TOUCH CFG_LOOP CFG_ANIM CFG_TR CFG_LP CFG_PS CFG_SLOP CFG_HZ; do
+                 CFG_TOUCH CFG_LOOP CFG_ANIM CFG_TR CFG_LP CFG_PS CFG_SLOP CFG_HZ \
+                 CFG_GAMETUNE CFG_GT_PKG CFG_GT_DS CFG_GT_FPS; do
             eval "v=\$$k"
             printf '%s=%s\n' "$k" "$v"
         done
@@ -100,6 +105,17 @@ m_touch() {
     setprop persist.sys.touch.sensitivity 1
 }
 
+m_gametune() {
+    [ -z "$CFG_GT_PKG" ] && return 0
+    if [ "$CFG_GT_FPS" != "0" ]; then
+        cfg="mode=2,fps=$CFG_GT_FPS,downscaleFactor=$CFG_GT_DS:mode=3,fps=$CFG_GT_FPS,downscaleFactor=$CFG_GT_DS"
+    else
+        cfg="mode=2,downscaleFactor=$CFG_GT_DS:mode=3,downscaleFactor=$CFG_GT_DS"
+    fi
+    device_config put game_overlay "$CFG_GT_PKG" "$cfg" >/dev/null 2>&1
+    cmd game set --mode performance "$CFG_GT_PKG" >/dev/null 2>&1
+}
+
 apply_all() {
     [ "$CFG_PERF"  = "1" ] && m_perf
     [ "$CFG_GFX"   = "1" ] && m_gfx
@@ -109,6 +125,7 @@ apply_all() {
     [ "$CFG_DND"   = "1" ] && m_dnd
     [ "$CFG_TV"    = "1" ] && m_tv
     [ "$CFG_TOUCH" = "1" ] && m_touch
+    [ "$CFG_GAMETUNE" = "1" ] && m_gametune
     echo "ok"
 }
 
@@ -128,6 +145,7 @@ restore_all() {
     settings delete system touch_responsiveness 2>/dev/null
     settings delete system peak_refresh_rate 2>/dev/null
     settings delete system min_refresh_rate 2>/dev/null
+    [ -n "$CFG_GT_PKG" ] && device_config delete game_overlay "$CFG_GT_PKG" >/dev/null 2>&1
     echo "restaurado"
 }
 

@@ -259,6 +259,18 @@ fluidez() {
     say "pronto (efeito instantâneo, toque sem atraso, Hz máximo)"
 }
 
+# --- tuning por jogo (resolução/FPS, só no app) -------------------------------
+game_tune() {
+    # game_tune [pkg] [downscale 0.3-1.0] [fps]
+    pkg="${1:-com.dts.freefireth}"; d="${2:-0.9}"; fps="${3:-}"
+    say "Tuning por jogo: $pkg (downscale $d${fps:+ · fps $fps})"
+    if [ -n "$fps" ]; then
+        sh "$DIR/game-per-app.sh" custom "$pkg" "$d" "$fps"
+    else
+        sh "$DIR/game-per-app.sh" custom "$pkg" "$d"
+    fi
+}
+
 # --- dexopt / limpeza ---------------------------------------------------------
 clean() {
     say "Limpeza (dexopt / logs)"
@@ -298,7 +310,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez clean aot restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez game_tune clean aot restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
@@ -307,7 +319,7 @@ list() {
 }
 
 all() {
-    for g in perf gpu net wifi game freezer dnd screen fluidez clean; do
+    for g in perf gpu net wifi game freezer dnd screen fluidez game_tune clean; do
         eval "$g"
         echo
     done

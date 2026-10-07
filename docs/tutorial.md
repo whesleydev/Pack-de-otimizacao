@@ -59,7 +59,7 @@ Você abre, copia tudo e cola no Brevent.
 4. Cole na área de execução do Brevent → rode.
 5. Para voltar: cole `99-restaurar-tudo.txt`.
 
-**Arquivos (18 categorias):** performance geral, velocidade das animações, tela/display,
+**Arquivos (19 categorias):** performance geral, velocidade das animações, tela/display,
 RAM/memória, bateria, gráficos/GPU, rede/DNS, Wi-Fi/dados, jogo/game mode, Free Fire,
 sensibilidade/touch, congelar apps, descongelar apps, limpeza/cache, notificações/DND,
 bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
@@ -85,6 +85,8 @@ bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
 sh nivel-2-sh/run.sh            # abre o menu
 sh nivel-2-sh/run.sh all        # aplica tudo
 sh nivel-2-sh/run.sh headshot   # perfil de sensibilidade
+sh nivel-2-sh/run.sh fluidez    # fluidez (animações 0, toque, Hz)
+sh nivel-2-sh/run.sh game apply com.dts.freefireth fps   # tuning por jogo
 sh nivel-2-sh/run.sh save       # salva o estado atual (snapshot)
 sh nivel-2-sh/run.sh restore    # volta o último snapshot
 ```
@@ -201,6 +203,23 @@ Ficam em `~/.packotm/snapshots/<id>/` (`settings`, `props` e `meta`).
 - `long_press_timeout` — 100–250 ms (depende do aparelho; padrão 500).
 - `multi_press_timeout 0` — sem espera entre toques.
 - `peak_refresh_rate` / `min_refresh_rate` — trava a tela no Hz máximo permitido.
+
+### Tuning por jogo (resolução / FPS / engine)
+Mexe **só no jogo**, não no telefone. Usa as *Game Mode interventions* do Android 12+.
+- `device_config put game_overlay <pkg> mode=2,downscaleFactor=0.9` — resolução interna.
+  `0.9` quase não perde nitidez; `0.5` é o máximo ganho de FPS.
+- `...,fps=60` — teto de FPS (Android 13+).
+- `cmd game set --mode performance <pkg>` — coloca o jogo em performance.
+- Reverter por jogo: `device_config delete game_overlay <pkg>`.
+
+Perfis prontos no script: `fps` (0.9) · `balanced` (0.75) · `max` (0.5).
+
+```sh
+sh scripts/game-per-app.sh list
+sh scripts/game-per-app.sh apply com.dts.freefireth fps
+sh scripts/game-per-app.sh custom com.dts.freefireth 0.75 60
+sh scripts/game-per-app.sh reset com.dts.freefireth
+```
 
 ### Tela
 - `peak_refresh_rate` / `min_refresh_rate` — taxa de atualização.

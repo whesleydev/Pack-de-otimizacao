@@ -70,6 +70,12 @@ settings delete system multi_press_timeout
 settings delete system peak_refresh_rate
 settings delete system min_refresh_rate
 
+# --- 19 tuning por jogo (remove a intervention) ---
+device_config delete game_overlay com.dts.freefireth
+device_config delete game_overlay com.dts.freefiremax
+cmd game set --mode standard com.dts.freefireth
+cmd game set --mode standard com.dts.freefiremax
+
 # --- 12/13 congelamento ---
 settings put global cached_apps_freezer disabled
 

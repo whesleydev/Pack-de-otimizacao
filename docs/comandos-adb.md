@@ -66,9 +66,45 @@ dumpsys deviceidle unforce
 ```sh
 cmd game set --mode performance com.dts.freefireth
 cmd game set --mode performance com.dts.freefiremax
-cmd game set --downscale-factor 1 com.dts.freefireth
 settings put global game_driver_all_apps 1
 ```
+
+## Tuning por jogo (resolução / FPS / engine)
+
+Mexe **só no jogo** (Game Mode do Android 12+) — não altera o telefone. O jogo precisa
+reiniciar depois. `downscaleFactor`: 0.9 quase não perde nitidez, 0.5 é o máximo ganho.
+
+```sh
+# veja o valor atual (guarde para não perder o original)
+device_config get game_overlay com.dts.freefireth
+
+# perfil: mais FPS (downscale 0.9)
+device_config put game_overlay com.dts.freefireth mode=2,downscaleFactor=0.9:mode=3,downscaleFactor=0.9
+
+# perfil: equilibrado (downscale 0.75)
+device_config put game_overlay com.dts.freefireth mode=2,downscaleFactor=0.75:mode=3,downscaleFactor=0.75
+
+# perfil: FPS máximo (downscale 0.5)
+device_config put game_overlay com.dts.freefireth mode=2,downscaleFactor=0.5:mode=3,downscaleFactor=0.5
+
+# com teto de FPS (Android 13+)
+device_config put game_overlay com.dts.freefireth mode=2,fps=60,downscaleFactor=0.9:mode=3,fps=30
+
+# força o jogo em performance
+cmd game set --mode performance com.dts.freefireth
+```
+
+Reverter (por jogo):
+
+```sh
+device_config delete game_overlay com.dts.freefireth
+cmd game set --mode standard com.dts.freefireth
+```
+
+> ⚠️ `downscaleFactor` reduz a resolução interna de renderização (não o tamanho da tela).
+> É uma intervention oficial do Android, não um mod — mas **não há garantia de que o
+> anti-cheat da Garena não estranhe** mudanças de resolução. Use por sua conta e risco.
+> Requer Android 12+ (API 31).
 
 ## Free Fire (fechar apps / abrir)
 
@@ -194,6 +230,8 @@ settings put global adaptive_battery_management_enabled 1
 settings put global cached_apps_freezer disabled
 settings put global heads_up_notifications_enabled 1
 dumpsys deviceidle unforce
+device_config delete game_overlay com.dts.freefireth
+device_config delete game_overlay com.dts.freefiremax
 ```
 
 > `setprop` não persiste após reiniciar o aparelho. `settings put` persiste.

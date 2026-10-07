@@ -18,6 +18,10 @@ LOOP_INTERVAL=60   # segundos entre reaplicações do core
 ENABLE_DNS=1
 ENABLE_TOUCH=1
 ENABLE_DOZE=0
+ENABLE_GAMETUNE=0
+GT_PKG=com.dts.freefireth
+GT_DS=0.9
+GT_FPS=0
 
 [ -f "$CFG" ] && . "$CFG" 2>/dev/null
 
@@ -53,6 +57,16 @@ apply_core() {
     cmd game set --mode performance com.dts.freefireth  >/dev/null 2>&1
     cmd game set --mode performance com.dts.freefiremax >/dev/null 2>&1
     setprop debug.hwui.renderer skiagl
+
+    [ "$ENABLE_GAMETUNE" = "1" ] && [ -n "$GT_PKG" ] && {
+        if [ "$GT_FPS" != "0" ]; then
+            device_config put game_overlay "$GT_PKG" \
+                "mode=2,fps=$GT_FPS,downscaleFactor=$GT_DS:mode=3,fps=$GT_FPS,downscaleFactor=$GT_DS" >/dev/null 2>&1
+        else
+            device_config put game_overlay "$GT_PKG" \
+                "mode=2,downscaleFactor=$GT_DS:mode=3,downscaleFactor=$GT_DS" >/dev/null 2>&1
+        fi
+    }
 }
 
 kill_background_apps() {
@@ -85,6 +99,10 @@ save_default_config() {
         echo "ENABLE_DNS=$ENABLE_DNS"
         echo "ENABLE_TOUCH=$ENABLE_TOUCH"
         echo "ENABLE_DOZE=$ENABLE_DOZE"
+        echo "ENABLE_GAMETUNE=$ENABLE_GAMETUNE"
+        echo "GT_PKG=$GT_PKG"
+        echo "GT_DS=$GT_DS"
+        echo "GT_FPS=$GT_FPS"
     } > "$CFG"
 }
 

@@ -22,6 +22,10 @@ LOOP_INTERVAL=60   # segundos entre reaplicações
 ENABLE_DNS=1
 ENABLE_TOUCH=1
 ENABLE_DOZE=0
+ENABLE_GAMETUNE=0  # tuning por jogo (0/1)
+GT_PKG=com.dts.freefireth  # pacote do jogo
+GT_DS=0.9          # downscale (0.5-1.0)
+GT_FPS=0           # teto de FPS (0 = padrão)
 ```
 
 Edite e reinicie (ou rode `sh /data/adb/packotm/apply.sh`).

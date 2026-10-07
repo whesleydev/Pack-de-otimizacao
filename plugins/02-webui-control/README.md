@@ -17,6 +17,8 @@ pelo gerenciador, ligue/desligue módulos, ajuste sensibilidade e aplique.
   DND, tela, touch e loop.
 - **Ajustes**: animação, touch responsiveness, long press, pointer speed,
   touch slop e refresh.
+- **Tuning por jogo**: liga/desliga e define pacote, downscale (resolução) e teto de FPS
+  — mexe **só no jogo** (Game Mode interventions, Android 12+).
 - **Ações**: Aplicar, Salvar config, Atualizar status e Restaurar tudo.
 
 A UI conversa com o shell pela ponte `@kernelsu/api` (`exec`) do AxManager/KernelSU.
@@ -39,6 +41,10 @@ CFG_LP=350      # long press (ms)
 CFG_PS=0        # pointer speed
 CFG_SLOP=4      # touch slop
 CFG_HZ=0        # refresh (0 = não mexer)
+CFG_GAMETUNE=0  # tuning por jogo (0/1)
+CFG_GT_PKG=com.dts.freefireth  # pacote do jogo
+CFG_GT_DS=0.9   # downscale da resolução (0.5-1.0)
+CFG_GT_FPS=0    # teto de FPS (0 = padrão; Android 13+)
 ```
 
 ## Usar sem a UI (terminal)

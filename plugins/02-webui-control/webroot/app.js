@@ -61,7 +61,8 @@ async function loadConfig() {
   const map = {
     't-perf': 'CFG_PERF', 't-gfx': 'CFG_GFX', 't-net': 'CFG_NET',
     't-game': 'CFG_GAME', 't-freeze': 'CFG_FREEZE', 't-dnd': 'CFG_DND',
-    't-tv': 'CFG_TV', 't-touch': 'CFG_TOUCH', 't-loop': 'CFG_LOOP'
+    't-tv': 'CFG_TV', 't-touch': 'CFG_TOUCH', 't-loop': 'CFG_LOOP',
+    't-gametune': 'CFG_GAMETUNE'
   };
   for (const [id, key] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -69,9 +70,15 @@ async function loadConfig() {
   }
   const num = {
     'i-anim': 'CFG_ANIM', 'i-tr': 'CFG_TR', 'i-lp': 'CFG_LP',
-    'i-ps': 'CFG_PS', 'i-slop': 'CFG_SLOP', 'i-hz': 'CFG_HZ'
+    'i-ps': 'CFG_PS', 'i-slop': 'CFG_SLOP', 'i-hz': 'CFG_HZ',
+    'i-gt-ds': 'CFG_GT_DS', 'i-gt-fps': 'CFG_GT_FPS'
   };
   for (const [id, key] of Object.entries(num)) {
+    const el = document.getElementById(id);
+    if (el && cfg[key] !== undefined) el.value = cfg[key];
+  }
+  const txt = { 'i-gt-pkg': 'CFG_GT_PKG' };
+  for (const [id, key] of Object.entries(txt)) {
     const el = document.getElementById(id);
     if (el && cfg[key] !== undefined) el.value = cfg[key];
   }
@@ -81,7 +88,8 @@ async function pushConfig() {
   const map = {
     't-perf': 'CFG_PERF', 't-gfx': 'CFG_GFX', 't-net': 'CFG_NET',
     't-game': 'CFG_GAME', 't-freeze': 'CFG_FREEZE', 't-dnd': 'CFG_DND',
-    't-tv': 'CFG_TV', 't-touch': 'CFG_TOUCH', 't-loop': 'CFG_LOOP'
+    't-tv': 'CFG_TV', 't-touch': 'CFG_TOUCH', 't-loop': 'CFG_LOOP',
+    't-gametune': 'CFG_GAMETUNE'
   };
   for (const [id, key] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -89,9 +97,15 @@ async function pushConfig() {
   }
   const num = {
     'i-anim': 'CFG_ANIM', 'i-tr': 'CFG_TR', 'i-lp': 'CFG_LP',
-    'i-ps': 'CFG_PS', 'i-slop': 'CFG_SLOP', 'i-hz': 'CFG_HZ'
+    'i-ps': 'CFG_PS', 'i-slop': 'CFG_SLOP', 'i-hz': 'CFG_HZ',
+    'i-gt-ds': 'CFG_GT_DS', 'i-gt-fps': 'CFG_GT_FPS'
   };
   for (const [id, key] of Object.entries(num)) {
+    const el = document.getElementById(id);
+    if (el && el.value !== '') await exec(`sh ${APPLY} set ${key} ${el.value}`);
+  }
+  const txt = { 'i-gt-pkg': 'CFG_GT_PKG' };
+  for (const [id, key] of Object.entries(txt)) {
     const el = document.getElementById(id);
     if (el && el.value !== '') await exec(`sh ${APPLY} set ${key} ${el.value}`);
   }

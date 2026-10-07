@@ -11,7 +11,7 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 4. Rode.
 5. Se não gostar, cole o `99-restaurar-tudo.txt`.
 
-## Os arquivos (18 categorias)
+## Os arquivos (19 categorias)
 
 | # | Arquivo | O que faz |
 |---|---------|-----------|
@@ -33,6 +33,7 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 | 16 | `16-bloat-privacidade.txt` | desativa apps inúteis (com aviso de cuidado) |
 | 17 | `17-sistema-logs-debug.txt` | reduz logs e depuração em background |
 | 18 | `18-fluidez.txt` | **fluidez**: animações 0, long/multi press, Hz máximo |
+| 19 | `19-tuning-por-jogo.txt` | **só no jogo**: resolução (downscale), teto de FPS, engine |
 | 99 | `99-restaurar-tudo.txt` | **desfaz tudo** e volta ao original |
 
 ## Ordem sugerida para jogar
@@ -40,8 +41,9 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 1. `14-limpeza-cache-io.txt` (limpa)
 2. `07-rede-dns-latencia.txt` (rede)
 3. `09-jogo-game-mode.txt` (modo jogo)
-4. `10-free-fire.txt` (abre o jogo)
-5. Depois de jogar: `13-descongelar-apps.txt` e/ou `99-restaurar-tudo.txt`
+4. `19-tuning-por-jogo.txt` (resolução/FPS do jogo)
+5. `10-free-fire.txt` (abre o jogo)
+6. Depois de jogar: `13-descongelar-apps.txt` e/ou `99-restaurar-tudo.txt`
 
 ## Avisos importantes
 

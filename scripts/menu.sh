@@ -36,6 +36,7 @@ while :; do
     printf '  %s18%s Listar snapshots'                       "$C_A" "$C_R"; echo
     printf '  %s19%s Restaurar último snapshot'              "$C_A" "$C_R"; echo
     printf '  %s20%s Fluidez (animações 0, toque 0 delay, Hz max)' "$C_A" "$C_R"; echo
+    printf '  %s21%s Tuning por jogo (resolução/FPS/engine)'      "$C_A" "$C_R"; echo
     printf '  %s90%s Aplicar TUDO (all)'                    "$C_G" "$C_R"; echo
     printf '  %s91%s RESTAURAR tudo'                        "$C_Y" "$C_R"; echo
     printf '  %s0%s  Sair'                                  "$C_D" "$C_R"; echo
@@ -72,6 +73,14 @@ while :; do
         20) printf '  long_press (100-250) e Hz (ex 120.0): '
             read -r lp hz
             "$DIR/adb-tweaks.sh" fluidez "$lp" "$hz" ;;
+        21) printf '  pacote do jogo (ex com.dts.freefireth): '
+            read -r gp
+            printf '  perfil (fps/balanced/max) ou downscale 0.3-1.0: '
+            read -r gv
+            case "$gv" in
+                fps|balanced|max) "$DIR/game-per-app.sh" apply "$gp" "$gv" ;;
+                *) "$DIR/game-per-app.sh" custom "$gp" "$gv" ;;
+            esac ;;
         90) "$DIR/adb-tweaks.sh" all ;;
         91) "$DIR/adb-tweaks.sh" restore_all ;;
         0|q|sair) printf '\n  %svaleu!%s\n\n' "$C_A" "$C_R"; exit 0 ;;
