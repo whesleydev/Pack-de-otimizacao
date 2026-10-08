@@ -14,6 +14,7 @@ log "service: iniciado (loop=${LOOP_INTERVAL}s clean=${CLEAN_INTERVAL}s)"
 
 # aplica uma vez no boot
 apply_core
+apply_deep
 kill_background_apps
 clean_memory
 log "service: boot aplicado (RAM livre: $(free_ram_mb) MB)"

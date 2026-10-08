@@ -5,7 +5,7 @@ type ui_print >/dev/null 2>&1 || ui_print() { echo "$1"; }
 [ -n "$MODPATH" ] && DIRECT="$MODPATH" || DIRECT="$(cd "$(dirname "$0")" && pwd)"
 
 ui_print "=================================================="
-ui_print "  Pack OTM · Service Loop v1.0"
+ui_print "  Pack OTM · Service Loop v1.1"
 ui_print "  Aplica o pack e mantém ativo em segundo plano"
 ui_print "=================================================="
 

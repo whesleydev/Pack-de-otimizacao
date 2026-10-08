@@ -270,10 +270,33 @@ Reverter tudo: `sh scripts/adb-tweaks.sh restore_all` ou
 
 ---
 
-## 11. Segurança e bom senso
+## 11. Otimizações profundas
+
+Quando os `settings` já não dão mais ganho, o pack tem um módulo que mexe **mais fundo**
+— e continua reversível. Tudo vive em `scripts/deep-tune.sh`:
+
+```sh
+sh scripts/deep-tune.sh detect              # o que o seu aparelho suporta
+sh scripts/deep-tune.sh angle add <pkg>     # ANGLE/Vulkan por jogo (sem root) ★
+sh scripts/deep-tune.sh debloat on          # appops + standby buckets (sem root)
+sh scripts/deep-tune.sh gaming on <pkg>     # MODO JOGO TURBO (root: freq+io+mem+net+...)
+sh scripts/deep-tune.sh restore             # desfaz tudo
+```
+
+Cada módulo guarda o **valor original** e tem o seu próprio "off" (`freq off`, `angle
+reset`, ...). O `thermal` afrouxa o limite de temperatura: dá mais FPS sustentado, mas
+**esquenta mais** — use só jogando e com o aparelho ventilado.
+
+O documento [`AUDITORIA.md`](AUDITORIA.md) lista, para cada módulo, o comando exato, o
+privilégio exigido, o ganho esperado, o risco e a reversão.
+
+---
+
+## 12. Segurança e bom senso
 
 - **Sempre** salve um snapshot antes de aplicar.
 - `setprop` não persiste após reiniciar; `settings put` persiste.
 - Não use bateria/Doze junto com performance em partidas longas.
+- `thermal`/`gaming` afrouxam o térmico: mais calor, mais risco. Reverta após jogar.
 - Módulos de terceiros em `modules/` têm autoria própria (ver créditos).
 - Você é responsável pelo que roda no seu aparelho. Teste antes.

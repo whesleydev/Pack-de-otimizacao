@@ -57,9 +57,15 @@ gpu() {
     bkp_set global force_gpu_rendering 1
     bkp_set global disable_window_blurs 1
     bkp_set global accessibility_reduce_transparency 1
-    bkp_set global debug.hwui.renderer skiagl
     bkp_set global game_driver_all_apps 1
-    sh_run "settings put global opengl_renderer skiagl" >/dev/null
+    # debug.hwui.renderer é uma *prop* (não um setting): guarda o valor antigo e aplica
+    old=$(sh_get "getprop debug.hwui.renderer")
+    if [ -n "$old" ]; then
+        bkp_raw "setprop debug.hwui.renderer '$old'"
+    else
+        bkp_raw "setprop debug.hwui.renderer ''"
+    fi
+    sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
     say "renderização otimizada"
 }
 
@@ -323,6 +329,9 @@ all() {
         eval "$g"
         echo
     done
+    # otimizações profundas que não exigem root
+    sh "$DIR/deep-tune.sh" debloat on
+    echo
 }
 
 # execução

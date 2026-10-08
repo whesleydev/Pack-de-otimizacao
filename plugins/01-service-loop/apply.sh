@@ -9,6 +9,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 save_default_config
 boot_wait
 apply_core
+apply_deep
 kill_background_apps
 clean_memory
 apply_doze

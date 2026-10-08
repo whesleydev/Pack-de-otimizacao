@@ -37,6 +37,14 @@ while :; do
     printf '  %s19%s Restaurar último snapshot'              "$C_A" "$C_R"; echo
     printf '  %s20%s Fluidez (animações 0, toque 0 delay, Hz max)' "$C_A" "$C_R"; echo
     printf '  %s21%s Tuning por jogo (resolução/FPS/engine)'      "$C_A" "$C_R"; echo
+    printf '  %s── otimizações profundas ─────────────%s\n' "$C_D" "$C_R"
+    printf '  %s22%s ANGLE/Vulkan por jogo (sem root)'       "$C_A" "$C_R"; echo
+    printf '  %s23%s MODO JOGO TURBO (tudo junto, root)'     "$C_A" "$C_R"; echo
+    printf '  %s24%s Frequência CPU/GPU (root)'              "$C_A" "$C_R"; echo
+    printf '  %s25%s I/O + memória (MGLRU/zRAM, root)'       "$C_A" "$C_R"; echo
+    printf '  %s26%s Rede BBR (root)'                        "$C_A" "$C_R"; echo
+    printf '  %s27%s Debloat real (appops/buckets)'          "$C_A" "$C_R"; echo
+    printf '  %s28%s Detectar hardware'                      "$C_A" "$C_R"; echo
     printf '  %s90%s Aplicar TUDO (all)'                    "$C_G" "$C_R"; echo
     printf '  %s91%s RESTAURAR tudo'                        "$C_Y" "$C_R"; echo
     printf '  %s0%s  Sair'                                  "$C_D" "$C_R"; echo
@@ -81,8 +89,25 @@ while :; do
                 fps|balanced|max) "$DIR/game-per-app.sh" apply "$gp" "$gv" ;;
                 *) "$DIR/game-per-app.sh" custom "$gp" "$gv" ;;
             esac ;;
+        22) printf '  ação (add/remove/list/reset) e pacote: '
+            read -r a gp
+            "$DIR/deep-tune.sh" angle "$a" "$gp" ;;
+        23) printf '  ligar (on) ou desligar (off)? [on] e pacote opcional: '
+            read -r a gp
+            "$DIR/deep-tune.sh" gaming "${a:-on}" "$gp" ;;
+        24) printf '  on/off [on]: '; read -r a
+            "$DIR/deep-tune.sh" freq "${a:-on}" ;;
+        25) printf '  io/mem on/off [on]: '; read -r a b
+            case "$a" in io|mem) "$DIR/deep-tune.sh" "$a" "${b:-on}" ;;
+                         *) warn "use: io on | mem on" ;; esac ;;
+        26) printf '  on/off [on]: '; read -r a
+            "$DIR/deep-tune.sh" net "${a:-on}" ;;
+        27) printf '  on/off [on]: '; read -r a
+            "$DIR/deep-tune.sh" debloat "${a:-on}" ;;
+        28) "$DIR/deep-tune.sh" detect ;;
         90) "$DIR/adb-tweaks.sh" all ;;
-        91) "$DIR/adb-tweaks.sh" restore_all ;;
+        91) "$DIR/adb-tweaks.sh" restore_all
+            "$DIR/deep-tune.sh" restore ;;
         0|q|sair) printf '\n  %svaleu!%s\n\n' "$C_A" "$C_R"; exit 0 ;;
         *)  warn "opção inválida" ;;
     esac

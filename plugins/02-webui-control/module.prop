@@ -1,7 +1,7 @@
 id=packotm_webui_control
 name=Pack OTM · WebUI Control
-version=1.0.0
-versionCode=100
+version=1.1.0
+versionCode=110
 author=whesleydev
 description=Painel web configurável do pack de otimização. Ligue/desligue cada módulo, ajuste sensibilidade e aplique. Compatível com AxManager, KernelSU, APatch e Magisk.
 axeronPlugin=>=10000

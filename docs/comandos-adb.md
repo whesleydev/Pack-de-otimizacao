@@ -235,3 +235,43 @@ device_config delete game_overlay com.dts.freefiremax
 ```
 
 > `setprop` não persiste após reiniciar o aparelho. `settings put` persiste.
+
+## Otimizações profundas (`scripts/deep-tune.sh`)
+
+Comandos que vão além de `settings` — sysfs (kernel), GPU, térmico, I/O, rede e apps.
+Cada módulo é reversível, com backup do valor original.
+
+```sh
+sh scripts/deep-tune.sh detect                 # o que o aparelho suporta
+sh scripts/deep-tune.sh angle add com.dts.freefireth   # ANGLE/Vulkan (sem root)
+sh scripts/deep-tune.sh angle reset
+sh scripts/deep-tune.sh debloat on|off         # appops + standby buckets (sem root)
+sh scripts/deep-tune.sh freq on|off            # frequência CPU/GPU (root)
+sh scripts/deep-tune.sh io on|off              # scheduler + fstrim (root)
+sh scripts/deep-tune.sh mem on|off             # MGLRU + zRAM + KSM (root)
+sh scripts/deep-tune.sh net on|off             # TCP BBR + fq_codel (root)
+sh scripts/deep-tune.sh latency on|off         # SurfaceFlinger/vsync (root)
+sh scripts/deep-tune.sh thermal on|off         # ⚠️ afrouxa o térmico (root, esquenta)
+sh scripts/deep-tune.sh gaming on|off [pkg]    # MODO JOGO TURBO (tudo junto)
+sh scripts/deep-tune.sh restore                # desfaz tudo
+```
+
+Equivalência em ADB puro (exemplos):
+
+```sh
+# ANGLE/Vulkan por jogo
+settings put global angle_gl_driver_selection_pkgs com.dts.freefireth
+settings put global angle_gl_driver_selection_values angle
+
+# debloat real (sem matar à força)
+cmd appops set com.instagram.android RUN_IN_BACKGROUND ignore
+am set-standby-bucket com.instagram.android restricted
+
+# frequência no topo (root)
+echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+# TCP BBR (root)
+sysctl -w net.ipv4.tcp_congestion_control=bbr
+```
+
+> Detalhes de risco, ganho esperado e reversão de cada módulo: [`AUDITORIA.md`](AUDITORIA.md).

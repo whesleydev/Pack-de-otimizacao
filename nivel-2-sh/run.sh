@@ -15,23 +15,18 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS="$DIR/../scripts"
 
-# prefere Shizuku; cai para root se não houver rish
-if command -v rish >/dev/null 2>&1; then
-    OTM_MODE=rish
-elif command -v su >/dev/null 2>&1 && [ "$(id -u 2>/dev/null)" != "0" ]; then
-    OTM_MODE=su
-else
-    OTM_MODE=local
-fi
-export OTM_MODE
+# a detecção de modo fica no common.sh (com timeout, para não pendurar no `su`)
+. "$SCRIPTS/common.sh"
 
 case "$1" in
     ""|menu)  exec sh "$SCRIPTS/menu.sh" ;;
     all)      exec sh "$SCRIPTS/adb-tweaks.sh" all ;;
-    restore)  exec sh "$SCRIPTS/snapshot.sh" restore latest ;;
+    restore)  sh "$SCRIPTS/snapshot.sh" restore latest
+              exec sh "$SCRIPTS/deep-tune.sh" restore ;;
     save)     exec sh "$SCRIPTS/snapshot.sh" save ;;
     fluidez)  exec sh "$SCRIPTS/adb-tweaks.sh" fluidez ;;
     game)     exec sh "$SCRIPTS/game-per-app.sh" "${2:-list}" "${3:-}" "${4:-}" ;;
+    deep)     exec sh "$SCRIPTS/deep-tune.sh" "${2:-}" "${3:-}" "${4:-}" ;;
     status)   exec sh "$SCRIPTS/adb-tweaks.sh" raw "dumpsys battery | grep -E 'level|temperature'" ;;
     headshot|spray|sniper|speed|balanced)
               exec sh "$SCRIPTS/ff-touch.sh" "$1" ;;

@@ -11,7 +11,7 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 4. Rode.
 5. Se não gostar, cole o `99-restaurar-tudo.txt`.
 
-## Os arquivos (20 arquivos)
+## Os arquivos (22 arquivos)
 
 | # | Arquivo | O que faz |
 |---|---------|-----------|
@@ -35,6 +35,7 @@ copia tudo e cola no **Brevent** (ou no terminal `adb shell` no PC). Não precis
 | 17 | `17-sistema-logs-debug.txt` | reduz logs e depuração em background |
 | 18 | `18-fluidez.txt` | **fluidez**: animações 0, long/multi press, Hz máximo |
 | 19 | `19-tuning-por-jogo.txt` | **só no jogo**: resolução (downscale), teto de FPS, engine |
+| 20 | `20-otimizacoes-profundas.txt` | ANGLE/Vulkan por jogo + debloat real (appops/standby) |
 | 99 | `99-restaurar-tudo.txt` | **desfaz tudo** e volta ao original |
 
 ## Ordem sugerida para jogar

@@ -19,6 +19,8 @@ pelo gerenciador, ligue/desligue módulos, ajuste sensibilidade e aplique.
   touch slop e refresh.
 - **Tuning por jogo**: liga/desliga e define pacote, downscale (resolução) e teto de FPS
   — mexe **só no jogo** (Game Mode interventions, Android 12+).
+- **Otimizações profundas**: ANGLE/Vulkan por jogo, debloat real (appops/standby) e,
+  com root, frequência + I/O + memória + rede BBR + térmico.
 - **Ações**: Aplicar, Salvar config, Atualizar status e Restaurar tudo.
 
 A UI conversa com o shell pela ponte `@kernelsu/api` (`exec`) do AxManager/KernelSU.
@@ -45,6 +47,12 @@ CFG_GAMETUNE=0  # tuning por jogo (0/1)
 CFG_GT_PKG=com.dts.freefireth  # pacote do jogo
 CFG_GT_DS=0.9   # downscale da resolução (0.5-1.0)
 CFG_GT_FPS=0    # teto de FPS (0 = padrão; Android 13+)
+# otimizações profundas
+CFG_ANGLE=0     # ANGLE/Vulkan por jogo (sem root)
+CFG_ANGLE_PKGS=com.dts.freefireth,com.dts.freefiremax
+CFG_DEBLOAT=0   # appops + standby (sem root)
+CFG_DEEP=0      # freq/io/mem/net (root)
+CFG_THERMAL=0   # ⚠️ afrouxa o térmico (root)
 ```
 
 ## Usar sem a UI (terminal)

@@ -62,7 +62,9 @@ async function loadConfig() {
     't-perf': 'CFG_PERF', 't-gfx': 'CFG_GFX', 't-net': 'CFG_NET',
     't-game': 'CFG_GAME', 't-freeze': 'CFG_FREEZE', 't-dnd': 'CFG_DND',
     't-tv': 'CFG_TV', 't-touch': 'CFG_TOUCH', 't-loop': 'CFG_LOOP',
-    't-gametune': 'CFG_GAMETUNE'
+    't-gametune': 'CFG_GAMETUNE',
+    't-angle': 'CFG_ANGLE', 't-debloat': 'CFG_DEBLOAT',
+    't-deep': 'CFG_DEEP', 't-thermal': 'CFG_THERMAL'
   };
   for (const [id, key] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -77,7 +79,7 @@ async function loadConfig() {
     const el = document.getElementById(id);
     if (el && cfg[key] !== undefined) el.value = cfg[key];
   }
-  const txt = { 'i-gt-pkg': 'CFG_GT_PKG' };
+  const txt = { 'i-gt-pkg': 'CFG_GT_PKG', 'i-angle-pkgs': 'CFG_ANGLE_PKGS' };
   for (const [id, key] of Object.entries(txt)) {
     const el = document.getElementById(id);
     if (el && cfg[key] !== undefined) el.value = cfg[key];
@@ -89,7 +91,9 @@ async function pushConfig() {
     't-perf': 'CFG_PERF', 't-gfx': 'CFG_GFX', 't-net': 'CFG_NET',
     't-game': 'CFG_GAME', 't-freeze': 'CFG_FREEZE', 't-dnd': 'CFG_DND',
     't-tv': 'CFG_TV', 't-touch': 'CFG_TOUCH', 't-loop': 'CFG_LOOP',
-    't-gametune': 'CFG_GAMETUNE'
+    't-gametune': 'CFG_GAMETUNE',
+    't-angle': 'CFG_ANGLE', 't-debloat': 'CFG_DEBLOAT',
+    't-deep': 'CFG_DEEP', 't-thermal': 'CFG_THERMAL'
   };
   for (const [id, key] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -104,7 +108,7 @@ async function pushConfig() {
     const el = document.getElementById(id);
     if (el && el.value !== '') await exec(`sh ${APPLY} set ${key} ${el.value}`);
   }
-  const txt = { 'i-gt-pkg': 'CFG_GT_PKG' };
+  const txt = { 'i-gt-pkg': 'CFG_GT_PKG', 'i-angle-pkgs': 'CFG_ANGLE_PKGS' };
   for (const [id, key] of Object.entries(txt)) {
     const el = document.getElementById(id);
     if (el && el.value !== '') await exec(`sh ${APPLY} set ${key} ${el.value}`);

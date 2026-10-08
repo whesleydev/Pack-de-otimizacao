@@ -166,6 +166,27 @@ sh scripts/game-per-app.sh reset-all
 
 > Mexe só no jogo (Game Mode interventions, Android 12+). Reinicie o jogo depois.
 
+### `scripts/deep-tune.sh` (otimizações profundas)
+
+Vai além dos `settings`: mexe em **sysfs (kernel), GPU, térmico, I/O e rede**. Tudo
+reversível — cada valor antigo é guardado, e cada módulo tem seu próprio "off".
+
+```sh
+sh scripts/deep-tune.sh detect            # o que o aparelho suporta
+sh scripts/deep-tune.sh angle add com.dts.freefireth   # ANGLE/Vulkan (sem root) ★
+sh scripts/deep-tune.sh freq on           # frequência CPU/GPU no topo (root)
+sh scripts/deep-tune.sh io on             # scheduler + fstrim (root)
+sh scripts/deep-tune.sh mem on            # MGLRU + zRAM + KSM (root)
+sh scripts/deep-tune.sh net on            # TCP BBR + fq_codel (root)
+sh scripts/deep-tune.sh debloat on        # appops + buckets (sem root)
+sh scripts/deep-tune.sh gaming on com.dts.freefireth  # MODO JOGO TURBO (tudo junto)
+sh scripts/deep-tune.sh thermal on        # ⚠️ afrouxa o limite térmico (root, esquenta)
+sh scripts/deep-tune.sh restore           # desfaz tudo
+```
+
+> ⚠️ `thermal` e `gaming` afrouxam a proteção térmica: mais FPS sustentado, **mais calor**.
+> Use só jogando, com o aparelho ventilado, e reverta depois.
+
 ### `scripts/ff-touch.sh`
 
 ```sh
@@ -196,12 +217,25 @@ Há duas formas de reverter:
 
 ```sh
 sh scripts/adb-tweaks.sh restore_all   # desfaz os tweaks do pack
+sh scripts/deep-tune.sh restore        # desfaz as otimizações profundas
 sh scripts/snapshot.sh restore latest  # volta ao snapshot que você salvou
 ```
 
 O `restore_all` desfaz os `settings`, desliga o `cached_apps_freezer` e solta o Doze.
 Apps congelados com `freeze_apps` são liberados por `unfreeze_apps`. O `snapshot restore`
 devolve o estado exato salvo antes — inclusive coisas fora do pack.
+
+Cada módulo profundo também tem o seu "off" individual (`deep-tune.sh freq off`,
+`deep-tune.sh angle reset`, ...), então dá para desligar só o que incomodou.
+
+---
+
+## Auditoria
+
+O pack é **honesto por princípio**: onde um comando é placebo, dependente de aparelho ou
+arriscado, isso está declarado. O documento [`docs/AUDITORIA.md`](docs/AUDITORIA.md)
+traz, para cada módulo: comando exato, privilégio exigido, ganho esperado, risco e
+reversão — pronto para revisão técnica externa.
 
 ---
 

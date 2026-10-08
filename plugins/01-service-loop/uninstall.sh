@@ -5,6 +5,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE="/data/adb/packotm"
+[ -d "$STATE" ] || STATE="$DIR/state"
 
 # pede para o loop parar
 touch "$STATE/stop" 2>/dev/null
@@ -23,10 +24,14 @@ settings put global accessibility_reduce_transparency 0 2>/dev/null
 settings put global game_driver_all_apps 0 2>/dev/null
 settings put global private_dns_mode opportunistic 2>/dev/null
 
+# reverte as otimizações profundas (sysfs/appops/ANGLE) para o estado original
+. "$DIR/lib.sh"
+revert_deep
+
 # remove tuning por jogo (Game Mode intervention)
 for p in com.dts.freefireth com.dts.freefiremax; do
     device_config delete game_overlay "$p" 2>/dev/null
 done
 
-rm -f "$STATE/stop"
+rm -f "$STATE/stop" "$STATE/deep_mark"
 echo "Pack OTM removido; loop parado e tweaks revertidos."

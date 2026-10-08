@@ -26,7 +26,17 @@ ENABLE_GAMETUNE=0  # tuning por jogo (0/1)
 GT_PKG=com.dts.freefireth  # pacote do jogo
 GT_DS=0.9          # downscale (0.5-1.0)
 GT_FPS=0           # teto de FPS (0 = padrão)
+# otimizações profundas
+ENABLE_ANGLE=0     # ANGLE/Vulkan por jogo (sem root)
+ANGLE_PKGS=com.dts.freefireth,com.dts.freefiremax
+ENABLE_DEBLOAT=1   # appops + standby buckets (sem root)
+ENABLE_DEEP=0      # freq/io/mem/net/latency via sysfs (root, agressivo)
+ENABLE_THERMAL=0   # ⚠️ afrouxa o térmico (root, esquenta mais)
 ```
+
+> As otimizações profundas guardam o valor original de cada sysfs em
+> `/data/adb/packotm/deep_off.sh` e o `uninstall.sh` devolve tudo ao estado
+> exato — inclusive desligando o debloat e o ANGLE.
 
 Edite e reinicie (ou rode `sh /data/adb/packotm/apply.sh`).
 

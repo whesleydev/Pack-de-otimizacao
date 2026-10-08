@@ -61,6 +61,7 @@ Cada `.txt` do nível 1 trata de **um assunto**. Você pode usar só o que quise
 | `10-free-fire.txt` | prepara e abre o Free Fire |
 | `11-sensibilidade-touch.txt` | perfis de mira (headshot, sniper, spray) |
 | `14-limpeza-cache-io.txt` | libera RAM e cache |
+| `20-otimizacoes-profundas.txt` | ANGLE/Vulkan por jogo + debloat real |
 | **`99-restaurar-tudo.txt`** | **desfaz tudo** |
 
 > 💡 **Dica de ouro:** antes de aplicar, salve um "snapshot" (nível 2:
@@ -91,6 +92,8 @@ sh nivel-2-sh/run.sh all        # aplica tudo
 sh nivel-2-sh/run.sh fluidez    # fluidez
 sh nivel-2-sh/run.sh save       # salva o estado atual
 sh nivel-2-sh/run.sh restore    # volta o último estado salvo
+sh nivel-2-sh/run.sh deep detect   # o que seu aparelho suporta
+sh nivel-2-sh/run.sh deep gaming on com.dts.freefireth  # MODO TURBO
 ```
 
 E se você usa **AxManager**, instale o plugin e deixe ele **rodando sozinho 24h**:

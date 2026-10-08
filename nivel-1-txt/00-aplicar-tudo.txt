@@ -12,7 +12,6 @@
 # ============================================================
 
 # ===== 01 PERFORMANCE GERAL =====
-setprop debug.performance.tuning 1
 settings put global activity_manager_constants max_cached_processes=32
 setprop debug.hwui.renderer skiagl
 setprop persist.traced.enable 0

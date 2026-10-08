@@ -11,13 +11,37 @@
 # =============================================================================
 
 # --- detecção -----------------------------------------------------------------
+# _with_timeout <segundos> <cmd...>  -> roda o cmd com timeout, se houver `timeout`.
+# Evita que `su`/`adb` pendurem esperando senha/servidor (script travado é pior que
+# script sem privilégio). Sem `timeout` disponível, roda direto.
+_with_timeout() {
+    t="$1"; shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$t" "$@"
+    else
+        "$@"
+    fi
+}
+
+_su_works() {
+    command -v su >/dev/null 2>&1 || return 1
+    [ "$(id -u 2>/dev/null)" = "0" ] && return 1        # já é root
+    [ "$(_with_timeout 3 su -c 'id -u' 2>/dev/null)" = "0" ] || return 1
+}
+
+_adb_works() {
+    command -v adb >/dev/null 2>&1 || return 1
+    _with_timeout 3 adb devices 2>/dev/null \
+        | awk 'NR>1 && $2=="device"{print $1}' | head -1 | grep -q .
+}
+
 if [ -n "$OTM_MODE" ]; then
     RUN_MODE="$OTM_MODE"
-elif command -v adb >/dev/null 2>&1 && adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{print $1}' | head -1 | grep -q .; then
+elif _adb_works; then
     RUN_MODE="adb"
 elif command -v rish >/dev/null 2>&1; then
     RUN_MODE="rish"
-elif command -v su >/dev/null 2>&1 && [ "$(id -u 2>/dev/null)" != "0" ]; then
+elif _su_works; then
     RUN_MODE="su"
 else
     RUN_MODE="local"
@@ -26,18 +50,18 @@ fi
 # --- execução -----------------------------------------------------------------
 sh_run() {  # sh_run "settings put global foo 1"
     case "$RUN_MODE" in
-        adb)   adb shell "$1" 2>/dev/null ;;
-        rish)  rish -c "$1" 2>/dev/null ;;
-        su)    su -c "$1" 2>/dev/null ;;
+        adb)   _with_timeout 20 adb shell "$1" 2>/dev/null ;;
+        rish)  _with_timeout 20 rish -c "$1" 2>/dev/null ;;
+        su)    _with_timeout 20 su -c "$1" 2>/dev/null ;;
         *)     sh -c "$1" 2>/dev/null ;;
     esac
 }
 
 sh_get() {  # sh_get "settings get global foo" -> imprime valor
     case "$RUN_MODE" in
-        adb)   adb shell "$1" 2>/dev/null | tr -d '\r' ;;
-        rish)  rish -c "$1" 2>/dev/null | tr -d '\r' ;;
-        su)    su -c "$1" 2>/dev/null | tr -d '\r' ;;
+        adb)   _with_timeout 20 adb shell "$1" 2>/dev/null | tr -d '\r' ;;
+        rish)  _with_timeout 20 rish -c "$1" 2>/dev/null | tr -d '\r' ;;
+        su)    _with_timeout 20 su -c "$1" 2>/dev/null | tr -d '\r' ;;
         *)     sh -c "$1" 2>/dev/null | tr -d '\r' ;;
     esac
 }

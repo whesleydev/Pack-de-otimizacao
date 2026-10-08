@@ -5,9 +5,6 @@
 #  Reverter: use o 99-restaurar-tudo.txt
 # ============================================================
 
-# --- ajuste de desempenho do sistema ---
-setprop debug.performance.tuning 1
-
 # --- mais processos em cache (troca de app mais rápida) ---
 settings put global activity_manager_constants max_cached_processes=32
 

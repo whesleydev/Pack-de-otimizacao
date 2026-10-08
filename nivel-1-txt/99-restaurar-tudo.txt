@@ -33,8 +33,6 @@ settings put global app_standby_enabled 0
 settings put global force_gpu_rendering 0
 settings put global disable_window_blurs 0
 settings put global accessibility_reduce_transparency 0
-setprop debug.egl.hw 0
-setprop debug.sf.hw 0
 setprop debug.hwui.renderer skiagl
 
 # --- 07 rede ---
@@ -75,6 +73,17 @@ device_config delete game_overlay com.dts.freefireth
 device_config delete game_overlay com.dts.freefiremax
 cmd game set --mode standard com.dts.freefireth
 cmd game set --mode standard com.dts.freefiremax
+
+# --- 20 otimizações profundas (ANGLE + debloat) ---
+settings delete global angle_gl_driver_selection_pkgs
+settings delete global angle_gl_driver_selection_values
+for p in com.facebook.katana com.facebook.orca com.instagram.android \
+         com.ss.android.ugc.trill com.ss.android.ugc.aweme com.twitter.android \
+         com.google.android.youtube com.android.chrome com.spotify.music com.discord; do
+    cmd appops set "$p" RUN_IN_BACKGROUND allow
+    cmd appops set "$p" RUN_ANY_IN_BACKGROUND allow
+    am set-standby-bucket "$p" active
+done
 
 # --- 12/13 congelamento ---
 settings put global cached_apps_freezer disabled

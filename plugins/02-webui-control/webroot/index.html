@@ -56,6 +56,16 @@
     <div class="field"><label>Teto de FPS (0 = padrão)</label><input type="number" id="i-gt-fps"></div>
   </section>
 
+  <section class="card">
+    <h2>Otimizações profundas <span class="tag">avançado</span></h2>
+    <p class="hint">Mexem em kernel/GPU/apps. Reversíveis pelo "Restaurar tudo".</p>
+    <label class="row"><span>ANGLE / Vulkan por jogo (sem root)</span><input type="checkbox" id="t-angle"></label>
+    <div class="field"><label>Pacotes do ANGLE (separados por vírgula)</label><input type="text" id="i-angle-pkgs" placeholder="com.dts.freefireth,com.dts.freefiremax"></div>
+    <label class="row"><span>Debloat real (appops/standby)</span><input type="checkbox" id="t-debloat"></label>
+    <label class="row"><span>Freq + I/O + memória + rede BBR <b>(root)</b></span><input type="checkbox" id="t-deep"></label>
+    <label class="row warn-row"><span>Afrouxar térmico ⚠️ esquenta mais (root)</span><input type="checkbox" id="t-thermal"></label>
+  </section>
+
   <section class="actions">
     <button id="btn-apply" class="primary">Aplicar</button>
     <button id="btn-save">Salvar config</button>
