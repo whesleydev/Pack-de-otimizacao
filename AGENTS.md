@@ -9,8 +9,9 @@ Pack de otimização para Android (foco Free Fire) em 4 níveis:
 
 ## Princípios do projeto
 
-- **Conteúdo próprio apenas.** Não redistribuir módulos de terceiros (a pasta `modules/`
-  foi removida por isso). Tudo aqui é licenciado MIT.
+- **Conteúdo próprio apenas.** Não redistribuir módulos de terceiros. Os módulos em
+  `modules/` (WS7_OFF7, NexaCore, Astrax, NOVA TOUCH, VOID TOUCH Ultra, VeuLexier) são
+  do autor do pack. Tudo aqui é licenciado MIT.
 - **Honestidade técnica.** Nada de placebo; risco declarado em `docs/AUDITORIA.md`.
 - **Tudo reversível.** Cada mudança guarda o valor antigo antes de aplicar.
 
@@ -18,6 +19,7 @@ Pack de otimização para Android (foco Free Fire) em 4 níveis:
 
 ```sh
 sh tests/run.sh                 # testes (stubs de settings/cmd/am/getprop/su) — deve dar 0 falhas
+sh scripts/build-modules.sh     # empacota modules/ em releases/*.zip
 sh scripts/build-plugins.sh     # empacota plugins/ em releases/*.zip
 sh scripts/check-secrets.sh     # falha se achar credencial
 shellcheck -S error $(find scripts nivel-2-sh plugins tests -name '*.sh')

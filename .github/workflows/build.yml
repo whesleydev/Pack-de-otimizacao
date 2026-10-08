@@ -47,8 +47,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Empacotar plugins
-        run: sh scripts/build-plugins.sh
+      - name: Empacotar módulos e plugins
+        run: |
+          sh scripts/build-modules.sh
+          sh scripts/build-plugins.sh
 
       - name: Gerar checksums
         run: |
@@ -59,7 +61,7 @@ jobs:
       - name: Upload artefatos
         uses: actions/upload-artifact@v4
         with:
-          name: plugins
+          name: pack
           path: |
             releases/*.zip
             releases/SHA256SUMS.txt

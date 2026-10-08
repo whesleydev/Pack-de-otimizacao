@@ -146,7 +146,7 @@ t_secret_scanner() {
 }
 
 t_build_plugins() {
-    printf '\n  # build-plugins: empacota só os plugins do pack (sem terceiros)\n'
+    printf '\n  # build-plugins: empacota só os plugins do pack\n'
     sh "$ROOT/scripts/build-plugins.sh" >/dev/null 2>&1
     assert_eq "0" "$?" "build-plugins roda sem erro"
     [ -f "$ROOT/releases/01-service-loop.zip" ] \
@@ -156,6 +156,16 @@ t_build_plugins() {
         && assert_eq "ok" "ok" "gera 02-webui-control.zip" \
         || assert_eq "zip" "ausente" "gera 02-webui-control.zip"
     rm -f "$ROOT/releases/01-service-loop.zip" "$ROOT/releases/02-webui-control.zip"
+}
+
+t_build_modules() {
+    printf '\n  # build-modules: empacota os módulos próprios (modules/)\n'
+    sh "$ROOT/scripts/build-modules.sh" >/dev/null 2>&1
+    assert_eq "0" "$?" "build-modules roda sem erro"
+    [ -f "$ROOT/releases/WS7_OFF7.zip" ] \
+        && assert_eq "ok" "ok" "gera WS7_OFF7.zip" \
+        || assert_eq "zip" "ausente" "gera WS7_OFF7.zip"
+    rm -f "$ROOT/releases"/*.zip
 }
 
 # --- execução ----------------------------------------------------------------
@@ -171,6 +181,7 @@ t_plugin_restore
 t_thermal_gate
 t_secret_scanner
 t_build_plugins
+t_build_modules
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

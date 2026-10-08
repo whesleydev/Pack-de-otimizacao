@@ -153,8 +153,9 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
 3. `sh scripts/check-secrets.sh` — não pode achar credencial (sai com 1 se achar).
 4. `OTM_MODE=local sh scripts/deep-tune.sh detect` — não deve tocar em nada (modo local).
 5. Aplicar/reverter um módulo e conferir `~/.packotm/deep/off.sh` (tag por módulo).
-6. `sh scripts/build-plugins.sh` — empacota só os plugins do pack (nada de terceiros).
-7. `sh scripts/bench.sh save antes && ... && sh scripts/bench.sh report antes depois`.
+6. `sh scripts/build-modules.sh` — empacota os módulos próprios (`modules/`).
+7. `sh scripts/build-plugins.sh` — empacota só os plugins do pack.
+8. `sh scripts/bench.sh save antes && ... && sh scripts/bench.sh report antes depois`.
 
 ---
 
@@ -167,8 +168,9 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
    automática (`THERMAL_MAX_C`, padrão 45 °C; `THERMAL_STOP_CHARGING`) e o aviso.
 4. **Ganho não é garantido** por aparelho. O pack promete *menos queda de FPS e menos
    travada*, **não** um número fixo de FPS. Meça com `scripts/bench.sh`.
-5. **Sem módulos de terceiros** — o repositório só contém conteúdo próprio (MIT); os
-   plugins são empacotados por `scripts/build-plugins.sh`.
+5. **Sem módulos de terceiros** — o repositório só contém conteúdo próprio (MIT): os
+   módulos em `modules/` são do autor e os plugins também. Empacote com
+   `scripts/build-modules.sh` e `scripts/build-plugins.sh`.
 
 ---
 

@@ -9,9 +9,10 @@ continha:
 
 - **dumps de conversa** (`conversation_*.zip`, `event_*.json`) com **um token de acesso
   do GitHub (`ghp_…`)** em texto puro;
-- zips de **módulos de terceiros** (Phoenix, VOID TOUCH, Ben Universal, MOs Premium,
-  WS7_OFF7, VeuLexier, CPU/GPU JHONZXIT). Esses módulos foram **removidos** do
-  repositório (ver [`ROADMAP.md`](ROADMAP.md), item 1).
+- zips de **módulos** (Phoenix, VOID TOUCH, Ben Universal, MOs Premium, WS7_OFF7,
+  VeuLexier, CPU/GPU JHONZXIT). Os de terceiros foram **removidos** do repositório;
+  WS7_OFF7, VOID TOUCH e VeuLexier são do autor e foram mantidos
+  (ver [`ROADMAP.md`](ROADMAP.md), item 1).
 
 Segundo o dono do projeto, o token foi gerado **para este projeto** (não é de terceiro).
 Ainda assim, ficou exposto em repositório público e deve ser tratado como comprometido

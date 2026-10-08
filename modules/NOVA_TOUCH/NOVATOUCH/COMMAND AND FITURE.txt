@@ -1,0 +1,45 @@
+‼️NOTE ‼️
+"Pindahkan File NOVA TOUCH v1.0 Ke Memory Perangkat"
+"Install Via Brevent"
+
+‼️INSTALL ‼️
+sh /sdcard/NOVATOUCH/install.sh
+‼️DONT REBOOT ‼️
+
+‼️UNINSTALL ‼️
+sh /sdcard/NOVATOUCH/uninstall.sh
+‼️ REBOOT‼️
+
+‼️Check Module Tweak ‼️
+getprop | grep sampling
+getprop | grep sample
+getprop | grep smoothness
+getprop | grep touch
+getprop | grep scroll
+getprop | grep touchscreen
+
+Fitur NOVA TOUCH v1.0 :
+>MENGHIDUPKAN TOUCH ADAPTIF
+>MEMPERCEPAT SENTUHAN RESPONSIF
+>MENGATUR AIM RESPONSIF
+>MENGATUR MULTI TOUCH 
+>MENGATUR ACCELERATION TOUCH 
+>MEMPERCEPAT VIEW SCROLLING 
+>ANY MORE TWEAK
+
+‼️NOTE‼️
+
+>MODULE INI NOVA TOUCH v1.0 MERUPAKAN STRING BARISAN SYSTEM. UNTUK MENGHAPUS NYA HARUS DI UNINSTALL DENGAN MEJALAKAN COMMAND UNINSTALL AGAR MODULE TERHAPUS!! 
+
+📌ENJOY THE GAME!!! 
+
+SUBSCRIBE : BENDEV 
+
+
+
+NOVA TOUCH v1.0 STABLE PROFILE
+- Không ép sampling/refresh rate.
+- Không tạo input tap/swipe giả.
+- Không override VSYNC/backpressure.
+- Không ép GPU/CPU boost.
+- Ưu tiên driver/OEM mặc định để giảm nguy cơ giật lag.

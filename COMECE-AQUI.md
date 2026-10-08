@@ -43,6 +43,7 @@ nivel-1-txt/   → comandos prontos para copiar e colar (Brevent)   ← comece a
 nivel-2-sh/    → scripts automáticos (Shizuku ou root)
 scripts/       → a "caixa de ferramentas" do pack
 plugins/       → módulos para o AxManager (roda sozinho em segundo plano)
+modules/       → módulos extras do pack (WS7_OFF7, NexaCore, Astrax, NOVA TOUCH…)
 docs/          → guias detalhados
 ```
 

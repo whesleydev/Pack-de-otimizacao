@@ -8,12 +8,14 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
 
 ## Prioridade
 
-### 1. Direito de redistribuição — resolvido removendo os terceiros
-- [x] **Decisão:** o repositório passou a conter **apenas conteúdo próprio**.
-- [x] Pasta `modules/` (módulos de terceiros) **removida** do repositório.
+### 1. Direito de redistribuição — resolvido com conteúdo próprio
+- [x] **Decisão:** o repositório contém **apenas conteúdo próprio**.
+- [x] Removidos os módulos de terceiros (10 de 16). Ficaram em `modules/` só os
+      **6 módulos do dono do projeto**: WS7_OFF7, NexaCore, Astrax, NOVA TOUCH,
+      VOID TOUCH Ultra, VeuLexier.
 - [x] `THIRD-PARTY-NOTICES.md` e `scripts/check-licenses.sh` removidos (não há mais
-      terceiros para licenciar). O build passou a ser `scripts/build-plugins.sh`, que
-      empacota só os nossos plugins.
+      terceiros para licenciar). O build empacota módulos (`build-modules.sh`) e
+      plugins (`build-plugins.sh`).
 - [x] Assim não há bloqueador legal: todo o conteúdo é nosso, licenciado MIT.
 
 > Se um dia quiser incluir um módulo de terceiro, só com permissão/licença escrita,

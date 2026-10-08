@@ -3,14 +3,27 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.3.0] - 2026-10-08
+
+### Adicionado
+- **Módulos do autor restaurados** em `modules/`: **WS7_OFF7**, **NexaCore**,
+  **Astrax**, **NOVA TOUCH**, **VOID TOUCH Ultra**, **VeuLexier**.
+- `scripts/build-modules.sh` — empacota os módulos próprios em `releases/<nome>.zip`.
+- Teste `t_build_modules` no `tests/run.sh`.
+
+### Alterado
+- CI: job de empacotamento agora gera módulos **e** plugins (`pack`).
+- README: tabela de créditos dos módulos do autor.
+
 ## [1.2.0] - 2026-10-08
 
 ### Removido
-- **Pasta `modules/` (16 módulos de terceiros) removida do repositório.** O pack passa
-  a conter **apenas conteúdo próprio**, eliminando o bloqueador legal de licenças.
+- **10 módulos de terceiros removidos do repositório** (AxVision_Hawk, BEN_UNIVERSAL,
+  CPU_GPU_Web_Panel_Itachi_Edition, Celestial-Game-Opt, Game_Scale, Gms_Tweaker, Kang,
+  MOs_Premium, Phoenix, VOID_BATTERY). O pack passa a conter **apenas conteúdo
+  próprio**, eliminando o bloqueador legal de licenças.
 - Removidos `THIRD-PARTY-NOTICES.md` e `scripts/check-licenses.sh` (não há mais
-  terceiros para licenciar) e `scripts/build-modules.sh` (substituído por
-  `scripts/build-plugins.sh`).
+  terceiros para licenciar).
 
 ### Segurança
 - **Removido do versionamento** o `apps_otm.zip` (continha dumps de conversa com um

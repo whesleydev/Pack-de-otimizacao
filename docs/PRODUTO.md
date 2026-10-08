@@ -5,9 +5,11 @@ Modelos e checklists para transformar o pack em produto. Os itens marcados
 
 ## Checklist de lançamento
 
-- [x] Sem terceiros: o repositório só contém conteúdo próprio (MIT), sem bloqueador legal
+- [x] Sem terceiros: o repositório só contém conteúdo próprio — scripts, plugins e os
+      6 módulos do autor (WS7_OFF7, NexaCore, Astrax, NOVA TOUCH, VOID TOUCH Ultra,
+      VeuLexier), licenciados MIT. Sem bloqueador legal
 - [ ] Benchmark antes/depois publicado (ver `scripts/bench.sh`)
-- [ ] Release `v1.1.0` criada com checksums
+- [x] Release `v1.2.0` criada com checksums
 - [ ] Página de venda com screenshots/vídeo **[preencher]**
 - [ ] Canal de suporte aberto **[preencher]**
 - [ ] Política de reembolso publicada (modelo abaixo) **[preencher]**

@@ -294,12 +294,14 @@ scripts/
   device-profile.sh perfil por SoC (compatibilidade)
   snapshot.sh     salvar / reverter o estado do aparelho
   menu.sh         menu unificado
+  build-modules.sh empacota os módulos (modules/)
   build-plugins.sh empacota os plugins (níveis 3 e 4)
   check-secrets.sh  portão de qualidade (credenciais)
 tests/run.sh      testes automatizados
 plugins/
   01-service-loop/  plugin AxManager com loop em background
   02-webui-control/ plugin AxManager configurável com WebUI
+modules/          módulos Magisk/KernelSU/AxManager do pack
 docs/             tutorial, auditoria, compatibilidade, segurança, produto
 releases/         zips publicados (via GitHub Releases)
 ```
@@ -309,8 +311,22 @@ releases/         zips publicados (via GitHub Releases)
 ## Créditos
 
 Todo o conteúdo deste repositório é **próprio**: os scripts (`scripts/`), os perfis de
-toque, o menu e os plugins dos níveis 3 e 4 (`plugins/`). Não redistribuímos módulos de
-terceiros.
+toque, o menu, os plugins dos níveis 3 e 4 (`plugins/`) e os módulos em `modules/`.
+Não redistribuímos módulos de terceiros.
+
+Módulos do pack:
+
+| Módulo | Autor | Versão |
+|--------|-------|--------|
+| WS7_OFF7 | WS7_OFF7 | 6.0.0 |
+| NexaCore | Enrique Brach | 2.0.0 |
+| Astrax | BillyNutDemarco | v2-Eclipse |
+| NOVA TOUCH | trhieuhoc | 1.0 |
+| VOID TOUCH Ultra | VOID DEV | v5.1.0 |
+| VeuLexier | Reiieja | V1.7.6-DexOtSmt |
+
+Para empacotar: `sh scripts/build-modules.sh` (módulos) e `sh scripts/build-plugins.sh`
+(plugins).
 
 ## Licença
 
