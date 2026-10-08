@@ -5,7 +5,7 @@ Modelos e checklists para transformar o pack em produto. Os itens marcados
 
 ## Checklist de lançamento
 
-- [ ] Licenças dos módulos resolvidas (ver [`../THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md)) — **bloqueador**
+- [x] Sem terceiros: o repositório só contém conteúdo próprio (MIT), sem bloqueador legal
 - [ ] Benchmark antes/depois publicado (ver `scripts/bench.sh`)
 - [ ] Release `v1.1.0` criada com checksums
 - [ ] Página de venda com screenshots/vídeo **[preencher]**

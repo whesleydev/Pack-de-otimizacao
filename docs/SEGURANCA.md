@@ -10,10 +10,12 @@ continha:
 - **dumps de conversa** (`conversation_*.zip`, `event_*.json`) com **um token de acesso
   do GitHub (`ghp_…`)** em texto puro;
 - zips de **módulos de terceiros** (Phoenix, VOID TOUCH, Ben Universal, MOs Premium,
-  WS7_OFF7, VeuLexier, CPU/GPU JHONZXIT) — ver [`../THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md).
+  WS7_OFF7, VeuLexier, CPU/GPU JHONZXIT). Esses módulos foram **removidos** do
+  repositório (ver [`ROADMAP.md`](ROADMAP.md), item 1).
 
-O token **não é** o que foi usado para publicar este pack (verificado por comparação),
-mas **é um token válido de terceiro** e ficou exposto em repositório público.
+Segundo o dono do projeto, o token foi gerado **para este projeto** (não é de terceiro).
+Ainda assim, ficou exposto em repositório público e deve ser tratado como comprometido
+até ser revogado.
 
 > ⚠️ **Remover o arquivo em um commit novo NÃO resolve sozinho:** ele continua no
 > histórico do git (e em forks/clones/caches do GitHub) até ser purgado.
@@ -26,14 +28,17 @@ mas **é um token válido de terceiro** e ficou exposto em repositório público
 
 Isso impede novas exposições, mas **não** limpa o histórico.
 
-## Ação 2 — revogar o token exposto (URGENTE)
+## Ação 2 — revogar o token exposto (recomendado)
 
-1. Peça a quem gerou o token para revogá-lo em **https://github.com/settings/tokens**
-   (Tokens classic) — ou, se for de uma organização, no painel da org.
-2. Se você não sabe de quem é, revogue **todos** os tokens classic e **gire** os
-   secrets de CI/automações.
-3. Auditar: **https://github.com/settings/security-log** e
+Como o token é do próprio projeto, revogar é simples (e barato):
+
+1. Revogue em **https://github.com/settings/tokens** (Tokens classic) — apague o token
+   deste projeto.
+2. Auditar: **https://github.com/settings/security-log** e
    `GET /repos/whesleydev/Pack-de-otimizacao/events` para uso indevido.
+
+> O dono considerou o risco baixo por ser um token dedicado ao projeto. Ainda assim,
+> como ele ficou em repositório público, revogar é a única forma de neutralizar de vez.
 
 ## Ação 3 — purgar o histórico (feito pelo dono do repositório)
 

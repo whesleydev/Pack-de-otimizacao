@@ -1,9 +1,0 @@
-id=void_touch
-name=VOID TOUCH Ultra
-version=v5.1.0
-versionCode=510
-author=VOID DEV
-description=Ultimate ADB/No-Root touch optimizer — 50 functions (40 real optimizations). Zero daemon, zero root, zero interference. Backup & restore included.
-axeronPlugin=10400
-minAxManagerVersion=3.0.0
-banner=banner.png

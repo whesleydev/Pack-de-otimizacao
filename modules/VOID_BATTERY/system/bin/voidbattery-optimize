@@ -1,4 +1,0 @@
-#!/system/bin/sh
-echo "VOID BATTERY v9.1 — Quick Optimize"
-MODPATH="${0%/*}/../.."
-[ -f "$MODPATH/action.sh" ] && sh "$MODPATH/action.sh" all || echo "Error: action.sh not found"

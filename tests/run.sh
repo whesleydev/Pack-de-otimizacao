@@ -145,10 +145,17 @@ t_secret_scanner() {
     assert_eq "1" "$rc" "scanner sai com código 1 ao achar token"
 }
 
-t_license_checker() {
-    printf '\n  # check-licenses: módulo sem licença bloqueia release estrita\n'
-    sh "$ROOT/scripts/check-licenses.sh" --strict >/dev/null 2>&1
-    assert_eq "1" "$?" "check-licenses --strict falha com pendências"
+t_build_plugins() {
+    printf '\n  # build-plugins: empacota só os plugins do pack (sem terceiros)\n'
+    sh "$ROOT/scripts/build-plugins.sh" >/dev/null 2>&1
+    assert_eq "0" "$?" "build-plugins roda sem erro"
+    [ -f "$ROOT/releases/01-service-loop.zip" ] \
+        && assert_eq "ok" "ok" "gera 01-service-loop.zip" \
+        || assert_eq "zip" "ausente" "gera 01-service-loop.zip"
+    [ -f "$ROOT/releases/02-webui-control.zip" ] \
+        && assert_eq "ok" "ok" "gera 02-webui-control.zip" \
+        || assert_eq "zip" "ausente" "gera 02-webui-control.zip"
+    rm -f "$ROOT/releases/01-service-loop.zip" "$ROOT/releases/02-webui-control.zip"
 }
 
 # --- execução ----------------------------------------------------------------
@@ -163,7 +170,7 @@ t_plugin_mark_once
 t_plugin_restore
 t_thermal_gate
 t_secret_scanner
-t_license_checker
+t_build_plugins
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

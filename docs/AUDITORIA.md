@@ -151,11 +151,10 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
    cobre sintaxe, apply→restore, reversão por tag e o marcador `deep_mark`. Deve dar
    **0 falhas**.
 3. `sh scripts/check-secrets.sh` — não pode achar credencial (sai com 1 se achar).
-4. `sh scripts/check-licenses.sh` — informa os módulos de terceiros sem licença.
-5. `OTM_MODE=local sh scripts/deep-tune.sh detect` — não deve tocar em nada (modo local).
-6. Aplicar/reverter um módulo e conferir `~/.packotm/deep/off.sh` (tag por módulo).
-7. `STRICT_LICENSES=1 sh scripts/build-modules.sh` — só módulos com licença viram zip.
-8. `sh scripts/bench.sh save antes && ... && sh scripts/bench.sh report antes depois`.
+4. `OTM_MODE=local sh scripts/deep-tune.sh detect` — não deve tocar em nada (modo local).
+5. Aplicar/reverter um módulo e conferir `~/.packotm/deep/off.sh` (tag por módulo).
+6. `sh scripts/build-plugins.sh` — empacota só os plugins do pack (nada de terceiros).
+7. `sh scripts/bench.sh save antes && ... && sh scripts/bench.sh report antes depois`.
 
 ---
 
@@ -168,8 +167,8 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
    automática (`THERMAL_MAX_C`, padrão 45 °C; `THERMAL_STOP_CHARGING`) e o aviso.
 4. **Ganho não é garantido** por aparelho. O pack promete *menos queda de FPS e menos
    travada*, **não** um número fixo de FPS. Meça com `scripts/bench.sh`.
-5. **Módulos de terceiros sem licença** — 14 de 16 não podem ser redistribuídos/vendidos
-   sem permissão. Ver `THIRD-PARTY-NOTICES.md`.
+5. **Sem módulos de terceiros** — o repositório só contém conteúdo próprio (MIT); os
+   plugins são empacotados por `scripts/build-plugins.sh`.
 
 ---
 

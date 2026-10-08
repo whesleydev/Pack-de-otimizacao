@@ -37,11 +37,8 @@ jobs:
       - name: Segredos
         run: sh scripts/check-secrets.sh
 
-      - name: Licenças dos módulos (informativo)
-        run: sh scripts/check-licenses.sh
-
   # --- empacotamento: só no push para main / tags -----------------------------
-  modules:
+  plugins:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -50,10 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Empacotar módulos e plugins (modo estrito de licença)
-        env:
-          STRICT_LICENSES: "1"
-        run: sh scripts/build-modules.sh
+      - name: Empacotar plugins
+        run: sh scripts/build-plugins.sh
 
       - name: Gerar checksums
         run: |
@@ -64,7 +59,7 @@ jobs:
       - name: Upload artefatos
         uses: actions/upload-artifact@v4
         with:
-          name: modulos
+          name: plugins
           path: |
             releases/*.zip
             releases/SHA256SUMS.txt

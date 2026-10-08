@@ -3,11 +3,18 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Unreleased]
+## [1.2.0] - 2026-10-08
+
+### Removido
+- **Pasta `modules/` (16 módulos de terceiros) removida do repositório.** O pack passa
+  a conter **apenas conteúdo próprio**, eliminando o bloqueador legal de licenças.
+- Removidos `THIRD-PARTY-NOTICES.md` e `scripts/check-licenses.sh` (não há mais
+  terceiros para licenciar) e `scripts/build-modules.sh` (substituído por
+  `scripts/build-plugins.sh`).
 
 ### Segurança
 - **Removido do versionamento** o `apps_otm.zip` (continha dumps de conversa com um
-  token `ghp_…` e zips de módulos de terceiros). Veja [`docs/SEGURANCA.md`](docs/SEGURANCA.md).
+  token `ghp_…` e zips de terceiros). Veja [`docs/SEGURANCA.md`](docs/SEGURANCA.md).
 - Novo `scripts/check-secrets.sh` — varre arquivos versionados por credenciais.
 
 ### Adicionado
@@ -15,17 +22,16 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   tempo de abertura de app) com relatório em Markdown.
 - `tests/run.sh` — suíte automatizada com stubs (`settings`/`cmd`/`am`/`getprop`),
   cobrindo apply→restore, reversão por módulo e o marcador `deep_mark`.
-- `scripts/check-licenses.sh` — status de licença dos módulos de terceiros.
-- `THIRD-PARTY-NOTICES.md` — avisos legais e tabela de licenças por módulo.
-- `docs/SEGURANCA.md` — resposta ao incidente de token e como purgar o histórico.
-- `docs/ROADMAP.md` — o que falta para virar produto (honesto).
+- `scripts/device-profile.sh` — perfil do aparelho por SoC (compatibilidade).
+- `scripts/build-plugins.sh` — empacota só os plugins do pack (níveis 3 e 4).
+- `docs/SEGURANCA.md`, `docs/ROADMAP.md`, `docs/COMPATIBILIDADE.md`, `docs/PRODUTO.md`.
 
 ### Alterado
 - `.github/workflows/build.yml` — CI em push/PR: sintaxe, shellcheck (`-S error`),
-  testes, varredura de segredos e checagem de licenças; release publica checksums
-  (`SHA256SUMS.txt`) e usa o `CHANGELOG.md` como corpo.
-- `scripts/build-modules.sh` — `STRICT_LICENSES=1` publica **apenas** módulos com
-  licença liberada.
+  testes e segredos; release publica checksums (`SHA256SUMS.txt`) e usa o
+  `CHANGELOG.md` como corpo.
+- Trava de segurança térmica: confirmação explícita (`THERMAL_OK=1`) e reversão
+  automática do módulo `thermal` acima de `THERMAL_MAX_C` (45 °C) ou ao carregar.
 
 ## [1.1.0] - 2026-10-08
 

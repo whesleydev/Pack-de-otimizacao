@@ -51,5 +51,5 @@ touch /data/adb/packotm/stop   # o loop encerra no próximo ciclo
 Empacote a pasta como zip e instale pelo gerenciador, ou:
 
 ```sh
-sh scripts/build-modules.sh   # também empacota os plugins
+sh scripts/build-plugins.sh
 ```

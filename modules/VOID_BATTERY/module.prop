@@ -1,9 +1,0 @@
-id=void_battery
-name=VOID BATTERY
-version=v9.1-fix2-safe
-versionCode=912
-author=VOID PERF
-description=ADB-safe battery optimizer — user-controlled Data Saver and OEM-friendly standby
-axeronPlugin=3000
-minAxManagerVersion=3.0.0
-banner=banner.png

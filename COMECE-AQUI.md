@@ -43,7 +43,6 @@ nivel-1-txt/   → comandos prontos para copiar e colar (Brevent)   ← comece a
 nivel-2-sh/    → scripts automáticos (Shizuku ou root)
 scripts/       → a "caixa de ferramentas" do pack
 plugins/       → módulos para o AxManager (roda sozinho em segundo plano)
-modules/       → módulos extras de terceiros (créditos no README)
 docs/          → guias detalhados
 ```
 
@@ -99,7 +98,7 @@ sh nivel-2-sh/run.sh deep gaming on com.dts.freefireth  # MODO TURBO
 E se você usa **AxManager**, instale o plugin e deixe ele **rodando sozinho 24h**:
 
 ```sh
-sh scripts/build-modules.sh
+sh scripts/build-plugins.sh
 # instale releases/02-webui-control.zip (tem painel web)
 ```
 

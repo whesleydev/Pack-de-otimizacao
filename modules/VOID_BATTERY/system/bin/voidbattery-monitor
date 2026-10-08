@@ -1,9 +1,0 @@
-#!/system/bin/sh
-echo "VOID BATTERY v9.1 — Monitor (Ctrl+C to exit)"
-while true; do
-    _l=$(dumpsys battery 2>/dev/null | grep 'level:' | sed 's/[^0-9]//g')
-    _tr=$(dumpsys battery 2>/dev/null | grep 'temperature:' | sed 's/[^0-9]//g')
-    _t=$(( ${_tr:-300} / 10 ))
-    printf "\r [%s] %s%% | %sC  " "$(date '+%H:%M:%S')" "$_l" "$_t"
-    sleep 2
-done

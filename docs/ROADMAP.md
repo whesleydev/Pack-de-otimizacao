@@ -8,12 +8,16 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
 
 ## Prioridade
 
-### 1. Direito de redistribuição dos módulos (bloqueador legal)
-- [x] `THIRD-PARTY-NOTICES.md` com status de licença de cada módulo.
-- [x] `scripts/check-licenses.sh` e build estrito (`STRICT_LICENSES=1`).
-- [ ] **Dono:** obter permissão escrita, confirmar licença, remover ou substituir cada
-      módulo sem licença (14 de 16). Sem isso, **não vender**.
-- [ ] Guardar as autorizações em `modules/permissions.tsv` (autor, data, prova).
+### 1. Direito de redistribuição — resolvido removendo os terceiros
+- [x] **Decisão:** o repositório passou a conter **apenas conteúdo próprio**.
+- [x] Pasta `modules/` (módulos de terceiros) **removida** do repositório.
+- [x] `THIRD-PARTY-NOTICES.md` e `scripts/check-licenses.sh` removidos (não há mais
+      terceiros para licenciar). O build passou a ser `scripts/build-plugins.sh`, que
+      empacota só os nossos plugins.
+- [x] Assim não há bloqueador legal: todo o conteúdo é nosso, licenciado MIT.
+
+> Se um dia quiser incluir um módulo de terceiro, só com permissão/licença escrita,
+> e aí o portão de licença volta.
 
 ### 2. Prova de resultado (benchmark) — é o que justifica o preço
 - [x] `scripts/bench.sh` (RAM, temperatura, CPU, refresh, abertura de app) + relatório.
@@ -21,9 +25,9 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
       (com o modelo e o método). Número honesto > promessa.
 
 ### 3. Build/release automático
-- [x] CI em push/PR: sintaxe, shellcheck (`-S error`), testes, segredos, licenças.
+- [x] CI em push/PR: sintaxe, shellcheck (`-S error`), testes e segredos.
 - [x] Release por tag com `SHA256SUMS.txt` e corpo = `CHANGELOG.md`.
-- [ ] **Dono:** criar a tag `v1.1.0` e conferir a release publicada.
+- [x] Tag `v1.1.0` publicada (release só com os nossos plugins).
 
 ### 4. Testes automatizados
 - [x] `tests/run.sh` com stubs (`settings`/`cmd`/`am`/`getprop`), cobrindo
@@ -61,5 +65,5 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
 ## O que NÃO vamos fazer
 
 - Prometer FPS que não medimos.
-- Empacotar módulo de terceiro sem licença.
+- Redistribuir módulo de terceiro sem permissão.
 - Esconder risco (térmico, placebo). A auditoria existe para manter o pack honesto.

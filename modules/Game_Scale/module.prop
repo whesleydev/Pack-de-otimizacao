@@ -1,8 +1,0 @@
-id=ax_game_scale
-name=Game Scale
-version=v1.4.1
-versionCode=7
-author=Philip Nghia
-description=Chỉnh upscale/downscale độ phân giải cho từng game/app bằng WebUI
-axeronPlugin=1
-banner=banner.png

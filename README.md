@@ -46,9 +46,8 @@ o que cada comando faz.
 | Sistema | DND, refresh de tela, limpeza de cache |
 | Snapshot | salva o estado atual e reverte a qualquer momento |
 
-A pasta `modules/` guarda os módulos Magisk/KernelSU/AxManager que fazem parte do pack
-(origem de cada um nos créditos). A pasta `releases/` é para os zips publicados via
-GitHub Releases.
+Os plugins dos níveis 3 e 4 são **nossos** (`plugins/`) e ficam em `releases/` quando
+publicados via GitHub Releases. Este pack não redistribui módulos de terceiros.
 
 ---
 
@@ -113,7 +112,7 @@ su -c 'sh scripts/adb-tweaks.sh perf'
 ### 5. Plugin AxManager (níveis 3 e 4)
 
 ```sh
-sh scripts/build-modules.sh
+sh scripts/build-plugins.sh
 # instale releases/01-service-loop.zip ou releases/02-webui-control.zip
 ```
 
@@ -269,11 +268,10 @@ reversão — pronto para revisão técnica externa.
 ```sh
 sh tests/run.sh                # testes automatizados (stubs, apply->restore)
 sh scripts/check-secrets.sh    # procura credenciais nos arquivos versionados
-sh scripts/check-licenses.sh   # status de licença dos módulos de terceiros
 ```
 
 O CI (`.github/workflows/build.yml`) roda isso em cada push/PR: sintaxe, shellcheck,
-testes, segredos e licenças. A release publica `SHA256SUMS.txt` e usa o
+testes e segredos. A release publica `SHA256SUMS.txt` e usa o
 [`CHANGELOG.md`](CHANGELOG.md) como descrição.
 
 ---
@@ -284,7 +282,6 @@ testes, segredos e licenças. A release publica `SHA256SUMS.txt` e usa o
 COMECE-AQUI.md    guia rapido para quem esta comecando
 CHANGELOG.md      histórico de mudanças
 VERSION           versão atual
-THIRD-PARTY-NOTICES.md  licenças dos módulos de terceiros
 nivel-1-txt/      arquivos .txt para copiar e colar no Brevent
 nivel-2-sh/       entry point sh (Shizuku/root)
 scripts/
@@ -297,14 +294,13 @@ scripts/
   device-profile.sh perfil por SoC (compatibilidade)
   snapshot.sh     salvar / reverter o estado do aparelho
   menu.sh         menu unificado
-  build-modules.sh empacota módulos e plugins
-  check-secrets.sh / check-licenses.sh  portões de qualidade
+  build-plugins.sh empacota os plugins (níveis 3 e 4)
+  check-secrets.sh  portão de qualidade (credenciais)
 tests/run.sh      testes automatizados
 plugins/
   01-service-loop/  plugin AxManager com loop em background
   02-webui-control/ plugin AxManager configurável com WebUI
 docs/             tutorial, auditoria, compatibilidade, segurança, produto
-modules/          módulos Magisk/KernelSU/AxManager do pack
 releases/         zips publicados (via GitHub Releases)
 ```
 
@@ -312,19 +308,10 @@ releases/         zips publicados (via GitHub Releases)
 
 ## Créditos
 
-Os módulos em `modules/` são de terceiros e mantêm a autoria original. **Importante:**
-a maioria **não tem licença declarada** — não redistribua nem venda sem permissão do
-autor. Status completo em [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
-
-- **NexaCore** — Enrique Brach
-- **WS7_OFF7** — WS7_OFF7
-- **VeuLexier** — @Reiieja
-- **BEN UNIVERSAL** — trhieuhoc
-- demais módulos: ver `module.prop` de cada um
-
-Os scripts em `scripts/` (comandos ADB, perfis de toque e menu) fazem parte deste pack.
+Todo o conteúdo deste repositório é **próprio**: os scripts (`scripts/`), os perfis de
+toque, o menu e os plugins dos níveis 3 e 4 (`plugins/`). Não redistribuímos módulos de
+terceiros.
 
 ## Licença
 
-MIT — veja [`LICENSE`](LICENSE). Os módulos de terceiros mantêm suas próprias licenças
-(quando existem).
+MIT — veja [`LICENSE`](LICENSE).

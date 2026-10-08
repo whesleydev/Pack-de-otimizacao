@@ -105,7 +105,7 @@ o pack e **fica rodando em segundo plano**, reafirmando os tweaks de tempo em te
 1. Empacote (ou pegue o zip em `releases/01-service-loop.zip`):
 
 ```sh
-sh scripts/build-modules.sh
+sh scripts/build-plugins.sh
 ```
 
 2. Instale `releases/01-service-loop.zip` pelo gerenciador.
@@ -298,5 +298,4 @@ privilégio exigido, o ganho esperado, o risco e a reversão.
 - `setprop` não persiste após reiniciar; `settings put` persiste.
 - Não use bateria/Doze junto com performance em partidas longas.
 - `thermal`/`gaming` afrouxam o térmico: mais calor, mais risco. Reverta após jogar.
-- Módulos de terceiros em `modules/` têm autoria própria (ver créditos).
 - Você é responsável pelo que roda no seu aparelho. Teste antes.
