@@ -12,7 +12,7 @@ plugin com interface web no AxManager. Reúne comandos ADB, perfis de sensibilid
 > `restore_all` para reverter. Ajustes de toque variam por modelo/ROM — teste no treino.
 
 📦 **Baixar pronto:** os plugins dos níveis 3 e 4 estão na
-[Release v1.0](https://github.com/whesleydev/Pack-de-otimizacao/releases/latest).
+[Release v1.1.0](https://github.com/whesleydev/Pack-de-otimizacao/releases/latest).
 
 📖 **Tutorial completo:** [`docs/tutorial.md`](docs/tutorial.md) — explica cada nível e
 o que cada comando faz.
@@ -185,7 +185,32 @@ sh scripts/deep-tune.sh restore           # desfaz tudo
 ```
 
 > ⚠️ `thermal` e `gaming` afrouxam a proteção térmica: mais FPS sustentado, **mais calor**.
-> Use só jogando, com o aparelho ventilado, e reverta depois.
+> Exige confirmação explícita (`THERMAL_OK=1`) e tem **trava automática**: se a
+> temperatura passar de 45 °C (`THERMAL_MAX_C`) ou o aparelho estiver carregando
+> (`THERMAL_STOP_CHARGING=1`), o módulo se reverte sozinho.
+
+### `scripts/bench.sh` (prova de resultado)
+
+Mede o **antes e depois** de verdade, em vez de prometer número:
+
+```sh
+sh scripts/bench.sh save antes             # linha de base (RAM, temp, CPU, refresh)
+sh scripts/bench.sh app com.dts.freefireth  # tempo de abertura (ms)
+# ... aplica o pack ...
+sh scripts/bench.sh run depois
+sh scripts/bench.sh report antes depois    # relatório comparativo em Markdown
+```
+
+### `scripts/device-profile.sh` (compatibilidade)
+
+Diz o que o seu aparelho suporta, por família de SoC:
+
+```sh
+sh scripts/device-profile.sh               # relatório
+sh scripts/device-profile.sh save          # salva em ~/.packotm/perfil.txt
+```
+
+Veja [`docs/COMPATIBILIDADE.md`](docs/COMPATIBILIDADE.md).
 
 ### `scripts/ff-touch.sh`
 
@@ -239,24 +264,46 @@ reversão — pronto para revisão técnica externa.
 
 ---
 
+## Qualidade e garantias
+
+```sh
+sh tests/run.sh                # testes automatizados (stubs, apply->restore)
+sh scripts/check-secrets.sh    # procura credenciais nos arquivos versionados
+sh scripts/check-licenses.sh   # status de licença dos módulos de terceiros
+```
+
+O CI (`.github/workflows/build.yml`) roda isso em cada push/PR: sintaxe, shellcheck,
+testes, segredos e licenças. A release publica `SHA256SUMS.txt` e usa o
+[`CHANGELOG.md`](CHANGELOG.md) como descrição.
+
+---
+
 ## Estrutura
 
 ```
 COMECE-AQUI.md    guia rapido para quem esta comecando
+CHANGELOG.md      histórico de mudanças
+VERSION           versão atual
+THIRD-PARTY-NOTICES.md  licenças dos módulos de terceiros
 nivel-1-txt/      arquivos .txt para copiar e colar no Brevent
 nivel-2-sh/       entry point sh (Shizuku/root)
 scripts/
   common.sh       biblioteca (transporte adb/rish/su/local + backup)
   adb-tweaks.sh   biblioteca de comandos ADB
+  deep-tune.sh    otimizações profundas (sysfs/kernel/GPU), reversível
   ff-touch.sh     perfis de sensibilidade
   game-per-app.sh tuning por jogo (resolução/FPS, só no app)
+  bench.sh        benchmark antes/depois (prova de resultado)
+  device-profile.sh perfil por SoC (compatibilidade)
   snapshot.sh     salvar / reverter o estado do aparelho
   menu.sh         menu unificado
   build-modules.sh empacota módulos e plugins
+  check-secrets.sh / check-licenses.sh  portões de qualidade
+tests/run.sh      testes automatizados
 plugins/
   01-service-loop/  plugin AxManager com loop em background
   02-webui-control/ plugin AxManager configurável com WebUI
-docs/             tutorial, guias por método (brevent, termux-shizuku)
+docs/             tutorial, auditoria, compatibilidade, segurança, produto
 modules/          módulos Magisk/KernelSU/AxManager do pack
 releases/         zips publicados (via GitHub Releases)
 ```
@@ -265,7 +312,9 @@ releases/         zips publicados (via GitHub Releases)
 
 ## Créditos
 
-Os módulos em `modules/` são de terceiros e mantêm a autoria original:
+Os módulos em `modules/` são de terceiros e mantêm a autoria original. **Importante:**
+a maioria **não tem licença declarada** — não redistribua nem venda sem permissão do
+autor. Status completo em [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 - **NexaCore** — Enrique Brach
 - **WS7_OFF7** — WS7_OFF7
@@ -277,4 +326,5 @@ Os scripts em `scripts/` (comandos ADB, perfis de toque e menu) fazem parte dest
 
 ## Licença
 
-MIT — veja [`LICENSE`](LICENSE).
+MIT — veja [`LICENSE`](LICENSE). Os módulos de terceiros mantêm suas próprias licenças
+(quando existem).

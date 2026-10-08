@@ -4,27 +4,76 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  # --- qualidade: roda em todo push e PR --------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Sintaxe (sh -n)
+        run: |
+          fail=0
+          for f in $(find scripts nivel-2-sh plugins tests -name '*.sh'); do
+            sh -n "$f" || { echo "ERRO de sintaxe: $f"; fail=1; }
+          done
+          exit $fail
+
+      - name: ShellCheck (avisos não bloqueiam, erros sim)
+        run: shellcheck -S error $(find scripts nivel-2-sh plugins tests -name '*.sh')
+
+      - name: Testes (stubs, apply/restore, deep_mark)
+        run: sh tests/run.sh
+
+      - name: Segredos
+        run: sh scripts/check-secrets.sh
+
+      - name: Licenças dos módulos (informativo)
+        run: sh scripts/check-licenses.sh
+
+  # --- empacotamento: só no push para main / tags -----------------------------
   modules:
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Empacotar módulos
+      - name: Empacotar módulos e plugins (modo estrito de licença)
+        env:
+          STRICT_LICENSES: "1"
         run: sh scripts/build-modules.sh
+
+      - name: Gerar checksums
+        run: |
+          cd releases
+          sha256sum *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Upload artefatos
         uses: actions/upload-artifact@v4
         with:
           name: modulos
-          path: releases/*.zip
+          path: |
+            releases/*.zip
+            releases/SHA256SUMS.txt
 
-      - name: Publicar release
+      - name: Publicar release (com changelog e checksums)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: releases/*.zip
+          body_path: CHANGELOG.md
+          files: |
+            releases/*.zip
+            releases/SHA256SUMS.txt

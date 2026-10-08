@@ -13,12 +13,31 @@ mkdir -p "$OUT"
 have_zip=1
 command -v zip >/dev/null 2>&1 || have_zip=0
 
+# --- filtro de licença (STRICT_LICENSES=1) ------------------------------------
+# Sem licença explícita, o módulo de terceiro é "todos os direitos reservados" e
+# NÃO pode entrar em release. Veja THIRD-PARTY-NOTICES.md.
+_lic_ok() {  # _lic_ok <dir>
+    d="$1"
+    for f in "$d"/LICENSE "$d"/LICENSE.md "$d"/LICENSE.txt "$d"/COPYING; do
+        [ -f "$f" ] || continue
+        head -3 "$f" 2>/dev/null | grep -qiE 'Apache License|MIT License|GNU (GENERAL|LESSER) PUBLIC LICENSE|BSD|Mozilla Public License|The Unlicense|CC0' && return 0
+    done
+    [ -f "$d/LICENSE.sha256" ] && return 0
+    [ -f "$d/LICENSE.sha1" ] && return 0
+    return 1
+}
+
 printf '  Empacotando módulos de %s\n' "$SRC"
+[ "$STRICT_LICENSES" = "1" ] && printf '  (modo estrito: só módulos com licença liberada)\n'
 for d in "$SRC"/*/; do
     [ -d "$d" ] || continue
     name="$(basename "$d")"
     [ "$name" = "README.md" ] && continue
     [ -f "$d/module.prop" ] || { printf '  · %s (sem module.prop) — ignorado\n' "$name"; continue; }
+    if [ "$STRICT_LICENSES" = "1" ] && ! _lic_ok "$d"; then
+        printf '  ⊘ %s (sem licença — não publicado no modo estrito)\n' "$name"
+        continue
+    fi
 
     if [ "$have_zip" = "1" ]; then
         ( cd "$d" && zip -rq "$OUT/$name.zip" . )

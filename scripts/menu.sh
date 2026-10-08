@@ -44,7 +44,8 @@ while :; do
     printf '  %s25%s I/O + memória (MGLRU/zRAM, root)'       "$C_A" "$C_R"; echo
     printf '  %s26%s Rede BBR (root)'                        "$C_A" "$C_R"; echo
     printf '  %s27%s Debloat real (appops/buckets)'          "$C_A" "$C_R"; echo
-    printf '  %s28%s Detectar hardware'                      "$C_A" "$C_R"; echo
+    printf '  %s28%s Detectar hardware / perfil do aparelho' "$C_A" "$C_R"; echo
+    printf '  %s29%s Limite térmico (root, ⚠️ trava em 45°C)' "$C_A" "$C_R"; echo
     printf '  %s90%s Aplicar TUDO (all)'                    "$C_G" "$C_R"; echo
     printf '  %s91%s RESTAURAR tudo'                        "$C_Y" "$C_R"; echo
     printf '  %s0%s  Sair'                                  "$C_D" "$C_R"; echo
@@ -104,7 +105,10 @@ while :; do
             "$DIR/deep-tune.sh" net "${a:-on}" ;;
         27) printf '  on/off [on]: '; read -r a
             "$DIR/deep-tune.sh" debloat "${a:-on}" ;;
-        28) "$DIR/deep-tune.sh" detect ;;
+        28) "$DIR/deep-tune.sh" detect
+            "$DIR/device-profile.sh" ;;
+        29) printf '  on/off/temp [temp]: '; read -r a
+            "$DIR/deep-tune.sh" thermal "${a:-temp}" ;;
         90) "$DIR/adb-tweaks.sh" all ;;
         91) "$DIR/adb-tweaks.sh" restore_all
             "$DIR/deep-tune.sh" restore ;;

@@ -147,22 +147,39 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
 ## Como reproduzir a avaliação
 
 1. `git clone https://github.com/whesleydev/Pack-de-otimizacao` e `cd` nele.
-2. Checar sintaxe de tudo:
-   `for f in $(find scripts nivel-2-sh plugins -name '*.sh'); do sh -n "$f" || echo "ERRO $f"; done`
-3. `OTM_MODE=local sh scripts/deep-tune.sh detect` — não deve tocar em nada (modo local).
-4. Aplicar/reverter um módulo e conferir `~/.packotm/deep/off.sh` (tag por módulo).
-5. Rodar `sh scripts/build-modules.sh` e conferir os zips dos plugins em `releases/`.
+2. `sh tests/run.sh` — suíte automatizada (stubs de `settings`/`cmd`/`am`/`getprop`),
+   cobre sintaxe, apply→restore, reversão por tag e o marcador `deep_mark`. Deve dar
+   **0 falhas**.
+3. `sh scripts/check-secrets.sh` — não pode achar credencial (sai com 1 se achar).
+4. `sh scripts/check-licenses.sh` — informa os módulos de terceiros sem licença.
+5. `OTM_MODE=local sh scripts/deep-tune.sh detect` — não deve tocar em nada (modo local).
+6. Aplicar/reverter um módulo e conferir `~/.packotm/deep/off.sh` (tag por módulo).
+7. `STRICT_LICENSES=1 sh scripts/build-modules.sh` — só módulos com licença viram zip.
+8. `sh scripts/bench.sh save antes && ... && sh scripts/bench.sh report antes depois`.
 
 ---
 
 ## Limitações conhecidas (declaradas)
 
 1. **Caminhos de sysfs variam** por fabricante/kernel. O script detecta e degrada com
-   segurança (avisa em vez de falhar).
+   segurança (avisa em vez de falhar). Ver `docs/COMPATIBILIDADE.md`.
 2. **`setprop` não persiste** após reiniciar. Os módulos profundos são "ligar quando jogar".
-3. **Thermal/root** exige confiança do usuário — daí a reversão automática e o aviso.
+3. **Thermal/root** exige confiança do usuário — daí a confirmação explícita, a trava
+   automática (`THERMAL_MAX_C`, padrão 45 °C; `THERMAL_STOP_CHARGING`) e o aviso.
 4. **Ganho não é garantido** por aparelho. O pack promete *menos queda de FPS e menos
-   travada*, **não** um número fixo de FPS.
+   travada*, **não** um número fixo de FPS. Meça com `scripts/bench.sh`.
+5. **Módulos de terceiros sem licença** — 14 de 16 não podem ser redistribuídos/vendidos
+   sem permissão. Ver `THIRD-PARTY-NOTICES.md`.
+
+---
+
+## Segurança (o que o auditor deve conferir)
+
+1. `scripts/check-secrets.sh` roda no CI e bloqueia commit com credencial.
+2. O incidente do `apps_otm.zip` (dumps de conversa com token) está documentado em
+   `docs/SEGURANCA.md` — arquivo removido do versionamento; histórico ainda **não** purgado.
+3. A trava térmica (`thermal_watch`) reverte o módulo sozinha; teste com
+   `THERMAL_MAX_C=0 THERMAL_OK=1 deep-tune.sh thermal on` e veja `~/.packotm/deep/thermal.log`.
 
 ---
 
@@ -171,8 +188,9 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
 - `~/.packotm/off.sh` — reversão dos `settings` (nível 2).
 - `~/.packotm/deep/off.sh` — reversão das otimizações profundas, com **tag por módulo**
   (formato `<tag>\t<comando>`). `deep-tune.sh <módulo> off` reverte só aquele módulo.
+- `~/.packotm/deep/thermal.pid` + `thermal.log` — trava de segurança térmica.
 - `nivel-1-txt/99-restaurar-tudo.txt` — reversão manual (Brevent).
 
 ---
 
-_Última atualização: pack v1.1 (módulo de otimizações profundas)._
+_Última atualização: pack v1.1.0 (otimizações profundas, benchmark, testes, CI, trava térmica)._

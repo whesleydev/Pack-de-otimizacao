@@ -28,7 +28,13 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 DEEP_ST="${HOME:-/data/data/com.termux/files/home}/.packotm/deep"
 DEEP_OFF="$DEEP_ST/off.sh"
 DEEP_MARK="$DEEP_ST/on"
+THERMAL_PID="$DEEP_ST/thermal.pid"
 mkdir -p "$DEEP_ST" 2>/dev/null
+
+# Trava de segurança térmica: reverte o módulo `thermal` automaticamente se a
+# temperatura passar do limite (ou se estiver carregando, opcional). Veja docs.
+THERMAL_MAX_C="${THERMAL_MAX_C:-45}"            # reverte ao atingir X °C
+THERMAL_STOP_CHARGING="${THERMAL_STOP_CHARGING:-0}"  # 1 = reverte ao carregar
 
 # =============================================================================
 #  INFRA: backup de sysfs (reversão real, valor por valor)
@@ -242,10 +248,69 @@ m_freq() {
 m_thermal() {
     acao="${1:-status}"
 
+    # temperatura em °C (melhor zona disponível) — vazio se não der para ler
+    thermal_temp() {
+        for z in $(thermal_zones); do
+            t=$(sh_get "cat $z/type" 2>/dev/null)
+            case "$t" in soc|*skin*|cpu*|gpu*) ;; *) continue ;; esac
+            v=$(sh_get "cat $z/temp" 2>/dev/null)
+            case "$v" in ''|*[!0-9-]*) continue ;; esac
+            [ "$v" -gt 1000 ] && v=$((v/1000))
+            echo "$v"; return 0
+        done
+        # fallback: bateria
+        v=$(sh_get 'dumpsys battery' | awk -F': ' '/ temperature:/{print $2}')
+        [ -n "$v" ] && echo "$((v/10))"
+    }
+
+    thermal_charging() {
+        [ "$(sh_get 'dumpsys battery' | awk -F': ' '/ powered:/{print $2}' | tr -d ' ')" = "true" ]
+    }
+
+    # Vigia em segundo plano: se passar do limite (ou carregar), reverte thermal.
+    thermal_watch() {
+        [ -f "$THERMAL_PID" ] && kill "$(cat "$THERMAL_PID")" 2>/dev/null
+        (
+            while :; do
+                sleep 30
+                t="$(thermal_temp)"
+                if [ -n "$t" ] && [ "$t" -ge "$THERMAL_MAX_C" ]; then
+                    say "TRAVA TÉRMICA: ${t}°C ≥ ${THERMAL_MAX_C}°C — revertendo térmico"
+                    deep_restore thermal
+                    break
+                fi
+                if [ "$THERMAL_STOP_CHARGING" = "1" ] && thermal_charging; then
+                    say "TRAVA TÉRMICA: carregando — revertendo térmico"
+                    deep_restore thermal
+                    break
+                fi
+            done
+            rm -f "$THERMAL_PID"
+        ) >> "$DEEP_ST/thermal.log" 2>&1 &
+        echo $! > "$THERMAL_PID"
+    }
+
+    thermal_watch_stop() {
+        [ -f "$THERMAL_PID" ] && kill "$(cat "$THERMAL_PID")" 2>/dev/null
+        rm -f "$THERMAL_PID"
+    }
+
     thermal_on() {
         require_root || return 1
+        # confirmação explícita: exige THERMAL_OK=1 ou "sim" em terminal
+        if [ "$THERMAL_OK" != "1" ]; then
+            if [ -t 0 ]; then
+                printf '  %b!%b  Afrouxar o limite térmico esquenta mais o aparelho.\n' "$C_Y" "$C_R"
+                printf '      Continuar? [s/N] '
+                read -r r
+                case "$r" in s|S|sim|SIM|y|Y) ;; *) warn "cancelado."; return 0 ;; esac
+            else
+                warn "Não interativo: use THERMAL_OK=1 para confirmar (segurança)."
+                return 1
+            fi
+        fi
         DEEP_TAG=thermal; warn "Isso AFROUXA a proteção térmica: mais FPS sustentado, MAIS CALOR."
-        warn "Use só jogando e com o celular ventilado. Risco de aquecimento."
+        warn "Use só jogando e com o celular ventilado. Trava automática em ${THERMAL_MAX_C}°C."
         deep_begin
         n=0
         for z in $(thermal_zones); do
@@ -270,16 +335,21 @@ m_thermal() {
         if [ "$n" = "0" ]; then
             warn "nenhum trip point ajustável neste kernel — nada aplicado"
         else
-            say "térmico afrouxado (+5°C em $n pontos) — reverter: deep-tune.sh thermal off"
+            thermal_watch
+            say "térmico afrouxado (+5°C em $n pontos) — trava em ${THERMAL_MAX_C}°C; reverter: thermal off"
         fi
     }
 
-    thermal_off() { say "Restaurando limites térmicos"; deep_restore thermal; }
+    thermal_off() {
+        thermal_watch_stop
+        say "Restaurando limites térmicos"; deep_restore thermal
+    }
 
     case "$acao" in
-        on)  thermal_on ;;
-        off) thermal_off ;;
-        *)   say "Uso: thermal on|off (⚠️ esquenta mais)"; status_show ;;
+        on)   thermal_on ;;
+        off)  thermal_off ;;
+        temp) t="$(thermal_temp)"; [ -n "$t" ] && say "temperatura atual: ${t}°C" || warn "não consegui ler a temperatura" ;;
+        *)    say "Uso: thermal on|off|temp (⚠️ esquenta mais)"; status_show ;;
     esac
 }
 
@@ -543,7 +613,7 @@ detect() {
     printf '  Módulos profundos:\n'
     printf '   %sangle%s [add|remove|list|reset]  ANGLE/Vulkan por jogo (sem root)\n' "$C_A" "$C_R"
     printf '   %sfreq%s   [on|off]  frequência CPU/GPU (root)\n' "$C_A" "$C_R"
-    printf '   %sthermal%s[on|off]  limite térmico (root, ⚠️ esquenta)\n' "$C_A" "$C_R"
+    printf '   %sthermal%s[on|off|temp]  limite térmico (root, ⚠️ esquenta; trava auto)\n' "$C_A" "$C_R"
     printf '   %sio%s     [on|off]  scheduler + fstrim (root)\n' "$C_A" "$C_R"
     printf '   %smem%s    [on|off]  MGLRU + zRAM + KSM (root)\n' "$C_A" "$C_R"
     printf '   %snet%s    [on|off]  TCP BBR + fq_codel (root)\n' "$C_A" "$C_R"

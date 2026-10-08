@@ -23,3 +23,6 @@ releases/*.zip
 # estado local dos plugins
 plugins/*/state/
 plugins/*/loop.log
+
+# backup local com dumps de conversa e módulos de terceiros (não versionar)
+apps_otm.zip
