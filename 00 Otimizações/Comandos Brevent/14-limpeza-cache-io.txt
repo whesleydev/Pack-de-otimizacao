@@ -4,17 +4,33 @@
 #  Seguro — pode rodar sempre.
 # ============================================================
 
-# --- limpa o cache de todos os apps ---
+# --- limpa o cache de todos os apps (libera espaço e RAM) ---
 pm trim-caches 999999999999
 
-# --- encerra o compilador em background ---
+# --- encerra o compilador em background (evita engasgo) ---
 killall -9 dex2oat
 
-# --- limpa os logs do sistema ---
+# --- limpa os logs do sistema (ocupa RAM e disco) ---
 logcat -c
 
-# --- grava tudo em disco (evita engasgo) ---
+# --- grava tudo em disco (evita perda de dados no desligamento) ---
 sync
 
-# --- desfragmenta/organiza o armazenamento (trim) ---
+# --- TRIM: organiza o armazenamento e recupera velocidade (SSD/UFS) ---
 sm fstrim
+
+# --- encerra apps de fundo pesados AGORA (libera RAM pro jogo) ---
+# am kill-all
+
+# --- scheduler de I/O em "none" = menos espera em jogo (root) ---
+# for b in /sys/block/sd* /sys/block/mmcblk* /sys/block/ufs*; do
+#     echo none > "$b/queue/scheduler"
+#     echo 4096 > "$b/queue/read_ahead_kb"
+# done
+
+# --- descarta páginas em cache do kernel (root, libera RAM na hora) ---
+# sync; echo 3 > /proc/sys/vm/drop_caches
+
+# --- limite de escrita em background (menos engasgo em jogo, root) ---
+# echo 20 > /proc/sys/vm/dirty_ratio
+# echo 5  > /proc/sys/vm/dirty_background_ratio

@@ -172,17 +172,70 @@ freezer_off() {
     say "pronto"
 }
 
-# congela apps de terceiros (menos whitelist) via pm suspend
-WL="com.whatsapp com.whatsapp.w4b com.termux com.android.phone com.android.settings com.android.systemui com.google.android.gms com.android.vending com.android.inputmethod.latin"
+# congela apps de terceiros (respeitando whitelist + proteção do sistema)
+# A whitelist fica em $ST/whitelist (um pacote por linha). Apps essenciais e do
+# sistema NUNCA entram, mesmo que estejam na lista de congelar.
+FREEZE_WL="$ST/whitelist"
+FREEZE_BL="$ST/blacklist"
+SYSTEM_GUARD="android com.android.systemui com.android.settings com.android.phone \
+com.android.server.telecom com.google.android.gms com.google.android.gsf \
+com.android.vending com.android.inputmethod.latin com.android.providers.telephony \
+com.android.shell com.termux com.topjohnwu.magisk me.weishu.kernelsu frb.axeron.manager"
+
+# apps de fundo que costumam drenar RAM (blacklist padrão)
+DEFAULT_BL="com.instagram.android com.facebook.katana com.facebook.orca \
+com.ss.android.ugc.trill com.ss.android.ugc.aweme com.twitter.android \
+com.google.android.youtube com.android.chrome com.spotify.music com.discord \
+com.netflix.mediaclient com.snapchat.android com.reddit.frontpage"
+
+_freeze_lists() {
+    [ -f "$FREEZE_WL" ] || : > "$FREEZE_WL"
+    if [ ! -f "$FREEZE_BL" ]; then
+        for p in $DEFAULT_BL; do echo "$p"; done > "$FREEZE_BL"
+    fi
+}
+
+_is_protected() {
+    a="$1"
+    case " $SYSTEM_GUARD " in *" $a "*) return 0 ;; esac
+    [ -f "$FREEZE_WL" ] && grep -qxF "$a" "$FREEZE_WL" && return 0
+    return 1
+}
+
 freeze_apps() {
+    _freeze_lists
+    mode="${OTM_FREEZE_MODE:-suspend}"
     trap '' INT TERM 2>/dev/null
-    say "Congelando apps de terceiros"
-    lista=$(sh_get "pm list packages -3" | sed 's/^package://')
-    for a in $lista; do
-        case " $WL " in *" $a "*) continue ;; esac
-        sh_run "pm suspend --user 0 $a" >/dev/null && echo "$a" >> "$ST/frozen"
+    say "Congelando blacklist (menos whitelist) · modo=$mode"
+    n=0
+    for a in $(cat "$FREEZE_BL"); do
+        _is_protected "$a" && continue
+        sh_run "pm list packages $a" | grep -q "package:$a" || continue
+        if [ "$mode" = "soft" ]; then
+            sh_run "pm disable-user --user 0 $a" >/dev/null
+        else
+            sh_run "pm suspend --user 0 $a" >/dev/null
+        fi && { echo "$a" >> "$ST/frozen"; n=$((n+1)); }
+        sh_run "am force-stop $a" >/dev/null
     done
-    say "apps congelados (arquivo: $ST/frozen)"
+    sh_run "settings put global cached_apps_freezer enabled" >/dev/null
+    say "congelados: $n app(s) (whitelist em $FREEZE_WL)"
+}
+
+freeze_whitelist_add() {
+    [ -z "$1" ] && { err "uso: freeze_wl_add <pacote>"; return 1; }
+    _freeze_lists
+    grep -qxF "$1" "$FREEZE_WL" || echo "$1" >> "$FREEZE_WL"
+    grep -vxF "$1" "$FREEZE_BL" > "$FREEZE_BL.tmp" 2>/dev/null && mv "$FREEZE_BL.tmp" "$FREEZE_BL"
+    sh_run "pm unsuspend --user 0 $1" >/dev/null
+    sh_run "pm enable --user 0 $1" >/dev/null
+    say "whitelist += $1"
+}
+
+freeze_whitelist_list() {
+    _freeze_lists
+    say "Whitelist (nunca congelar):"
+    sed 's/^/    /' "$FREEZE_WL"
 }
 
 unfreeze_apps() {
@@ -193,6 +246,7 @@ unfreeze_apps() {
             sh_run "pm unsuspend --user 0 $a" >/dev/null
             sh_run "pm enable --user 0 $a" >/dev/null
         done
+        sh_run "settings put global cached_apps_freezer disabled" >/dev/null
     else
         warn "sem root/shell, use o Brevent para descongelar"
     fi
@@ -277,12 +331,41 @@ game_tune() {
     fi
 }
 
+# --- memória / RAM ------------------------------------------------------------
+# mem [padrao|gaming] -> ajusta quantos apps ficam em cache e libera RAM
+mem() {
+    perfil="${1:-padrao}"
+    bkp_begin
+    case "$perfil" in
+        gaming)
+            say "RAM - perfil GAMING (mais RAM livre)"
+            bkp_set global activity_manager_constants max_cached_processes=8,max_phantom_processes=1024
+            ;;
+        *)
+            say "RAM - perfil PADRÃO (multitarefa)"
+            bkp_set global activity_manager_constants max_cached_processes=32,max_phantom_processes=2147483647
+            ;;
+    esac
+    sh_run "am kill-all" >/dev/null
+    sh_run "pm trim-caches 999999999999" >/dev/null
+    sh_run "sync" >/dev/null
+    # zram/MGLRU/KSM só com root e se o kernel aceitar
+    if sh_ok; then
+        [ -w /sys/kernel/mm/lru_gen/enabled ] && sh_run "echo 1 > /sys/kernel/mm/lru_gen/enabled" >/dev/null
+        [ -w /sys/kernel/mm/ksm/run ] && sh_run "echo 1 > /sys/kernel/mm/ksm/run" >/dev/null
+        sh_run "sysctl -w vm.swappiness=100" >/dev/null 2>&1
+    fi
+    say "RAM ajustada (perfil $perfil)"
+}
+
 # --- dexopt / limpeza ---------------------------------------------------------
 clean() {
     say "Limpeza (dexopt / logs)"
     if sh_ok; then
         sh_run "pm trim-caches 999999999999" >/dev/null
         sh_run "killall -9 dex2oat" >/dev/null
+        sh_run "logcat -c" >/dev/null
+        sh_run "sm fstrim" >/dev/null 2>&1
         sh_run "sync" >/dev/null
     fi
     say "caches trimados"
@@ -316,7 +399,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez game_tune clean aot restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
@@ -325,7 +408,7 @@ list() {
 }
 
 all() {
-    for g in perf gpu net wifi game freezer dnd screen fluidez game_tune clean; do
+    for g in perf mem gpu net wifi game freezer dnd screen fluidez game_tune clean; do
         eval "$g"
         echo
     done

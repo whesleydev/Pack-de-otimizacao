@@ -13,7 +13,8 @@ Plugins AxManager/
 │   ├── 02-webui-control/    configurável por WebUI
 │   ├── 03-battery-thermal/  economia + trava térmica (45°C)
 │   ├── 04-cleaner/          limpeza de cache/log/RAM
-│   └── 05-fps-refresh/      refresh máximo + modo de jogo
+│   ├── 05-fps-refresh/      refresh máximo + modo de jogo
+│   └── 06-freezer/          congela apps de fundo + whitelist/blacklist
 └── Terceiros-open-source/   ← de outros autores (só licença permissiva)
     ├── Stellar-Tweaks/      Apache-2.0 (zip instalável incluído)
     ├── Kang/                Apache-2.0

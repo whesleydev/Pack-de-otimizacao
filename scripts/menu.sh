@@ -26,8 +26,10 @@ while :; do
     printf '  %s8%s  Free Fire - preparar'                  "$C_A" "$C_R"; echo
     printf '  %s9%s  Free Fire - abrir'                     "$C_A" "$C_R"; echo
     printf '  %s10%s Sensibilidade / toque (perfis)'        "$C_A" "$C_R"; echo
-    printf '  %s11%s Congelar apps (freezer)'               "$C_A" "$C_R"; echo
+    printf '  %s11%s Congelar apps (com whitelist)'         "$C_A" "$C_R"; echo
     printf '  %s12%s Descongelar apps'                      "$C_A" "$C_R"; echo
+    printf '  %s30%s Whitelist do congelador (add/listar)'  "$C_A" "$C_R"; echo
+    printf '  %s31%s RAM (perfil padrão / gaming)'           "$C_A" "$C_R"; echo
     printf '  %s13%s Notificações / DND'                    "$C_A" "$C_R"; echo
     printf '  %s14%s Tela / refresh'                        "$C_A" "$C_R"; echo
     printf '  %s15%s Limpeza (caches/dexopt)'               "$C_A" "$C_R"; echo
@@ -70,8 +72,17 @@ while :; do
             else
                 "$DIR/ff-touch.sh" "$p"
             fi ;;
-        11) "$DIR/adb-tweaks.sh" freezer ;;
+        11) printf '  modo (suspend/soft) [suspend]: '; read -r fm
+            OTM_FREEZE_MODE="${fm:-suspend}" "$DIR/adb-tweaks.sh" freeze_apps ;;
         12) "$DIR/adb-tweaks.sh" unfreeze_apps ;;
+        30) printf '  (a)dd pacote / (l)istar whitelist: '; read -r wl
+            case "$wl" in
+                l|list|listar) "$DIR/adb-tweaks.sh" freeze_whitelist_list ;;
+                *) printf '  pacote: '; read -r wp
+                   "$DIR/adb-tweaks.sh" freeze_whitelist_add "$wp" ;;
+            esac ;;
+        31) printf '  perfil de RAM (padrao/gaming) [padrao]: '; read -r mp
+            "$DIR/adb-tweaks.sh" mem "${mp:-padrao}" ;;
         13) "$DIR/adb-tweaks.sh" dnd ;;
         14) "$DIR/adb-tweaks.sh" screen ;;
         15) "$DIR/adb-tweaks.sh" clean ;;

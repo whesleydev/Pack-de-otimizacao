@@ -27,7 +27,31 @@ esac
 exit 0
 EOF
     printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/cmd"
-    printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/am"
+    # am: registra chamadas (force-stop etc.)
+    cat > "$TMP/bin/am" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_AM_LOG" ] && echo "$*" >> "$TMP_AM_LOG"
+exit 0
+EOF
+    # pm: registra chamadas e simula `pm list packages`
+    cat > "$TMP/bin/pm" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_PM_LOG" ] && echo "$*" >> "$TMP_PM_LOG"
+if [ "$1" = "list" ]; then
+    shift
+    has=0
+    for a in "$@"; do
+        case "$a" in -*) continue ;; *) has=1; echo "package:$a" ;; esac
+    done
+    if [ "$has" = 0 ]; then
+        echo package:com.example
+        echo package:com.instagram.android
+        echo package:com.whatsapp
+        echo package:com.android.systemui
+    fi
+fi
+exit 0
+EOF
     printf '#!/bin/sh\ncase "$1" in -n) echo cubic;; esac\nexit 0\n' > "$TMP/bin/sysctl"
     printf '#!/bin/sh\necho ""\n' > "$TMP/bin/getprop"
     printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/setprop"
@@ -127,6 +151,30 @@ t_plugin_restore() {
     rm -rf /data/adb/packotm "$p/state" 2>/dev/null
 }
 
+t_freezer_whitelist() {
+    printf '\n  # plugin 06: whitelist e proteção do sistema no congelamento\n'
+    p="$TMP/p06"; rm -rf "$p"; cp -r "$ROOT/00 Otimizações/Plugins AxManager/Nossos/06-freezer" "$p"
+    rm -rf /data/adb/packotm_freezer "$p/state" 2>/dev/null
+    export TMP_PM_LOG="$TMP/pm.log"; : > "$TMP_PM_LOG"
+    # whitelist: whatsapp nunca congela; blacklist inclui instagram (padrão)
+    sh "$p/apply.sh" wl-add com.whatsapp >/dev/null 2>&1
+    sh "$p/apply.sh" bl-add com.instagram.android >/dev/null 2>&1
+    sh "$p/apply.sh" freeze >/dev/null 2>&1
+    # ancora no início: 'unsuspend' também contém 'suspend'
+    grep -q '^suspend --user 0 com.instagram.android$' "$TMP_PM_LOG" \
+        && ok "congela app da blacklist (instagram)" || bad "não congelou o instagram"
+    grep -q '^suspend --user 0 com.whatsapp$\|^disable-user --user 0 com.whatsapp$' "$TMP_PM_LOG" \
+        && bad "congelou app da whitelist (whatsapp)" || ok "pulou app da whitelist (whatsapp)"
+    grep -q '^suspend --user 0 com.android.systemui$\|^disable-user --user 0 com.android.systemui$' "$TMP_PM_LOG" \
+        && bad "congelou app do sistema (systemui)" || ok "protegeu app do sistema (systemui)"
+    # freeze-app explícito num app do sistema também é recusado
+    sh "$p/apply.sh" freeze-app com.android.systemui >/dev/null 2>&1
+    grep -q '^suspend --user 0 com.android.systemui$\|^disable-user --user 0 com.android.systemui$' "$TMP_PM_LOG" \
+        && bad "freeze-app furou a proteção do sistema" || ok "freeze-app respeita a proteção do sistema"
+    unset TMP_PM_LOG
+    rm -rf /data/adb/packotm_freezer "$p/state" 2>/dev/null
+}
+
 t_thermal_gate() {
     printf '\n  # deep-tune: trava térmica exige confirmação explícita\n'
     rm -rf "$HOME/.packotm/deep"
@@ -152,7 +200,7 @@ t_build_plugins() {
     printf '\n  # build-plugins: empacota todos os plugins (nossos + terceiros OSS)\n'
     sh "$ROOT/scripts/build-plugins.sh" >/dev/null 2>&1
     assert_eq "0" "$?" "build-plugins roda sem erro"
-    for name in 01-service-loop 02-webui-control 03-battery-thermal 04-cleaner 05-fps-refresh Kang Sakoiire Aapt-for-Plugin; do
+    for name in 01-service-loop 02-webui-control 03-battery-thermal 04-cleaner 05-fps-refresh 06-freezer Kang Sakoiire Aapt-for-Plugin; do
         [ -f "$ROOT/releases/$name.zip" ] \
             && assert_eq "ok" "ok" "gera $name.zip" \
             || assert_eq "zip" "ausente" "gera $name.zip"
@@ -180,6 +228,7 @@ t_angle_tag
 t_per_module
 t_plugin_mark_once
 t_plugin_restore
+t_freezer_whitelist
 t_thermal_gate
 t_secret_scanner
 t_build_plugins

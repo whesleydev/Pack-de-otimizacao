@@ -3,6 +3,30 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.5.0] - 2026-10-14
+
+### Adicionado
+- **Plugin `06-freezer` (Congelar Apps)** — congela apps de fundo para liberar RAM,
+  com **whitelist** (apps que nunca são congelados) e **blacklist** (apps a congelar).
+  - Modos `suspend` (estilo Brevent) e `soft` (`disable-user`).
+  - Proteção embutida: sistema/essenciais (SystemUI, telefone, teclado, Play Store,
+    gerenciadores de root, Termux) nunca são congelados, nem por comando direto.
+  - Botão de ação com status; `uninstall.sh` **descongela tudo** antes de sair.
+  - CLI completa: `freeze`, `unfreeze`, `wl-add/del`, `bl-add/del`, `freeze-app`,
+    `unfreeze-app`, `status`, `restore`.
+
+### Alterado
+- **`.txt` revisados** (nível 1): RAM/memória (perfis padrão e gaming + MGLRU/zRAM/KSM),
+  limpeza/cache (logs, `fstrim`, `drop_caches`, scheduler I/O), bateria (standby
+  `restricted`), touch (5 perfis completos + multi_press), congelar/descongelar com
+  whitelist, game mode respeitando whitelist, performance geral.
+- **Programas (nível 2)**: `adb-tweaks.sh` ganhou congelamento real com whitelist
+  (`freeze_apps`, `freeze_whitelist_add`, `freeze_whitelist_list`), modo `soft`, e o
+  grupo **`mem`** (perfil padrão/gaming + MGLRU/KSM/swappiness). Menu e `run.sh`
+  atualizados.
+- `tests/run.sh`: novos stubs `pm`/`am` e teste `t_freezer_whitelist`
+  (blacklist congela, whitelist e sistema protegidos). **28 testes**.
+
 ## [1.4.0] - 2026-10-12
 
 ### Adicionado

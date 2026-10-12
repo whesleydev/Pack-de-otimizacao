@@ -25,7 +25,7 @@ Pack de otimização para Android (foco Free Fire) em 4 níveis:
   Scripts SH/           nível 2 — entry point sh (Shizuku/root)
   Plugins AxManager/    níveis 3 e 4 — plugins de módulo
     Nossos/               01-service-loop, 02-webui-control, 03-battery-thermal,
-                          04-cleaner, 05-fps-refresh
+                          04-cleaner, 05-fps-refresh, 06-freezer
     Terceiros-open-source/ Stellar-Tweaks, Kang, Sakoiire, Aapt-for-Plugin (+CREDITS)
   Modulos/              módulos Magisk/KernelSU/AxManager do pack
 scripts/ tests/ docs/ releases/

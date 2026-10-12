@@ -15,14 +15,24 @@ settings put global game_driver_all_apps 1
 # --- modo de desempenho fixo (segura o clock alto) ---
 cmd power set-fixed-performance-mode-enabled true
 
-# --- fecha apps pesados em segundo plano ---
-am force-stop com.instagram.android
-am force-stop com.facebook.katana
-am force-stop com.facebook.orca
-am force-stop com.ss.android.ugc.trill
-am force-stop com.ss.android.ugc.aweme
-am force-stop com.twitter.android
-am force-stop com.google.android.youtube
-am force-stop com.android.chrome
-am force-stop com.spotify.music
-am force-stop com.discord
+# --- fecha apps pesados em segundo plano (respeitando a whitelist) ---
+WHITELIST="com.whatsapp com.whatsapp.w4b com.termux com.android.dialer com.android.mms"
+for a in com.instagram.android com.facebook.katana com.facebook.orca \
+         com.ss.android.ugc.trill com.ss.android.ugc.aweme com.twitter.android \
+         com.google.android.youtube com.android.chrome com.spotify.music com.discord; do
+    case " $WHITELIST " in *" $a "*) continue ;; esac
+    am force-stop "$a"
+done
+
+# --- se usar o plugin Congelar Apps, congele a blacklist de vez ---
+# (o plugin faz isso sozinho no boot; aqui é o equivalente manual) ---
+# settings put global cached_apps_freezer enabled
+
+# --- prioriza o jogo na memória (evita que o sistema o mate) ---
+# am set-standby-bucket com.dts.freefireth active
+# am set-standby-bucket com.dts.freefiremax active
+
+# --- limita apps de fundo que roubam CPU durante a partida (root) ---
+# for a in com.google.android.gms com.android.vending; do
+#     cmd appops set "$a" RUN_IN_BACKGROUND ignore
+# done

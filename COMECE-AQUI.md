@@ -75,11 +75,16 @@ Cada `.txt` do nível 1 trata de **um assunto**. Você pode usar só o que quise
 ## 🔥 Só para jogar (o que dá mais resultado)
 
 1. `14-limpeza-cache-io.txt` — limpa a memória
-2. `09-jogo-game-mode.txt` — modo jogo
-3. `19-tuning-por-jogo.txt` — resolução/FPS do jogo (escolha 0.9 ou 0.75)
-4. `10-free-fire.txt` — abre o jogo
+2. `12-congelar-apps.txt` — congela apps de fundo (respeita a whitelist)
+3. `09-jogo-game-mode.txt` — modo jogo
+4. `19-tuning-por-jogo.txt` — resolução/FPS do jogo (escolha 0.9 ou 0.75)
+5. `10-free-fire.txt` — abre o jogo
 
 Depois de jogar, cole o `13-descongelar-apps.txt` para liberar os apps.
+
+> 💡 No `12-congelar-apps.txt`, edite a `WHITELIST` no topo e coloque o que você
+> **não** quer que seja congelado (WhatsApp, banco, relógio...). O resto da lista é
+> congelado. Ou use o plugin **06-freezer**, que faz isso sozinho com um botão.
 
 > ⚠️ **Importante:** o tuning por jogo (19) só vale depois de **reabrir o jogo**.
 

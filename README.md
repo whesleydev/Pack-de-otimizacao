@@ -44,11 +44,13 @@ Tudo fica dentro de [`00 Otimizações/`](00%20Otimiza%C3%A7%C3%B5es/):
 | Sensibilidade | perfis de toque/mira (balanced, headshot, spray, sniper, speed) |
 | Fluidez | animações 0, toque sem atraso, Hz máximo (estilo Sam Helper) |
 | Tuning por jogo | resolução (downscale), teto de FPS e engine — **só no app**, sem mexer no telefone |
-| Freezer | `cached_apps_freezer` e congelamento de apps — funciona no Brevent |
+| Congelar apps | congela apps de fundo com **whitelist** (nunca congela) + blacklist; descongela tudo num toque |
+| Memória/RAM | limites de processos em cache (perfil padrão/gaming), MGLRU, zRAM, KSM (root) |
+| Limpeza | cache (`pm trim-caches`), logs, `fstrim`, `drop_caches` (root) |
 | Sistema | DND, refresh de tela, limpeza de cache |
 | Snapshot | salva o estado atual e reverte a qualquer momento |
 
-Os plugins em `Plugins AxManager/Nossos/` são **nossos** (5 plugins). Em
+Os plugins em `Plugins AxManager/Nossos/` são **nossos** (6 plugins). Em
 `Plugins AxManager/Terceiros-open-source/` há plugins de outros autores **só com licença
 permissiva** (Apache-2.0), com os créditos em
 [`CREDITS.md`](00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Terceiros-open-source/CREDITS.md).

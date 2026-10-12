@@ -16,3 +16,12 @@ setprop persist.traced.enable 0
 
 # --- NÃO mostrar erro de app em segundo plano ---
 settings put global anr_show_background 0
+
+# --- menos diálogos de erro atrapalhando ---
+settings put global show_first_crash_dialog 0
+
+# --- recompila os apps em AOT (abre mais rápido; consome CPU uma vez) ---
+# cmd package bg-dexopt-job
+
+# --- compacta o ART em background (menos RAM por app, root) ---
+# cmd package compile -m speed-profile -a
