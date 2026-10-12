@@ -3,10 +3,39 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.4.0] - 2026-10-12
+
+### Adicionado
+- **Estrutura `00 Otimizações/`** — todo o pack reunido e organizado por tipo:
+  `Comandos Brevent/` (nível 1), `Scripts SH/` (nível 2), `Plugins AxManager/`
+  (níveis 3 e 4) e `Modulos/`.
+- **Plugins próprios novos**: **03-battery-thermal** (economia + trava térmica a
+  45 °C), **04-cleaner** (limpeza de cache/log/fstrim) e **05-fps-refresh**
+  (refresh máximo + modo de jogo, reversível).
+- `00 Otimizações/Plugins AxManager/README.md` — índice dos plugins.
+- `.../Terceiros-open-source/` — plugins de **licença permissiva** (Stellar-Tweaks,
+  Kang, Sakoiire, Aapt-for-Plugin — Apache-2.0) com `CREDITS.md` e `LICENSE`
+  preservados. Fonte do Stellar-Tweaks (v22.0) incluída.
+
+### Alterado
+- `scripts/build-plugins.sh` — varre `Plugins AxManager/` (Nossos + OSS) e empacota
+  cada plugin com `module.prop`.
+- `scripts/build-modules.sh` — aponta para `00 Otimizações/Modulos/`.
+- CI e `tests/run.sh` — sintaxe cobre toda a árvore; shellcheck restrito ao nosso
+  código (módulos/plugins de terceiros mantêm o estilo do autor); empacotamento
+  valida os 5 plugins próprios + 3 de terceiros.
+- README, COMECE-AQUI, AGENTS e docs apontam para os novos caminhos.
+
+### Movido
+- `nivel-1-txt/` → `00 Otimizações/Comandos Brevent/`.
+- `nivel-2-sh/` → `00 Otimizações/Scripts SH/`.
+- `plugins/` → `00 Otimizações/Plugins AxManager/Nossos/`.
+- `modules/` → `00 Otimizações/Modulos/`.
+
 ## [1.3.0] - 2026-10-08
 
 ### Adicionado
-- **Módulos do autor restaurados** em `modules/`: **WS7_OFF7**, **NexaCore**,
+- **Módulos do autor restaurados** em `00 Otimizações/Modulos/`: **WS7_OFF7**, **NexaCore**,
   **Astrax**, **NOVA TOUCH**, **VOID TOUCH Ultra**, **VeuLexier**.
 - `scripts/build-modules.sh` — empacota os módulos próprios em `releases/<nome>.zip`.
 - Teste `t_build_modules` no `tests/run.sh`.

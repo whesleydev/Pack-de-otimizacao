@@ -21,12 +21,14 @@ o que cada comando faz.
 
 ## Os 4 níveis
 
+Tudo fica dentro de [`00 Otimizações/`](00%20Otimiza%C3%A7%C3%B5es/):
+
 | Nível | O que é | Precisa de | Pasta |
 |-------|---------|-----------|-------|
-| **1** | Arquivos `.txt` para copiar e colar | Brevent | [`nivel-1-txt/`](nivel-1-txt/) |
-| **2** | Scripts `sh` (automação) | Shizuku ou root | [`nivel-2-sh/`](nivel-2-sh/) |
-| **3** | Plugin AxManager em loop (roda 24h) | gerenciador | [`plugins/01-service-loop/`](plugins/01-service-loop/) |
-| **4** | Plugin AxManager configurável com WebUI | gerenciador | [`plugins/02-webui-control/`](plugins/02-webui-control/) |
+| **1** | Arquivos `.txt` para copiar e colar | Brevent | [`00 Otimizações/Comandos Brevent/`](00%20Otimiza%C3%A7%C3%B5es/Comandos%20Brevent/) |
+| **2** | Scripts `sh` (automação) | Shizuku ou root | [`00 Otimizações/Scripts SH/`](00%20Otimiza%C3%A7%C3%B5es/Scripts%20SH/) |
+| **3** | Plugin AxManager em loop (roda 24h) | gerenciador | [`.../Nossos/01-service-loop/`](00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Nossos/01-service-loop/) |
+| **4** | Plugin AxManager configurável com WebUI | gerenciador | [`.../Nossos/02-webui-control/`](00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Nossos/02-webui-control/) |
 
 ---
 
@@ -46,8 +48,11 @@ o que cada comando faz.
 | Sistema | DND, refresh de tela, limpeza de cache |
 | Snapshot | salva o estado atual e reverte a qualquer momento |
 
-Os plugins dos níveis 3 e 4 são **nossos** (`plugins/`) e ficam em `releases/` quando
-publicados via GitHub Releases. Este pack não redistribui módulos de terceiros.
+Os plugins em `Plugins AxManager/Nossos/` são **nossos** (5 plugins). Em
+`Plugins AxManager/Terceiros-open-source/` há plugins de outros autores **só com licença
+permissiva** (Apache-2.0), com os créditos em
+[`CREDITS.md`](00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Terceiros-open-source/CREDITS.md).
+Não redistribuímos módulo de terceiro sem licença.
 
 ---
 
@@ -282,8 +287,14 @@ testes e segredos. A release publica `SHA256SUMS.txt` e usa o
 COMECE-AQUI.md    guia rapido para quem esta comecando
 CHANGELOG.md      histórico de mudanças
 VERSION           versão atual
-nivel-1-txt/      arquivos .txt para copiar e colar no Brevent
-nivel-2-sh/       entry point sh (Shizuku/root)
+00 Otimizações/   TUDO do pack, organizado por tipo:
+  Comandos Brevent/   arquivos .txt para copiar e colar no Brevent
+  Scripts SH/         entry point sh (Shizuku/root)
+  Plugins AxManager/  plugins no formato de módulo:
+    Nossos/             01-service-loop, 02-webui-control, 03-battery-thermal,
+                        04-cleaner, 05-fps-refresh
+    Terceiros-open-source/ Stellar-Tweaks, Kang, Sakoiire, Aapt-for-Plugin (+CREDITS)
+  Modulos/            módulos Magisk/KernelSU/AxManager do pack (próprios)
 scripts/
   common.sh       biblioteca (transporte adb/rish/su/local + backup)
   adb-tweaks.sh   biblioteca de comandos ADB
@@ -294,14 +305,10 @@ scripts/
   device-profile.sh perfil por SoC (compatibilidade)
   snapshot.sh     salvar / reverter o estado do aparelho
   menu.sh         menu unificado
-  build-modules.sh empacota os módulos (modules/)
-  build-plugins.sh empacota os plugins (níveis 3 e 4)
+  build-modules.sh empacota os módulos (00 Otimizações/Modulos/)
+  build-plugins.sh empacota os plugins (Nossos/ + Terceiros-open-source/)
   check-secrets.sh  portão de qualidade (credenciais)
 tests/run.sh      testes automatizados
-plugins/
-  01-service-loop/  plugin AxManager com loop em background
-  02-webui-control/ plugin AxManager configurável com WebUI
-modules/          módulos Magisk/KernelSU/AxManager do pack
 docs/             tutorial, auditoria, compatibilidade, segurança, produto
 releases/         zips publicados (via GitHub Releases)
 ```
@@ -311,10 +318,14 @@ releases/         zips publicados (via GitHub Releases)
 ## Créditos
 
 Todo o conteúdo deste repositório é **próprio**: os scripts (`scripts/`), os perfis de
-toque, o menu, os plugins dos níveis 3 e 4 (`plugins/`) e os módulos em `modules/`.
-Não redistribuímos módulos de terceiros.
+toque, o menu, os 5 plugins em `Plugins AxManager/Nossos/` e os módulos em `Modulos/`.
 
-Módulos do pack:
+Os únicos itens de terceiros são os plugins de **licença permissiva** em
+`Plugins AxManager/Terceiros-open-source/` (Stellar-Tweaks, Kang, Sakoiire,
+Aapt-for-Plugin — todos Apache-2.0), com créditos e `LICENSE` preservados em
+[`CREDITS.md`](00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Terceiros-open-source/CREDITS.md).
+
+Módulos do pack (próprios):
 
 | Módulo | Autor | Versão |
 |--------|-------|--------|

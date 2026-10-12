@@ -3,12 +3,15 @@
 #  build-plugins.sh - Empacota os plugins do pack (níveis 3 e 4) em releases/.
 #  Uso: sh scripts/build-plugins.sh
 #
-#  Só empacota conteúdo próprio (plugins/01-service-loop e plugins/02-webui-control).
+#  Varre "00 Otimizações/Plugins AxManager" por pastas com module.prop e empacota
+#  cada uma em releases/<nome>.zip. Inclui os nossos (Nossos/) e os de terceiros
+#  de licença permissiva (Terceiros-open-source/).
 # =============================================================================
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 OUT="$ROOT/releases"
+SRC="$ROOT/00 Otimizações/Plugins AxManager"
 mkdir -p "$OUT"
 
 have_zip=1
@@ -35,11 +38,17 @@ PY
     printf '  ▸ releases/%s.zip\n' "$name"
 }
 
-printf '  Empacotando plugins de %s\n' "$ROOT/plugins"
-for d in "$ROOT/plugins"/*/; do
-    [ -d "$d" ] || continue
+printf '  Empacotando plugins de %s\n' "$SRC"
+found=0
+while IFS= read -r prop; do
+    [ -n "$prop" ] || continue
+    d="$(dirname "$prop")"
     name="$(basename "$d")"
-    [ -f "$d/module.prop" ] || { printf '  · %s (sem module.prop) — ignorado\n' "$name"; continue; }
+    found=$((found + 1))
     pack "$d" "$name"
-done
+done <<EOF
+$(find "$SRC" -name module.prop -not -path '*/.git/*' 2>/dev/null | sort)
+EOF
+
+[ "$found" = "0" ] && printf '  · nenhum plugin encontrado\n'
 printf '  pronto. zips em releases/\n'

@@ -29,7 +29,7 @@ sh scripts/deep-tune.sh angle reset
 **Verificação de sintaxe** (roda em qualquer PC/container):
 
 ```sh
-for f in $(find scripts nivel-2-sh plugins -name '*.sh'); do sh -n "$f" || echo "ERRO $f"; done
+while IFS= read -r f; do sh -n "$f" || echo "ERRO $f"; done < <(find scripts "00 Otimizações" tests -name '*.sh')
 ```
 
 ---
@@ -122,10 +122,10 @@ Foram removidos ou marcados como legado para não vender placebo:
 
 Os plugins reaplicam os tweaks em loop/serviço, então a reversão tem um cuidado extra:
 
-- **`plugins/01-service-loop`** — `apply_deep()` (em `lib.sh`) espelha os módulos
+- **`00 Otimizações/Plugins AxManager/Nossos/01-service-loop`** — `apply_deep()` (em `lib.sh`) espelha os módulos
   profundos. Liga/desliga por chaves no `config`: `ENABLE_ANGLE`, `ENABLE_DEBLOAT`,
   `ENABLE_DEEP`, `ENABLE_THERMAL`. `uninstall.sh` chama `revert_deep`.
-- **`plugins/02-webui-control`** — `apply.sh` ganhou `m_angle`, `m_debloat`,
+- **`00 Otimizações/Plugins AxManager/Nossos/02-webui-control`** — `apply.sh` ganhou `m_angle`, `m_debloat`,
   `m_deep`, `m_thermal` e `revert_deep`; a UI expõe `CFG_ANGLE`, `CFG_DEBLOAT`,
   `CFG_DEEP`, `CFG_THERMAL` e `CFG_ANGLE_PKGS`.
 
@@ -153,7 +153,7 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
 3. `sh scripts/check-secrets.sh` — não pode achar credencial (sai com 1 se achar).
 4. `OTM_MODE=local sh scripts/deep-tune.sh detect` — não deve tocar em nada (modo local).
 5. Aplicar/reverter um módulo e conferir `~/.packotm/deep/off.sh` (tag por módulo).
-6. `sh scripts/build-modules.sh` — empacota os módulos próprios (`modules/`).
+6. `sh scripts/build-modules.sh` — empacota os módulos próprios (`00 Otimizações/Modulos/`).
 7. `sh scripts/build-plugins.sh` — empacota só os plugins do pack.
 8. `sh scripts/bench.sh save antes && ... && sh scripts/bench.sh report antes depois`.
 
@@ -169,7 +169,7 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
 4. **Ganho não é garantido** por aparelho. O pack promete *menos queda de FPS e menos
    travada*, **não** um número fixo de FPS. Meça com `scripts/bench.sh`.
 5. **Sem módulos de terceiros** — o repositório só contém conteúdo próprio (MIT): os
-   módulos em `modules/` são do autor e os plugins também. Empacote com
+   módulos em `00 Otimizações/Modulos/` são do autor e os plugins também. Empacote com
    `scripts/build-modules.sh` e `scripts/build-plugins.sh`.
 
 ---
@@ -190,7 +190,7 @@ wc -l /data/adb/packotm/deep_off.sh   # deve permanecer estável (não triplica)
 - `~/.packotm/deep/off.sh` — reversão das otimizações profundas, com **tag por módulo**
   (formato `<tag>\t<comando>`). `deep-tune.sh <módulo> off` reverte só aquele módulo.
 - `~/.packotm/deep/thermal.pid` + `thermal.log` — trava de segurança térmica.
-- `nivel-1-txt/99-restaurar-tudo.txt` — reversão manual (Brevent).
+- `00 Otimizações/Comandos Brevent/99-restaurar-tudo.txt` — reversão manual (Brevent).
 
 ---
 

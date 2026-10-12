@@ -23,13 +23,16 @@ jobs:
       - name: Sintaxe (sh -n)
         run: |
           fail=0
-          for f in $(find scripts nivel-2-sh plugins tests -name '*.sh'); do
+          while IFS= read -r f; do
             sh -n "$f" || { echo "ERRO de sintaxe: $f"; fail=1; }
-          done
+          done < <(find scripts "00 Otimizações" tests -name '*.sh' -not -path '*/.git/*')
           exit $fail
 
       - name: ShellCheck (avisos não bloqueiam, erros sim)
-        run: shellcheck -S error $(find scripts nivel-2-sh plugins tests -name '*.sh')
+        run: |
+          # só o nosso código; módulos/plugins de terceiros têm o estilo do autor
+          find scripts tests "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" \
+            -name '*.sh' -not -path '*/.git/*' -print0 | xargs -0 shellcheck -S error
 
       - name: Testes (stubs, apply/restore, deep_mark)
         run: sh tests/run.sh

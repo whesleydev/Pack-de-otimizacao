@@ -61,10 +61,13 @@ deep_off() { echo "$HOME/.packotm/deep/off.sh"; }
 t_syntax() {
     printf '\n  # sintaxe (sh -n) de todos os scripts\n'
     n=0; e=0
-    for f in $(find "$ROOT/scripts" "$ROOT/nivel-2-sh" "$ROOT/plugins" "$ROOT/tests" -name '*.sh' 2>/dev/null | sort); do
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
         n=$((n+1))
         sh -n "$f" 2>/dev/null || { e=$((e+1)); bad "sintaxe: $f"; }
-    done
+    done <<EOF
+$(find "$ROOT/scripts" "$ROOT/00 Otimizações" "$ROOT/tests" -name '*.sh' -not -path '*/.git/*' 2>/dev/null | sort)
+EOF
     [ "$e" = "0" ] && ok "sintaxe OK em $n scripts"
 }
 
@@ -97,7 +100,7 @@ plugin_state() {
 
 t_plugin_mark_once() {
     printf '\n  # plugin 02: loop não duplica/toca o backup após o 1o apply (deep_mark)\n'
-    p="$TMP/p02"; rm -rf "$p"; cp -r "$ROOT/plugins/02-webui-control" "$p"
+    p="$TMP/p02"; rm -rf "$p"; cp -r "$ROOT/00 Otimizações/Plugins AxManager/Nossos/02-webui-control" "$p"
     rm -rf /data/adb/packotm "$p/state" 2>/dev/null
     sh "$p/apply.sh" set CFG_DEEP 1 >/dev/null 2>&1
     sh "$p/apply.sh" apply >/dev/null 2>&1
@@ -146,20 +149,19 @@ t_secret_scanner() {
 }
 
 t_build_plugins() {
-    printf '\n  # build-plugins: empacota só os plugins do pack\n'
+    printf '\n  # build-plugins: empacota todos os plugins (nossos + terceiros OSS)\n'
     sh "$ROOT/scripts/build-plugins.sh" >/dev/null 2>&1
     assert_eq "0" "$?" "build-plugins roda sem erro"
-    [ -f "$ROOT/releases/01-service-loop.zip" ] \
-        && assert_eq "ok" "ok" "gera 01-service-loop.zip" \
-        || assert_eq "zip" "ausente" "gera 01-service-loop.zip"
-    [ -f "$ROOT/releases/02-webui-control.zip" ] \
-        && assert_eq "ok" "ok" "gera 02-webui-control.zip" \
-        || assert_eq "zip" "ausente" "gera 02-webui-control.zip"
-    rm -f "$ROOT/releases/01-service-loop.zip" "$ROOT/releases/02-webui-control.zip"
+    for name in 01-service-loop 02-webui-control 03-battery-thermal 04-cleaner 05-fps-refresh Kang Sakoiire Aapt-for-Plugin; do
+        [ -f "$ROOT/releases/$name.zip" ] \
+            && assert_eq "ok" "ok" "gera $name.zip" \
+            || assert_eq "zip" "ausente" "gera $name.zip"
+    done
+    rm -f "$ROOT/releases"/*.zip
 }
 
 t_build_modules() {
-    printf '\n  # build-modules: empacota os módulos próprios (modules/)\n'
+    printf '\n  # build-modules: empacota os módulos próprios (Modulos/)\n'
     sh "$ROOT/scripts/build-modules.sh" >/dev/null 2>&1
     assert_eq "0" "$?" "build-modules roda sem erro"
     [ -f "$ROOT/releases/WS7_OFF7.zip" ] \

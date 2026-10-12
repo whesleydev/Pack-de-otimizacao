@@ -10,7 +10,7 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
 
 ### 1. Direito de redistribuição — resolvido com conteúdo próprio
 - [x] **Decisão:** o repositório contém **apenas conteúdo próprio**.
-- [x] Removidos os módulos de terceiros (10 de 16). Ficaram em `modules/` só os
+- [x] Removidos os módulos de terceiros (10 de 16). Ficaram em `00 Otimizações/Modulos/` só os
       **6 módulos do dono do projeto**: WS7_OFF7, NexaCore, Astrax, NOVA TOUCH,
       VOID TOUCH Ultra, VeuLexier.
 - [x] `THIRD-PARTY-NOTICES.md` e `scripts/check-licenses.sh` removidos (não há mais

@@ -1,0 +1,7 @@
+id=packotm_fps_refresh
+name=Pack OTM · FPS & Refresh
+version=1.0.0
+versionCode=100
+author=whesleydev
+description=Forca taxa de atualizacao e modo de jogo por app (Free Fire, CODM, MLBB...). Reversivel. Compativel com AxManager, KernelSU, APatch e Magisk.
+axeronPlugin=>=10000

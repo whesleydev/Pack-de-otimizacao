@@ -21,8 +21,10 @@ scratch/
 releases/*.zip
 
 # estado local dos plugins
-plugins/*/state/
-plugins/*/loop.log
+"00 Otimizações/Plugins AxManager"/*/state/
+"00 Otimizações/Plugins AxManager"/*/*/state/
+"00 Otimizações/Plugins AxManager"/*/*/loop.log
+"00 Otimizações/Plugins AxManager"/*/*/webroot/state/
 
 # backup local com dumps de conversa e módulos de terceiros (não versionar)
 apps_otm.zip

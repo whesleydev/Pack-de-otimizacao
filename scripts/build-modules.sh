@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # =============================================================================
-#  build-modules.sh - Empacota cada módulo próprio de modules/<nome> em
+#  build-modules.sh - Empacota cada módulo próprio de "00 Otimizações/Modulos"/<nome> em
 #  releases/<nome>.zip.  Uso: sh scripts/build-modules.sh
 #
 #  Contém apenas módulos do projeto (conteúdo próprio). Módulos de terceiros não
@@ -9,7 +9,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
-SRC="$ROOT/modules"
+SRC="$ROOT/00 Otimizações/Modulos"
 OUT="$ROOT/releases"
 mkdir -p "$OUT"
 

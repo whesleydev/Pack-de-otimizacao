@@ -47,14 +47,14 @@ grau de automação.
 
 ## 3. Nível 1 — .txt no Brevent
 
-**O que é:** cada arquivo em [`nivel-1-txt/`](../nivel-1-txt/) é uma lista de comandos.
+**O que é:** cada arquivo em [`00 Otimizações/Comandos Brevent/`](../00 Otimizações/Comandos Brevent/) é uma lista de comandos.
 Você abre, copia tudo e cola no Brevent.
 
 **Passo a passo:**
 
 1. Instale o **Brevent** e conceda as permissões (ADB ou root — veja
    [`brevent.md`](brevent.md)).
-2. Abra, por exemplo, `nivel-1-txt/10-free-fire.txt`.
+2. Abra, por exemplo, `00 Otimizações/Comandos Brevent/10-free-fire.txt`.
 3. Selecione tudo → copiar.
 4. Cole na área de execução do Brevent → rode.
 5. Para voltar: cole `99-restaurar-tudo.txt`.
@@ -63,7 +63,7 @@ Você abre, copia tudo e cola no Brevent.
 RAM/memória, bateria, gráficos/GPU, rede/DNS, Wi-Fi/dados, jogo/game mode, Free Fire,
 sensibilidade/touch, congelar apps, descongelar apps, limpeza/cache, notificações/DND,
 bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
-[`nivel-1-txt/README.md`](../nivel-1-txt/README.md).
+[`00 Otimizações/Comandos Brevent/README.md`](../00 Otimizações/Comandos Brevent/README.md).
 
 > Neste nível não há automação: você roda quando quiser.
 
@@ -82,13 +82,13 @@ bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
 3. Rode:
 
 ```sh
-sh nivel-2-sh/run.sh            # abre o menu
-sh nivel-2-sh/run.sh all        # aplica tudo
-sh nivel-2-sh/run.sh headshot   # perfil de sensibilidade
-sh nivel-2-sh/run.sh fluidez    # fluidez (animações 0, toque, Hz)
-sh nivel-2-sh/run.sh game apply com.dts.freefireth fps   # tuning por jogo
-sh nivel-2-sh/run.sh save       # salva o estado atual (snapshot)
-sh nivel-2-sh/run.sh restore    # volta o último snapshot
+sh 00 Otimizações/Scripts SH/run.sh            # abre o menu
+sh 00 Otimizações/Scripts SH/run.sh all        # aplica tudo
+sh 00 Otimizações/Scripts SH/run.sh headshot   # perfil de sensibilidade
+sh 00 Otimizações/Scripts SH/run.sh fluidez    # fluidez (animações 0, toque, Hz)
+sh 00 Otimizações/Scripts SH/run.sh game apply com.dts.freefireth fps   # tuning por jogo
+sh 00 Otimizações/Scripts SH/run.sh save       # salva o estado atual (snapshot)
+sh 00 Otimizações/Scripts SH/run.sh restore    # volta o último snapshot
 ```
 
 **Antes de aplicar qualquer coisa, salve um snapshot.** Assim você volta com um comando.
@@ -117,7 +117,7 @@ ligar/desligar DNS, touch e doze.
 
 **Parar:** `touch /data/adb/packotm/stop`.
 
-Detalhes em [`../plugins/01-service-loop/README.md`](../plugins/01-service-loop/README.md).
+Detalhes em [`../00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Nossos/01-service-loop/README.md`](../00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Nossos/01-service-loop/README.md).
 
 ---
 
@@ -136,7 +136,7 @@ desliga cada módulo e ajusta valores, com status ao vivo.
 **A tela mostra:** RAM livre, bateria, temperatura e refresh. E permite configurar:
 performance, gráficos, rede, game mode, freeze, DND, tela, touch e loop.
 
-Detalhes em [`../plugins/02-webui-control/README.md`](../plugins/02-webui-control/README.md).
+Detalhes em [`../00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Nossos/02-webui-control/README.md`](../00%20Otimiza%C3%A7%C3%B5es/Plugins%20AxManager/Nossos/02-webui-control/README.md).
 
 ---
 

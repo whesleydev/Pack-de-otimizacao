@@ -26,12 +26,12 @@ Você só precisa de **um** app: o **Brevent**.
 2. Abra e siga o assistente (ele pede uma permissão uma única vez).
 3. Volte aqui e abra o arquivo:
 
-   👉 **`nivel-1-txt/00-aplicar-tudo.txt`**
+   👉 **`00 Otimizações/Comandos Brevent/00-aplicar-tudo.txt`**
 
 4. Selecione **tudo**, **copie** e **cole** dentro do Brevent. Rode.
 5. **Reinicie o celular.** Pronto — o pack está aplicado. ✅
 
-> Não gostou de algo? Abra o **`nivel-1-txt/99-restaurar-tudo.txt`**, copie e cole
+> Não gostou de algo? Abra o **`00 Otimizações/Comandos Brevent/99-restaurar-tudo.txt`**, copie e cole
 > no Brevent. **Volta tudo ao normal.**
 
 ---
@@ -39,11 +39,14 @@ Você só precisa de **um** app: o **Brevent**.
 ## 🗂️ Como o pack está organizado
 
 ```
-nivel-1-txt/   → comandos prontos para copiar e colar (Brevent)   ← comece aqui
-nivel-2-sh/    → scripts automáticos (Shizuku ou root)
+00 Otimizações/
+  Comandos Brevent/   → comandos prontos para copiar e colar (Brevent)   ← comece aqui
+  Scripts SH/         → scripts automáticos (Shizuku ou root)
+  Plugins AxManager/  → plugins do AxManager (roda sozinho em segundo plano)
+    Nossos/             os nossos 5 plugins
+    Terceiros-open-source/ plugins de outros (só licença livre)
+  Modulos/            → módulos extras do pack (WS7_OFF7, NexaCore, Astrax…)
 scripts/       → a "caixa de ferramentas" do pack
-plugins/       → módulos para o AxManager (roda sozinho em segundo plano)
-modules/       → módulos extras do pack (WS7_OFF7, NexaCore, Astrax, NOVA TOUCH…)
 docs/          → guias detalhados
 ```
 
@@ -87,13 +90,13 @@ Depois de jogar, cole o `13-descongelar-apps.txt` para liberar os apps.
 Se você tem **Shizuku** (sem root) ou **root**, use os scripts:
 
 ```sh
-sh nivel-2-sh/run.sh            # menu completo
-sh nivel-2-sh/run.sh all        # aplica tudo
-sh nivel-2-sh/run.sh fluidez    # fluidez
-sh nivel-2-sh/run.sh save       # salva o estado atual
-sh nivel-2-sh/run.sh restore    # volta o último estado salvo
-sh nivel-2-sh/run.sh deep detect   # o que seu aparelho suporta
-sh nivel-2-sh/run.sh deep gaming on com.dts.freefireth  # MODO TURBO
+sh 00 Otimizações/Scripts SH/run.sh            # menu completo
+sh 00 Otimizações/Scripts SH/run.sh all        # aplica tudo
+sh 00 Otimizações/Scripts SH/run.sh fluidez    # fluidez
+sh 00 Otimizações/Scripts SH/run.sh save       # salva o estado atual
+sh 00 Otimizações/Scripts SH/run.sh restore    # volta o último estado salvo
+sh 00 Otimizações/Scripts SH/run.sh deep detect   # o que seu aparelho suporta
+sh 00 Otimizações/Scripts SH/run.sh deep gaming on com.dts.freefireth  # MODO TURBO
 ```
 
 E se você usa **AxManager**, instale o plugin e deixe ele **rodando sozinho 24h**:
