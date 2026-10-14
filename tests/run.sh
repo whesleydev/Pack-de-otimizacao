@@ -259,6 +259,8 @@ checks = {
  "scripts/adb-tweaks.sh": any(x.endswith('/scripts/adb-tweaks.sh') for x in n),
  "releases/06-freezer.zip": any(x.endswith('/releases/06-freezer.zip') for x in n),
  "Apps/README.md": any(x.endswith('/Apps/README.md') for x in n),
+ "pack.sh (raiz)": any(x.endswith('/pack.sh') for x in n),
+ "scripts/pack.sh (menu-mestre)": any(x.endswith('/scripts/pack.sh') for x in n),
  "run.sh (nivel 2)": any(x.endswith('/00 Otimiza\u00e7\u00f5es/Scripts SH/run.sh') for x in n),
  "22 .txt Brevent": sum(1 for x in n if '/Comandos Brevent/' in x and x.endswith('.txt')) >= 22,
 }
@@ -290,6 +292,26 @@ t_debloat() {
     unset TMP_PM_LOG TMP_CMD_LOG
 }
 
+t_pack() {
+    printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
+    f="$ROOT/scripts/pack.sh"
+    [ -f "$f" ] && ok "scripts/pack.sh existe" || { bad "pack.sh ausente"; return; }
+    sh "$f" --help > "$TMP/pack_help" 2>&1
+    assert_contains "$TMP/pack_help" "menu interativo" "pack.sh --help mostra uso"
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$f" status > "$TMP/pack_status" 2>&1
+    assert_contains "$TMP/pack_status" "STATUS DO PACK" "pack.sh status mostra o status"
+    st="$HOME/.packotm/debloat"; rm -rf "$st"
+    export TMP_PM_LOG="$TMP/pm3.log"; : > "$TMP_PM_LOG"
+    OTM_MODE=local sh "$f" debloat on leve >/dev/null 2>&1
+    [ -f "$st/applied" ] && ok "pack.sh delega p/ debloat.sh" || bad "pack.sh não delegou p/ debloat"
+    OTM_MODE=local sh "$f" debloat off >/dev/null 2>&1
+    rm -rf "$st"
+    [ -f "$ROOT/pack.sh" ] && ok "launcher pack.sh na raiz existe" || bad "launcher da raiz ausente"
+    sh "$ROOT/00 Otimizações/Scripts SH/run.sh" --help > "$TMP/run_help" 2>&1
+    assert_contains "$TMP/run_help" "menu interativo" "run.sh delega ao menu-mestre"
+    unset TMP_PM_LOG
+}
+
 # --- execução ----------------------------------------------------------------
 printf '  ==================================================\n'
 printf '  Testes do Pack de Otimização\n'
@@ -308,6 +330,7 @@ t_build_plugins
 t_build_modules
 t_build_pack
 t_debloat
+t_pack
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

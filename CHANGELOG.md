@@ -3,6 +3,28 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.8.0] - 2026-10-15
+
+### Adicionado
+- **Menu-mestre `scripts/pack.sh`** — ponto único de entrada que gerencia todos os
+  outros scripts (`adb-tweaks`, `deep-tune`, `debloat`, `ff-touch`, `game-per-app`,
+  `snapshot`, `bench`, `device-profile` e os builds). Funciona como **menu interativo**
+  (numerado, com cabeçalho de status) e por **linha de comando** (`status`, `apply`,
+  `restore`, `debloat on medio`, `touch headshot`, `snapshot save`, `test`, `build`…).
+  - Tela de **status** mostra modo de execução, privilégio, SoC, versão, o que já está
+    aplicado (deep, debloat) e quantos snapshots existem.
+  - `apply` aplica o conjunto recomendado; `restore` desfaz **tudo** (níveis 2,
+    profundas e debloat) de uma vez.
+  - Delega com segurança para cada módulo — sem reimplementar nada.
+- **Launcher `pack.sh` na raiz** — permite `sh pack.sh` de qualquer pasta.
+- Teste `t_pack` (help, status, delegação ao debloat, atalho do nível 2).
+
+### Corrigido
+- **`00 Otimizações/Scripts SH/run.sh` (nível 2)** apontava para um caminho
+  inexistente (`00 Otimizações/scripts`) desde a reorganização — o atalho estava
+  quebrado. Agora ele localiza `scripts/` de forma robusta (aceita `OTM_SCRIPTS`) e
+  delega ao menu-mestre. Os testes não executavam o `run.sh`, por isso passou batido.
+
 ## [1.7.0] - 2026-10-15
 
 ### Adicionado

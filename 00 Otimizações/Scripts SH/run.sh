@@ -1,35 +1,28 @@
 #!/system/bin/sh
 # =============================================================================
 #  NÍVEL 2 · Entry point (sh + Shizuku)
-#  Atalho que roda o menu do pack usando Shizuku (rish) ou root, sem precisar
-#  decorar caminhos. O motor fica em ../scripts/.
+#  Atalho curto para o MENU-MESTRE (../scripts/pack.sh), que gerencia tudo.
+#  Você não precisa decorar caminho de nada — só rodar este arquivo.
 #
 #  Uso:
-#     sh run.sh            # abre o menu
-#     sh run.sh all        # aplica tudo
-#     sh run.sh headshot   # perfil de sensibilidade
-#     sh run.sh save       # snapshot do estado atual
-#     sh run.sh restore    # volta o último snapshot
+#     sh run.sh              # abre o menu-mestre
+#     sh run.sh status       # estado do aparelho
+#     sh run.sh apply        # aplica o pack recomendado
+#     sh run.sh restore      # reverte tudo
+#     sh run.sh headshot     # perfil de sensibilidade
+#     sh run.sh debloat on medio
+#     sh run.sh save         # snapshot do estado atual
 # =============================================================================
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-SCRIPTS="$DIR/../scripts"
 
-# a detecção de modo fica no common.sh (com timeout, para não pendurar no `su`)
-. "$SCRIPTS/common.sh"
+# localiza a pasta do motor (scripts/). O layout varia: no repositório o run.sh
+# fica em "00 Otimizações/Scripts SH/", então scripts/ está dois níveis acima;
+# se o pack for copiado para outro lugar, tenta um nível acima também.
+SCRIPTS=""
+for cand in "${OTM_SCRIPTS:-}" "$DIR/../../scripts" "$DIR/../scripts"; do
+    [ -n "$cand" ] && [ -f "$cand/pack.sh" ] && { SCRIPTS="$cand"; break; }
+done
+[ -n "$SCRIPTS" ] || { echo "não achei scripts/pack.sh (defina OTM_SCRIPTS)" >&2; exit 1; }
 
-case "$1" in
-    ""|menu)  exec sh "$SCRIPTS/menu.sh" ;;
-    all)      exec sh "$SCRIPTS/adb-tweaks.sh" all ;;
-    restore)  sh "$SCRIPTS/snapshot.sh" restore latest
-              exec sh "$SCRIPTS/deep-tune.sh" restore ;;
-    save)     exec sh "$SCRIPTS/snapshot.sh" save ;;
-    fluidez)  exec sh "$SCRIPTS/adb-tweaks.sh" fluidez ;;
-    game)     exec sh "$SCRIPTS/game-per-app.sh" "${2:-list}" "${3:-}" "${4:-}" ;;
-    deep)     exec sh "$SCRIPTS/deep-tune.sh" "${2:-}" "${3:-}" "${4:-}" ;;
-    debloat)  exec sh "$SCRIPTS/debloat.sh" "${2:-status}" "${3:-}" ;;
-    status)   exec sh "$SCRIPTS/adb-tweaks.sh" raw "dumpsys battery | grep -E 'level|temperature'" ;;
-    headshot|spray|sniper|speed|balanced)
-              exec sh "$SCRIPTS/ff-touch.sh" "$1" ;;
-    *)        exec sh "$SCRIPTS/adb-tweaks.sh" "$@" ;;
-esac
+exec sh "$SCRIPTS/pack.sh" "$@"

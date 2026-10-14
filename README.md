@@ -27,6 +27,25 @@ o que cada comando faz.
 
 ---
 
+## 🎛️ Menu-mestre (comece por aqui)
+
+Um único comando gerencia **tudo** — não precisa decorar caminho de script:
+
+```sh
+sh pack.sh          # abre o menu interativo (ou: sh "00 Otimizações/Scripts SH/run.sh")
+sh pack.sh status   # mostra o que já está aplicado no aparelho
+sh pack.sh apply    # aplica o conjunto recomendado (sem root)
+sh pack.sh restore  # desfaz TUDO de uma vez
+```
+
+Pelo menu você chega em todos os módulos: performance, GPU, rede, bateria, Game Mode,
+Free Fire, RAM, tela, congelar apps, **debloat**, otimizações profundas (root),
+perfis de toque, snapshots e os builds. Cada opção tem um número; `0` sai.
+
+> 💡 O `run.sh` do nível 2 é só um atalho para esse mesmo menu — os dois dão no mesmo lugar.
+
+---
+
 ## Os 4 níveis
 
 Tudo fica dentro de [`00 Otimizações/`](00%20Otimiza%C3%A7%C3%B5es/):

@@ -72,24 +72,29 @@ bloat/privacidade, sistema/logs e restaurar tudo. A lista completa está em
 ## 4. Nível 2 — sh + Shizuku
 
 **O que é:** os scripts em `scripts/` rodam via **Shizuku** (`rish`), **root** ou
-**ADB**, com detecção automática do transporte.
+**ADB**, com detecção automática do transporte. Tudo é comandado pelo **menu-mestre**
+`pack.sh`, que reúne todos os módulos num só lugar.
 
 **Passo a passo:**
 
 1. Instale o **Shizuku** e ative via ADB ou depuração sem fio.
 2. No **Termux**, baixe o `rish` e deixe no `PATH` (veja
    [`termux-shizuku.md`](termux-shizuku.md)).
-3. Rode:
+3. Rode o menu-mestre (na raiz do pack):
 
 ```sh
-sh 00 Otimizações/Scripts SH/run.sh            # abre o menu
-sh 00 Otimizações/Scripts SH/run.sh all        # aplica tudo
-sh 00 Otimizações/Scripts SH/run.sh headshot   # perfil de sensibilidade
-sh 00 Otimizações/Scripts SH/run.sh fluidez    # fluidez (animações 0, toque, Hz)
-sh 00 Otimizações/Scripts SH/run.sh game apply com.dts.freefireth fps   # tuning por jogo
-sh 00 Otimizações/Scripts SH/run.sh save       # salva o estado atual (snapshot)
-sh 00 Otimizações/Scripts SH/run.sh restore    # volta o último snapshot
+sh pack.sh              # abre o menu interativo (numerado)
+sh pack.sh status       # o que já está aplicado no aparelho
+sh pack.sh apply        # aplica o conjunto recomendado (sem root)
+sh pack.sh restore      # desfaz tudo de uma vez
+sh pack.sh debloat on medio            # debloat (leve|medio|pesado)
+sh pack.sh touch headshot              # perfil de sensibilidade
+sh pack.sh deep gaming on com.dts.freefireth   # MODO JOGO TURBO
+sh pack.sh snapshot save               # salva o estado atual
 ```
+
+> O `00 Otimizações/Scripts SH/run.sh` é só um atalho para esse mesmo menu — os dois
+> aceitam as mesmas ações.
 
 **Antes de aplicar qualquer coisa, salve um snapshot.** Assim você volta com um comando.
 

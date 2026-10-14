@@ -25,18 +25,18 @@ cp /sdcard/rish ~/rish && chmod +x ~/rish   # se veio do gerenciador de arquivos
 git clone https://github.com/whesleydev/Pack-de-otimizacao.git
 cd Pack-de-otimizacao
 
-# o menu detecta o rish e usa modo privilegiado
-sh scripts/menu.sh
+# o menu-mestre detecta o rish e usa modo privilegiado
+sh pack.sh
 
-# ou direto
-sh scripts/adb-tweaks.sh all
-sh scripts/ff-touch.sh headshot
+# ou direto, sem menu
+sh pack.sh apply            # aplica o conjunto recomendado
+sh pack.sh touch headshot   # perfil de sensibilidade
 ```
 
 Se a detecção não pegar o `rish`, force:
 
 ```sh
-OTM_MODE=rish sh scripts/menu.sh
+OTM_MODE=rish sh pack.sh
 ```
 
 ## 4. Verificar

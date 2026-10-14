@@ -40,6 +40,7 @@ copy() {  # copy <origem> <destino-relativo>
 copy "$ROOT/00 Otimizações" "00 Otimizações"
 copy "$ROOT/scripts" "scripts"
 copy "$ROOT/Apps" "Apps"
+copy "$ROOT/pack.sh" "pack.sh"
 copy "$ROOT/README.md" "README.md"
 copy "$ROOT/COMECE-AQUI.md" "COMECE-AQUI.md"
 copy "$ROOT/LICENSE" "LICENSE"

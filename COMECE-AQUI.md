@@ -18,6 +18,22 @@ instalar nada estranho e **com como voltar atrás** se você não gostar.
 
 ---
 
+## 🎛️ Menu-mestre — o jeito mais simples de usar tudo
+
+Se você tem **Termux** (ou Shizuku/root), um comando só abre o menu que gerencia
+o pack inteiro:
+
+```sh
+sh pack.sh
+```
+
+Aparece uma lista numerada: aplicar, reverter, performance, jogo, Free Fire,
+debloat, toque, snapshots e mais. Escolha o número e pronto. Para sair, `0`.
+
+> Sem PC? O menu também funciona pelo **Termux**. Com PC, dá para rodar por **ADB**.
+
+---
+
 ## ⚡ Caminho mais fácil (sem PC, 5 minutos)
 
 Você só precisa de **um** app: o **Brevent**.
@@ -43,9 +59,10 @@ Você só precisa de **um** app: o **Brevent**.
   Comandos Brevent/   → comandos prontos para copiar e colar (Brevent)   ← comece aqui
   Scripts SH/         → scripts automáticos (Shizuku ou root)
   Plugins AxManager/  → plugins do AxManager (roda sozinho em segundo plano)
-    Nossos/             os nossos 5 plugins
+    Nossos/             os nossos 6 plugins
     Terceiros-open-source/ plugins de outros (só licença livre)
   Modulos/            → módulos extras do pack (WS7_OFF7, NexaCore, Astrax…)
+pack.sh        → MENU-MESTRE: gerencia tudo por um menu numerado
 scripts/       → a "caixa de ferramentas" do pack
 docs/          → guias detalhados
 ```

@@ -223,15 +223,24 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
         <span class="tag lvl">Tudo</span></div>
     </div>
 
+    <h3>🎛️ Menu-mestre: um comando para tudo</h3>
+    <p>Com <strong>Termux</strong> (ou Shizuku/root), um único comando abre o menu que gerencia o pack inteiro
+      — aplicar, reverter, performance, jogo, Free Fire, debloat, toque e snapshots:</p>
+    <pre><code>sh pack.sh          # abre o menu numerado
+sh pack.sh status   # o que já está aplicado
+sh pack.sh apply    # aplica o recomendado (sem root)
+sh pack.sh restore  # desfaz TUDO de uma vez</code></pre>
+    <div class="note">💡 O <code>run.sh</code> do nível 2 é só um atalho para esse mesmo menu.</div>
+
     <h3>Passo a passo</h3>
     <ol class="steps">
       <li><strong>Instale o app</strong> do seu caso (veja a seção <a href="#apps">Apps</a>).</li>
-      <li><strong>Salve um snapshot</strong> antes de mexer: <code>sh scripts/snapshot.sh save</code>.</li>
+      <li><strong>Salve um snapshot</strong> antes de mexer: <code>sh pack.sh snapshot save</code>.</li>
       <li><strong>Aplique</strong> o que quiser: cole um <code>.txt</code> no Brevent, ou rode
-        <code>sh "00 Otimizações/Scripts SH/run.sh"</code> no Termux.</li>
+        <code>sh pack.sh</code> (o menu-mestre) no Termux.</li>
       <li><strong>Teste no treino</strong> (principalmente toque/sensibilidade) antes de partida.</li>
       <li>Não gostou? <strong>Reverta</strong> com o <code>99-restaurar-tudo.txt</code> ou
-        <code>run.sh restore</code>.</li>
+        <code>sh pack.sh restore</code>.</li>
     </ol>
     <div class="note">💡 <strong>Dica de ouro:</strong> use a área de <a href="#comandos">Comandos</a> abaixo para
     aplicar um ajuste de cada vez e ver o efeito. É mais seguro do que aplicar tudo de uma vez.</div>

@@ -30,8 +30,15 @@ Pack de otimização para Android (foco Free Fire) em 4 níveis:
   Modulos/              módulos Magisk/KernelSU/AxManager do pack
 scripts/ tests/ docs/ releases/
 Apps/                   guia dos apps p/ instalar (Brevent, Shizuku, Termux, AxManager)
+pack.sh                 MENU-MESTRE (raiz): atalho p/ scripts/pack.sh
 index.html              site único (HTML+CSS+JS puro): guia + área de comandos
 ```
+
+`scripts/pack.sh` é o **menu-mestre**: ponto único de entrada que delega para todos os
+outros scripts (`adb-tweaks`, `deep-tune`, `debloat`, `ff-touch`, `game-per-app`,
+`snapshot`, `bench`, `device-profile`, builds). Roda como menu interativo (sem args) ou
+por linha de comando (`status`, `apply`, `restore`, `debloat on medio`, `touch headshot`…).
+O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
 
 `index.html` é o site público (um só arquivo, sem dependências): explica os 4 níveis, os
 apps, os plugins/módulos e tem uma **área de comandos** com busca e botão de copiar.
@@ -41,6 +48,7 @@ Publique no GitHub Pages apontando para a raiz (o `index.html` fica na raiz).
 
 ```sh
 sh tests/run.sh                 # testes (stubs de settings/cmd/am/getprop/su) — deve dar 0 falhas
+sh pack.sh                      # MENU-MESTRE (interativo); ou: sh pack.sh status|apply|restore
 sh scripts/build-modules.sh     # empacota 00 Otimizações/Modulos/ em releases/*.zip
 sh scripts/build-plugins.sh     # empacota Plugins AxManager/ (Nossos + OSS) em releases/*.zip
 sh scripts/build-pack.sh        # gera o zip único "Pack 00" completo em releases/
