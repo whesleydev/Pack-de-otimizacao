@@ -44,6 +44,7 @@ sh tests/run.sh                 # testes (stubs de settings/cmd/am/getprop/su) �
 sh scripts/build-modules.sh     # empacota 00 Otimizações/Modulos/ em releases/*.zip
 sh scripts/build-plugins.sh     # empacota Plugins AxManager/ (Nossos + OSS) em releases/*.zip
 sh scripts/build-pack.sh        # gera o zip único "Pack 00" completo em releases/
+sh scripts/debloat.sh on medio  # debloat (leve|medio|pesado); off reverte
 sh scripts/check-secrets.sh     # falha se achar credencial
 shellcheck -S error $(find scripts "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" tests -name '*.sh')
 sh scripts/bench.sh save antes  # benchmark antes/depois

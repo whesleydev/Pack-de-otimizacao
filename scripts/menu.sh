@@ -30,6 +30,8 @@ while :; do
     printf '  %s12%s Descongelar apps'                      "$C_A" "$C_R"; echo
     printf '  %s30%s Whitelist do congelador (add/listar)'  "$C_A" "$C_R"; echo
     printf '  %s31%s RAM (perfil padrão / gaming)'           "$C_A" "$C_R"; echo
+    printf '  %s32%s Debloat (leve / medio / pesado)'       "$C_A" "$C_R"; echo
+    printf '  %s33%s Debloat - reverter tudo'                "$C_A" "$C_R"; echo
     printf '  %s13%s Notificações / DND'                    "$C_A" "$C_R"; echo
     printf '  %s14%s Tela / refresh'                        "$C_A" "$C_R"; echo
     printf '  %s15%s Limpeza (caches/dexopt)'               "$C_A" "$C_R"; echo
@@ -83,6 +85,9 @@ while :; do
             esac ;;
         31) printf '  perfil de RAM (padrao/gaming) [padrao]: '; read -r mp
             "$DIR/adb-tweaks.sh" mem "${mp:-padrao}" ;;
+        32) printf '  perfil (leve/medio/pesado) [medio]: '; read -r dp
+            "$DIR/debloat.sh" on "${dp:-medio}" ;;
+        33) "$DIR/debloat.sh" off ;;
         13) "$DIR/adb-tweaks.sh" dnd ;;
         14) "$DIR/adb-tweaks.sh" screen ;;
         15) "$DIR/adb-tweaks.sh" clean ;;

@@ -3,6 +3,24 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.7.0] - 2026-10-15
+
+### Adicionado
+- **Debloat / Bloatware** — área nova para tirar o peso dos apps que você não usa,
+  **sem root** e **reversível** (nada é apagado de verdade):
+  - **`scripts/debloat.sh`** — perfis `leve` / `medio` / `pesado`. Desativa
+    gerenciadores de fabricante (Samsung GOS, Xiaomi Joyose, Motorola Gamemode) e
+    restringe o resto por `appops` + `standby bucket`. Ações por app: `disable`,
+    `enable`, `uninstall`, `restore`, `restrict`, `unrestrict`. Guarda cada reversão
+    em `~/.packotm/debloat/off.sh`; o `off` executa tudo de trás para frente.
+  - **`21-debloat-bloatware.txt`** (nível 1) — versão copiar-e-colar para o Brevent.
+  - **Menu**: opções **32** (aplicar debloat) e **33** (reverter).
+  - **Site** (`index.html`): nova categoria **Debloat / Bloatware** com **13 comandos**
+    (`pm disable-user`, `pm uninstall --user 0`, `cmd package install-existing`,
+    `appops`, `standby bucket`). Total vai a **72 comandos em 11 categorias**.
+- Teste `t_debloat` (aplica perfil, registra reversão, reverte; valida `uninstall` →
+  `install-existing`).
+
 ## [1.6.0] - 2026-10-15
 
 ### Adicionado

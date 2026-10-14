@@ -203,6 +203,28 @@ sh scripts/deep-tune.sh restore           # desfaz tudo
 > temperatura passar de 45 °C (`THERMAL_MAX_C`) ou o aparelho estiver carregando
 > (`THERMAL_STOP_CHARGING=1`), o módulo se reverte sozinho.
 
+### `scripts/debloat.sh` (remover bloatware, sem root)
+
+Tira o peso dos apps que você não usa — de forma **reversível** (nada é apagado de
+verdade). Desativa gerenciadores de fabricante e restringe o resto por `appops` +
+`standby bucket` (o app não roda sozinho, mas continua abrindo).
+
+```sh
+sh scripts/debloat.sh list                 # lista apps de usuário (-3) e de sistema (-s)
+sh scripts/debloat.sh on medio             # perfis: leve | medio | pesado
+sh scripts/debloat.sh off                  # reverte TUDO que este módulo aplicou
+sh scripts/debloat.sh status               # o que está aplicado agora
+# por app:
+sh scripts/debloat.sh disable   com.exemplo   # pm disable-user (volta com enable)
+sh scripts/debloat.sh uninstall com.exemplo   # pm uninstall --user 0 (volta com restore)
+sh scripts/debloat.sh restrict  com.exemplo   # corta o plano de fundo (appops/standby)
+sh scripts/debloat.sh enable|restore|unrestrict com.exemplo
+```
+
+> `disable-user` e `uninstall --user 0` **não apagam** o app: somem do seu perfil e
+> voltam com `enable` / `install-existing`. O módulo guarda cada reversão em
+> `~/.packotm/debloat/off.sh` e o `off` executa tudo de trás para frente.
+
 ### `scripts/bench.sh` (prova de resultado)
 
 Mede o **antes e depois** de verdade, em vez de prometer número:

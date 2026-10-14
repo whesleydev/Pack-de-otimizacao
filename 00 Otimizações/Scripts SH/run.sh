@@ -27,6 +27,7 @@ case "$1" in
     fluidez)  exec sh "$SCRIPTS/adb-tweaks.sh" fluidez ;;
     game)     exec sh "$SCRIPTS/game-per-app.sh" "${2:-list}" "${3:-}" "${4:-}" ;;
     deep)     exec sh "$SCRIPTS/deep-tune.sh" "${2:-}" "${3:-}" "${4:-}" ;;
+    debloat)  exec sh "$SCRIPTS/debloat.sh" "${2:-status}" "${3:-}" ;;
     status)   exec sh "$SCRIPTS/adb-tweaks.sh" raw "dumpsys battery | grep -E 'level|temperature'" ;;
     headshot|spray|sniper|speed|balanced)
               exec sh "$SCRIPTS/ff-touch.sh" "$1" ;;

@@ -1,0 +1,63 @@
+# ============================================================
+#  21 · DEBLOAT / BLOATWARE  (remover o que você não usa)
+#  Desativa/remove apps inúteis SEM root, de forma reversível.
+#  Cole no Brevent, ou rode como `adb shell` / `rish -c`.
+#
+#  ⚠️  Nada é apagado de verdade:
+#      - pm disable-user  -> some da gaveta, volta com pm enable
+#      - pm uninstall -k --user 0 -> some do seu perfil, volta com install-existing
+#  Desative UM por vez e teste. App do sistema errado pode quebrar o sistema.
+# ============================================================
+
+# --- 1) veja o que você tem (escolha o que remover) ---
+pm list packages -3      # apps que VOCÊ instalou
+pm list packages -s      # apps de fábrica (cuidado)
+
+# --- 2) DESATIVAR um app (reversível) ---
+# pm disable-user --user 0 com.facebook.katana
+# pm disable-user --user 0 com.facebook.orca
+# pm disable-user --user 0 com.instagram.android
+# pm disable-user --user 0 com.ss.android.ugc.trill
+# pm disable-user --user 0 com.twitter.android
+# pm disable-user --user 0 com.snapchat.android
+# pm disable-user --user 0 com.netflix.mediaclient
+# pm disable-user --user 0 com.spotify.music
+# pm disable-user --user 0 com.shopee.br
+# pm disable-user --user 0 com.mercadolibre
+
+# --- 3) REATIVAR um app que você desativou ---
+# pm enable --user 0 com.facebook.katana
+
+# --- 4) REMOVER do seu perfil (sem root, sem apagar de verdade) ---
+# pm uninstall -k --user 0 com.facebook.katana
+# pm uninstall -k --user 0 com.amazon.avod.thirdpartyclient
+# traz de volta:
+# cmd package install-existing com.facebook.katana
+
+# --- 5) SEM desativar: só restringir o plano de fundo (mais seguro) ---
+#     o app continua abrindo, mas não roda sozinho e não consome bateria
+# cmd appops set com.facebook.katana RUN_IN_BACKGROUND ignore
+# cmd appops set com.facebook.katana RUN_ANY_IN_BACKGROUND ignore
+# am set-standby-bucket com.facebook.katana restricted
+# para liberar de volta:
+# cmd appops set com.facebook.katana RUN_IN_BACKGROUND allow
+# am set-standby-bucket com.facebook.katana active
+
+# --- 6) bloat do FABRICANTE que costuma atrapalhar (ative só o do seu aparelho) ---
+# Samsung:
+# pm disable-user --user 0 com.samsung.android.game.gos
+# pm disable-user --user 0 com.samsung.android.kgclient
+# Xiaomi / Redmi / POCO:
+# pm disable-user --user 0 com.xiaomi.joyose
+# pm disable-user --user 0 com.miui.analytics
+# pm disable-user --user 0 com.miui.msa.global
+# Motorola:
+# pm disable-user --user 0 com.motorola.gamemode
+# pm disable-user --user 0 com.motorola.genie
+
+# --- 7) DEBLOAT PRONTO (módulo do pack, faz tudo de uma vez) ---
+#     sh scripts/debloat.sh on medio     # perfis: leve | medio | pesado
+#     sh scripts/debloat.sh off          # reverte tudo
+
+# --- 8) reversão geral ---
+# 99-restaurar-tudo.txt  reativa o que o pack desativou

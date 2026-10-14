@@ -26,7 +26,12 @@ case "$1" in
 esac
 exit 0
 EOF
-    printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/cmd"
+    # cmd: registra chamadas (appops etc.)
+    cat > "$TMP/bin/cmd" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_CMD_LOG" ] && echo "$*" >> "$TMP_CMD_LOG"
+exit 0
+EOF
     # am: registra chamadas (force-stop etc.)
     cat > "$TMP/bin/am" <<'EOF'
 #!/bin/sh
@@ -264,6 +269,27 @@ PY
     rm -f "$ROOT/releases"/*.zip "$ROOT/releases"/*.zip.sha256
 }
 
+t_debloat() {
+    printf '\n  # debloat: aplica perfil, registra reversão e reverte tudo\n'
+    st="$HOME/.packotm/debloat"
+    rm -rf "$st"
+    export TMP_PM_LOG="$TMP/pm2.log"; : > "$TMP_PM_LOG"
+    export TMP_CMD_LOG="$TMP/cmd2.log"; : > "$TMP_CMD_LOG"
+    OTM_MODE=local sh "$ROOT/scripts/debloat.sh" on leve >/dev/null 2>&1
+    [ -f "$st/applied" ] && ok "on cria o marcador 'applied'" || bad "on não criou o marcador"
+    [ -s "$st/off.sh" ] && ok "on registra reversões em off.sh" || bad "off.sh vazio"
+    grep -q 'disable-user --user 0 com.samsung.android.game.gos' "$TMP_PM_LOG"         && ok "desativa bloat do fabricante" || bad "não desativou bloat do fabricante"
+    grep -q 'appops set com.facebook.katana RUN_IN_BACKGROUND ignore' "$TMP_CMD_LOG"         && ok "restringe plano de fundo (appops)" || bad "não restringiu appops"
+    OTM_MODE=local sh "$ROOT/scripts/debloat.sh" off >/dev/null 2>&1
+    [ -f "$st/applied" ] && bad "off não removeu o marcador" || ok "off remove o marcador"
+    [ -f "$st/off.sh" ] && bad "off não removeu o off.sh" || ok "off limpa o off.sh"
+    # ações avulsas também registram reversão
+    OTM_MODE=local sh "$ROOT/scripts/debloat.sh" uninstall com.exemplo >/dev/null 2>&1
+    grep -q 'install-existing com.exemplo' "$st/off.sh"         && ok "uninstall registra reinstall (install-existing)" || bad "uninstall não registrou reversão"
+    rm -rf "$st"
+    unset TMP_PM_LOG TMP_CMD_LOG
+}
+
 # --- execução ----------------------------------------------------------------
 printf '  ==================================================\n'
 printf '  Testes do Pack de Otimização\n'
@@ -281,6 +307,7 @@ t_site_html
 t_build_plugins
 t_build_modules
 t_build_pack
+t_debloat
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

@@ -65,6 +65,7 @@ Cada `.txt` do nível 1 trata de **um assunto**. Você pode usar só o que quise
 | `11-sensibilidade-touch.txt` | perfis de mira (headshot, sniper, spray) |
 | `14-limpeza-cache-io.txt` | libera RAM e cache |
 | `20-otimizacoes-profundas.txt` | ANGLE/Vulkan por jogo + debloat real |
+| `21-debloat-bloatware.txt` | remove bloatware sem root (reversível) |
 | **`99-restaurar-tudo.txt`** | **desfaz tudo** |
 
 > 💡 **Dica de ouro:** antes de aplicar, salve um "snapshot" (nível 2:
