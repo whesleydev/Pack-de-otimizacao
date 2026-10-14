@@ -24,7 +24,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
-
+otm_v_reset
 DEEP_ST="${HOME:-/data/data/com.termux/files/home}/.packotm/deep"
 DEEP_OFF="$DEEP_ST/off.sh"
 DEEP_MARK="$DEEP_ST/on"
@@ -66,20 +66,38 @@ drop_tag() {
     mv "$DEEP_OFF.tmp" "$DEEP_OFF"
 }
 
-# sys_write <path> <valor>  -> guarda o valor antigo e escreve o novo
+# sys_write <path> <valor>  -> guarda o valor antigo, escreve e confirma
 sys_write() {
     p="$1"; v="$2"
+    otm_v_inc apply
     old=$(sh_get "cat $p" 2>/dev/null)
     [ -n "$old" ] && deep_add "echo '$old' > $p"
     sh_run "echo '$v' > $p" >/dev/null 2>&1
+    now=$(sh_get "cat $p" 2>/dev/null)
+    if [ "$now" = "$v" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b %s = %s\n' "$C_G" "$C_R" "$p" "$v"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s nao mudou (lido: %s)\n' "$C_RD" "$C_R" "$p" "${now:-vazio}"
+    fi
 }
 
 # sysctl_write <chave> <valor>
 sysctl_write() {
     k="$1"; v="$2"
+    otm_v_inc apply
     old=$(sh_get "sysctl -n $k" 2>/dev/null)
     [ -n "$old" ] && deep_add "sysctl -w $k=$old"
     sh_run "sysctl -w $k=$v" >/dev/null 2>&1
+    now=$(sh_get "sysctl -n $k" 2>/dev/null)
+    if [ "$now" = "$v" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b %s = %s\n' "$C_G" "$C_R" "$k" "$v"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s nao mudou (lido: %s)\n' "$C_RD" "$C_R" "$k" "${now:-vazio}"
+    fi
 }
 
 writable() { [ -w "$1" ] 2>/dev/null; }
@@ -527,20 +545,21 @@ m_vm() {
     vm_on() {
         require_root || return 1
         DEEP_TAG=vm; deep_begin
+        VM="${DEEP_VM_DIR:-/proc/sys/vm}"
         # cache de dentries/inodes menos agressivo -> apps reabrem rápido
-        [ -w /proc/sys/vm/vfs_cache_pressure ] && sysctl_write vm.vfs_cache_pressure 50
+        [ -w "$VM/vfs_cache_pressure" ] && sysctl_write vm.vfs_cache_pressure 50
         # escrita em blocos maiores = menos microtravadas
-        [ -w /proc/sys/vm/dirty_ratio ] && sysctl_write vm.dirty_ratio 20
-        [ -w /proc/sys/vm/dirty_background_ratio ] && sysctl_write vm.dirty_background_ratio 5
-        [ -w /proc/sys/vm/dirty_expire_centisecs ] && sysctl_write vm.dirty_expire_centisecs 3000
-        [ -w /proc/sys/vm/dirty_writeback_centisecs ] && sysctl_write vm.dirty_writeback_centisecs 3000
+        [ -w "$VM/dirty_ratio" ] && sysctl_write vm.dirty_ratio 20
+        [ -w "$VM/dirty_background_ratio" ] && sysctl_write vm.dirty_background_ratio 5
+        [ -w "$VM/dirty_expire_centisecs" ] && sysctl_write vm.dirty_expire_centisecs 3000
+        [ -w "$VM/dirty_writeback_centisecs" ] && sysctl_write vm.dirty_writeback_centisecs 3000
         # reserva de memória e resposta do reclaim
-        [ -w /proc/sys/vm/min_free_kbytes ] && sysctl_write vm.min_free_kbytes 16384
-        [ -w /proc/sys/vm/watermark_scale_factor ] && sysctl_write vm.watermark_scale_factor 200
-        [ -w /proc/sys/vm/watermark_boost_factor ] && sysctl_write vm.watermark_boost_factor 0
-        [ -w /proc/sys/vm/compaction_proactiveness ] && sysctl_write vm.compaction_proactiveness 0
-        [ -w /proc/sys/vm/page-cluster ] && sysctl_write vm.page-cluster 0
-        [ -w /proc/sys/vm/stat_interval ] && sysctl_write vm.stat_interval 1
+        [ -w "$VM/min_free_kbytes" ] && sysctl_write vm.min_free_kbytes 16384
+        [ -w "$VM/watermark_scale_factor" ] && sysctl_write vm.watermark_scale_factor 200
+        [ -w "$VM/watermark_boost_factor" ] && sysctl_write vm.watermark_boost_factor 0
+        [ -w "$VM/compaction_proactiveness" ] && sysctl_write vm.compaction_proactiveness 0
+        [ -w "$VM/page-cluster" ] && sysctl_write vm.page-cluster 0
+        [ -w "$VM/stat_interval" ] && sysctl_write vm.stat_interval 1
         say "vm: cache_pressure 50, dirty suave, min_free 16MB, watermark 200"
     }
 
@@ -1111,3 +1130,6 @@ case "$mod" in
     restore) deep_restore ;;
     *)       err "módulo desconhecido: $mod"; exit 1 ;;
 esac
+rc=$?
+otm_v_report "deep:$mod"
+exit $rc

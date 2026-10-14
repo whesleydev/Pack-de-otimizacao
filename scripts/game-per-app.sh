@@ -22,6 +22,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+otm_v_reset
 
 # jogos conhecidos (só para o comando "list")
 JOGOS="com.dts.freefireth:Free Fire
@@ -171,3 +172,7 @@ case "$acao" in
     reset-all) resetar_tudo ;;
     *)         err "ação desconhecida: $acao"; listar; exit 1 ;;
 esac
+
+rc=$?
+otm_v_report game-per-app
+exit $rc

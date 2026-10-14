@@ -7,16 +7,23 @@
 
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
+require_once __DIR__ . '/auth.php';
 
 header('X-Content-Type-Options: nosniff');
 
-// --- autenticação por token ---------------------------------------------------
+// --- autenticação -------------------------------------------------------------
+// Vale o token do servidor (.token, gerado pelo main.sh) OU uma sessão logada
+// no painel. Sem login e sem token, nada executa.
 function otm_token_file(): string { return __DIR__ . '/.token'; }
 
 function otm_check_token(): bool {
+    // 1) sessão de login do painel
+    if (otm_auth_logged_in()) return true;
+
+    // 2) token do servidor (defesa em profundidade / acesso por URL com token)
     $f = otm_token_file();
     $expected = is_file($f) ? trim((string)file_get_contents($f)) : '';
-    if ($expected === '') return true;          // sem token configurado: modo local aberto
+    if ($expected === '') return false;         // sem token: exige login
 
     $sent = '';
     if (!empty($_SERVER['HTTP_X_OTM_TOKEN'])) $sent = trim((string)$_SERVER['HTTP_X_OTM_TOKEN']);
@@ -31,7 +38,7 @@ function otm_check_token(): bool {
 }
 
 if (!otm_check_token()) {
-    otm_json(['ok' => false, 'error' => 'acesso negado (token inválido)'], 403);
+    otm_json(['ok' => false, 'error' => 'acesso negado (entre no painel)'], 403);
     exit;
 }
 
@@ -57,6 +64,7 @@ if ($method === 'POST' && ($_GET['do'] ?? '') === 'run') {
 switch ($action) {
     case 'status':     otm_json(otm_status()); break;
     case 'dns_status': otm_json(otm_dns_status()); break;
+    case 'mode':       otm_json(['ok' => true] + otm_mode()); break;
     case 'apps':       otm_json(['ok' => true, 'apps' => otm_apps()]); break;
     case 'modules':    otm_json(['ok' => true, 'modules' => otm_modules()]); break;
     case 'log':        otm_json(['ok' => true, 'log' => otm_log_read()]); break;

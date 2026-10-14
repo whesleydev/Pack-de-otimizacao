@@ -8,6 +8,30 @@ declare(strict_types=1);
  * executar via api.php, mostrar saída e a explicação de cada ação.
  */
 require __DIR__ . '/lib.php';
+require_once __DIR__ . '/auth.php';
+
+// --- login obrigatório --------------------------------------------------------
+$erro_login = '';
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['user'], $_POST['pass'])) {
+    if (!otm_csrf_ok($_POST['csrf'] ?? null)) {
+        $erro_login = 'Sessão expirada. Tente de novo.';
+    } elseif (otm_auth_login((string)$_POST['user'], (string)$_POST['pass'])) {
+        header('Location: index.php');
+        exit;
+    } else {
+        $erro_login = 'Usuário ou senha incorretos.';
+    }
+}
+if (isset($_GET['sair'])) {
+    otm_auth_logout();
+    header('Location: index.php');
+    exit;
+}
+if (!otm_auth_logged_in()) {
+    if ($erro_login !== '') $_GET['erro'] = $erro_login;
+    require __DIR__ . '/login.php';
+    exit;
+}
 
 $actions = array_values(otm_actions());
 
@@ -29,6 +53,7 @@ $meta = [
     'Extremos (root)'   => ['t' => 'Extremos (root)',   's' => 'Knobs avançados que quase ninguém conhece: VM, escalonador, GPU, núcleos, input, idle, zRAM e mais.'],
     'Avançado (sem root)'=> ['t' => 'Avançado (sem root)','s' => 'Ajustes pouco conhecidos que não pedem root: standby, rede móvel, notificações e janelas.'],
     'Diagnóstico'       => ['t' => 'Diagnóstico',       's' => 'Detecta o aparelho, mede e mostra o estado atual. Só leitura.'],
+    'Configs'           => ['t' => 'Configs',           's' => 'Como o pack conversa com o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático. Sem root por padrão.'],
     'Módulos'           => ['t' => 'Módulos',           's' => 'Complementos do pack (tweaks, touch, GPU, bateria).'],
 ];
 
@@ -107,7 +132,7 @@ button{font:inherit;color:inherit}
 .iconbtn{
   border:1px solid var(--line);background:var(--glass-2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
   border-radius:10px;padding:8px 11px;cursor:pointer;font-size:13px;font-weight:600;
-  display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap
+  display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;text-decoration:none
 }
 .iconbtn:hover{border-color:var(--line-strong)}
 .iconbtn:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
@@ -126,6 +151,18 @@ button{font:inherit;color:inherit}
   background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);font-size:12px;font-weight:600}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
 
+/* ---- animações ------------------------------------------------------------- */
+@keyframes otmRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes otmFade{from{opacity:0}to{opacity:1}}
+@keyframes otmPop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes otmSheen{0%{background-position:-160% 0}60%,100%{background-position:260% 0}}
+@keyframes otmPulse{0%,100%{box-shadow:0 0 0 0 var(--ring)}50%{box-shadow:0 0 0 6px transparent}}
+@keyframes otmSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  html{scroll-behavior:auto}
+}
+
 /* ---- layout --------------------------------------------------------------- */
 .layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);
   gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px)}
@@ -138,10 +175,14 @@ button{font:inherit;color:inherit}
 .side h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:2px 0 10px 8px}
 .nav{display:flex;flex-direction:column;gap:2px}
 .nav a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r-sm);
-  color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:600;border:1px solid transparent}
-.nav a .c{width:6px;height:6px;border-radius:50%;background:var(--line-strong);flex:none}
-.nav a:hover{background:var(--glass-2)}
+  color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:600;border:1px solid transparent;
+  position:relative;transition:background .15s ease, border-color .15s ease, transform .12s ease}
+.nav a .c{width:6px;height:6px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .2s}
+.nav a:hover{background:var(--glass-2);transform:translateX(2px)}
+.nav a:active{transform:translateX(0) scale(.99)}
 .nav a[aria-current="true"]{background:var(--glass-2);border-color:var(--line-strong)}
+.nav a[aria-current="true"]::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;
+  border-radius:3px;background:var(--accent);animation:otmPop .25s both}
 .nav a[aria-current="true"] .c{background:var(--accent)}
 .nav .count{margin-left:auto;font-size:11px;color:var(--muted);font-weight:700}
 
@@ -158,8 +199,17 @@ section[hidden]{display:none}
 .card{
   background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
   border:1px solid var(--line); border-radius:var(--r); padding:15px;
-  display:flex; flex-direction:column; gap:9px; box-shadow:var(--shadow)
+  display:flex; flex-direction:column; gap:9px; box-shadow:var(--shadow);
+  animation:otmRise .42s cubic-bezier(.2,.7,.3,1) both;
+  animation-delay:calc(var(--i,0)*45ms);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease
 }
+@media (hover:hover){
+  .card:hover{transform:translateY(-3px);border-color:var(--line-strong);
+    box-shadow:0 2px 4px rgba(25,22,18,.08),0 22px 46px -22px rgba(25,22,18,.45)}
+}
+.card:active{transform:translateY(-1px) scale(.995)}
+section[data-g] .head{animation:otmFade .3s both}
 .card .row{display:flex;align-items:flex-start;gap:8px}
 .card h3{margin:0;font-size:14.5px;font-weight:700;flex:1;letter-spacing:-.01em}
 .card p{margin:0;color:var(--muted);font-size:12.8px}
@@ -179,23 +229,34 @@ section[hidden]{display:none}
 .field input:focus-visible{outline:2px solid var(--ring);outline-offset:1px;border-color:var(--accent)}
 .go{margin-top:auto;display:flex;gap:8px}
 .btn{border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);
-  padding:10px 15px;font-size:13.5px;font-weight:700;cursor:pointer;transition:.15s}
+  padding:10px 15px;font-size:13.5px;font-weight:700;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .12s ease,border-color .15s ease,filter .15s ease,box-shadow .15s ease}
 .btn:hover{border-color:var(--accent)}
+.btn:active{transform:scale(.97)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.primary:hover{filter:brightness(1.06)}
+.btn.primary::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+  background-size:220% 100%;animation:otmSheen 4.6s ease-in-out infinite}
 .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
-.btn:disabled{opacity:.5;cursor:progress}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.busy::before{content:"";display:inline-block;width:12px;height:12px;margin-right:7px;vertical-align:-2px;
+  border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:otmSpin .7s linear infinite}
+.help-btn{transition:transform .15s ease,border-color .15s,color .15s}
+.help-btn:active{transform:scale(.9)}
 
 /* ---- gaveta lateral (celular) -------------------------------------------- */
-.scrim{position:fixed;inset:0;z-index:54;background:rgba(12,10,8,.5);opacity:0;visibility:hidden;transition:.2s}
+.scrim{position:fixed;inset:0;z-index:54;background:rgba(12,10,8,.5);backdrop-filter:blur(3px);
+  opacity:0;visibility:hidden;transition:opacity .24s ease, visibility .24s}
 body.drawer .scrim{opacity:1;visibility:visible}
 .side-close{display:none}
 
 /* ---- console -------------------------------------------------------------- */
-.console{position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateY(102%);transition:transform .22s ease;
+.console{position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.3,1);
   background:rgba(12,11,9,.92);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
   color:#ece6da;border-top:1px solid rgba(255,255,255,.12);max-height:56vh;display:flex;flex-direction:column;
-  box-shadow:0 -14px 44px -22px rgba(0,0,0,.85)}
+  box-shadow:0 -14px 44px -22px rgba(0,0,0,.85);
+  padding-bottom:env(safe-area-inset-bottom,0)}
 .console.open{transform:none}
 .console .bar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
 .console .bar b{font-size:13px}
@@ -204,11 +265,11 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
 /* ---- modal ---------------------------------------------------------------- */
 .mask{position:fixed;inset:0;z-index:70;background:rgba(12,10,8,.55);backdrop-filter:blur(4px);
-  display:none;place-items:center;padding:16px}
+  display:none;place-items:center;padding:16px;animation:otmFade .18s both}
 .mask.open{display:grid}
 .modal{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
   border:1px solid var(--line-strong);border-radius:20px;max-width:min(92vw,460px);width:100%;
-  padding:22px;box-shadow:var(--shadow);max-height:86dvh;overflow:auto}
+  padding:22px;box-shadow:var(--shadow);max-height:86dvh;overflow:auto;animation:otmPop .26s cubic-bezier(.2,.8,.3,1) both}
 .modal h3{margin:0 0 6px;font-size:18px;letter-spacing:-.02em}
 .modal p{margin:0 0 14px;color:var(--muted);font-size:13.5px}
 .modal .long{color:var(--ink);font-size:13.5px;line-height:1.6;margin:0 0 16px;
@@ -226,27 +287,40 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
 /* ---- responsivo ----------------------------------------------------------- */
 @media (max-width:960px){
-  .layout{grid-template-columns:1fr;gap:14px}
-  .side{position:fixed;top:0;left:0;bottom:0;width:min(86vw,320px);z-index:56;padding:14px}
-  .side .panel{max-height:100%;height:100%;border-radius:0 var(--r) var(--r) 0;padding-top:56px}
-  .side{transform:translateX(-104%);transition:transform .22s ease}
+  .layout{grid-template-columns:1fr;gap:14px;padding-left:clamp(12px,4vw,20px);padding-right:clamp(12px,4vw,20px)}
+  .side{position:fixed;top:0;left:0;bottom:0;width:min(86vw,320px);z-index:56;padding:14px;
+    transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.8,.3,1);
+    padding-bottom:calc(14px + env(safe-area-inset-bottom,0))}
+  .side .panel{max-height:100%;height:100%;border-radius:0 var(--r) var(--r) 0;padding-top:calc(56px + env(safe-area-inset-top,0));
+    overflow:auto}
   body.drawer .side{transform:none}
-  .side-close{display:inline-flex;position:absolute;top:12px;right:12px}
+  .side-close{display:inline-flex;position:absolute;top:calc(12px + env(safe-area-inset-top,0));right:12px}
   .burger{display:inline-flex}
 }
 @media (max-width:560px){
+  :root{--top:58px}
   .name small{display:none}
   .hide-sm{display:none}
   .grid{grid-template-columns:1fr}
   .fields{grid-template-columns:1fr}
   .banner .in{padding:16px 14px}
   .head h2{font-size:19px}
+  .card{padding:14px}
+  .btn{width:100%;padding:12px 15px}   /* alvo de toque maior no celular */
+  .go{gap:10px}
+  .console{max-height:70dvh}
+  .toast{bottom:calc(16px + env(safe-area-inset-bottom,0))}
 }
 @media (max-width:380px){
   .name{font-size:14px}
   .mark{width:32px;height:32px;font-size:12px}
+  .card{padding:12px}
 }
-@media (prefers-reduced-motion: reduce){ *{transition:none!important} html{scroll-behavior:auto} }
+/* tela baixa em paisagem: gaveta rolável e console menor */
+@media (max-height:520px){
+  .side .panel{padding-top:48px}
+  .console{max-height:80dvh}
+}
 </style>
 </head>
 <body>
@@ -260,6 +334,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <button class="iconbtn hide-sm" id="btnStatus">Status</button>
   <button class="iconbtn hide-sm" id="btnLog">Histórico</button>
   <button class="iconbtn" id="btnConsole">Console</button>
+  <a class="iconbtn hide-sm" href="index.php?sair=1" id="btnSair" title="Sair do painel">Sair</a>
 </header>
 
 <div class="banner">
@@ -303,9 +378,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
           Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
         </div>
         <div class="grid">
-          <?php foreach ($items as $a):
+          <?php foreach ($items as $ci => $a):
             $risk = $a['risk'] ?? 'safe'; ?>
-            <article class="card" data-id="<?= htmlspecialchars($a['id'], ENT_QUOTES) ?>">
+            <article class="card" data-id="<?= htmlspecialchars($a['id'], ENT_QUOTES) ?>"
+                     style="--i:<?= (int)($ci % 12) ?>">
               <div class="row">
                 <h3><?= htmlspecialchars($a['label']) ?></h3>
                 <span class="chip <?= htmlspecialchars($risk, ENT_QUOTES) ?>"><?= htmlspecialchars($riskLabel[$risk] ?? $risk) ?></span>
@@ -448,7 +524,8 @@ function run(card, confirmed){
 }
 async function doRun(card, params, confirmed){
   const a = ACTIONS[card.dataset.id];
-  setBusy(true);
+  const btn = card.querySelector("[data-run]");
+  setBusy(true, btn);
   openConsole(a.label, "executando…");
   try{
     const r = await fetch("api.php?do=run", {
@@ -457,13 +534,21 @@ async function doRun(card, params, confirmed){
       body: JSON.stringify({id:a.id, params, confirm:!!confirmed})
     });
     const j = await r.json();
-    openConsole(a.label, (j.ok ? "✔ " : "✘ ") + "[" + (j.code ?? "?") + "]\n\n" + (j.out || j.error || ""));
-    toast(j.ok ? "Feito: " + a.label : "Falhou: " + a.label, j.ok ? "ok" : "bad");
+    let head = (j.ok ? "✔ " : "✘ ") + "[" + (j.code ?? "?") + "]";
+    if (j.applied && !j.real) head += "  — nenhuma mudança real no sistema";
+    else if (j.changed > 0) head += "  — " + j.changed + " mudança(s) confirmada(s)";
+    openConsole(a.label, head + "\n\n" + (j.out || j.error || ""));
+    if (j.ok) toast("Feito: " + a.label, "ok");
+    else if (j.applied && !j.real) toast("Nada mudou de verdade — veja Configs", "bad");
+    else toast("Falhou: " + a.label, "bad");
   }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); }
-  setBusy(false);
+  setBusy(false, btn);
 }
 document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.closest(".card")));
-const setBusy = b => document.querySelectorAll("[data-run]").forEach(x => x.disabled = b);
+const setBusy = (b, btn) => {
+  document.querySelectorAll("[data-run]").forEach(x => x.disabled = b);
+  if (btn) btn.classList.toggle("busy", b);
+};
 
 function openConsole(t, out){ $("#consoleTitle").textContent = t; $("#consoleOut").textContent = out; $("#console").classList.add("open"); }
 function toast(m, k){ const t = $("#toast"); t.textContent = m; t.className = "toast show " + (k || "");
@@ -486,10 +571,20 @@ $("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
 window.addEventListener("hashchange", fromHash);
 addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); document.body.classList.remove("drawer"); } });
 
-/* apps instalados (autocomplete) + estado do modo */
+/* apps instalados (autocomplete) + estado do modo de acesso */
 (async () => {
-  try{ const i = await apiGet("info"); $("#modeTxt").textContent = (i.have_adb ? "ADB ok" : "ADB ausente") + " · PHP " + i.php; }
-  catch(e){ $("#modeTxt").textContent = "offline"; }
+  try{
+    const m = await apiGet("mode");
+    const names = {rish:"Shizuku", adb:"ADB Wi-Fi", su:"root", local:"local (sem acesso)"};
+    const txt = names[m.mode] || m.mode || "auto";
+    $("#modeTxt").textContent = txt;
+    const pill = $("#modePill");
+    if (pill) pill.title = "Acesso: " + txt + (m.priv ? " — " + m.priv : "") + ". Configure em Configs.";
+  }catch(e){ $("#modeTxt").textContent = "offline"; }
+  try{ const i = await apiGet("info");
+    if (!document.getElementById("modeTxt").textContent || document.getElementById("modeTxt").textContent === "verificando…")
+      $("#modeTxt").textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
+  }catch(e){}
   try{ const j = await apiGet("apps");
     const dl = document.createElement("datalist"); dl.id = "applist";
     (j.apps || []).forEach(p => { const o = document.createElement("option"); o.value = p; dl.appendChild(o); });

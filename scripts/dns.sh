@@ -22,6 +22,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+otm_v_reset
 
 # --- catálogo de perfis -------------------------------------------------------
 # imprime: nome<TAB>host<TAB>descrição
@@ -147,3 +148,7 @@ case "${1:-status}" in
         if [ -n "$(dns_host "$1")" ]; then dns_apply "$1"
         else err "perfil desconhecido: $1"; printf '  veja: sh scripts/dns.sh list\n'; exit 1; fi ;;
 esac
+
+rc=$?
+otm_v_report dns
+exit $rc

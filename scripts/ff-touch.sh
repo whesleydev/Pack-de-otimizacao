@@ -16,6 +16,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+otm_v_reset
 
 # aplica um conjunto de parâmetros de toque
 _apply() {
@@ -87,3 +88,7 @@ case "$1" in
         _apply "$1" "$2" "$3" "${4:-8}" "custom" ;;
     *) _perfis "$1" ;;
 esac
+
+rc=$?
+otm_v_report ff-touch
+exit $rc

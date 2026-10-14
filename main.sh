@@ -56,7 +56,7 @@ web_url() {
     ip="$(ip route get 1 2>/dev/null | awk '{print $7; exit}')"
     [ -z "$ip" ] && ip="$(ifconfig 2>/dev/null | awk '/inet /{print $2; exit}')"
     [ -z "$ip" ] && ip="127.0.0.1"
-    echo "http://$ip:$PORT/index.php?token=$(web_token)"
+    echo "http://$ip:$PORT/index.php"
 }
 
 web_start() {
@@ -76,6 +76,7 @@ web_start() {
     if web_pid >/dev/null; then
         printf '\n  %b✔ painel no ar%b\n' "$C_G" "$C_R"
         printf '     URL: %s\n' "$(web_url)"
+        printf '     login padrão: %s00deUdia%s / %s00deUdia%s (troque com "sh main.sh web senha")\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '     (mesma rede Wi-Fi; no PC abra essa URL no navegador)\n\n'
     else
         err "não consegui subir — veja $STATE/server.log"
@@ -203,6 +204,29 @@ menu() {
     done
 }
 
+web_senha() {
+    # Troca o usuário/senha do painel. Uso: sh main.sh web senha [usuario]
+    if ! have php; then
+        err "PHP não encontrado (necessário para gerar o hash da senha)."
+        return 1
+    fi
+    u="${2:-00deUdia}"
+    printf '  novo usuário [%s]: ' "$u"; read -r ur; [ -n "$ur" ] && u="$ur"
+    printf '  nova senha: '; read -r p1
+    printf '  repita a senha: '; read -r p2
+    [ -z "$p1" ] && { err "senha vazia"; return 1; }
+    [ "$p1" != "$p2" ] && { err "as senhas não batem"; return 1; }
+    php -r 'require $argv[1]."/web/auth.php"; otm_auth_set($argv[2],$argv[3]);' "$DIR" "$u" "$p1" \
+        && printf '  %b✔%b usuário/senha atualizados\n' "$C_G" "$C_R" \
+        || { err "não consegui salvar"; return 1; }
+}
+
+web_logout() {
+    # Encerra a sessão atual do painel (apaga o cookie/estado local).
+    rm -f "$STATE/sess" 2>/dev/null
+    printf '  %b✔%b sessão encerrada (reabra a URL do painel)\n' "$C_G" "$C_R"
+}
+
 # --- entrada ------------------------------------------------------------------
 case "$1" in
     ""|menu) menu ;;
@@ -213,7 +237,9 @@ case "$1" in
             restart) web_stop; web_start ;;
             status) web_status ;;
             url)    web_url ;;
-            *) printf '  Uso: sh main.sh web start|stop|restart|status|url\n' ;;
+            senha|password) shift 2; web_senha "$@" ;;
+            logout) web_logout ;;
+            *) printf '  Uso: sh main.sh web start|stop|restart|status|url|senha|logout\n' ;;
         esac ;;
     baixar|full|recursos) baixar_full "$2" ;;
     status) status_geral ;;
@@ -224,6 +250,8 @@ case "$1" in
         printf '   web stop        para o servidor\n'
         printf '   web status      mostra se está no ar + URL\n'
         printf '   web url         só imprime a URL com token\n'
+        printf '   web senha       troca o usuário/senha do painel\n'
+        printf '   web logout      encerra a sessão local do painel\n'
         printf '   baixar [dir]    baixa os recursos full do pack\n'
         printf '   status          status geral (PHP/ADB/modo/web)\n' ;;
     *) err "ação desconhecida: $1"; printf '  veja: sh main.sh --help\n'; exit 1 ;;

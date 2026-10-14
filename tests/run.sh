@@ -21,7 +21,7 @@ setup_stubs() {
 #!/bin/sh
 case "$1" in
   get)    cat "$TMP_STORE/$2.$3" 2>/dev/null ;;
-  put)    printf '%s' "$4" > "$TMP_STORE/$2.$3" ;;
+  put)    t="$2"; k="$3"; shift 3; printf '%s' "$*" > "$TMP_STORE/$t.$k" ;;
   delete) rm -f "$TMP_STORE/$2.$3" ;;
 esac
 exit 0
@@ -57,9 +57,36 @@ if [ "$1" = "list" ]; then
 fi
 exit 0
 EOF
-    printf '#!/bin/sh\ncase "$1" in -n) echo cubic;; esac\nexit 0\n' > "$TMP/bin/sysctl"
-    printf '#!/bin/sh\necho ""\n' > "$TMP/bin/getprop"
-    printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/setprop"
+    # getprop/setprop com armazenamento (verificação real lê de volta)
+    cat > "$TMP/bin/getprop" <<'EOF'
+#!/bin/sh
+case "$1" in
+  ro.product.model) echo "TestPhone"; exit 0 ;;
+  ro.build.version.sdk) echo "34"; exit 0 ;;
+  "") exit 0 ;;
+esac
+cat "$TMP_STORE/prop.$1" 2>/dev/null
+exit 0
+EOF
+    cat > "$TMP/bin/setprop" <<'EOF'
+#!/bin/sh
+printf '%s' "$2" > "$TMP_STORE/prop.$1"
+exit 0
+EOF
+    # sysctl com armazenamento (sysctl_write lê de volta). SYSCTL_ROOT mapeia as
+    # chaves 'vm.*' para arquivos, permitindo testar a verificação de verdade.
+    cat > "$TMP/bin/sysctl" <<'EOF'
+#!/bin/sh
+root="${SYSCTL_ROOT:-$TMP_STORE}"
+key="${2#vm.}"
+case "$1" in
+  -n) if [ -f "$root/$key" ]; then cat "$root/$key"; else cat "$TMP_STORE/sys.$2" 2>/dev/null || echo cubic; fi ;;
+  -w) k="${2%%=*}"; v="${2#*=}"
+      if [ -f "$root/${k#vm.}" ]; then printf '%s' "$v" > "$root/${k#vm.}"
+      else printf '%s' "$v" > "$TMP_STORE/sys.$k"; fi ;;
+esac
+exit 0
+EOF
     # su falso: finge ser root e executa o comando como shell local
     cat > "$TMP/bin/su" <<'EOF'
 #!/bin/sh
@@ -164,6 +191,123 @@ t_adv_noroot() {
     OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
     rm -rf "$HOME/.packotm"
 }
+
+# deep_off já definido acima (lê o arquivo de reversão do deep-tune)
+
+t_realverify() {
+    printf '\n  # verificação REAL: settings confirma, e falha vira X (não ok)\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    # caso 1: o settings do stub funciona -> muda de verdade e reporta changed>=1
+    out=$(OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" perf 2>&1)
+    printf '%s\n' "$out" > "$TMP/vout"
+    assert_contains "$TMP/vout" '#OTM-RESULT' "adb-tweaks emite #OTM-RESULT"
+    res=$(printf '%s\n' "$out" | grep '#OTM-RESULT')
+    ch=$(printf '%s' "$res" | sed -n 's/.*changed=\([0-9]*\).*/\1/p')
+    [ "${ch:-0}" -ge 1 ] && ok "perf confirmou mudança real (changed=$ch)" \
+        || bad "perf não confirmou mudança (changed=$ch)"
+    assert_contains "$TMP/vout" "OK" "saída mostra OK para valores aplicados"
+    # caso 2: settings quebrado (não grava) -> verificação marca X e failed>=1
+    mkdir -p "$TMP/bin_bad"
+    printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_bad/settings"
+    chmod +x "$TMP/bin_bad/settings"
+    out2=$(PATH="$TMP/bin_bad:$PATH" OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" perf 2>&1)
+    printf '%s\n' "$out2" > "$TMP/vout2"
+    res2=$(printf '%s\n' "$out2" | grep '#OTM-RESULT')
+    fl=$(printf '%s' "$res2" | sed -n 's/.*failed=\([0-9]*\).*/\1/p')
+    okf=$(printf '%s' "$res2" | sed -n 's/.*ok=\([0-9]*\).*/\1/p')
+    [ "${fl:-0}" -ge 1 ] && ok "settings quebrado vira failed=$fl" || bad "não detectou falha (failed=$fl)"
+    assert_eq "0" "${okf:-x}" "veredito ok=0 quando nada mudou de verdade"
+    assert_contains "$TMP/vout2" "nao mudou" "saída avisa 'nao mudou' quando a leitura não bate"
+    rm -rf "$TMP/bin_bad" "$HOME/.packotm"
+}
+
+t_realverify_deep() {
+    printf '\n  # verificação REAL: deep-tune vm (sysctl) confirma e reporta\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$TMP/vmstore"
+    vmdir="$TMP/vmdir"; rm -rf "$vmdir"; mkdir -p "$vmdir"
+    printf '100' > "$vmdir/vfs_cache_pressure"
+    printf '10'  > "$vmdir/dirty_ratio"
+    printf '5'   > "$vmdir/dirty_background_ratio"
+    printf '3000' > "$vmdir/dirty_expire_centisecs"
+    printf '500'  > "$vmdir/dirty_writeback_centisecs"
+    printf '8192' > "$vmdir/min_free_kbytes"
+    printf '10'   > "$vmdir/watermark_scale_factor"
+    printf '1'    > "$vmdir/watermark_boost_factor"
+    printf '50'   > "$vmdir/compaction_proactiveness"
+    printf '3'    > "$vmdir/page-cluster"
+    printf '5'    > "$vmdir/stat_interval"
+    out=$(DEEP_VM_DIR="$vmdir" SYSCTL_ROOT="$vmdir" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" vm on 2>&1)
+    assert_eq "50" "$(cat "$vmdir/vfs_cache_pressure")" "vm gravou vfs_cache_pressure=50"
+    res=$(printf '%s\n' "$out" | grep '#OTM-RESULT')
+    ch=$(printf '%s' "$res" | sed -n 's/.*changed=\([0-9]*\).*/\1/p')
+    [ "${ch:-0}" -ge 1 ] && ok "vm confirmou mudança real (changed=$ch)" \
+        || bad "vm não confirmou mudança (changed=$ch)"
+    # reversão volta o valor original
+    DEEP_VM_DIR="$vmdir" SYSCTL_ROOT="$vmdir" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" vm off >/dev/null 2>&1
+    assert_eq "100" "$(cat "$vmdir/vfs_cache_pressure")" "vm off restaura o valor original"
+    rm -rf "$HOME/.packotm" "$vmdir"
+}
+
+t_config() {
+    printf '\n  # config.sh: mostra, salva e testa a conexão (sem root)\n'
+    rm -rf "$HOME/.packotm"
+    out=$(OTM_NO_COLOR=1 sh "$ROOT/scripts/config.sh" show 2>&1)
+    printf '%s\n' "$out" > "$TMP/cfgout"
+    assert_contains "$TMP/cfgout" 'Configuração de acesso' "config show explica a conexão"
+    assert_contains "$TMP/cfgout" 'modo' "config show mostra o modo"
+    sh "$ROOT/scripts/config.sh" set adb 192.168.0.10:5555 >/dev/null 2>&1
+    assert_contains "$HOME/.packotm/config" 'OTM_ADB_SERIAL=192.168.0.10:5555' "config salva o endereço ADB Wi-Fi"
+    sh "$ROOT/scripts/config.sh" set rish /data/local/tmp/rish >/dev/null 2>&1
+    assert_contains "$HOME/.packotm/config" 'OTM_MODE=rish' "config salva o modo rish"
+    # test roda e reporta (mesmo sem conexão) — não pode travar
+    tout=$(OTM_NO_COLOR=1 timeout 20 sh "$ROOT/scripts/config.sh" test 2>&1)
+    printf '%s\n' "$tout" > "$TMP/cfgtest"
+    assert_contains "$TMP/cfgtest" '#OTM-RESULT' "config test reporta resultado"
+    sh "$ROOT/scripts/config.sh" reset >/dev/null 2>&1
+    [ ! -f "$HOME/.packotm/config" ] && ok "config reset apaga o arquivo" || bad "reset não apagou"
+    rm -rf "$HOME/.packotm"
+}
+
+t_auth() {
+    printf '\n  # login do painel (00deUdia)\n'
+    if command -v php >/dev/null 2>&1; then
+        rm -f "$HOME/.packotm/web/auth.json"
+        php -r 'require "'"$ROOT"'/web/auth.php";
+                 echo otm_auth_login("00deUdia","00deUdia") ? "OK":"NAO";' > "$TMP/auth1" 2>&1
+        assert_contains "$TMP/auth1" "OK" "login padrao 00deUdia/00deUdia funciona"
+        php -r 'require "'"$ROOT"'/web/auth.php";
+                 echo otm_auth_login("00deUdia","errada") ? "ACEITOU":"RECUSOU";' > "$TMP/auth2" 2>&1
+        assert_contains "$TMP/auth2" "RECUSOU" "senha errada e recusada"
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("chefe","segredo123");
+                 echo otm_auth_login("chefe","segredo123") ? "OK":"NAO";' > "$TMP/auth3" 2>&1
+        assert_contains "$TMP/auth3" "OK" "troca de usuario/senha funciona"
+        if grep -q "segredo123" "$HOME/.packotm/web/auth.json" 2>/dev/null; then
+            bad "senha gravada em texto puro"
+        else
+            ok "senha guardada com hash (nao em texto puro)"
+        fi
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("00deUdia","00deUdia");' >/dev/null 2>&1
+    else
+        printf '  [skip] php ausente: pulei testes de login\n'
+    fi
+}
+
+t_noroot_only() {
+    printf '\n  # tudo funciona sem root: ações do painel não exigem root\n'
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             $r=otm_run("config.set",["mode"=>"rish"],false);
+             echo ($r["ok"]||isset($r["need_confirm"]))?"DISPONIVEL":"BLOQUEADO";' \
+        > "$TMP/noroot" 2>&1
+    assert_contains "$TMP/noroot" "DISPONIVEL" "ação de config existe no painel"
+    php -r 'require "'"$ROOT"'/web/lib.php"; otm_run("config.reset",[],false);' >/dev/null 2>&1
+    # confere que a maioria das ações não pede root
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions(); $root=0;$tot=0;
+             foreach ($a as $x){ $tot++; if (($x["risk"]??"")==="root") $root++; }
+             echo "root=$root total=$tot\n";' > "$TMP/rootcnt" 2>&1
+    assert_contains "$TMP/rootcnt" "total=" "registro de ações contável"
+    rm -rf "$HOME/.packotm"
+}
+
 
 # descobre onde o plugin guardou o estado (STATE pode cair no fallback $DIR/state)
 plugin_state() {
@@ -413,7 +557,15 @@ t_web() {
                  echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_conf" 2>&1
         assert_contains "$TMP/web_conf" "PEDE" "debloat exige confirmação"
         # o painel é renderizado no PHP (marca, menu e cards no HTML servido)
+        # exige login: primeiro a tela de entrada, depois o painel autenticado.
         php -r '$_SERVER["REQUEST_METHOD"]="GET"; require "'"$ROOT"'/web/index.php";' \
+            > "$TMP/web_login" 2>&1
+        assert_contains "$TMP/web_login" "Entrar" "sem sessão, index.php mostra a tela de login"
+        grep -q 'name="csrf"' "$TMP/web_login" && ok "login tem token CSRF" || bad "login sem CSRF"
+        # login correto libera o painel
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_start();
+                 $_SESSION["otm_user"]="00deUdia"; $_SERVER["REQUEST_METHOD"]="GET";
+                 require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_html" 2>&1
         assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
@@ -444,6 +596,29 @@ t_web() {
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
         [ "$n_cards" -ge 110 ] && ok "index.php renderiza os cards novos ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
+        # --- Configs, animações e verificação real ---
+        assert_contains "$TMP/web_html" "Configs" "index.php tem a categoria Configs"
+        grep -q '@keyframes' "$TMP/web_html" && ok "index.php tem animações (@keyframes)" || bad "sem animações"
+        grep -q 'prefers-reduced-motion' "$TMP/web_html" && ok "respeita prefers-reduced-motion" || bad "sem prefers-reduced-motion"
+        php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+                 echo isset($a["config.set"])?"set ":"", isset($a["config.test"])?"test\n":"";' \
+            > "$TMP/web_cfg" 2>&1
+        assert_contains "$TMP/web_cfg" "set test" "registro tem ações de Configs"
+        # parse do resultado da verificação real
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $v=otm_parse_result("#OTM-RESULT tag=x applies=3 changed=2 failed=1 ok=1");
+                 echo ((int)$v["applies"]===3 && (int)$v["changed"]===2 && (int)$v["failed"]===1) ? "PARSEOK":"PARSEBAD";' \
+            > "$TMP/web_parse" 2>&1
+        assert_contains "$TMP/web_parse" "PARSEOK" "otm_parse_result lê a linha #OTM-RESULT"
+        # sem acesso, aplicar algo NÃO pode dizer que deu certo
+        mkdir -p "$TMP/bin_noop"
+        printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_noop/settings"
+        chmod +x "$TMP/bin_noop/settings"
+        PATH="$TMP/bin_noop:$PATH" OTM_MODE=local php -r 'require "'"$ROOT"'/web/lib.php";
+                 $r=otm_run("perf",[],false);
+                 echo (!empty($r["applied"]) && empty($r["real"])) ? "FALHA_REAL":"MASCARADO";' \
+            > "$TMP/web_real" 2>&1
+        assert_contains "$TMP/web_real" "FALHA_REAL" "sem acesso real, ação aplicadora vira erro (não mascara)"
     else
         printf '  [skip] php ausente: pulei testes do painel web\n'
     fi
@@ -479,6 +654,11 @@ t_angle_tag
 t_per_module
 t_extreme
 t_adv_noroot
+t_realverify
+t_realverify_deep
+t_config
+    t_auth
+    t_noroot_only
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist

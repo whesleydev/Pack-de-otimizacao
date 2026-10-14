@@ -22,6 +22,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+otm_v_reset
 
 ST2="${HOME:-/data/data/com.termux/files/home}/.packotm/debloat"
 mkdir -p "$ST2" 2>/dev/null
@@ -173,3 +174,7 @@ case "${1:-status}" in
     *) printf '  uso: debloat.sh on [leve|medio|pesado] | off | status | list\n'
        printf '       debloat.sh disable|enable|uninstall|restore|restrict|unrestrict <pacote>\n' ;;
 esac
+
+rc=$?
+otm_v_report debloat
+exit $rc

@@ -68,7 +68,7 @@ function otm_allowed_scripts(): array {
     return [
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
-        'bench.sh', 'device-profile.sh',
+        'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
 
@@ -530,6 +530,28 @@ function otm_actions(): array {
           'help' => 'Manda o Free Fire abrir. Use depois de aplicar touch/modo de jogo para já entrar otimizado.',
           'argv' => ['adb-tweaks.sh', 'ff_open']]);
 
+    // ----- Configs: como o pack fala com o Android (sem root) -----
+    $add(['id' => 'config.set', 'group' => 'Configs', 'label' => 'Definir conexão do pack',
+          'desc' => 'Escolha como o pack acessa o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático.',
+          'help' => 'Define por onde o pack manda os comandos. Sem root, use Shizuku (rish) no celular ou a depuração por Wi-Fi (ADB, informe o IP:porta do aparelho). "automático" deixa o pack detectar sozinho. Depois clique em "Testar conexão" para confirmar.',
+          'argv' => ['config.sh', 'set', '{mode}', '{target}'],
+          'params' => [
+              ['name' => 'mode', 'type' => 'name', 'label' => 'Modo', 'default' => 'auto'],
+              ['name' => 'target', 'type' => 'text', 'label' => 'Endereço (só p/ ADB: host:porta)', 'optional' => true],
+          ]]);
+    $add(['id' => 'config.test', 'group' => 'Configs', 'label' => 'Testar conexão',
+          'desc' => 'Confere de verdade se o pack consegue mandar comandos ao aparelho.',
+          'help' => 'Faz um teste real: lê o modelo do aparelho, a versão do Android e tenta ler/gravar um ajuste. Se falhar, diz o que falta (Shizuku ativo ou depuração por Wi-Fi ligada).',
+          'argv' => ['config.sh', 'test']]);
+    $add(['id' => 'config.show', 'group' => 'Configs', 'label' => 'Ver configuração',
+          'desc' => 'Mostra o modo atual e o que foi detectado.',
+          'help' => 'Mostra o arquivo de configuração, o modo salvo e o que o pack detectou agora (Shizuku/ADB/root/local). Só leitura.',
+          'argv' => ['config.sh', 'show']]);
+    $add(['id' => 'config.reset', 'group' => 'Configs', 'label' => 'Voltar ao automático',
+          'desc' => 'Apaga a configuração e volta à detecção automática.',
+          'help' => 'Remove o arquivo de configuração. O pack volta a detectar sozinho o melhor caminho (Shizuku, ADB, root ou local).',
+          'argv' => ['config.sh', 'reset']]);
+
     return $A;
 }
 
@@ -551,7 +573,10 @@ function otm_run(string $id, array $params, bool $confirmed): array {
     foreach ($a['params'] as $p) {
         $name = $p['name'];
         $val = trim((string)($params[$name] ?? ($p['default'] ?? '')));
-        if ($val === '') return ['ok' => false, 'out' => "faltou o parâmetro '$name'"];
+        if ($val === '') {
+            if (!empty($p['optional'])) { $resolved['{' . $name . '}'] = ''; continue; }
+            return ['ok' => false, 'out' => "faltou o parâmetro '$name'"];
+        }
         switch ($p['type']) {
             case 'pkg':
                 if (!otm_valid_pkg($val)) return ['ok' => false, 'out' => "pacote inválido: $val"];
@@ -584,15 +609,53 @@ function otm_run(string $id, array $params, bool $confirmed): array {
     // monta o argv trocando os placeholders
     $argv = [];
     foreach ($a['argv'] as $piece) {
-        $argv[] = $resolved[$piece] ?? $piece;
+        if (isset($resolved[$piece])) {
+            if ($resolved[$piece] === '') continue;   // parâmetro opcional vazio: não passa
+            $argv[] = $resolved[$piece];
+        } else {
+            $argv[] = $piece;
+        }
     }
     $script = $argv[0];
     $args = array_slice($argv, 1);
 
     $t = (int)($a['timeout'] ?? 60);
     $r = otm_script($script, $args, $t);
-    otm_log($id, $a['label'], $argv, $r);
-    return $r + ['id' => $id, 'label' => $a['label']];
+
+    // verificação REAL: se o script informou quantas mudanças confirmou e nenhuma
+    // pegou, isso é erro (não dá para dizer "feito" sem alterar o sistema).
+    $v = otm_parse_result($r['out'] ?? '');
+    $applies = (int)($v['applies'] ?? 0);
+    $changed = (int)($v['changed'] ?? 0);
+    $failed  = (int)($v['failed'] ?? 0);
+    $applied = $applies > 0;                          // a ação tenta mexer no sistema
+    $real    = !$applied || $changed > 0;             // ... e confirmou alguma mudança
+
+    if ($applied && $changed === 0) {
+        $r['ok'] = false;
+        $r['out'] = trim(($r['out'] ?? '') . "\n\n⚠ Nenhuma alteração real no sistema"
+            . ($failed > 0 ? " ($failed tentativa(s) não pegaram)" : '') . "."
+            . "\nConfira o acesso em Configs: sem Shizuku/ADB/root os ajustes não aplicam.");
+        $r['code'] = $r['code'] ?? -1;
+    }
+
+    otm_log($id, $a['label'], $argv, $r + ['applies' => $applies, 'changed' => $changed, 'failed' => $failed]);
+    return $r + ['id' => $id, 'label' => $a['label'], 'applies' => $applies,
+                 'changed' => $changed, 'failed' => $failed, 'applied' => $applied, 'real' => $real];
+}
+
+// otm_parse_result: extrai a linha #OTM-RESULT ... da saída do script.
+function otm_parse_result(string $out): array {
+    if (preg_match('/#OTM-RESULT\b(.*)$/m', $out, $m)) {
+        $kv = [];
+        foreach (preg_split('/\s+/', trim($m[1])) as $tok) {
+            if (strpos($tok, '=') === false) continue;
+            [$k, $v] = explode('=', $tok, 2);
+            $kv[$k] = $v;
+        }
+        return $kv;
+    }
+    return [];
 }
 
 // --- leitura de estado (status, apps, módulos) --------------------------------
@@ -638,6 +701,17 @@ function otm_module_run(string $name): array {
 function otm_dns_status(): array {
     $r = otm_script('dns.sh', ['status'], 20);
     return ['text' => $r['out']];
+}
+
+// modo de acesso atual (rish/adb/su/local), lido do config.sh show
+function otm_mode(): array {
+    $r = otm_script('config.sh', ['show'], 25);
+    $out = $r['out'] ?? '';
+    $mode = '';
+    if (preg_match('/detectado agora\s*:\s*(\S+)/', $out, $m)) $mode = $m[1];
+    $priv = '';
+    if (preg_match('/privilégio\s*:\s*([^\n]+)/u', $out, $m)) $priv = trim($m[1]);
+    return ['mode' => $mode, 'priv' => $priv, 'text' => $out];
 }
 
 // --- log ----------------------------------------------------------------------

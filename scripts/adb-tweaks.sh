@@ -17,6 +17,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+otm_v_reset
 
 # -----------------------------------------------------------------------------
 #  GRUPOS DE COMANDOS
@@ -492,3 +493,7 @@ case "$acao" in
             exit 1
         fi ;;
 esac
+
+rc=$?
+otm_v_report adb-tweaks
+exit $rc

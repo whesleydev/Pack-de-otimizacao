@@ -88,12 +88,14 @@ Além do menu de terminal, o pack tem o painel **00deUdia Otimizações**, feito
 o menu e os cards são renderizados no servidor. Visual **clean**, com paleta própria
 (tinta quente + laranja), **tema claro/escuro** (segue o sistema e dá pra trocar no botão ◐)
 e **responsivo de verdade** (gaveta lateral no celular). Um comando sobe o servidor e te dá
-uma URL (com token) para abrir no PC ou no celular, na mesma rede Wi-Fi:
+uma URL para abrir no PC ou no celular, na mesma rede Wi-Fi. **O painel pede login**: entre
+com o usuário e a senha padrão de fábrica **`00deUdia` / `00deUdia`** (troque depois).
 
 ```sh
 sh main.sh              # abre o menu principal (baixar full, subir servidor, abrir painel)
-sh main.sh web start    # sobe o painel e mostra a URL com token
+sh main.sh web start    # sobe o painel e mostra a URL
 sh main.sh web url      # só imprime a URL
+sh main.sh web senha    # troca o usuário/senha do painel
 sh main.sh web stop     # para o servidor
 sh main.sh baixar       # baixa os recursos FULL do pack (código + módulos + plugins)
 ```
@@ -123,9 +125,11 @@ reverter. O visual é **clean** com **efeito de vidro**, **tema claro/escuro** e
 lateral acompanha a rolagem no desktop (no celular vira uma gaveta).
 
 **Segurança:** o painel só executa scripts de uma **lista branca** e valida cada
-parâmetro (nunca recebe comando cru). O acesso é por **token** (arquivo `web/.token`,
-gerado no primeiro start, **nunca vai no zip**). Ações de risco abrem um **modal** que
-exige marcar "estou ciente". Requer **PHP** (Termux: `pkg install php`).
+parâmetro (nunca recebe comando cru). **O acesso exige login** (sessão com `password_hash` +
+CSRF; padrão `00deUdia`/`00deUdia`, troque com `sh main.sh web senha`). O token do servidor
+(arquivo `web/.token`, gerado no primeiro start, **nunca vai no zip**) continua valendo como
+defesa em profundidade para a API. Ações de risco abrem um **modal** que exige marcar
+"estou ciente". Requer **PHP** (Termux: `pkg install php`).
 
 ---
 
