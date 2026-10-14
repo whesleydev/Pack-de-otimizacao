@@ -504,8 +504,8 @@ const CMDS = [
    s:'am set-standby-bucket com.exemplo.bloat active'},
   {c:"Debloat / Bloatware", t:"Desativar bloat do fabricante (lote)", d:"Gerenciadores de jogo que atrapalham. Ative só o do seu aparelho.", r:"cuidado",
    s:'pm disable-user --user 0 com.samsung.android.game.gos\npm disable-user --user 0 com.xiaomi.joyose\npm disable-user --user 0 com.motorola.gamemode'},
-  {c:"Debloat / Bloatware", t:"Debloat pronto (appops + standby)", d:"Módulo do pack: restringe uma lista de bloatware de uma vez. Reverter: debloat off.", r:"seguro",
-   s:'sh scripts/deep-tune.sh debloat on\n# reverter:\nsh scripts/deep-tune.sh debloat off'},
+  {c:"Debloat / Bloatware", t:"Debloat pronto (perfis)", d:"Módulo do pack: desativa bloat de fabricante e restringe o resto. Perfis: leve|medio|pesado.", r:"seguro",
+   s:'sh scripts/debloat.sh on medio\n# reverter:\nsh scripts/debloat.sh off'},
   {c:"Debloat / Bloatware", t:"Remover p/ usuário (lote)", d:"Desinstala vários bloatwares do seu perfil de uma vez.", r:"cuidado",
    s:'for p in com.facebook.katana com.facebook.orca com.instagram.android; do pm uninstall -k --user 0 "$p"; done'},
 
