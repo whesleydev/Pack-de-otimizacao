@@ -38,11 +38,82 @@ sh pack.sh apply    # aplica o conjunto recomendado (sem root)
 sh pack.sh restore  # desfaz TUDO de uma vez
 ```
 
-Pelo menu você chega em todos os módulos: performance, GPU, rede, bateria, Game Mode,
-Free Fire, RAM, tela, congelar apps, **debloat**, otimizações profundas (root),
-perfis de toque, snapshots e os builds. Cada opção tem um número; `0` sai.
+Pelo menu você chega em todos os módulos: performance, GPU, **DNS/rede (perfis)**,
+bateria, Game Mode, Free Fire, RAM, tela, congelar apps, **debloat**, otimizações
+profundas (root), perfis de toque, **executar módulos/plugins da pasta**, snapshots e
+os builds. Cada opção tem um número; `0` sai.
+
+### 🌐 DNS com perfis (privacidade, anúncios, latência)
+
+A opção **13** abre um submenu de DNS privado (DNS-over-TLS, sem root). Escolha o perfil
+que quiser:
+
+| Perfil | Para quê |
+|---|---|
+| `cloudflare` | privacidade + velocidade |
+| `quad9` | privacidade + bloqueio de malware |
+| `adguard` | **bloqueio de anúncios** e rastreadores |
+| `adguard-family` | anúncios + conteúdo adulto |
+| `cloudflare-family` | família (conteúdo adulto) |
+| `mullvad` | privacidade (sem registro) |
+| `dnsforge` | bloqueio de anúncios (sem log) |
+| `google` | compatibilidade máxima |
+| `gaming` | **baixa latência** p/ jogos (+ buffers TCP + Wi-Fi scan off) |
+| `custom <host>` | qualquer hostname DoT seu |
+| `off` / `auto` | volta o DNS automático |
+
+Pela linha de comando: `sh pack.sh dns adguard` · `sh pack.sh dns gaming` · `sh pack.sh dns off`.
+
+### 🧩 Executar os módulos e plugins da pasta
+
+A opção **80** lista tudo que já vem no pack e executa na hora:
+
+```sh
+sh pack.sh modules list              # lista módulos (Modulos/) e plugins (Plugins AxManager/)
+sh pack.sh modules run WS7_OFF7      # executa a ação principal do módulo
+sh pack.sh modules info 06-freezer   # vê os scripts disponíveis
+sh pack.sh modules action 06-freezer uninstall.sh   # roda um script específico
+```
+
+> ⚠️ `run` executa o script avulso no shell atual. Para rodar em segundo plano, no boot
+> ou com WebUI, **instale** o módulo no gerenciador (Magisk/KernelSU/APatch/AxManager).
 
 > 💡 O `run.sh` do nível 2 é só um atalho para esse mesmo menu — os dois dão no mesmo lugar.
+
+---
+
+## 🖥️ Painel web (PHP) — controle tudo pelo navegador
+
+Além do menu de terminal, o pack tem um **painel web** completo. Um comando sobe o
+servidor e te dá uma URL (com token) para abrir no PC ou no celular, na mesma rede Wi-Fi:
+
+```sh
+sh main.sh              # abre o menu principal (baixar full, subir servidor, abrir painel)
+sh main.sh web start    # sobe o painel e mostra a URL com token
+sh main.sh web url      # só imprime a URL
+sh main.sh web stop     # para o servidor
+sh main.sh baixar       # baixa os recursos FULL do pack (código + módulos + plugins)
+```
+
+No painel você tem, com botões (e visual):
+
+| Categoria | O que dá pra fazer |
+|---|---|
+| **Rápido** | aplicar o recomendado, reverter tudo, salvar snapshot |
+| **DNS** | escolher o perfil (privacidade, **bloqueio de anúncios**, família, **latência/gaming**) ou um host seu |
+| **RAM / Limpeza** | perfil padrão/gaming, limpar cache e RAM, limpar dexopt |
+| **Renderizador** | trocar o motor: **OpenGL, SkiaGL, Skia Vulkan**, forçar GPU |
+| **Por app / jogo** | escolher um app/jogo e usar **ANGLE (Vulkan)**, modo performance, **reduzir resolução (FPS)** ou resetar |
+| **Touch / Free Fire** | perfis balanced/headshot/spray/sniper/speed ou ajuste fino |
+| **Performance** | animações, fluidez, tela/refresh, DND, bateria |
+| **Congelar apps** | congelar/descongelar apps de fundo |
+| **Debloat** | ⚠️ perfis leve/médio/pesado — **pergunta antes**, é reversível |
+| **Profundas (root)** | frequência, I/O, memória, rede BBR, latência, modo turbo, térmico |
+
+**Segurança:** o painel só executa scripts de uma **lista branca** e valida cada
+parâmetro (nunca recebe comando cru). O acesso é por **token** (arquivo `web/.token`,
+gerado no primeiro start, **nunca vai no zip**). Ações de risco abrem um **modal** que
+exige marcar "estou ciente". Requer **PHP** (Termux: `pkg install php`).
 
 ---
 

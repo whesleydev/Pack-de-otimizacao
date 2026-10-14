@@ -11,6 +11,7 @@
 #
 #  Ações: status | apply | restore | snapshot <...> | debloat <...> |
 #         deep <modulo> <on|off> | touch <perfil> | game <...> | bench <...> |
+#         dns <perfil|menu> | modules <run|list|info|menu> <nome> |
 #         device | freeze | unfreeze | <grupo do adb-tweaks> | test | build
 #
 #  Tudo que aplica é reversível. Estado em ~/.packotm/ (nunca versionado).
@@ -104,6 +105,9 @@ dispatch() {
         game)     sh "$DIR/game-per-app.sh" "$@" ;;
         bench)    sh "$DIR/bench.sh" "$@" ;;
         device)   sh "$DIR/device-profile.sh" "$@" ;;
+        dns)      sh "$DIR/dns.sh" "$@" ;;
+        modules)  sh "$DIR/modules.sh" "$@" ;;
+        mods)     sh "$DIR/modules.sh" "$@" ;;
         freeze)   sh "$DIR/adb-tweaks.sh" freeze_apps ;;
         unfreeze) sh "$DIR/adb-tweaks.sh" unfreeze_apps ;;
 
@@ -111,7 +115,7 @@ dispatch() {
         test)     sh "$ROOT/tests/run.sh" ;;
         build)    sh "$DIR/build-pack.sh" ;;
         plugins)  sh "$DIR/build-plugins.sh" ;;
-        modules)  sh "$DIR/build-modules.sh" ;;
+        build-modules) sh "$DIR/build-modules.sh" ;;
 
         # grupos do adb-tweaks (nível 2)
         perf|perf_max|gpu|net|net_reset|wifi|battery|battery_off|game|ff|ff_open|\
@@ -142,7 +146,7 @@ menu() {
 
         printf '\n  %sOTIMIZAÇÃO (nível 2)%s\n' "$C_A" "$C_R"
         printf '   %s10%s Performance (0.5x/GPU)   %s11%s Performance extrema\n' "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s12%s GPU / renderização       %s13%s Rede / DNS\n' "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s12%s GPU / renderização       %s13%s DNS / rede (perfis)\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s14%s Wi-Fi                    %s15%s Bateria / Doze\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s16%s Game Mode                %s17%s Free Fire (preparar+abrir)\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s18%s Limpeza (cache/dexopt)   %s19%s RAM (padrão/gaming)\n' "$C_A" "$C_R" "$C_A" "$C_R"
@@ -161,6 +165,10 @@ menu() {
         printf '   %s43%s sniper     %s44%s speed      %s45%s custom\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s46%s Restaurar toque          %s50%s Tuning por jogo (FPS)\n' "$C_A" "$C_R" "$C_A" "$C_R"
 
+        printf '\n  %sMÓDULOS / PLUGINS (da pasta)%s\n' "$C_A" "$C_R"
+        printf '   %s80%s Executar módulo/plugin (lista + roda)\n' "$C_A" "$C_R"
+        printf '   %s81%s Listar módulos e plugins\n' "$C_A" "$C_R"
+
         printf '\n  %sSNAPSHOT / MANUTENÇÃO%s\n' "$C_A" "$C_R"
         printf '   %s60%s Salvar   %s61%s Listar   %s62%s Restaurar último\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s70%s Rodar testes   %s71%s Gerar Pack 00 (.zip)\n' "$C_A" "$C_R" "$C_A" "$C_R"
@@ -168,7 +176,7 @@ menu() {
 
         printf '\n   %s0%s  Sair\n' "$C_D" "$C_R"
         printf '  %s›%s ' "$C_A" "$C_R"
-        read -r op
+        read -r op || { printf '\n'; break; }
 
         case "$op" in
             1)  do_apply ;;
@@ -178,7 +186,7 @@ menu() {
             10) sh "$DIR/adb-tweaks.sh" perf ;;
             11) sh "$DIR/adb-tweaks.sh" perf_max ;;
             12) sh "$DIR/adb-tweaks.sh" gpu ;;
-            13) sh "$DIR/adb-tweaks.sh" net ;;
+            13) sh "$DIR/dns.sh" menu ;;
             14) sh "$DIR/adb-tweaks.sh" wifi ;;
             15) sh "$DIR/adb-tweaks.sh" battery ;;
             16) sh "$DIR/adb-tweaks.sh" game ;;
@@ -221,6 +229,8 @@ menu() {
                     fps|balanced|max) sh "$DIR/game-per-app.sh" apply "$gp" "$gv" ;;
                     *) sh "$DIR/game-per-app.sh" custom "$gp" "$gv" ;;
                 esac ;;
+            80) sh "$DIR/modules.sh" menu ;;
+            81) sh "$DIR/modules.sh" list ;;
             60) sh "$DIR/snapshot.sh" save ;;
             61) sh "$DIR/snapshot.sh" list ;;
             62) sh "$DIR/snapshot.sh" restore latest ;;
@@ -231,7 +241,7 @@ menu() {
             *) warn "opção inválida" ;;
         esac
         printf '\n  %senter para continuar%s' "$C_D" "$C_R"
-        read -r _
+        read -r _ || { printf '\n'; break; }
     done
 }
 
@@ -248,6 +258,8 @@ case "$1" in
         printf '   deep ...       angle|freq|thermal|io|mem|net|latency|debloat|gaming|detect\n'
         printf '   touch ...      balanced|headshot|spray|sniper|speed|custom|restore\n'
         printf '   game ...       apply|custom|list|show|mode|reset\n'
+        printf '   dns ...        menu|list|status|<perfil>|custom <host>|off\n'
+        printf '   modules ...    list|info <nome>|run <nome>|actions <nome>|menu\n'
         printf '   perf|perf_max|gpu|net|wifi|battery|game|ff|clean|mem|dnd|screen|fluidez\n'
         printf '   freeze|unfreeze|device|bench|test|build\n' ;;
     *)

@@ -28,9 +28,24 @@ sh pack.sh
 ```
 
 Aparece uma lista numerada: aplicar, reverter, performance, jogo, Free Fire,
-debloat, toque, snapshots e mais. Escolha o número e pronto. Para sair, `0`.
+debloat, **DNS (privacidade/anúncios/latência)**, **executar módulos e plugins da
+pasta**, toque, snapshots e mais. Escolha o número e pronto. Para sair, `0`.
 
 > Sem PC? O menu também funciona pelo **Termux**. Com PC, dá para rodar por **ADB**.
+
+### 🖥️ Prefere pelo navegador? Tem um painel web
+
+Um comando sobe o painel e te dá uma URL para abrir no PC (mesma rede Wi-Fi):
+
+```sh
+sh main.sh web start
+```
+
+No painel você escolhe o **DNS**, limpa **RAM/cache**, troca o **renderizador**
+(OpenGL/Vulkan), seleciona um **app/jogo** para usar ANGLE/Vulkan, ajusta o **touch** e
+muito mais — tudo com botões. Ações de risco (como debloat) **perguntam antes**. Precisa
+de **PHP** (Termux: `pkg install php`). O `main.sh` também **baixa os recursos full** do
+pack (`sh main.sh baixar`).
 
 ---
 

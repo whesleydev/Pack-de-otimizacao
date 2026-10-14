@@ -41,6 +41,8 @@ copy "$ROOT/00 Otimizações" "00 Otimizações"
 copy "$ROOT/scripts" "scripts"
 copy "$ROOT/Apps" "Apps"
 copy "$ROOT/pack.sh" "pack.sh"
+copy "$ROOT/main.sh" "main.sh"
+copy "$ROOT/web" "web"
 copy "$ROOT/README.md" "README.md"
 copy "$ROOT/COMECE-AQUI.md" "COMECE-AQUI.md"
 copy "$ROOT/LICENSE" "LICENSE"
@@ -52,6 +54,7 @@ cp "$OUT"/*.zip "$STAGE/releases/" 2>/dev/null || true
 find "$STAGE" -name '.git' -type d -prune -exec rm -rf {} + 2>/dev/null
 find "$STAGE" -name 'state' -type d -prune -exec rm -rf {} + 2>/dev/null
 find "$STAGE" -name '*.log' -delete 2>/dev/null
+rm -f "$STAGE/web/.token" 2>/dev/null   # token é segredo local, nunca vai no zip
 
 # 3) zipa
 ZIP="$OUT/$NAME.zip"

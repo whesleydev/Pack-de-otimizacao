@@ -292,6 +292,84 @@ t_debloat() {
     unset TMP_PM_LOG TMP_CMD_LOG
 }
 
+t_dns() {
+    printf '\n  # dns.sh: perfis de DNS privado (aplica/reverte)\n'
+    f="$ROOT/scripts/dns.sh"
+    [ -f "$f" ] && ok "scripts/dns.sh existe" || { bad "dns.sh ausente"; return; }
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$f" list > "$TMP/dns_list" 2>&1
+    assert_contains "$TMP/dns_list" "adguard" "dns list mostra perfis"
+    assert_contains "$TMP/dns_list" "Bloqueio de an" "dns list descreve bloqueio de anuncios"
+    st="$HOME/.packotm"; rm -f "$st/off.sh" "$st/on"
+    OTM_MODE=local sh "$f" adguard >/dev/null 2>&1
+    [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "dns.adguard-dns.com" ] \
+        && ok "dns adguard grava o hostname DoT" || bad "nao gravou o hostname"
+    grep -q "private_dns_mode" "$st/off.sh" 2>/dev/null && ok "dns registra reversao" || bad "sem reversao"
+    OTM_MODE=local sh "$f" off >/dev/null 2>&1
+    [ "$(cat "$TMP_STORE/global.private_dns_mode" 2>/dev/null)" = "opportunistic" ] \
+        && ok "dns off volta para automatico" || bad "off nao restaurou"
+    OTM_MODE=local sh "$f" custom dns.exemplo.com >/dev/null 2>&1
+    [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "dns.exemplo.com" ] \
+        && ok "dns custom aceita hostname" || bad "custom nao gravou"
+    rm -f "$st/off.sh" "$st/on"
+}
+
+t_modules() {
+    printf '\n  # modules.sh: lista e executa modulos/plugins da pasta\n'
+    f="$ROOT/scripts/modules.sh"
+    [ -f "$f" ] && ok "scripts/modules.sh existe" || { bad "modules.sh ausente"; return; }
+    OTM_NO_COLOR=1 sh "$f" list > "$TMP/mod_list" 2>&1
+    assert_contains "$TMP/mod_list" "WS7_OFF7" "modules list acha modulo em Modulos/"
+    assert_contains "$TMP/mod_list" "06-freezer" "modules list acha plugin em Plugins/"
+    OTM_NO_COLOR=1 sh "$f" actions WS7_OFF7 > "$TMP/mod_actions" 2>&1
+    assert_contains "$TMP/mod_actions" "action.sh" "actions lista os scripts do modulo"
+    OTM_NO_COLOR=1 sh "$f" info WS7_OFF7 > "$TMP/mod_info" 2>&1
+    assert_contains "$TMP/mod_info" "version" "info mostra a versao do modulo"
+    if OTM_MODE=local sh "$f" run WS7_OFF7 >/dev/null 2>&1; then
+        ok "run executa a acao do modulo"
+    else
+        bad "run falhou"
+    fi
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/scripts/pack.sh" modules list > "$TMP/pack_mods" 2>&1
+    assert_contains "$TMP/pack_mods" "WS7_OFF7" "pack.sh modules delega p/ modules.sh"
+}
+
+t_web() {
+    printf '\n  # main.sh + painel web (PHP)\n'
+    [ -f "$ROOT/main.sh" ] && ok "main.sh na raiz existe" || { bad "main.sh ausente"; return; }
+    sh "$ROOT/main.sh" --help > "$TMP/main_help" 2>&1
+    assert_contains "$TMP/main_help" "web start" "main.sh --help mostra o servidor web"
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/main.sh" status > "$TMP/main_status" 2>&1
+    assert_contains "$TMP/main_status" "PACK" "main.sh status mostra o status geral"
+
+    for f in lib.php api.php index.php; do
+        [ -f "$ROOT/web/$f" ] && ok "web/$f existe" || bad "web/$f ausente"
+    done
+
+    if command -v php >/dev/null 2>&1; then
+        for f in lib.php api.php index.php; do
+            php -l "$ROOT/web/$f" >/dev/null 2>&1 && ok "php -l web/$f" || bad "erro de sintaxe em web/$f"
+        done
+        # segurança: o registro tem ações de DNS, renderizador e por-app
+        php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+                 echo isset($a["dns.adguard"])?"dns ":"", isset($a["gpu.skiavk"])?"gpu ":"",
+                      isset($a["app.angle"])?"app ":"", isset($a["debloat.medio"])?"debloat\n":"";' \
+            > "$TMP/web_actions" 2>&1
+        assert_contains "$TMP/web_actions" "dns gpu app debloat" "registro cobre dns/gpu/app/debloat"
+        # validação rejeita pacote malicioso
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $r=otm_run("app.angle",["pkg"=>"com.x; rm -rf /"],false);
+                 echo $r["ok"]?"ACEITOU":"RECUSOU";' > "$TMP/web_sec" 2>&1
+        assert_contains "$TMP/web_sec" "RECUSOU" "validação recusa pacote malicioso"
+        # ação com confirmação exige confirm=1
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $r=otm_run("debloat.leve",[],false);
+                 echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_conf" 2>&1
+        assert_contains "$TMP/web_conf" "PEDE" "debloat exige confirmação"
+    else
+        printf '  [skip] php ausente: pulei testes do painel web\n'
+    fi
+}
+
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
     f="$ROOT/scripts/pack.sh"
@@ -330,6 +408,9 @@ t_build_plugins
 t_build_modules
 t_build_pack
 t_debloat
+t_dns
+t_modules
+t_web
 t_pack
 
 printf '\n  --------------------------------------------------\n'

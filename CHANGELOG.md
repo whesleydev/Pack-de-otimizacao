@@ -3,6 +3,54 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.0.0] - 2026-10-15
+
+### Adicionado
+- **`main.sh` (raiz) — menu principal alternativo**, diferente do `pack.sh`. Foco em:
+  **baixar os recursos full** (pacote completo via codeload do GitHub, extrai com tar),
+  **subir o servidor web** (painel PHP), **abrir o painel** no navegador, ver URL+token,
+  parar/status do servidor, atualizar (git pull) e status geral. Uso: `sh main.sh web start`,
+  `sh main.sh baixar`, `sh main.sh web url`.
+- **Painel web em PHP (`web/`) — controle completo do pack pelo navegador.** Menu lateral
+  por categorias, cards com botões, console de saída, histórico de ações e **modal de
+  confirmação para ações de risco** (debloat, congelar, root, downscale).
+  - `web/lib.php` — registro de **65 ações** em 10 grupos: Rápido, **DNS (perfis)**,
+    RAM/Limpeza, **Renderizador** (OpenGL/SkiaGL/Skia Vulkan/forçar GPU),
+    **Por app/jogo** (ANGLE Vulkan, modo performance, downscale/FPS, reset),
+    **Touch/Free Fire**, Performance, Congelar apps, **Debloat**, **Profundas (root)**.
+  - `web/api.php` — endpoint JSON com **autenticação por token** (arquivo `web/.token`,
+    gerado no primeiro `web start`), **lista branca de scripts** e **validação** de
+    pacote/host/número. Nunca recebe comando cru: monta o argv a partir do registro.
+  - `web/index.php` — UI única (CSS+JS embutidos), responsiva, com seletor de app
+    (datalist com os apps instalados) e seleção de renderizador por app.
+  - Visual: **wallpaper** de fundo (`web/assets/wallpaper.jpeg`) e **banner** no topo
+    (`web/assets/banner.jpeg`), com camadas de escurecimento para manter a legibilidade.
+- Segurança: o token nunca vai no `.zip` (build remove `web/.token`); `.gitignore`
+  cobre `web/.token` e `web/.state/`.
+- Build do "Pack 00" agora inclui `main.sh` e `web/`.
+- Testes `t_web` (main.sh, lint do PHP, cobertura do registro, validação anti-injeção e
+  confirmação de risco). Suíte: **76 testes**.
+
+## [1.9.0] - 2026-10-15
+
+### Adicionado
+- **`scripts/dns.sh` — DNS privado com perfis** (DNS-over-TLS, sem root), integrado ao
+  menu (opção **13**). Perfis: `cloudflare` (privacidade), `quad9` (malware),
+  `adguard` (bloqueio de anúncios), `adguard-family`, `cloudflare-family`, `mullvad`,
+  `dnsforge`, `google` (compatibilidade), `gaming` (baixa latência + buffers TCP +
+  Wi-Fi scan off), `custom <host>` e `off`/`auto`. Submenu interativo + linha de comando;
+  reversível (guarda o DNS antigo em `~/.packotm/off.sh`).
+- **`scripts/modules.sh` — executar os módulos e plugins da pasta** (menu, opção **80**).
+  Descobre tudo que tem `module.prop` em `00 Otimizações/Modulos/` e em
+  `00 Otimizações/Plugins AxManager/`, mostra os scripts disponíveis
+  (`action`/`apply`/`service`/`uninstall`/`restore`) e executa: `run <nome>`,
+  `info`, `actions`, `action <nome> <script>`. Executa o script avulso no shell atual
+  (o modo serviço/boot/WebUI continua exigindo instalar no gerenciador).
+- Menu-mestre: novas opções **13** (DNS com perfis) e **80/81** (módulos/plugins);
+  dispatch `dns` e `modules`; tratamento de **EOF** nos menus (não trava mais sem entrada).
+- Site: 5 comandos novos de DNS (perfis) + nota de "rodar módulos sem instalar".
+- Testes `t_dns` e `t_modules` (perfis aplicam/revertem; descoberta e execução).
+
 ## [1.8.0] - 2026-10-15
 
 ### Adicionado

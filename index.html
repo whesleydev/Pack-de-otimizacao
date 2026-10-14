@@ -232,6 +232,19 @@ sh pack.sh apply    # aplica o recomendado (sem root)
 sh pack.sh restore  # desfaz TUDO de uma vez</code></pre>
     <div class="note">💡 O <code>run.sh</code> do nível 2 é só um atalho para esse mesmo menu.</div>
 
+    <h3>🖥️ Painel web (PHP): controle pelo navegador</h3>
+    <p>Prefere clicar em botões? Um comando sobe um <strong>painel web completo</strong> e te dá
+      uma URL para abrir no PC (mesma rede Wi-Fi). De lá você escolhe o <strong>DNS</strong>,
+      limpa <strong>RAM/cache</strong>, troca o <strong>renderizador</strong> (OpenGL/Skia/Vulkan),
+      seleciona um <strong>app/jogo</strong> para usar ANGLE/Vulkan, ajusta o <strong>touch</strong>,
+      o debloat e muito mais — com <strong>confirmação nas ações de risco</strong>.</p>
+    <pre><code>sh main.sh              # menu principal (baixar full, subir servidor, abrir painel)
+sh main.sh web start    # sobe o painel e mostra a URL com token
+sh main.sh web url      # só imprime a URL
+sh main.sh baixar       # baixa os recursos FULL do pack</code></pre>
+    <div class="note">🔒 O acesso é por <strong>token</strong> e o painel só executa scripts de uma
+      lista branca (valida pacote/host/número). Precisa de <strong>PHP</strong> (Termux: <code>pkg install php</code>).</div>
+
     <h3>Passo a passo</h3>
     <ol class="steps">
       <li><strong>Instale o app</strong> do seu caso (veja a seção <a href="#apps">Apps</a>).</li>
@@ -322,6 +335,10 @@ sh pack.sh restore  # desfaz TUDO de uma vez</code></pre>
     <code>sh scripts/build-plugins.sh</code> e instale o <code>.zip</code> em <strong>Plugins → instalar</strong>.
     Cada um tem botão de ação e <code>uninstall.sh</code> que reverte.</p>
     <div class="grid g3" id="plugingrid"></div>
+    <div class="note">⚡ <strong>Rodar sem instalar:</strong> o menu-mestre executa os módulos e plugins
+    que já vêm na pasta — <code>sh pack.sh modules list</code> e
+    <code>sh pack.sh modules run WS7_OFF7</code>. Isso roda o script avulso no shell atual;
+    para rodar no boot, em segundo plano ou com WebUI, instale no gerenciador.</div>
   </section>
 
   <!-- ================= MODULOS ================= -->
@@ -563,6 +580,16 @@ const CMDS = [
    s:'settings put global wifi_scan_always_enabled 0'},
   {c:"Rede / DNS", t:"Resetar DNS", d:"Volta o DNS para automático.", r:"seguro",
    s:'settings put global private_dns_mode opportunistic\nsettings delete global private_dns_specifier'},
+  {c:"Rede / DNS", t:"DNS privado com perfis (menu)", d:"Módulo do pack: escolha privacidade, bloqueio de anúncios, família, latência/gaming ou um host seu. Tudo reversível.", r:"seguro",
+   s:'sh pack.sh dns list          # ver perfis\nsh pack.sh dns adguard       # bloqueio de anúncios\nsh pack.sh dns gaming        # baixa latência p/ jogos\nsh pack.sh dns off           # voltar ao automático'},
+  {c:"Rede / DNS", t:"DNS — privacidade (Cloudflare/Mullvad)", d:"DoT sem registro. Menos rastreio, boa velocidade.", r:"seguro",
+   s:'settings put global private_dns_mode hostname\nsettings put global private_dns_specifier 1dot1dot1dot1.cloudflare-dns.com'},
+  {c:"Rede / DNS", t:"DNS — bloquear anúncios (AdGuard/DNSForge)", d:"Bloqueia anúncios e rastreadores na origem, sem app.", r:"seguro",
+   s:'settings put global private_dns_mode hostname\nsettings put global private_dns_specifier dns.adguard-dns.com'},
+  {c:"Rede / DNS", t:"DNS — família (bloqueia conteúdo adulto)", d:"Perfil para família: anúncios + conteúdo adulto.", r:"seguro",
+   s:'settings put global private_dns_mode hostname\nsettings put global private_dns_specifier family.cloudflare-dns.com'},
+  {c:"Rede / DNS", t:"DNS — gaming (baixa latência)", d:"DNS rápido + buffers TCP + Wi-Fi scan off para reduzir ping.", r:"seguro",
+   s:'sh pack.sh dns gaming'},
 
   // ---------- Bateria ----------
   {c:"Bateria", t:"Ligar economia de bateria", d:"Doze + modo economia. Não use em jogo.", r:"seguro",

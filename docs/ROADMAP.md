@@ -34,6 +34,15 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
 ### 4. Testes automatizados
 - [x] `tests/run.sh` com stubs (`settings`/`cmd`/`am`/`getprop`), cobrindo
       apply→restore, reversão por módulo e o marcador `deep_mark`.
+- [x] Cobertura de `debloat`, `pack` (menu-mestre), `dns` (perfis) e `modules`.
+
+### 4b. Menu-mestre e DNS (feito)
+- [x] `scripts/pack.sh` — ponto único de entrada: menu interativo + linha de comando,
+      status, apply/restore de tudo, e delega para todos os módulos.
+- [x] `scripts/dns.sh` — DNS privado (DoT) por perfis: privacidade, bloqueio de
+      anúncios, família, latência/gaming, custom e off.
+- [x] `scripts/modules.sh` — lista e executa os módulos/plugins da pasta.
+- [ ] **Engenharia:** WebUI do menu (rodar o menu-mestre pelo painel do AxManager).
 
 ### 5. Versionamento e changelog
 - [x] `CHANGELOG.md` + `VERSION` + tag `v1.1.0`.

@@ -36,9 +36,30 @@ index.html              site único (HTML+CSS+JS puro): guia + área de comandos
 
 `scripts/pack.sh` é o **menu-mestre**: ponto único de entrada que delega para todos os
 outros scripts (`adb-tweaks`, `deep-tune`, `debloat`, `ff-touch`, `game-per-app`,
-`snapshot`, `bench`, `device-profile`, builds). Roda como menu interativo (sem args) ou
-por linha de comando (`status`, `apply`, `restore`, `debloat on medio`, `touch headshot`…).
+`dns`, `modules`, `snapshot`, `bench`, `device-profile`, builds). Roda como menu
+interativo (sem args) ou por linha de comando (`status`, `apply`, `restore`,
+`debloat on medio`, `touch headshot`, `dns gaming`, `modules run WS7_OFF7`…).
 O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
+
+- `scripts/dns.sh` — DNS privado (DoT) por perfis: privacidade, bloqueio de anúncios,
+  família, latência/gaming, custom e off. Reversível.
+- `scripts/modules.sh` — descobre e executa os módulos/plugins da pasta
+  (`run`/`info`/`actions`/`action`); executa o script avulso, não substitui instalar
+  no gerenciador (boot/serviço/WebUI).
+
+`main.sh` (raiz) é a **entrada alternativa**: baixa os recursos full (`codeload` do
+GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). Não aplica
+otimizações — quem faz isso é o `pack.sh`.
+
+O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) controla o pack pelo
+navegador. Regras ao mexer nele:
+- `web/lib.php` guarda o **registro de ações** (id, grupo, argv, params, confirm, risco).
+  Para expor uma ação nova, adicione ao registro — **não** invente execução de comando cru.
+- `web/api.php` exige **token** (`web/.token`, gerado no `main.sh web start`) e só roda
+  scripts da lista branca `otm_allowed_scripts()`. Parâmetros são validados por tipo
+  (pkg/host/int/float). Nunca passe input do usuário direto para o shell.
+- Ações com `confirm:true` exigem `confirm=1` no POST (o `index.php` mostra o modal).
+- `web/.token` e `web/.state/` são **locais** (no `.gitignore` e removidos do zip).
 
 `index.html` é o site público (um só arquivo, sem dependências): explica os 4 níveis, os
 apps, os plugins/módulos e tem uma **área de comandos** com busca e botão de copiar.
@@ -53,6 +74,10 @@ sh scripts/build-modules.sh     # empacota 00 Otimizações/Modulos/ em releases
 sh scripts/build-plugins.sh     # empacota Plugins AxManager/ (Nossos + OSS) em releases/*.zip
 sh scripts/build-pack.sh        # gera o zip único "Pack 00" completo em releases/
 sh scripts/debloat.sh on medio  # debloat (leve|medio|pesado); off reverte
+sh scripts/dns.sh list          # perfis de DNS (privacidade/ads/família/gaming)
+sh scripts/modules.sh list      # lista módulos/plugins da pasta; run <nome> executa
+sh main.sh web start            # sobe o painel web (PHP) e mostra a URL com token
+sh main.sh baixar               # baixa os recursos full do pack
 sh scripts/check-secrets.sh     # falha se achar credencial
 shellcheck -S error $(find scripts "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" tests -name '*.sh')
 sh scripts/bench.sh save antes  # benchmark antes/depois
@@ -70,6 +95,11 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 
 ## Pendências que dependem do dono
 
+- **Push para `origin/main`**: o `GITHUB_TOKEN` do ambiente é uma credencial de
+  integração (GitHub App) **somente leitura** — `git push` e a API de refs retornam
+  `403 Resource not accessible by integration`. Para publicar, o dono precisa conceder
+  `Contents: Read and write` ao app/token, ou rodar o push a partir da própria máquina.
+  Enquanto isso, use o bundle/patch gerados em `releases/` (ver abaixo).
 - Revogar o token exposto no histórico e purgar o `apps_otm.zip` (`docs/SEGURANCA.md`).
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
