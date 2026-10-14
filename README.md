@@ -82,10 +82,13 @@ sh pack.sh modules action 06-freezer uninstall.sh   # roda um script específico
 
 ---
 
-## 🖥️ Painel web (PHP) — controle tudo pelo navegador
+## 🖥️ Painel web — 00deUdia Otimizações (PHP)
 
-Além do menu de terminal, o pack tem um **painel web** completo. Um comando sobe o
-servidor e te dá uma URL (com token) para abrir no PC ou no celular, na mesma rede Wi-Fi:
+Além do menu de terminal, o pack tem o painel **00deUdia Otimizações**, feito em **PHP**:
+o menu e os cards são renderizados no servidor. Visual **clean**, com paleta própria
+(tinta quente + laranja), **tema claro/escuro** (segue o sistema e dá pra trocar no botão ◐)
+e **responsivo de verdade** (gaveta lateral no celular). Um comando sobe o servidor e te dá
+uma URL (com token) para abrir no PC ou no celular, na mesma rede Wi-Fi:
 
 ```sh
 sh main.sh              # abre o menu principal (baixar full, subir servidor, abrir painel)

@@ -51,10 +51,14 @@ O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
 GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). Não aplica
 otimizações — quem faz isso é o `pack.sh`.
 
-O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) controla o pack pelo
-navegador. Regras ao mexer nele:
+O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
+**00deUdia Otimizações** — controla o pack pelo navegador. Regras ao mexer nele:
 - `web/lib.php` guarda o **registro de ações** (id, grupo, argv, params, confirm, risco).
   Para expor uma ação nova, adicione ao registro — **não** invente execução de comando cru.
+- `web/index.php` é **renderizado no servidor (PHP)**: o menu de categorias e os cards de
+  ação saem prontos no HTML. O JS só troca de categoria, executa e mostra saída/modal.
+  Mantenha o visual **clean**, a paleta própria e o CSS **responsivo** (gaveta no celular,
+  tema claro/escuro) ao mexer.
 - `web/api.php` exige **token** (`web/.token`, gerado no `main.sh web start`) e só roda
   scripts da lista branca `otm_allowed_scripts()`. Parâmetros são validados por tipo
   (pkg/host/int/float). Nunca passe input do usuário direto para o shell.

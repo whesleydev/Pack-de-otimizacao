@@ -365,6 +365,16 @@ t_web() {
                  $r=otm_run("debloat.leve",[],false);
                  echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_conf" 2>&1
         assert_contains "$TMP/web_conf" "PEDE" "debloat exige confirmação"
+        # o painel é renderizado no PHP (marca, menu e cards no HTML servido)
+        php -r '$_SERVER["REQUEST_METHOD"]="GET"; require "'"$ROOT"'/web/index.php";' \
+            > "$TMP/web_html" 2>&1
+        assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"
+        n_cards=$(grep -c 'class="card"' "$TMP/web_html")
+        [ "$n_cards" -ge 60 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
+            || bad "poucos cards renderizados ($n_cards)"
+        n_sec=$(grep -c '<section id=' "$TMP/web_html")
+        [ "$n_sec" -eq 10 ] && ok "index.php renderiza as 10 categorias" || bad "categorias: $n_sec"
+        grep -q '@media' "$TMP/web_html" && ok "index.php tem CSS responsivo" || bad "sem media queries"
     else
         printf '  [skip] php ausente: pulei testes do painel web\n'
     fi

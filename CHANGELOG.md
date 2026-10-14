@@ -21,8 +21,10 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   - `web/api.php` — endpoint JSON com **autenticação por token** (arquivo `web/.token`,
     gerado no primeiro `web start`), **lista branca de scripts** e **validação** de
     pacote/host/número. Nunca recebe comando cru: monta o argv a partir do registro.
-  - `web/index.php` — UI única (CSS+JS embutidos), responsiva, com seletor de app
-    (datalist com os apps instalados) e seleção de renderizador por app.
+  - `web/index.php` — painel **00deUdia Otimizações**, renderizado no servidor em PHP
+    (menu de categorias e cards de ação saem prontos no HTML). Visual **clean**, com paleta
+    própria (tinta quente + laranja), **tema claro/escuro** (segue o sistema, com botão para
+    trocar) e **responsivo de verdade** (gaveta lateral no celular, grid fluido, toque).
   - Visual: **wallpaper** de fundo (`web/assets/wallpaper.jpeg`) e **banner** no topo
     (`web/assets/banner.jpeg`), com camadas de escurecimento para manter a legibilidade.
 - Segurança: o token nunca vai no `.zip` (build remove `web/.token`); `.gitignore`

@@ -33,7 +33,7 @@ pasta**, toque, snapshots e mais. Escolha o número e pronto. Para sair, `0`.
 
 > Sem PC? O menu também funciona pelo **Termux**. Com PC, dá para rodar por **ADB**.
 
-### 🖥️ Prefere pelo navegador? Tem um painel web
+### 🖥️ Prefere pelo navegador? Tem o painel 00deUdia Otimizações
 
 Um comando sobe o painel e te dá uma URL para abrir no PC (mesma rede Wi-Fi):
 

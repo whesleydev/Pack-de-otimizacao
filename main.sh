@@ -4,7 +4,7 @@
 #
 #  Diferente do pack.sh (que aplica otimizações), este menu é para:
 #    1) BAIXAR RECURSOS FULL  - baixa o pack completo (código + módulos + plugins)
-#    2) SUBIR SERVIDOR WEB    - sobe um site PHP com painel de controle completo
+#    2) SUBIR SERVIDOR WEB    - sobe o painel 00deUdia Otimizações (PHP)
 #    3) ABRIR O PAINEL        - mostra a URL (com token) para abrir no navegador
 #    4) MANUTENÇÃO            - status, parar servidor, atualizar o pack
 #
@@ -172,7 +172,7 @@ menu() {
         printf '  %b║   PACK DE OTIMIZAÇÃO · menu principal        ║%b\n' "$C_A" "$C_R"
         printf '  %b╚══════════════════════════════════════════════╝%b\n' "$C_A" "$C_R"
         printf '  %bmodo %s · PHP %s%b\n' "$C_D" "$RUN_MODE" "$(have php && echo ok || echo ausente)" "$C_R"
-        printf '\n  %bPAINEL WEB (PHP)%b\n' "$C_A" "$C_R"
+        printf '\n  %bPAINEL 00deUdia OTIMIZAÇÕES%b\n' "$C_A" "$C_R"
         printf '    %b1%b  Subir servidor web\n' "$C_G" "$C_R"
         printf '    %b2%b  Abrir o painel no navegador\n' "$C_G" "$C_R"
         printf '    %b3%b  Ver URL + token\n' "$C_G" "$C_R"
@@ -220,7 +220,7 @@ case "$1" in
     -h|--help|help)
         printf '  Uso: sh main.sh [acao]\n\n'
         printf '   sem argumento   abre o menu principal\n'
-        printf '   web start       sobe o servidor web (painel PHP)\n'
+        printf '   web start       sobe o painel 00deUdia Otimizações (PHP)\n'
         printf '   web stop        para o servidor\n'
         printf '   web status      mostra se está no ar + URL\n'
         printf '   web url         só imprime a URL com token\n'
