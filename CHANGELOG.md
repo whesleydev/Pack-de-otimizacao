@@ -14,24 +14,32 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Painel web em PHP (`web/`) — controle completo do pack pelo navegador.** Menu lateral
   por categorias, cards com botões, console de saída, histórico de ações e **modal de
   confirmação para ações de risco** (debloat, congelar, root, downscale).
-  - `web/lib.php` — registro de **65 ações** em 10 grupos: Rápido, **DNS (perfis)**,
+  - `web/lib.php` — registro de **89 ações** em **13 grupos**: Rápido, **DNS (perfis)**,
     RAM/Limpeza, **Renderizador** (OpenGL/SkiaGL/Skia Vulkan/forçar GPU),
     **Por app/jogo** (ANGLE Vulkan, modo performance, downscale/FPS, reset),
-    **Touch/Free Fire**, Performance, Congelar apps, **Debloat**, **Profundas (root)**.
+    **Touch/Free Fire**, Performance, **Wi-Fi e rede**, Congelar apps, **Debloat**
+    (perfil + por app: desativar/reativar/desinstalar/reinstalar/restringir),
+    **Profundas (root)**, **Diagnóstico** (perfil do aparelho, temperatura, benchmark)
+    e **Módulos**. Cada ação tem `desc` curta + `help` (explicação para o usuário).
   - `web/api.php` — endpoint JSON com **autenticação por token** (arquivo `web/.token`,
     gerado no primeiro `web start`), **lista branca de scripts** e **validação** de
     pacote/host/número. Nunca recebe comando cru: monta o argv a partir do registro.
   - `web/index.php` — painel **00deUdia Otimizações**, renderizado no servidor em PHP
-    (menu de categorias e cards de ação saem prontos no HTML). Visual **clean**, com paleta
-    própria (tinta quente + laranja), **tema claro/escuro** (segue o sistema, com botão para
-    trocar) e **responsivo de verdade** (gaveta lateral no celular, grid fluido, toque).
+    (menu de categorias e cards de ação saem prontos no HTML). Visual **clean** com
+    **efeito de vidro** (glassmorphism), paleta própria (tinta quente + laranja),
+    **tema claro/escuro** (segue o sistema, com botão para trocar), **menu lateral que
+    acompanha a rolagem** (sticky, até o fim da tela) e **responsivo de verdade**
+    (gaveta lateral no celular, grid fluido, campos que empilham, áreas de toque grandes).
+  - **Botão de ajuda "?" em cada ação**: abre um modal explicando, em linguagem simples,
+    o que aquela opção faz e como reverter.
   - Visual: **wallpaper** de fundo (`web/assets/wallpaper.jpeg`) e **banner** no topo
     (`web/assets/banner.jpeg`), com camadas de escurecimento para manter a legibilidade.
 - Segurança: o token nunca vai no `.zip` (build remove `web/.token`); `.gitignore`
   cobre `web/.token` e `web/.state/`.
 - Build do "Pack 00" agora inclui `main.sh` e `web/`.
-- Testes `t_web` (main.sh, lint do PHP, cobertura do registro, validação anti-injeção e
-  confirmação de risco). Suíte: **76 testes**.
+- Testes `t_web` (main.sh, lint do PHP, cobertura do registro, validação anti-injeção,
+  confirmação de risco, render no servidor, efeito de vidro e explicação em toda ação).
+  Suíte: **83 testes**.
 
 ## [1.9.0] - 2026-10-15
 

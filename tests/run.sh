@@ -370,11 +370,19 @@ t_web() {
             > "$TMP/web_html" 2>&1
         assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
-        [ "$n_cards" -ge 60 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
+        [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 10 ] && ok "index.php renderiza as 10 categorias" || bad "categorias: $n_sec"
+        [ "$n_sec" -ge 13 ] && ok "index.php renderiza as categorias ($n_sec)" || bad "categorias: $n_sec"
         grep -q '@media' "$TMP/web_html" && ok "index.php tem CSS responsivo" || bad "sem media queries"
+        grep -q 'backdrop-filter' "$TMP/web_html" && ok "index.php usa efeito de vidro (glass)" || bad "sem glass"
+        n_help=$(grep -c 'help-btn' "$TMP/web_html")
+        [ "$n_help" -ge 85 ] && ok "cada ação tem botão de ajuda ($n_help)" || bad "botões de ajuda: $n_help"
+        # toda ação tem explicação para o usuário
+        php -r 'require "'"$ROOT"'/web/lib.php"; $n=0;
+                 foreach (otm_actions() as $a) { if (trim($a["help"] ?? "") === "") $n++; }
+                 echo "sem_help=$n\n";' > "$TMP/web_help" 2>&1
+        assert_contains "$TMP/web_help" "sem_help=0" "todas as ações têm explicação (help)"
     else
         printf '  [skip] php ausente: pulei testes do painel web\n'
     fi

@@ -102,16 +102,23 @@ No painel você tem, com botões (e visual):
 
 | Categoria | O que dá pra fazer |
 |---|---|
-| **Rápido** | aplicar o recomendado, reverter tudo, salvar snapshot |
-| **DNS** | escolher o perfil (privacidade, **bloqueio de anúncios**, família, **latência/gaming**) ou um host seu |
+| **Rápido** | aplicar o recomendado, reverter tudo, salvar/ver/comparar/restaurar snapshot |
+| **DNS** | perfis (privacidade, **bloqueio de anúncios**, família, **latência/gaming**) ou um host seu |
 | **RAM / Limpeza** | perfil padrão/gaming, limpar cache e RAM, limpar dexopt |
 | **Renderizador** | trocar o motor: **OpenGL, SkiaGL, Skia Vulkan**, forçar GPU |
 | **Por app / jogo** | escolher um app/jogo e usar **ANGLE (Vulkan)**, modo performance, **reduzir resolução (FPS)** ou resetar |
-| **Touch / Free Fire** | perfis balanced/headshot/spray/sniper/speed ou ajuste fino |
+| **Touch / Free Fire** | perfis balanced/headshot/spray/sniper/speed, ajuste fino, abrir o jogo |
 | **Performance** | animações, fluidez, tela/refresh, DND, bateria |
+| **Wi-Fi e rede** | scan de Wi-Fi, buffers TCP/DNS, reset de rede |
 | **Congelar apps** | congelar/descongelar apps de fundo |
-| **Debloat** | ⚠️ perfis leve/médio/pesado — **pergunta antes**, é reversível |
+| **Debloat** | ⚠️ perfis leve/médio/pesado + **por app** (desativar, reativar, desinstalar, reinstalar, restringir) |
 | **Profundas (root)** | frequência, I/O, memória, rede BBR, latência, modo turbo, térmico |
+| **Diagnóstico** | perfil do aparelho (SoC/GPU), temperatura, DNS atual, benchmark antes/depois |
+| **Módulos** | executar os complementos do pack |
+
+Cada cartão tem um botão **?** que explica, em linguagem simples, o que a opção faz e como
+reverter. O visual é **clean** com **efeito de vidro**, **tema claro/escuro** e o menu
+lateral acompanha a rolagem no desktop (no celular vira uma gaveta).
 
 **Segurança:** o painel só executa scripts de uma **lista branca** e valida cada
 parâmetro (nunca recebe comando cru). O acesso é por **token** (arquivo `web/.token`,
