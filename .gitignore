@@ -19,6 +19,7 @@ scratch/
 
 # releases empacotados
 releases/*.zip
+releases/*.zip.sha256
 
 # estado local dos plugins
 "00 Otimizações/Plugins AxManager"/*/state/
