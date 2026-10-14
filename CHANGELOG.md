@@ -19,10 +19,15 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   - Cada comando tem selo de risco: **seguro**, **cuidado** ou **root**.
 - **`Apps/README.md`** — guia dos aplicativos para instalar (Brevent, Shizuku, Termux,
   AxManager e root): o que fazem, pacote, onde baixar e como se ligam a cada nível.
-- Novo teste `t_site_html` (estrutura + sintaxe do JS via `node --check`).
+- **`scripts/build-pack.sh`** — gera o **"Pack 00" completo em um único `.zip`** pronto
+  para baixar e usar: reúne `00 Otimizações/` (níveis 1 a 4), `scripts/` (motor — o
+  `run.sh` aponta para `../scripts`), `Apps/`, os zips de `releases/` e os guias.
+  Sai em `releases/Pack-de-Otimizacao-00-v<VER>.zip` + `.sha256`.
+- Novos testes `t_site_html` (estrutura + sintaxe do JS) e `t_build_pack` (conteúdo do zip).
 
 ### Alterado
-- README e AGENTS.md agora apontam para o site (`index.html`) e para `Apps/`.
+- README e AGENTS.md agora apontam para o site (`index.html`), para `Apps/` e para o
+  `build-pack.sh`.
 
 ## [1.5.0] - 2026-10-14
 

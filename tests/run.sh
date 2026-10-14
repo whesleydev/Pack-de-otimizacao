@@ -238,6 +238,32 @@ t_build_modules() {
     rm -f "$ROOT/releases"/*.zip
 }
 
+
+t_build_pack() {
+    printf '\n  # build-pack: gera o zip unico "Pack 00" completo\n'
+    sh "$ROOT/scripts/build-pack.sh" >/dev/null 2>&1
+    assert_eq "0" "$?" "build-pack roda sem erro"
+    v="$(cat "$ROOT/VERSION" 2>/dev/null)"
+    pack="$ROOT/releases/Pack-de-Otimizacao-00-v$v.zip"
+    [ -f "$pack" ] && ok "gera o zip do pack (v$v)" || { bad "zip do pack ausente"; rm -f "$ROOT/releases"/*.zip; return; }
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$pack" <<'PY'
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1]); n = z.namelist()
+checks = {
+ "scripts/adb-tweaks.sh": any(x.endswith('/scripts/adb-tweaks.sh') for x in n),
+ "releases/06-freezer.zip": any(x.endswith('/releases/06-freezer.zip') for x in n),
+ "Apps/README.md": any(x.endswith('/Apps/README.md') for x in n),
+ "run.sh (nivel 2)": any(x.endswith('/00 Otimiza\u00e7\u00f5es/Scripts SH/run.sh') for x in n),
+ "22 .txt Brevent": sum(1 for x in n if '/Comandos Brevent/' in x and x.endswith('.txt')) >= 22,
+}
+for k, okk in checks.items():
+    print(("  [ ok ] " if okk else "  [FAIL] ") + "pack contem " + k)
+PY
+    fi
+    rm -f "$ROOT/releases"/*.zip
+}
+
 # --- execução ----------------------------------------------------------------
 printf '  ==================================================\n'
 printf '  Testes do Pack de Otimização\n'
@@ -254,6 +280,7 @@ t_secret_scanner
 t_site_html
 t_build_plugins
 t_build_modules
+t_build_pack
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"
