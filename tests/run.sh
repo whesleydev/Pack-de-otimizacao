@@ -225,7 +225,7 @@ t_build_plugins() {
             && assert_eq "ok" "ok" "gera $name.zip" \
             || assert_eq "zip" "ausente" "gera $name.zip"
     done
-    rm -f "$ROOT/releases"/*.zip
+    rm -f "$ROOT/releases"/*.zip "$ROOT/releases"/*.zip.sha256
 }
 
 t_build_modules() {
@@ -235,7 +235,7 @@ t_build_modules() {
     [ -f "$ROOT/releases/WS7_OFF7.zip" ] \
         && assert_eq "ok" "ok" "gera WS7_OFF7.zip" \
         || assert_eq "zip" "ausente" "gera WS7_OFF7.zip"
-    rm -f "$ROOT/releases"/*.zip
+    rm -f "$ROOT/releases"/*.zip "$ROOT/releases"/*.zip.sha256
 }
 
 
@@ -245,7 +245,7 @@ t_build_pack() {
     assert_eq "0" "$?" "build-pack roda sem erro"
     v="$(cat "$ROOT/VERSION" 2>/dev/null)"
     pack="$ROOT/releases/Pack-de-Otimizacao-00-v$v.zip"
-    [ -f "$pack" ] && ok "gera o zip do pack (v$v)" || { bad "zip do pack ausente"; rm -f "$ROOT/releases"/*.zip; return; }
+    [ -f "$pack" ] && ok "gera o zip do pack (v$v)" || { bad "zip do pack ausente"; rm -f "$ROOT/releases"/*.zip "$ROOT/releases"/*.zip.sha256; return; }
     if command -v python3 >/dev/null 2>&1; then
         python3 - "$pack" <<'PY'
 import sys, zipfile
@@ -261,7 +261,7 @@ for k, okk in checks.items():
     print(("  [ ok ] " if okk else "  [FAIL] ") + "pack contem " + k)
 PY
     fi
-    rm -f "$ROOT/releases"/*.zip
+    rm -f "$ROOT/releases"/*.zip "$ROOT/releases"/*.zip.sha256
 }
 
 # --- execução ----------------------------------------------------------------
