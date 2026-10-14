@@ -135,6 +135,9 @@ sh 00 Otimizações/Scripts SH/run.sh save       # salva o estado atual
 sh 00 Otimizações/Scripts SH/run.sh restore    # volta o último estado salvo
 sh 00 Otimizações/Scripts SH/run.sh deep detect   # o que seu aparelho suporta
 sh 00 Otimizações/Scripts SH/run.sh deep gaming on com.dts.freefireth  # MODO TURBO
+sh 00 Otimizações/Scripts SH/run.sh deep extreme  # ⚡ TURBO + todos os avançados (esquenta)
+sh 00 Otimizações/Scripts SH/run.sh deep gpu on   # GPU extrema (root)
+sh 00 Otimizações/Scripts SH/run.sh deep display on  # HWUI/SurfaceFlinger (sem root)
 ```
 
 E se você usa **AxManager**, instale o plugin e deixe ele **rodando sozinho 24h**:

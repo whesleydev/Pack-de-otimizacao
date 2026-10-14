@@ -113,6 +113,8 @@ No painel você tem, com botões (e visual):
 | **Congelar apps** | congelar/descongelar apps de fundo |
 | **Debloat** | ⚠️ perfis leve/médio/pesado + **por app** (desativar, reativar, desinstalar, reinstalar, restringir) |
 | **Profundas (root)** | frequência, I/O, memória, rede BBR, latência, modo turbo, térmico |
+| **Extremos (root)** | VM/kernel de memória, escalonador/EAS, GPU extrema, núcleos, input boost, idle, BBR2, zRAM zstd, kernel, display, Dalvik e **⚡ modo extremo (tudo)** |
+| **Avançado (sem root)** | ajustes obscuros (standby/Doze), rede móvel, notificações e modo imersivo |
 | **Diagnóstico** | perfil do aparelho (SoC/GPU), temperatura, DNS atual, benchmark antes/depois |
 | **Módulos** | executar os complementos do pack |
 
@@ -294,14 +296,36 @@ sh scripts/deep-tune.sh mem on            # MGLRU + zRAM + KSM (root)
 sh scripts/deep-tune.sh net on            # TCP BBR + fq_codel (root)
 sh scripts/deep-tune.sh debloat on        # appops + buckets (sem root)
 sh scripts/deep-tune.sh gaming on com.dts.freefireth  # MODO JOGO TURBO (tudo junto)
+sh scripts/deep-tune.sh extreme           # ⚡ TURBO + TODOS os avançados (esquenta muito)
 sh scripts/deep-tune.sh thermal on        # ⚠️ afrouxa o limite térmico (root, esquenta)
 sh scripts/deep-tune.sh restore           # desfaz tudo
 ```
 
-> ⚠️ `thermal` e `gaming` afrouxam a proteção térmica: mais FPS sustentado, **mais calor**.
-> Exige confirmação explícita (`THERMAL_OK=1`) e tem **trava automática**: se a
-> temperatura passar de 45 °C (`THERMAL_MAX_C`) ou o aparelho estiver carregando
+**Módulos extremos / pouco conhecidos** (root, salvo onde indicado) — cada um tem `on`/`off`:
+
+```sh
+sh scripts/deep-tune.sh vm on       # gerenciador de memória do kernel (menos engasgo de I/O)
+sh scripts/deep-tune.sh sched on    # escalonador/EAS + schedtune (resposta mais imediata)
+sh scripts/deep-tune.sh gpu on      # GPU extrema: clock no topo, idle/throttling off
+sh scripts/deep-tune.sh cores on    # núcleos sempre ligados (sem hotplug)
+sh scripts/deep-tune.sh input on    # input/touch boost (CPU sobe no toque)
+sh scripts/deep-tune.sh idle on     # cpuidle "menu" + sem idle profundo
+sh scripts/deep-tune.sh net2 on     # BBR2 + MTU probing + slow-start off
+sh scripts/deep-tune.sh zram on     # compressão zstd + mem_limit
+sh scripts/deep-tune.sh kernel on   # desliga tracing/debug, sobe file-max/backlog
+sh scripts/deep-tune.sh display on  # props HWUI/SurfaceFlinger (SEM root)
+sh scripts/deep-tune.sh dalvik on   # heaps do ART + dex2oat speed
+sh scripts/deep-tune.sh dexopt run  # recompila apps em AOT (SEM root, demora)
+```
+
+> ⚠️ `thermal`, `gaming` e `extreme` afrouxam a proteção térmica: mais FPS sustentado,
+> **mais calor**. Exige confirmação explícita (`THERMAL_OK=1`) e tem **trava automática**:
+> se a temperatura passar de 45 °C (`THERMAL_MAX_C`) ou o aparelho estiver carregando
 > (`THERMAL_STOP_CHARGING=1`), o módulo se reverte sozinho.
+>
+> Os módulos `cores`, `idle`, `gpu` e `input` trocam **bateria/calor por desempenho**.
+> Use jogando e com o aparelho ventilado. Tudo reverte com `deep-tune.sh restore` (ou o
+> `off` do módulo, que não mexe nos outros).
 
 ### `scripts/debloat.sh` (remover bloatware, sem root)
 

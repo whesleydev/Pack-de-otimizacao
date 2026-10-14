@@ -26,6 +26,8 @@ $meta = [
     'Congelar apps'     => ['t' => 'Congelar apps',     's' => 'Congele apps em segundo plano para liberar RAM.'],
     'Debloat'           => ['t' => 'Debloat',           's' => 'Desativa bloatware por perfil ou por app. Tudo é reversível.'],
     'Profundas (root)'  => ['t' => 'Profundas (root)',  's' => 'Mexem em kernel e sistema. Só com root, use com cuidado.'],
+    'Extremos (root)'   => ['t' => 'Extremos (root)',   's' => 'Knobs avançados que quase ninguém conhece: VM, escalonador, GPU, núcleos, input, idle, zRAM e mais.'],
+    'Avançado (sem root)'=> ['t' => 'Avançado (sem root)','s' => 'Ajustes pouco conhecidos que não pedem root: standby, rede móvel, notificações e janelas.'],
     'Diagnóstico'       => ['t' => 'Diagnóstico',       's' => 'Detecta o aparelho, mede e mostra o estado atual. Só leitura.'],
     'Módulos'           => ['t' => 'Módulos',           's' => 'Complementos do pack (tweaks, touch, GPU, bateria).'],
 ];

@@ -50,6 +50,25 @@ while :; do
     printf '  %s27%s Debloat real (appops/buckets)'          "$C_A" "$C_R"; echo
     printf '  %s28%s Detectar hardware / perfil do aparelho' "$C_A" "$C_R"; echo
     printf '  %s29%s Limite térmico (root, ⚠️ trava em 45°C)' "$C_A" "$C_R"; echo
+    printf '  %s── extremos / pouco conhecidos (root) ──%s\n' "$C_D" "$C_R"
+    printf '  %s40%s VM / kernel de memória (root)'          "$C_A" "$C_R"; echo
+    printf '  %s41%s Escalonador / EAS + schedtune (root)'   "$C_A" "$C_R"; echo
+    printf '  %s42%s GPU extrema KGSL/Mali (root)'           "$C_A" "$C_R"; echo
+    printf '  %s43%s Núcleos sempre ligados (root)'          "$C_A" "$C_R"; echo
+    printf '  %s44%s Input / touch boost (root)'             "$C_A" "$C_R"; echo
+    printf '  %s45%s CPU idle menu (root)'                   "$C_A" "$C_R"; echo
+    printf '  %s46%s Rede avançada 2 / BBR2 (root)'          "$C_A" "$C_R"; echo
+    printf '  %s47%s zRAM avançada zstd (root)'              "$C_A" "$C_R"; echo
+    printf '  %s48%s Kernel: tirar overhead (root)'          "$C_A" "$C_R"; echo
+    printf '  %s49%s Display / HWUI props (sem root)'        "$C_A" "$C_R"; echo
+    printf '  %s50%s Dalvik / ART heaps (root)'              "$C_A" "$C_R"; echo
+    printf '  %s51%s Recompilar apps (dexopt/AOT)'           "$C_A" "$C_R"; echo
+    printf '  %s52%s ⚡ MODO EXTREMO (TUDO de uma vez)'      "$C_RD" "$C_R"; echo
+    printf '  %s── avançado sem root ─────────────────%s\n' "$C_D" "$C_R"
+    printf '  %s55%s Ajustes obscuros (standby/Doze)'        "$C_A" "$C_R"; echo
+    printf '  %s56%s Rede móvel / economia de dados'         "$C_A" "$C_R"; echo
+    printf '  %s57%s Menos notificações (heads-up)'          "$C_A" "$C_R"; echo
+    printf '  %s58%s Janelas / modo imersivo'                "$C_A" "$C_R"; echo
     printf '  %s90%s Aplicar TUDO (all)'                    "$C_G" "$C_R"; echo
     printf '  %s91%s RESTAURAR tudo'                        "$C_Y" "$C_R"; echo
     printf '  %s0%s  Sair'                                  "$C_D" "$C_R"; echo
@@ -125,6 +144,25 @@ while :; do
             "$DIR/device-profile.sh" ;;
         29) printf '  on/off/temp [temp]: '; read -r a
             "$DIR/deep-tune.sh" thermal "${a:-temp}" ;;
+        40|41|42|43|44|45|46|47|48|50)  # módulos extremos (root) -> número -> nome
+            case "$op" in
+                40) m=vm ;; 41) m=sched ;; 42) m=gpu ;; 43) m=cores ;;
+                44) m=input ;; 45) m=idle ;; 46) m=net2 ;; 47) m=zram ;;
+                48) m=kernel ;; 50) m=dalvik ;;
+            esac
+            printf '  on/off [on]: '; read -r a
+            "$DIR/deep-tune.sh" "$m" "${a:-on}" ;;
+        49) printf '  on/off [on]: '; read -r a
+            "$DIR/deep-tune.sh" display "${a:-on}" ;;
+        51) printf '  run (recompilar) ou status [status]: '; read -r a
+            "$DIR/deep-tune.sh" dexopt "${a:-status}" ;;
+        52) printf '  %sIsso liga TUDO e esquenta muito. Continuar? [s/N]: %s' "$C_Y" "$C_R"; read -r r
+            case "$r" in s|S|sim|SIM|y|Y) THERMAL_OK=1 "$DIR/deep-tune.sh" extreme ;;
+                          *) warn "cancelado" ;; esac ;;
+        55) "$DIR/adb-tweaks.sh" obscure ;;
+        56) "$DIR/adb-tweaks.sh" mobile_net ;;
+        57) "$DIR/adb-tweaks.sh" notif ;;
+        58) "$DIR/adb-tweaks.sh" window_tweaks ;;
         90) "$DIR/adb-tweaks.sh" all ;;
         91) "$DIR/adb-tweaks.sh" restore_all
             "$DIR/deep-tune.sh" restore ;;

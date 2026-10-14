@@ -339,6 +339,77 @@ function otm_actions(): array {
           'help' => 'Lê os dados de hardware do aparelho e sugere quais ajustes profundos fazem sentido. Só informa, não muda nada.',
           'argv' => ['deep-tune.sh', 'detect']]);
 
+    // ----- Extremos (root) — knobs que quase ninguém conhece -----
+    $ext = [
+        'vm'     => ['VM / kernel de memória', 'Menos engasgo de I/O e apps que reabrem rápido.',
+                     'Ajusta o gerenciador de memória do kernel: pressão de cache, escrita suja e reserva mínima. Efeito: menos microtravadas ao abrir/voltar de apps. Knob pouco conhecido, ganho constante.'],
+        'sched'  => ['Escalonador / EAS', 'Menos "pulos" de clock e resposta mais imediata.',
+                     'Mexe em como o kernel distribui as tarefas e acorda núcleos, além de dar boost ao app em foco (schedtune). Sensação de interface mais responsiva.'],
+        'gpu'    => ['GPU extrema (KGSL/Mali)', 'Trava a GPU no topo e desliga economia dela.',
+                     'Trava o clock da GPU no máximo e desliga o throttling/idle da GPU (Adreno/KGSL ou Mali/devfreq). É o ajuste que mais segura o FPS em jogo — e que quase ninguém aplica. Esquenta mais.'],
+        'cores'  => ['Núcleos sempre ligados', 'Evita o atraso de "acordar" núcleo.',
+                     'Desliga o hotplug/core_ctl e mantém todos os núcleos ligados. Reduz o atraso de acordar núcleo no meio da ação. Custa bateria.'],
+        'input'  => ['Input / touch boost', 'Sobe a CPU no instante do toque.',
+                     'Liga o boost de CPU no toque (input boost). É o que dá a sensação de resposta instantânea. Knobs variam por fabricante.'],
+        'idle'   => ['CPU idle (menu)', 'Desliga o idle profundo para acordar rápido.',
+                     'Troca o governor de idle e desliga os estados de idle mais profundos. Acorda mais rápido (menos latência), gasta mais bateria.'],
+        'net2'   => ['Rede avançada 2 (BBR2)', 'Menos lag de rede em jogo online.',
+                     'Além do BBR: tenta BBR2, desliga slow-start após ocioso, liga MTU probing e reaproveita conexões. Menos picos de ping.'],
+        'zram'   => ['zRAM avançada (zstd)', 'Mais RAM efetiva trocando CPU por memória.',
+                     'Troca a compressão da memória para zstd e ajusta o swappiness. Mais RAM efetiva; usa um pouco mais de CPU.'],
+        'kernel' => ['Kernel: tirar overhead', 'Desliga rastreamento/debug do kernel.',
+                     'Desliga tracing e debug do kernel e sobe limites do sistema (arquivos, backlog). Ganho pequeno e constante.'],
+        'dalvik' => ['Dalvik / ART (heaps)', 'Heaps maiores para jogos, menos GC no meio.',
+                     'Aumenta os heaps da máquina virtual e a compilação em modo speed. Ajuda apps grandes (jogos) a não sofrerem GC no meio do uso.'],
+    ];
+    foreach ($ext as $k => $v) {
+        $add(['id' => "ext.$k", 'group' => 'Extremos (root)', 'label' => $v[0],
+              'desc' => $v[1], 'help' => $v[2] . ' Requer root. Reversível em "' . $v[0] . ' — desligar".',
+              'argv' => ['deep-tune.sh', $k, 'on'], 'risk' => 'root', 'confirm' => true]);
+        $add(['id' => "ext.$k.off", 'group' => 'Extremos (root)', 'label' => $v[0] . ' — desligar',
+              'desc' => 'Reverte só este ajuste extremo.',
+              'help' => 'Desliga apenas este ajuste extremo, mantendo os outros como estão.',
+              'argv' => ['deep-tune.sh', $k, 'off'], 'risk' => 'root']);
+    }
+    $add(['id' => 'ext.display', 'group' => 'Extremos (root)', 'label' => 'Display / HWUI (props)',
+          'desc' => 'Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa. SEM root.',
+          'help' => 'Ajusta props "debug.*" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Não precisa de root e deixa a rolagem mais lisa.',
+          'argv' => ['deep-tune.sh', 'display', 'on']]);
+    $add(['id' => 'ext.display.off', 'group' => 'Extremos (root)', 'label' => 'Display / HWUI — desligar',
+          'desc' => 'Reverte as props de display.',
+          'help' => 'Restaura as props de display/HWUI ao valor anterior.',
+          'argv' => ['deep-tune.sh', 'display', 'off']]);
+    $add(['id' => 'ext.turbo', 'group' => 'Extremos (root)', 'label' => '⚡ MODO EXTREMO (tudo)',
+          'desc' => 'Turbo + TODOS os ajustes avançados de uma vez. Esquenta muito.',
+          'help' => 'Liga o modo turbo e mais todos os knobs avançados: VM, escalonador, GPU, núcleos, input, idle, rede2, zRAM, kernel, display e dalvik. É o máximo de desempenho que o pack entrega. Esquenta MUITO e consome bateria — use com o aparelho ventilado. Reverte em "Reverter TUDO".',
+          'argv' => ['deep-tune.sh', 'extreme'], 'risk' => 'root', 'confirm' => true, 'timeout' => 300]);
+    $add(['id' => 'ext.dexopt', 'group' => 'Extremos (root)', 'label' => 'Recompilar apps (dexopt)',
+          'desc' => 'Compila os apps antecipadamente (AOT). Demora, mas reduz engasgo.',
+          'help' => 'Recompila todos os apps em modo speed (AOT). A primeira abertura fica mais fluida e some o engasgo do compilador em segundo plano. Demora vários minutos e esquenta; roda melhor com o celular na tomada.',
+          'argv' => ['deep-tune.sh', 'dexopt', 'run'], 'timeout' => 900, 'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'ext.dexopt_status', 'group' => 'Extremos (root)', 'label' => 'Ver estado do dexopt',
+          'desc' => 'Mostra como está a compilação dos apps.',
+          'help' => 'Mostra o estado da compilação AOT dos apps (o que já foi otimizado). Só leitura.',
+          'argv' => ['deep-tune.sh', 'dexopt', 'status']]);
+
+    // ----- Avançado (sem root) — pouco conhecido -----
+    $add(['id' => 'adv.obscure', 'group' => 'Avançado (sem root)', 'label' => 'Ajustes obscuros',
+          'desc' => 'Menos kills em 2º plano e o jogo fora do Doze. SEM root.',
+          'help' => 'Reúne knobs pouco conhecidos: standby de apps, whitelist do Doze para o Free Fire e ajustes de memória. Resultado: apps não são mortos à toa e o jogo não sofre com o repouso profundo.',
+          'argv' => ['adb-tweaks.sh', 'obscure']]);
+    $add(['id' => 'adv.mobile_net', 'group' => 'Avançado (sem root)', 'label' => 'Rede móvel / economia de dados',
+          'desc' => 'Desliga a economia de dados que estrangula a velocidade.',
+          'help' => 'Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.',
+          'argv' => ['adb-tweaks.sh', 'mobile_net']]);
+    $add(['id' => 'adv.notif', 'group' => 'Avançado (sem root)', 'label' => 'Menos notificações (heads-up)',
+          'desc' => 'Reduz o trabalho do sistema com notificações pop-up.',
+          'help' => 'Desliga os balões (heads-up) e as bolhas de notificação. O sistema trabalha menos e sobra fluidez — bom para jogar.',
+          'argv' => ['adb-tweaks.sh', 'notif']]);
+    $add(['id' => 'adv.window', 'group' => 'Avançado (sem root)', 'label' => 'Janelas / modo imersivo',
+          'desc' => 'Transições mais curtas e modo imersivo (esconde barras).',
+          'help' => 'Reduz as animações de janela e ativa o modo imersivo, escondendo as barras de status/navegação. Mais tela e menos distração no jogo.',
+          'argv' => ['adb-tweaks.sh', 'window_tweaks']]);
+
     // ----- Wi-Fi e rede -----
     $add(['id' => 'wifi', 'group' => 'Wi-Fi e rede', 'label' => 'Ajustes de Wi-Fi',
           'desc' => 'Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.',

@@ -46,6 +46,16 @@ O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
 - `scripts/modules.sh` — descobre e executa os módulos/plugins da pasta
   (`run`/`info`/`actions`/`action`); executa o script avulso, não substitui instalar
   no gerenciador (boot/serviço/WebUI).
+- `scripts/deep-tune.sh` — otimizações profundas. Cada módulo tem `on`/`off` e registra a
+  reversão com uma **tag própria** (reverter um não mexe nos outros). Além dos módulos
+  clássicos (angle/freq/thermal/io/mem/net/latency/debloat/gaming), tem os **extremos**
+  (vm/sched/gpu/cores/input/idle/net2/zram/kernel/display/dalvik/dexopt) e o atalho
+  `gaming extreme` (turbo + todos os avançados). Ao criar um módulo novo: use `DEEP_TAG`,
+  `deep_begin`, `sys_write`/`sysctl_write` (guardam o valor antigo) e `deep_restore <tag>`.
+  Módulos que dependem de root chamam `require_root`.
+- `scripts/adb-tweaks.sh` — grupos de comandos via `settings`/`cmd` (sem root). Além dos
+  clássicos, tem `obscure`, `mobile_net`, `notif` e `window_tweaks`. Para criar um grupo,
+  escreva a função, registre em `GRUPOS` e use `bkp_set`/`bkp_raw` para a reversão.
 
 `main.sh` (raiz) é a **entrada alternativa**: baixa os recursos full (`codeload` do
 GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). Não aplica

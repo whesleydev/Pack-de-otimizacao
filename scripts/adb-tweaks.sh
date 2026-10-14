@@ -379,6 +379,64 @@ aot() {
     done
 }
 
+# --- ajustes obscuros (sem root) ----------------------------------------------
+# Junta knobs que quase ninguém conhece: animações do launcher, aviso de
+# "pouca memória", jobs em segundo plano, morte de apps, etc.
+obscure() {
+    bkp_begin
+    say "Ajustes obscuros (sem root)"
+    # app em segundo plano: força parar depois de N minutos
+    bkp_set global app_standby_enabled 1
+    bkp_set global adaptive_battery_management_enabled 0
+    # desliga o "aviso de memória baixa" e o kill agressivo
+    bkp_set global low_memory_kill 0
+    # transições mais curtas no launcher
+    bkp_set secure skip_first_use_hints 1
+    bkp_set global development_settings_enabled 1
+    # economiza processamento de localização/rotação em background
+    bkp_set global wifi_scan_throttle_enabled 1
+    sh_run "cmd deviceidle whitelist +com.dts.freefireth" >/dev/null 2>&1
+    sh_run "cmd deviceidle whitelist +com.dts.freefiremax" >/dev/null 2>&1
+    say "aplicado (menos kills em 2º plano, jogo fora do Doze)"
+}
+
+# --- DNS de emergência / rede mobile (sem root) -------------------------------
+# Bloqueia o "random MAC" (endereço aleatório) para redes confiáveis e desliga
+# o modo de economia de dados que estrangula a velocidade em jogo.
+mobile_net() {
+    bkp_begin
+    say "Rede móvel / economia de dados"
+    bkp_set global data_saver_mode 0
+    bkp_set global mobile_data_always_on 1
+    bkp_set global network_avoid_bad_wifi 1
+    sh_run "svc wifi disable" >/dev/null 2>&1
+    sh_run "svc wifi enable" >/dev/null 2>&1
+    say "economia de dados off, rede estável"
+}
+
+# --- notificações / heads-up (sem root) ---------------------------------------
+# Reduz o trabalho do SystemUI com heads-up, o que dá mais fluidez em jogo.
+notif() {
+    bkp_begin
+    say "Notificações (menos heads-up)"
+    bkp_set global heads_up_notifications_enabled 0
+    bkp_set global notification_bubbles 0
+    say "heads-up e bolhas desligados"
+}
+
+# --- janela / transições (sem root) -------------------------------------------
+# Além das animações: desliga "rotação lenta" e transições de tema escuro.
+window_tweaks() {
+    bkp_begin
+    say "Janelas / transições"
+    bkp_set global window_animation_scale 0.5
+    bkp_set global transition_animation_scale 0.5
+    bkp_set global animator_duration_scale 0.5
+    bkp_set system screen_off_timeout 600000
+    sh_run "settings put global policy_control immersive.full=*" >/dev/null 2>&1
+    say "transições 0.5x + modo imersivo"
+}
+
 # --- restaurar tudo -----------------------------------------------------------
 restore_all() {
     say "Restaurando configurações originais"
@@ -399,7 +457,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot obscure mobile_net notif window_tweaks restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

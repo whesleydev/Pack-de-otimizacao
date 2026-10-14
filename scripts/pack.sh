@@ -119,7 +119,8 @@ dispatch() {
 
         # grupos do adb-tweaks (nível 2)
         perf|perf_max|gpu|net|net_reset|wifi|battery|battery_off|game|ff|ff_open|\
-        clean|aot|mem|dnd|dnd_off|screen|fluidez|game_tune)
+        clean|aot|mem|dnd|dnd_off|screen|fluidez|game_tune|\
+        obscure|mobile_net|notif|window_tweaks)
             sh "$DIR/adb-tweaks.sh" "$acao" "$@" ;;
 
         *) return 1 ;;
@@ -164,6 +165,15 @@ menu() {
         printf '   %s40%s balanced   %s41%s headshot   %s42%s spray\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s43%s sniper     %s44%s speed      %s45%s custom\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s46%s Restaurar toque          %s50%s Tuning por jogo (FPS)\n' "$C_A" "$C_R" "$C_A" "$C_R"
+
+        printf '\n  %sEXTREMOS / POUCO CONHECIDOS%s\n' "$C_A" "$C_R"
+        printf '   %s101%s VM/kernel mem  %s102%s Escalonador/EAS  %s103%s GPU extrema\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s104%s Núcleos sempre  %s105%s Input/touch boost  %s106%s CPU idle\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s107%s Rede avançada2  %s108%s zRAM zstd  %s109%s Kernel overhead\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s110%s Display/HWUI     %s111%s Dalvik/ART  %s112%s Recompilar (dexopt)\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s120%s %s⚡ MODO EXTREMO (TUDO de uma vez)%s\n' "$C_A" "$C_R" "$C_RD" "$C_R"
+        printf '   %s121%s Ajustes obscuros  %s122%s Rede móvel  %s123%s Notificações\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s124%s Janelas/imersivo\n' "$C_A" "$C_R"
 
         printf '\n  %sMÓDULOS / PLUGINS (da pasta)%s\n' "$C_A" "$C_R"
         printf '   %s80%s Executar módulo/plugin (lista + roda)\n' "$C_A" "$C_R"
@@ -223,6 +233,22 @@ menu() {
             44) sh "$DIR/ff-touch.sh" speed ;;
             45) do_touch_custom ;;
             46) sh "$DIR/ff-touch.sh" restore ;;
+            101|102|103|104|105|106|107|108|109|110|111)  # módulos extremos (root)
+                case "$op" in
+                    101) m=vm ;; 102) m=sched ;; 103) m=gpu ;; 104) m=cores ;;
+                    105) m=input ;; 106) m=idle ;; 107) m=net2 ;; 108) m=zram ;;
+                    109) m=kernel ;; 110) m=display ;; 111) m=dalvik ;;
+                esac
+                printf '  on/off [on]: '; read -r a
+                sh "$DIR/deep-tune.sh" "$m" "${a:-on}" ;;
+            112) printf '  run (recompilar) ou status [status]: '; read -r a
+                sh "$DIR/deep-tune.sh" dexopt "${a:-status}" ;;
+            120) warn "liga TUDO e esquenta muito."
+                confirm "aplicar o MODO EXTREMO agora?" && THERMAL_OK=1 sh "$DIR/deep-tune.sh" extreme ;;
+            121) sh "$DIR/adb-tweaks.sh" obscure ;;
+            122) sh "$DIR/adb-tweaks.sh" mobile_net ;;
+            123) sh "$DIR/adb-tweaks.sh" notif ;;
+            124) sh "$DIR/adb-tweaks.sh" window_tweaks ;;
             50) printf '  pacote do jogo: '; read -r gp
                 printf '  perfil (fps/balanced/max) ou downscale 0.3-1.0: '; read -r gv
                 case "$gv" in

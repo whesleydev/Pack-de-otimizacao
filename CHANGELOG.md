@@ -3,6 +3,38 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.1.0] - 2026-10-15
+
+### Adicionado
+- **Otimizações EXTREMAS e pouco conhecidas** — 11 módulos novos no `deep-tune.sh`,
+  todos com reversão por módulo (tag própria) e ajuda em linguagem simples no painel:
+  - `vm` — gerenciador de memória do kernel (vfs_cache_pressure, dirty, min_free_kbytes,
+    watermark): menos engasgo de I/O e apps que reabrem rápido.
+  - `sched` — escalonador/EAS: migração, granularidades e `schedtune` (boost no app em foco).
+  - `gpu` — **GPU extrema**: trava clock no topo e desliga idle/throttling da GPU
+    (Adreno/KGSL e Mali/devfreq). É o ajuste que mais segura FPS.
+  - `cores` — desliga hotplug/core_ctl e mantém os núcleos ligados.
+  - `input` — **input/touch boost**: sobe a CPU no instante do toque.
+  - `idle` — governor de idle `menu` + desliga idle profundo (acorda mais rápido).
+  - `net2` — **BBR2** + MTU probing + desliga slow-start após ocioso + buffers finos.
+  - `zram` — compressão **zstd** + mem_limit + swappiness (mais RAM efetiva).
+  - `kernel` — desliga tracing/debug do kernel e sobe file-max/backlog.
+  - `display` — props `debug.*` do SurfaceFlinger/HWUI (**sem root**): rolagem mais lisa.
+  - `dalvik` — heaps do ART e filtro de compilação `speed`.
+  - `dexopt` — recompila os apps em AOT (`cmd package compile -m speed -a`).
+- **`gaming extreme`** (e atalho `extreme`) — liga o turbo **e** todos os módulos avançados
+  de uma vez. Avisa que esquenta muito. Reversível com `restore`.
+- **4 grupos novos no `adb-tweaks.sh` (sem root)**: `obscure` (standby/Doze + whitelist do
+  Free Fire), `mobile_net` (economia de dados off), `notif` (heads-up off) e
+  `window_tweaks` (transições + modo imersivo).
+- **Painel web**: duas categorias novas — **Extremos (root)** (25 ações, com botão de
+  ligar/desligar por módulo) e **Avançado (sem root)** (4 ações). Registro: **118 ações
+  em 15 grupos**. Ação **⚡ MODO EXTREMO (tudo)** com confirmação e timeout maior.
+- **Menus** (`menu.sh` e `pack.sh`) ganharam as opções 40–58 / 101–124 para os módulos
+  extremos, o modo extremo e os ajustes sem root.
+- Testes: `t_extreme` (módulos avançados rodam e a reversão respeita a tag) e
+  `t_adv_noroot` (grupos sem root aplicam e revertem). Suíte: **103 testes**.
+
 ## [2.0.0] - 2026-10-15
 
 ### Adicionado

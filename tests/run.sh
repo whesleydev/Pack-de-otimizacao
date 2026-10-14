@@ -118,6 +118,53 @@ t_per_module() {
     OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" restore >/dev/null 2>&1
 }
 
+t_extreme() {
+    printf '\n  # deep-tune: módulos avançados rodam e a reversão respeita a tag\n'
+    rm -rf "$HOME/.packotm/deep"
+    # todos os módulos avançados executam sem erro
+    for m in vm sched input idle net2 kernel display dalvik; do
+        OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" "$m" on >/dev/null 2>&1
+        assert_eq "0" "$?" "módulo $m on roda sem erro"
+    done
+    # com props existentes, display/dalvik registram reversão (tag correta)
+    rm -rf "$HOME/.packotm/deep"
+    mkdir -p "$TMP/bin_prop"
+    printf '#!/bin/sh\necho valor_antigo\n' > "$TMP/bin_prop/getprop"
+    chmod +x "$TMP/bin_prop/getprop"
+    PATH="$TMP/bin_prop:$PATH" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" display on >/dev/null 2>&1
+    assert_contains "$(deep_off)" '^display' "display registra reversão (com prop antiga)"
+    PATH="$TMP/bin_prop:$PATH" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" dalvik on >/dev/null 2>&1
+    assert_contains "$(deep_off)" '^dalvik' "dalvik registra reversão (com prop antiga)"
+    # reverter só o display não mexe no dalvik
+    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" display off >/dev/null 2>&1
+    assert_not_contains "$(deep_off)" '^display' "display off remove só a tag display"
+    assert_contains "$(deep_off)" '^dalvik' "display off preserva o dalvik"
+    # o help lista os módulos novos
+    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" > "$TMP/deep_help" 2>&1
+    assert_contains "$TMP/deep_help" "vm" "help do deep-tune lista vm"
+    assert_contains "$TMP/deep_help" "extreme" "help do deep-tune lista extreme"
+    # o modo extremo liga tudo sem erro
+    THERMAL_OK=1 OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" extreme >/dev/null 2>&1
+    assert_eq "0" "$?" "gaming extreme roda sem erro"
+    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" restore >/dev/null 2>&1
+}
+
+t_adv_noroot() {
+    printf '\n  # adb-tweaks: grupos avançados sem root aplicam e revertem\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    for g in obscure mobile_net notif window_tweaks; do
+        OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" "$g" >/dev/null 2>&1
+    done
+    assert_contains "$HOME/.packotm/off.sh" "low_memory_kill" "obscure guarda reversão"
+    assert_contains "$HOME/.packotm/off.sh" "data_saver_mode" "mobile_net guarda reversão"
+    assert_contains "$HOME/.packotm/off.sh" "heads_up_notifications_enabled" "notif guarda reversão"
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" list > "$TMP/adb_list" 2>&1
+    assert_contains "$TMP/adb_list" "obscure" "list mostra o grupo obscure"
+    assert_contains "$TMP/adb_list" "window_tweaks" "list mostra o grupo window_tweaks"
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
+    rm -rf "$HOME/.packotm"
+}
+
 # descobre onde o plugin guardou o estado (STATE pode cair no fallback $DIR/state)
 plugin_state() {
     if [ -f /data/adb/packotm/deep_mark ] || [ -d /data/adb/packotm ]; then
@@ -383,6 +430,20 @@ t_web() {
                  foreach (otm_actions() as $a) { if (trim($a["help"] ?? "") === "") $n++; }
                  echo "sem_help=$n\n";' > "$TMP/web_help" 2>&1
         assert_contains "$TMP/web_help" "sem_help=0" "todas as ações têm explicação (help)"
+        # novas categorias extremas e sem root estão no registro e no HTML
+        php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+                 echo isset($a["ext.gpu"])?"gpu ":"", isset($a["ext.turbo"])?"turbo ":"",
+                      isset($a["adv.obscure"])?"adv\n":"";' > "$TMP/web_ext" 2>&1
+        assert_contains "$TMP/web_ext" "gpu turbo adv" "registro cobre extremos e avançado (sem root)"
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $r=otm_run("ext.turbo",[],false);
+                 echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_extconf" 2>&1
+        assert_contains "$TMP/web_extconf" "PEDE" "modo extremo exige confirmação"
+        assert_contains "$TMP/web_html" "Extremos (root)" "index.php tem a categoria Extremos (root)"
+        assert_contains "$TMP/web_html" "Avançado (sem root)" "index.php tem a categoria Avançado (sem root)"
+        n_cards=$(grep -c 'class="card"' "$TMP/web_html")
+        [ "$n_cards" -ge 110 ] && ok "index.php renderiza os cards novos ($n_cards)" \
+            || bad "poucos cards renderizados ($n_cards)"
     else
         printf '  [skip] php ausente: pulei testes do painel web\n'
     fi
@@ -416,6 +477,8 @@ setup_stubs
 t_syntax
 t_angle_tag
 t_per_module
+t_extreme
+t_adv_noroot
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist
