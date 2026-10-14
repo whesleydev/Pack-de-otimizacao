@@ -76,7 +76,7 @@ web_start() {
     if web_pid >/dev/null; then
         printf '\n  %b✔ painel no ar%b\n' "$C_G" "$C_R"
         printf '     URL: %s\n' "$(web_url)"
-        printf '     login padrão: %s00deUdia%s / %s00deUdia%s (troque com "sh main.sh web senha")\n' "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '     acesso protegido por login (troque com "sh main.sh web senha")\n'
         printf '     (mesma rede Wi-Fi; no PC abra essa URL no navegador)\n\n'
     else
         err "não consegui subir — veja $STATE/server.log"
@@ -210,8 +210,13 @@ web_senha() {
         err "PHP não encontrado (necessário para gerar o hash da senha)."
         return 1
     fi
-    u="${2:-00deUdia}"
+    # usuário: usa o informado, senão o que já está salvo (não revela o inicial)
+    u="$2"
+    if [ -z "$u" ]; then
+        u="$(php -r 'require $argv[1]."/web/auth.php"; echo otm_auth_load()["user"];' "$DIR" 2>/dev/null </dev/null)"
+    fi
     printf '  novo usuário [%s]: ' "$u"; read -r ur; [ -n "$ur" ] && u="$ur"
+    [ -z "$u" ] && { err "usuário vazio"; return 1; }
     printf '  nova senha: '; read -r p1
     printf '  repita a senha: '; read -r p2
     [ -z "$p1" ] && { err "senha vazia"; return 1; }

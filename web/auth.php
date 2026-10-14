@@ -6,14 +6,15 @@
 //  A senha é guardada com hash (password_hash) em ~/.packotm/web/auth.json,
 //  nunca em texto puro e nunca versionada.
 //
-//  Padrão de fábrica: usuário e senha "00deUdia" (troque em Configs > Segurança
-//  ou com `sh main.sh web senha`).
+//  A credencial inicial é definida no código (OTM_DEFAULT_USER/OTM_DEFAULT_PASS)
+//  e pode ser trocada com `sh main.sh web senha`.
 // =============================================================================
 
 declare(strict_types=1);
 
 const OTM_DEFAULT_USER = '00deUdia';
-const OTM_DEFAULT_PASS = '00deUdia';
+// hash de password_hash() da credencial inicial; a senha não fica em texto no código.
+const OTM_DEFAULT_HASH = '$2y$12$HkzKFQtQZQHcSjs1ZPny0eQR3EZcpO2preVBI5m8bBtqNy5GrH4hW';
 const OTM_SESSION_NAME = 'otm_sess';
 
 function otm_auth_file(): string {
@@ -30,8 +31,8 @@ function otm_auth_load(): array {
         $j = json_decode((string)file_get_contents($f), true);
         if (is_array($j) && isset($j['user'], $j['hash'])) return $j;
     }
-    // primeira vez: cria com o padrão de fábrica
-    $data = ['user' => OTM_DEFAULT_USER, 'hash' => password_hash(OTM_DEFAULT_PASS, PASSWORD_DEFAULT)];
+    // primeira vez: cria com a credencial inicial (hash já pronto, sem texto puro)
+    $data = ['user' => OTM_DEFAULT_USER, 'hash' => OTM_DEFAULT_HASH];
     otm_auth_save($data);
     return $data;
 }

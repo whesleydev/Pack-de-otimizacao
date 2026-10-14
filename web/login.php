@@ -115,7 +115,7 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
     <div class="field">
       <label for="user">Usuário</label>
       <input id="user" name="user" type="text" inputmode="text" autocomplete="username"
-             value="00deUdia" required autofocus>
+             required autofocus>
     </div>
     <div class="field">
       <label for="pass">Senha</label>
@@ -125,7 +125,6 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
       </div>
     </div>
     <button class="btn" id="entrar" type="submit">Entrar</button>
-    <p class="hint">Padrão de fábrica: <code>00deUdia</code> / <code>00deUdia</code></p>
   </form>
 
   <div class="foot">Painel local — sem root, via Shizuku ou ADB por Wi-Fi.</div>

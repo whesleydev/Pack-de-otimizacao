@@ -9,14 +9,14 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Login no painel web** — o **00deUdia Otimizações** agora pede usuário e senha antes de
   mostrar qualquer coisa. Tela de entrada com a identidade visual do painel (efeito de vidro,
   animações, `prefers-reduced-motion`) e botão **Sair** no topo.
-  - Padrão de fábrica: **`00deUdia` / `00deUdia`**. Troque com `sh main.sh web senha`.
+  - Credencial inicial definida no código; troque com `sh main.sh web senha`.
   - Senha guardada com **`password_hash`** em `~/.packotm/web/auth.json` (nunca em texto puro,
     nunca versionada — está no `.gitignore`).
   - Sessão PHP com cookie `HttpOnly`/`SameSite=Lax` e **CSRF** no formulário.
   - A API (`web/api.php`) passa a exigir a **sessão logada** (o token `web/.token` continua
     valendo como defesa em profundidade). Sem login e sem token, nada executa.
 - `main.sh web senha` (troca usuário/senha) e `main.sh web logout` (encerra a sessão).
-- Testes `t_auth` (login padrão, senha errada, troca de senha, hash não-texto-puro) e
+- Testes `t_auth` (credencial inicial, senha errada, troca de senha, hash não-texto-puro) e
   cobertura do fluxo login→painel. Suíte: **137 testes**.
 
 ### Corrigido

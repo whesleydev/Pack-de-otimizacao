@@ -88,8 +88,8 @@ Além do menu de terminal, o pack tem o painel **00deUdia Otimizações**, feito
 o menu e os cards são renderizados no servidor. Visual **clean**, com paleta própria
 (tinta quente + laranja), **tema claro/escuro** (segue o sistema e dá pra trocar no botão ◐)
 e **responsivo de verdade** (gaveta lateral no celular). Um comando sobe o servidor e te dá
-uma URL para abrir no PC ou no celular, na mesma rede Wi-Fi. **O painel pede login**: entre
-com o usuário e a senha padrão de fábrica **`00deUdia` / `00deUdia`** (troque depois).
+uma URL para abrir no PC ou no celular, na mesma rede Wi-Fi. **O painel pede login** (usuário
+e senha). Troque a credencial quando quiser com `sh main.sh web senha`.
 
 ```sh
 sh main.sh              # abre o menu principal (baixar full, subir servidor, abrir painel)
@@ -126,7 +126,7 @@ lateral acompanha a rolagem no desktop (no celular vira uma gaveta).
 
 **Segurança:** o painel só executa scripts de uma **lista branca** e valida cada
 parâmetro (nunca recebe comando cru). **O acesso exige login** (sessão com `password_hash` +
-CSRF; padrão `00deUdia`/`00deUdia`, troque com `sh main.sh web senha`). O token do servidor
+CSRF; troque a senha com `sh main.sh web senha`). O token do servidor
 (arquivo `web/.token`, gerado no primeiro start, **nunca vai no zip**) continua valendo como
 defesa em profundidade para a API. Ações de risco abrem um **modal** que exige marcar
 "estou ciente". Requer **PHP** (Termux: `pkg install php`).

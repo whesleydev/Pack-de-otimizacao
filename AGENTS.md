@@ -69,10 +69,10 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
   ação saem prontos no HTML. O JS só troca de categoria, executa e mostra saída/modal.
   Mantenha o visual **clean**, a paleta própria e o CSS **responsivo** (gaveta no celular,
   tema claro/escuro) ao mexer.
-- `web/index.php` e `web/api.php` **exigem login** (`web/auth.php`, sessão PHP). O padrão de
-  fábrica é `00deUdia`/`00deUdia`; a senha fica com `password_hash` em `~/.packotm/web/auth.json`
-  (nunca em texto puro, nunca versionada). Troque com `sh main.sh web senha`. O formulário de
-  login usa **CSRF** (`otm_csrf`).
+- `web/index.php` e `web/api.php` **exigem login** (`web/auth.php`, sessão PHP). A credencial
+  inicial fica em `OTM_DEFAULT_USER`/`OTM_DEFAULT_PASS` (`web/auth.php`); a senha é guardada com
+  `password_hash` em `~/.packotm/web/auth.json` (nunca em texto puro, nunca versionada). Troque
+  com `sh main.sh web senha`. O formulário de login usa **CSRF** (`otm_csrf`).
 - `web/api.php` também aceita o **token** (`web/.token`, gerado no `main.sh web start`) como
   defesa em profundidade, e só roda scripts da lista branca `otm_allowed_scripts()`. Parâmetros
   são validados por tipo (pkg/host/int/float). Nunca passe input do usuário direto para o shell.
@@ -94,7 +94,7 @@ sh scripts/build-pack.sh        # gera o zip único "Pack 00" completo em releas
 sh scripts/debloat.sh on medio  # debloat (leve|medio|pesado); off reverte
 sh scripts/dns.sh list          # perfis de DNS (privacidade/ads/família/gaming)
 sh scripts/modules.sh list      # lista módulos/plugins da pasta; run <nome> executa
-sh main.sh web start            # sobe o painel web (PHP) e mostra a URL (login 00deUdia)
+sh main.sh web start            # sobe o painel web (PHP) e mostra a URL (acesso com login)
 sh main.sh baixar               # baixa os recursos full do pack
 sh scripts/check-secrets.sh     # falha se achar credencial
 shellcheck -S error $(find scripts "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" tests -name '*.sh')

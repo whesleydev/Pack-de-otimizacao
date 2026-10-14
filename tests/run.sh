@@ -272,9 +272,11 @@ t_auth() {
     printf '\n  # login do painel (00deUdia)\n'
     if command -v php >/dev/null 2>&1; then
         rm -f "$HOME/.packotm/web/auth.json"
+        OTM_TEST_PASS="${OTM_TEST_PASS:-159951}"; export OTM_TEST_PASS
         php -r 'require "'"$ROOT"'/web/auth.php";
-                 echo otm_auth_login("00deUdia","00deUdia") ? "OK":"NAO";' > "$TMP/auth1" 2>&1
-        assert_contains "$TMP/auth1" "OK" "login padrao 00deUdia/00deUdia funciona"
+                 echo otm_auth_login("00deUdia",getenv("OTM_TEST_PASS")) ? "OK":"NAO";' \
+                 > "$TMP/auth1" 2>&1
+        assert_contains "$TMP/auth1" "OK" "credencial inicial do painel funciona"
         php -r 'require "'"$ROOT"'/web/auth.php";
                  echo otm_auth_login("00deUdia","errada") ? "ACEITOU":"RECUSOU";' > "$TMP/auth2" 2>&1
         assert_contains "$TMP/auth2" "RECUSOU" "senha errada e recusada"
@@ -286,7 +288,7 @@ t_auth() {
         else
             ok "senha guardada com hash (nao em texto puro)"
         fi
-        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("00deUdia","00deUdia");' >/dev/null 2>&1
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("00deUdia",getenv("OTM_TEST_PASS"));' >/dev/null 2>&1
     else
         printf '  [skip] php ausente: pulei testes de login\n'
     fi
