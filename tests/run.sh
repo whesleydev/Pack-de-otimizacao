@@ -196,6 +196,26 @@ t_secret_scanner() {
     assert_eq "1" "$rc" "scanner sai com código 1 ao achar token"
 }
 
+t_site_html() {
+    printf '\n  # index.html: site único (estrutura + JS válido)\n'
+    f="$ROOT/index.html"
+    [ -f "$f" ] && ok "index.html existe" || { bad "index.html ausente"; return; }
+    head -c 200 "$f" | grep -q '<!DOCTYPE html>' && ok "tem DOCTYPE" || bad "sem DOCTYPE"
+    tail -c 40 "$f" | grep -q '</html>' && ok "fecha </html>" || bad "não fecha </html>"
+    grep -q 'id="cmdlist"' "$f" && ok "tem área de comandos (#cmdlist)" || bad "sem #cmdlist"
+    # JS: se houver node, valida a sintaxe do <script>
+    if command -v node >/dev/null 2>&1; then
+        awk '/<script>/{f=1;next}/<\/script>/{f=0}f' "$f" > "$TMP/site.js"
+        node --check "$TMP/site.js" >/dev/null 2>&1 \
+            && ok "JS do site sem erro de sintaxe" || bad "JS do site com erro de sintaxe"
+    else
+        ok "node ausente: pulo a checagem de sintaxe do JS"
+    fi
+    # a lista de comandos tem categorias de renderizador e congelar
+    grep -q 'skiavk' "$f" && ok "inclui comando Vulkan (skiavk)" || bad "sem comando Vulkan"
+    grep -q 'pm suspend' "$f" && ok "inclui congelar apps (pm suspend)" || bad "sem congelar apps"
+}
+
 t_build_plugins() {
     printf '\n  # build-plugins: empacota todos os plugins (nossos + terceiros OSS)\n'
     sh "$ROOT/scripts/build-plugins.sh" >/dev/null 2>&1
@@ -231,6 +251,7 @@ t_plugin_restore
 t_freezer_whitelist
 t_thermal_gate
 t_secret_scanner
+t_site_html
 t_build_plugins
 t_build_modules
 

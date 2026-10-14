@@ -3,6 +3,27 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.6.0] - 2026-10-15
+
+### Adicionado
+- **Site completo em `index.html`** — um único arquivo **HTML + CSS + JS puro**, sem
+  dependências, que funciona offline e pode ir para o GitHub Pages. Explica os apps, os
+  4 níveis, os plugins, os módulos e os perfis de touch.
+  - **Área de comandos interativa**: 59 comandos em 10 categorias (Limpeza/Cache,
+    RAM/Memória, Congelar apps, Renderizador, Performance/GPU, Rede/DNS, Bateria,
+    Tela/Refresh, Touch/Free Fire, Restaurar), com **busca**, **filtro por categoria** e
+    **botão de copiar** (com fallback para `file://`).
+  - Cobre OpenGL / Vulkan / SkiaGL / SkiaVulkan / ANGLE, `pm trim-caches`,
+    `pm suspend`/`unsuspend`, `cached_apps_freezer`, `drop_caches`, `fstrim`, perfis de
+    RAM e de toque.
+  - Cada comando tem selo de risco: **seguro**, **cuidado** ou **root**.
+- **`Apps/README.md`** — guia dos aplicativos para instalar (Brevent, Shizuku, Termux,
+  AxManager e root): o que fazem, pacote, onde baixar e como se ligam a cada nível.
+- Novo teste `t_site_html` (estrutura + sintaxe do JS via `node --check`).
+
+### Alterado
+- README e AGENTS.md agora apontam para o site (`index.html`) e para `Apps/`.
+
 ## [1.5.0] - 2026-10-14
 
 ### Adicionado

@@ -2,6 +2,14 @@
 
 > 🚀 **Novo por aqui?** Comece pelo **[COMECE AQUI](COMECE-AQUI.md)** — guia rápido,
 > sem jargão, para deixar o celular mais rápido em 5 minutos.
+>
+> 🌐 **Site completo:** abra **[`index.html`](index.html)** — explica os apps, os 4 níveis,
+> os plugins e traz uma **área de comandos** (cache, congelar apps, renderizador
+> OpenGL/Vulkan/Skia/ANGLE, RAM, bateria, touch) com botão de copiar. É um só arquivo
+> HTML/CSS/JS, sem dependências — funciona offline e dá para publicar no GitHub Pages.
+>
+> 📱 **Apps para instalar:** guia em **[`Apps/README.md`](Apps/README.md)** (Brevent,
+> Shizuku, Termux, AxManager e root).
 
 Pack de otimização para Android em **4 níveis** — de copiar-e-colar no Brevent até um
 plugin com interface web no AxManager. Reúne comandos ADB, perfis de sensibilidade para

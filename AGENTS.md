@@ -29,7 +29,13 @@ Pack de otimização para Android (foco Free Fire) em 4 níveis:
     Terceiros-open-source/ Stellar-Tweaks, Kang, Sakoiire, Aapt-for-Plugin (+CREDITS)
   Modulos/              módulos Magisk/KernelSU/AxManager do pack
 scripts/ tests/ docs/ releases/
+Apps/                   guia dos apps p/ instalar (Brevent, Shizuku, Termux, AxManager)
+index.html              site único (HTML+CSS+JS puro): guia + área de comandos
 ```
+
+`index.html` é o site público (um só arquivo, sem dependências): explica os 4 níveis, os
+apps, os plugins/módulos e tem uma **área de comandos** com busca e botão de copiar.
+Publique no GitHub Pages apontando para a raiz (o `index.html` fica na raiz).
 
 ## Comandos
 
