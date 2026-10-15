@@ -416,6 +416,19 @@ t_app_fixes() {
     grep -q 'removeCallbacks(autoStop)' "$src/SoundPlayer.kt" \
         && ok "som: timer antigo é cancelado (não corta o próximo)" || bad "som: timer não cancelado"
     grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
+    # 6) "login feito com sucesso" só toca quando o login dá certo
+    local login="$ROOT/android/app/src/main/assets/panel/login.html"
+    grep -q 'OTM.call("login"' "$login" && ok "login: avisa o app só no acerto" || bad "login: sem aviso de sucesso"
+    grep -q 'onLogin = { sound.play("login_feito_com_sucesso.mp3") }' "$src/PanelActivity.kt" \
+        && ok "som: sucesso ligado ao onLogin" || bad "som: sucesso não está no onLogin"
+    # e não pode tocar no conectar nem ao ligar o som
+    if grep -n 'login_feito_com_sucesso' "$src/PanelActivity.kt" | grep -qv 'onLogin'; then
+        bad "som: sucesso ainda toca fora do login"
+    else
+        ok "som: sucesso não toca ao conectar/ligar som"
+    fi
+    grep -q 'if (on) sound.play("ativando.mp3")' "$src/PanelActivity.kt" \
+        && ok "som: ligar som usa 'ativando' (não 'login')" || bad "som: ligar som com áudio errado"
     grep -q 'if (a.argv.isEmpty())' "$src/PackBridge.kt" \
         && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
 }

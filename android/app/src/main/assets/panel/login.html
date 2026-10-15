@@ -127,6 +127,8 @@ document.getElementById("form").addEventListener("submit", (e) => {
   const p = document.getElementById("pass").value;
   if (sha256(u + ":" + p) === OTM_AUTH) {
     localStorage.setItem("otm_session", OTM_AUTH);
+    /* login certo: avisa o app para tocar "login feito com sucesso" */
+    try { window.OTM && window.OTM.call("login", "", "login"); } catch(e){}
     location.replace("index.html");
   } else {
     document.getElementById("erroTxt").textContent = "Usuário ou senha incorretos.";

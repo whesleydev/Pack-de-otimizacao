@@ -11,8 +11,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 28
-        versionName = "2.8.0"
+        versionCode = 29
+        versionName = "2.8.1"
     }
 
     buildTypes {

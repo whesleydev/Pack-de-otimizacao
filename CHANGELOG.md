@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.8.1] - 2026-10-05
+
+### Corrigido
+- **Som "login feito com sucesso" só no login certo.** Antes ele tocava ao ligar o
+  som e ao conectar (Shizuku/ADB). Agora a tela de login avisa o app
+  (`OTM.call("login")`) apenas quando o usuário e a senha conferem, e o app toca o
+  aviso só nesse momento. Ligar o som usa "ativando" e conectar segue com o som
+  do próprio fluxo.
+
 ## [2.8.0] - 2026-10-05
 
 ### Adicionado

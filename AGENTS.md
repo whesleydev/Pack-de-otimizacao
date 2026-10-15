@@ -176,7 +176,10 @@ nativa além do necessário para conectar e rodar os comandos.
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).
   A ação de registro `appearance` (`"ui" => "appearance"` em `lib.php`) abre o
-  modal; por não ter `argv`, `PackBridge` a ignora (o painel trata a UI). O DPI é
+  modal; por não ter `argv`, `PackBridge` a ignora (o painel trata a UI). O som
+  "login feito com sucesso" toca só quando a tela de login valida usuário/senha:
+  o `login.html` chama `OTM.call("login")` e o `PackBridge` repassa para
+  `onLogin`. Ligar o som usa `ativando.mp3`. O DPI é
   um `zoom` no `<html>` com `width: calc(100% / escala)` e `html{overflow-x:clip}`
   para não reintroduzir o arrasto lateral (medido com Playwright em 360/412px).
 - Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
