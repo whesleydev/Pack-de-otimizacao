@@ -11,12 +11,24 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 29
-        versionName = "2.8.1"
+        versionCode = 30
+        versionName = "2.9.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("keystore/otm-release.jks")
+            storePassword = "00deUdia"
+            keyAlias = "otm"
+            keyPassword = "00deUdia"
+        }
     }
 
     buildTypes {
         release {
+            // Keystore fixa e versionada: a mesma assinatura em toda atualização,
+            // então dá para instalar por cima (sem desinstalar) sem erro.
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

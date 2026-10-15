@@ -429,6 +429,29 @@ t_app_fixes() {
     fi
     grep -q 'if (on) sound.play("ativando.mp3")' "$src/PanelActivity.kt" \
         && ok "som: ligar som usa 'ativando' (não 'login')" || bad "som: ligar som com áudio errado"
+    # 7) áudios novos: pareamento (conectar) e credenciais incorretas (login errado)
+    for f in pareamento_feito_com_sucesso_faca_login_no_sistema.mp3 credenciais_incorretas.mp3; do
+        test -f "$ROOT/android/app/src/main/assets/audio/$f" \
+            && ok "áudio: $f presente" || bad "áudio: falta $f"
+    done
+    grep -q 'sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")' "$src/PanelActivity.kt" \
+        && ok "som: conectar usa o áudio de pareamento" || bad "som: conectar sem áudio de pareamento"
+    grep -q 'onLoginFail = { sound.play("credenciais_incorretas.mp3") }' "$src/PanelActivity.kt" \
+        && ok "som: login errado usa 'credenciais incorretas'" || bad "som: login errado sem áudio"
+    grep -q 'OTM.call("login_fail"' "$login" && ok "login: avisa o app no erro" || bad "login: sem aviso de erro"
+    # 8) ícones no lugar de emojis (menos a engrenagem, que fica como está)
+    if grep -qP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' "$app"; then
+        bad "ícones: ainda há emoji no painel do app"
+    else
+        ok "ícones: painel do app sem emojis"
+    fi
+    grep -q 'id="btnGear"' "$app" && ok "ícones: engrenagem preservada" || bad "ícones: engrenagem sumiu"
+    grep -q 'class="stroke"' "$app" && ok "ícones: SVGs profissionais presentes" || bad "ícones: sem SVGs"
+    # 9) atualizar sem desinstalar: keystore fixa e assinatura de release
+    test -f "$ROOT/android/keystore/otm-release.jks" \
+        && ok "update: keystore versionada presente" || bad "update: sem keystore versionada"
+    grep -q 'signingConfig = signingConfigs.getByName("release")' "$ROOT/android/app/build.gradle.kts" \
+        && ok "update: release assina com a keystore fixa" || bad "update: release sem assinatura fixa"
     grep -q 'if (a.argv.isEmpty())' "$src/PackBridge.kt" \
         && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
 }

@@ -126,6 +126,7 @@ class PanelActivity : AppCompatActivity() {
             sound.muted
         },
         onLogin = { sound.play("login_feito_com_sucesso.mp3") },
+        onLoginFail = { sound.play("credenciais_incorretas.mp3") },
         onActionSound = { file -> sound.play(file) },
         onRunDone = { group, ok ->
             val what = if (group.isBlank()) "Ação" else group
@@ -154,7 +155,7 @@ class PanelActivity : AppCompatActivity() {
                     1 -> WifiDialog.show(this, applicationContext) { r, msg ->
                         runner = r
                         toast(msg)
-                        sound.play("ativando.mp3")
+                        sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
                         pendingAfterConnect?.invoke(); pendingAfterConnect = null
                         web.reload()
                     }
@@ -183,7 +184,7 @@ class PanelActivity : AppCompatActivity() {
     private fun activateShizuku() {
         runner = shizuku
         toast("Shizuku conectado.")
-        sound.play("ativando.mp3")
+        sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
         pendingAfterConnect?.invoke()
         pendingAfterConnect = null
         web.reload()

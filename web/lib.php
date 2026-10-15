@@ -179,7 +179,7 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'raw', 'settings put global force_gpu_rendering 1']]);
 
     // ----- Renderizador por app (Vulkan/OpenGL/ANGLE) -----
-    $add(['id' => 'app.angle', 'group' => 'Por app / jogo', 'label' => 'Usar ANGLE (OpenGL→Vulkan) no app',
+    $add(['id' => 'app.angle', 'group' => 'Por app / jogo', 'label' => 'Usar ANGLE (OpenGL para Vulkan) no app',
           'desc' => 'Faz o app usar Vulkan no lugar do OpenGL. Escolha o app/jogo.',
           'help' => 'ANGLE traduz os comandos de OpenGL para Vulkan. Em muitos jogos isso melhora o desempenho. Escolha o app na lista (ex.: com.dts.freefireth). Se piorar, use "Tirar ANGLE do app".',
           'argv' => ['deep-tune.sh', 'angle', 'add', '{pkg}'],
@@ -380,7 +380,7 @@ function otm_actions(): array {
           'desc' => 'Reverte as props de display.',
           'help' => 'Restaura as props de display/HWUI ao valor anterior.',
           'argv' => ['deep-tune.sh', 'display', 'off']]);
-    $add(['id' => 'ext.turbo', 'group' => 'Extremos (root)', 'label' => '⚡ MODO EXTREMO (tudo)',
+    $add(['id' => 'ext.turbo', 'group' => 'Extremos (root)', 'label' => 'MODO EXTREMO (tudo)',
           'desc' => 'Turbo + TODOS os ajustes avançados de uma vez. Esquenta muito.',
           'help' => 'Liga o modo turbo e mais todos os knobs avançados: VM, escalonador, GPU, núcleos, input, idle, rede2, zRAM, kernel, display e dalvik. É o máximo de desempenho que o pack entrega. Esquenta MUITO e consome bateria — use com o aparelho ventilado. Reverte em "Reverter TUDO".',
           'argv' => ['deep-tune.sh', 'extreme'], 'risk' => 'root', 'confirm' => true, 'timeout' => 300]);
@@ -774,7 +774,7 @@ function otm_run(string $id, array $params, bool $confirmed): array {
 
     if ($applied && $changed === 0) {
         $r['ok'] = false;
-        $r['out'] = trim(($r['out'] ?? '') . "\n\n⚠ Nenhuma alteração real no sistema"
+        $r['out'] = trim(($r['out'] ?? '') . "\n\n[!] Nenhuma alteração real no sistema"
             . ($failed > 0 ? " ($failed tentativa(s) não pegaram)" : '') . "."
             . "\nConfira o acesso em Configs: sem Shizuku/ADB/root os ajustes não aplicam.");
         $r['code'] = $r['code'] ?? -1;

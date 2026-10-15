@@ -3,6 +3,31 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.9.0] - 2026-10-05
+
+### Adicionado
+- **Dois avisos sonoros novos.** O app agora toca "pareamento feito com sucesso,
+  faça login no sistema" ao conectar (Shizuku ou ADB por Wi-Fi) e "credenciais
+  incorretas" quando o login do painel falha. A tela de login avisa o app
+  (`OTM.call("login")` no acerto e `OTM.call("login_fail")` no erro), então cada
+  caso toca o áudio certo. Os MP3 ficam guardados sem compressão no APK
+  (`openFd` exige STORED).
+- **Ícones profissionais no lugar dos emojis.** Painel do app, tela de login e
+  painel web passaram a usar ícones SVG desenhados (traço/fill no estilo do tema)
+  em vez de emojis e glifos. A engrenagem das Configs continua como está.
+- **Atualização por cima, sem desinstalar.** O APK agora é assinado com uma
+  keystore fixa e versionada no repositório (`android/keystore/otm-release.jks`),
+  e o `build.gradle.kts` usa essa assinatura no `release`. Como a assinatura é a
+  mesma em toda versão, dá para instalar a atualização por cima sem erro.
+
+### Alterado
+- Versão `2.9.0` (`versionCode` 30).
+
+### Nota
+- Quem tem a versão antiga (assinada com certificado de debug) precisa
+  desinstalar **uma vez**. A partir da 2.9.0, todas as atualizações seguintes
+  instalam por cima.
+
 ## [2.8.1] - 2026-10-05
 
 ### Corrigido

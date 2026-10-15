@@ -54,6 +54,7 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   border:1px solid var(--danger); border-left-width:4px; border-radius:var(--r-sm); color:var(--ink);
   background:var(--glass-2); animation:otmShake .4s both; }
 .erro b{color:var(--danger)}
+.erro svg{width:16px;height:16px;flex:none;color:var(--danger);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .hint{margin:14px 0 0; font-size:12px; color:var(--muted); text-align:center}
 .foot{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); animation:otmFade .7s .2s both}
 </style>
@@ -66,7 +67,7 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
     <p>Entre para acessar o painel</p>
   </div>
   <form class="card" id="form" autocomplete="on">
-    <div class="erro" id="erro" hidden role="alert"><span aria-hidden="true">⚠</span>
+    <div class="erro" id="erro" hidden role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
       <div><b>Não deu para entrar.</b><br><span id="erroTxt"></span></div></div>
     <div class="field">
       <label for="user">Usuário</label>
@@ -131,6 +132,8 @@ document.getElementById("form").addEventListener("submit", (e) => {
     try { window.OTM && window.OTM.call("login", "", "login"); } catch(e){}
     location.replace("index.html");
   } else {
+    /* login errado: avisa o app para tocar "credenciais incorretas" */
+    try { window.OTM && window.OTM.call("login_fail", "", "lf"); } catch(e){}
     document.getElementById("erroTxt").textContent = "Usuário ou senha incorretos.";
     document.getElementById("erro").hidden = false;
   }

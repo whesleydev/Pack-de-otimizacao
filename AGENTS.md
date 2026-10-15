@@ -196,7 +196,7 @@ nativa além do necessário para conectar e rodar os comandos.
   menu fixo ainda esticava a largura). Papel de parede: `contain` na camada
   visível sobre `cover` no fundo.
 - Áudio: `SoundPlayer` toca MP3 de `assets/audio` via `MediaPlayer`+`openFd`
-  (por isso o APK guarda os MP3 STORED, sem compressão). O botão 🔊 do painel
+  (por isso o APK guarda os MP3 STORED, sem compressão). O botão de som (ícone SVG)
   chama `OTM.call("sound", "test"|"off")` → `onSoundSet` liga/desliga (e toca um
   aviso ao ligar). `SoundPlayer` cancela o timer do som anterior antes de agendar
   o próximo (senão o timer antigo cortava o som novo). `PackBridge.soundFor(grupo)`
@@ -208,15 +208,17 @@ Build local (sem Android Studio):
 # toolchain em /workspace/project/.toolchain (JDK 21 + SDK 34 + Gradle 8.7)
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 export ANDROID_HOME=/workspace/project/.toolchain/sdk
-cd android && GRADLE_USER_HOME=/workspace/project/.toolchain/.gradle \
+cd android && GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home \
   ./gradlew :app:assembleRelease
-# saída: app/build/outputs/apk/release/app-release-unsigned.apk
-# assinar (keystore de debug) + alinhar:
-BT=$ANDROID_HOME/build-tools/34.0.0
-$BT/zipalign -f 4 app-release-unsigned.apk /tmp/a.apk
-$BT/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
-  --key-pass pass:android --ks-key-alias androiddebugkey --out out.apk /tmp/a.apk
+# saída: app/build/outputs/apk/release/app-release.apk (já assinado)
 ```
+
+Assinatura (atualizar por cima, sem desinstalar): o `release` usa a keystore fixa
+`android/keystore/otm-release.jks` (alias `otm`, senha `00deUdia`), configurada em
+`android/app/build.gradle.kts`. A mesma chave assina toda versão, então o Android
+aceita instalar a nova por cima da anterior. Não troque essa keystore sem avisar:
+trocar a chave quebra a atualização e obriga a desinstalar. O `zipalign`/`apksigner`
+manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
 `android/app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é

@@ -140,6 +140,8 @@ button{font:inherit;color:inherit}
   display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;text-decoration:none
 }
 .iconbtn svg{width:17px;height:17px;display:block}
+.iconbtn svg.stroke{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.iconbtn svg.stroke path{fill:none;stroke:currentColor}
 .iconbtn:hover{border-color:var(--line-strong)}
 .iconbtn:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 .burger{display:none}
@@ -269,7 +271,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .console .bar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
 .console .bar b{font-size:13px}
 .console pre{margin:0;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap}
-.close-x{border:1px solid rgba(255,255,255,.2);background:transparent;color:#ece6da;border-radius:8px;padding:6px 10px;cursor:pointer}
+.close-x{border:1px solid rgba(255,255,255,.2);background:transparent;color:#ece6da;border-radius:8px;padding:6px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.close-x svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---- modal ---------------------------------------------------------------- */
 .mask{position:fixed;inset:0;z-index:70;background:rgba(12,10,8,.55);backdrop-filter:blur(4px);
@@ -314,6 +317,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .perms{display:flex;flex-direction:column;gap:8px}
 .perm{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--glass-2)}
 .perm .ico{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:15px}
+.perm .ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .perm b{display:block;font-size:13.5px}
 .perm span{display:block;font-size:12px;color:var(--muted);line-height:1.45}
 .perm .tag{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--warn)}
@@ -366,7 +370,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .dcb:hover{border-color:var(--accent); transform:translateY(-1px)}
 .dcb:focus-visible{outline:2px solid var(--ring); outline-offset:1px}
 .dcb svg{width:16px; height:16px; fill:currentColor; flex:none}
-.dcb .arw{font-size:11px; color:var(--muted)}
+.dcb .arw{display:inline-flex; color:var(--muted)}
+.dcb .arw svg{width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
 @media (max-width:520px){ .credits .who{font-size:12px} .credits .in{gap:9px} }
 @media (max-height:520px){
   .side .panel{padding-top:48px}
@@ -376,12 +381,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
 </head>
 <body>
 <header class="top">
-  <button class="iconbtn burger" id="burger" aria-label="Abrir categorias" aria-expanded="false">☰</button>
+  <button class="iconbtn burger" id="burger" aria-label="Abrir categorias" aria-expanded="false"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
   <div class="mark" aria-hidden="true">00</div>
   <div class="name">00deUdia Otimizações<small>painel de controle</small></div>
   <div class="grow"></div>
   <span class="iconbtn hide-sm" id="modePill" style="cursor:default"><span class="dot"></span><span id="modeTxt">verificando…</span></span>
-  <button class="iconbtn hide-sm" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro">◐</button>
+  <button class="iconbtn hide-sm" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
   <button class="iconbtn hide-sm" id="btnStatus">Status</button>
   <button class="iconbtn hide-sm" id="btnLog">Histórico</button>
@@ -402,7 +407,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
 <div class="layout">
   <aside class="side" id="side" aria-label="Categorias">
     <div class="panel">
-      <button class="iconbtn side-close" id="sideClose" aria-label="Fechar">✕</button>
+      <button class="iconbtn side-close" id="sideClose" aria-label="Fechar"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2>Categorias</h2>
       <nav class="nav" id="nav">
         <?php foreach ($groups as $g => $items): ?>
@@ -489,19 +494,19 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
        title="Abrir meu perfil no Discord">
       <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-      Meu Discord <span class="arw">↗</span>
+      Meu Discord <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
     </a>
     <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
        title="Entrar no meu servidor do Discord">
       <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-      Servidor <span class="arw">↗</span>
+      Servidor <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
     </a>
   </div>
 </footer>
 
 <div class="console" id="console" role="region" aria-label="Saída">
   <div class="bar"><b id="consoleTitle">Saída</b><span class="grow"></span>
-    <button class="close-x" id="consoleClose">fechar ✕</button></div>
+    <button class="close-x" id="consoleClose">fechar <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <pre id="consoleOut"></pre>
 </div>
 
@@ -527,15 +532,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <div class="set-group">
       <div class="set-label">Permissões e segundo plano</div>
       <div class="perms" id="permList">
-        <div class="perm"><span class="ico" aria-hidden="true">🔔</span><div>
+        <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><div>
           <b>Notificações</b><span>Mostrar o aviso do pack e o andamento das ações.</span></div></div>
-        <div class="perm"><span class="ico" aria-hidden="true">🔋</span><div>
+        <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="8" width="17" height="8" rx="2"/><path d="M22 11v2"/><path d="M5.5 11h6"/></svg></span><div>
           <b>Bateria sem restrição</b><span>Sem isso o Android adormece o app e as otimizações param sozinhas.</span></div></div>
-        <div class="perm"><span class="ico" aria-hidden="true">♾️</span><div>
+        <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 2 7 13h6l-1 9 10-11h-6l1-9Z"/></svg></span><div>
           <b>Rodar em segundo plano</b><span>Mantém o pack ativo quando a tela apaga ou você troca de app.</span></div></div>
-        <div class="perm"><span class="ico" aria-hidden="true">🛡️</span><div>
+        <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.2 2.9 7.9 7 9 4.1-1.1 7-4.8 7-9V6l-7-3Z"/></svg></span><div>
           <b>Isento do Doze</b><span>Impede o sistema de congelar o pack e o jogo em modo de espera.</span></div></div>
-        <div class="perm"><span class="ico" aria-hidden="true">📶</span><div>
+        <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor" stroke="none"/></svg></span><div>
           <b>Acesso por Shizuku ou ADB</b><span>É o que dá poder de shell ao pack. Configure em Configs.</span></div></div>
       </div>
       <div class="set-actions">
@@ -675,7 +680,7 @@ function askPermission(id, label){
     body: JSON.stringify({id:id, params:{}, confirm:false}) })
     .then(r => r.json())
     .then(j => {
-      const head = (j.ok ? "✔ " : "✘ ") + "[" + (j.code ?? "?") + "]";
+      const head = (j.ok ? "[ok] " : "[erro] ") + "[" + (j.code ?? "?") + "]";
       openConsole(label, head + "\n\n" + (j.out || j.error || ""));
       if (j.ok) toast("Feito: " + label, "ok"); else toast("Falhou: " + label, "bad");
     })
@@ -789,7 +794,7 @@ async function doRun(card, params, confirmed){
       body: JSON.stringify({id:a.id, params, confirm:!!confirmed})
     });
     const j = await r.json();
-    let head = (j.ok ? "✔ " : "✘ ") + "[" + (j.code ?? "?") + "]";
+    let head = (j.ok ? "[ok] " : "[erro] ") + "[" + (j.code ?? "?") + "]";
     if (j.applied && !j.real) head += "  — nenhuma mudança real no sistema";
     else if (j.changed > 0) head += "  — " + j.changed + " mudança(s) confirmada(s)";
     openConsole(a.label, head + "\n\n" + (j.out || j.error || ""));
@@ -821,7 +826,7 @@ $("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo
   const j = await apiGet("status"); openConsole("Status do aparelho", j.text || "(sem saída)"); };
 $("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
   const j = await apiGet("log");
-  openConsole("Histórico", (j.log || []).map(x => (x.ok ? "✔" : "✘") + "  " + x.ts + "  " + x.label).join("\n") || "(nada ainda)"); };
+  openConsole("Histórico", (j.log || []).map(x => (x.ok ? "[ok]" : "[erro]") + "  " + x.ts + "  " + x.label).join("\n") || "(nada ainda)"); };
 
 window.addEventListener("hashchange", fromHash);
 addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); $("#gearMask").classList.remove("open"); document.body.classList.remove("drawer"); } });
