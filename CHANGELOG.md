@@ -3,6 +3,26 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.5.0] - 2026-10-05
+
+### Adicionado
+- **Tela de login no app Android** (`assets/panel/login.html`): entrada com a identidade
+  visual do painel (efeito de vidro, animações, `prefers-reduced-motion`), mostrar/ocultar
+  senha e erro de credencial. Credencial **`00deUdia` / `159951`**.
+  - A senha **não** fica em texto no APK: o login confere `SHA-256("usuario:senha")` contra
+    um hash embutido, com SHA-256 implementado em JS puro (não depende de `crypto.subtle`,
+    que falta em WebViews antigas e em `file://`).
+  - Sessão em `localStorage` (`otm_session`); o `index.html` tem guarda no `<head>` que
+    volta ao login quando não há sessão. Botão **Sair** limpa a sessão.
+  - `PanelActivity` abre `login.html` e só injeta "Conectar"/"Som" no cabeçalho do painel
+    (a tela de login não recebe botões nativos).
+
+### Corrigido
+- **Menu lateral travado no lugar**: `.side .panel` agora é `position:fixed` na viewport.
+  Antes, com `position:sticky` dentro do grid, o menu "escorregava" e pinava no rodapé ao
+  rolar até o fim (ficava em `Y=-35px`, com o topo cortado). No mobile (`<=960px`) o painel
+  volta a `position:static` dentro da gaveta fixa.
+
 ## [2.2.0] - 2026-10-05
 
 ### Adicionado

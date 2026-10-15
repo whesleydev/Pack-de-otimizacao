@@ -311,6 +311,48 @@ t_noroot_only() {
 }
 
 
+# --- login do app Android (painel estático) ----------------------------------
+t_app_login() {
+    printf '\n  # login do app (painel estático)\n'
+    local p="$ROOT/android/app/src/main/assets/panel"
+    [ -f "$p/login.html" ] && ok "tela de login do app existe" || bad "login.html do app ausente"
+    [ -f "$p/index.html" ] && ok "painel do app existe" || bad "index.html do app ausente"
+    grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessão" \
+        || bad "index.html sem guarda de sessão"
+    grep -q 'localStorage.removeItem("otm_session")' "$p/index.html" \
+        && ok "botão Sair limpa a sessão" || bad "Sair não limpa a sessão"
+    # o SHA-256 em JS do login bate com o hash esperado da credencial
+    if command -v node >/dev/null 2>&1; then
+        node -e '
+          const fs=require("fs");
+          const h=fs.readFileSync(process.argv[1],"utf8");
+          const m=h.match(/function sha256\(ascii\)\{[\s\S]*?\n\}/);
+          eval(m[0]);
+          const got=sha256("00deUdia:159951");
+          const exp=(h.match(/OTM_AUTH = "([a-f0-9]+)"/)||[])[1];
+          console.log(got===exp && exp==="b6cddaaf9333c33071ae824248927b5349955fbb87167a5c1ddef5afa23d1a4d" ? "OK":"NAO");
+        ' "$p/login.html" > "$TMP/applogin" 2>&1
+        assert_contains "$TMP/applogin" "OK" "hash SHA-256 do login do app confere"
+    else
+        printf '  [skip] node ausente: pulei o hash do login\n'
+    fi
+    grep -q 'panel/login.html' "$ROOT/android/app/src/main/java/com/otm/pack/PanelActivity.kt" \
+        && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre o login"
+}
+
+# --- menu lateral do painel: fica fixo ao rolar ------------------------------
+t_side_fixed() {
+    printf '\n  # menu lateral fica fixo (não escorrega)\n'
+    grep -q 'position:fixed' "$ROOT/web/index.php" && ok "index.php tem elemento fixo" \
+        || bad "index.php sem position:fixed"
+    # o CSS do menu pode ter quebra de linha; junta tudo numa linha p/ conferir
+    tr '\n' ' ' < "$ROOT/web/index.php" > "$TMP/css1"
+    grep -qE '\.side \.panel\{ *position:fixed' "$TMP/css1" \
+        && ok "painel do menu é position:fixed" || bad "menu não está fixo no desktop"
+    grep -qE '\.side \.panel\{ *position:static' "$TMP/css1" \
+        && ok "gaveta mobile volta a position:static" || bad "gaveta mobile quebrada"
+}
+
 # descobre onde o plugin guardou o estado (STATE pode cair no fallback $DIR/state)
 plugin_state() {
     if [ -f /data/adb/packotm/deep_mark ] || [ -d /data/adb/packotm ]; then
@@ -659,8 +701,10 @@ t_adv_noroot
 t_realverify
 t_realverify_deep
 t_config
-    t_auth
-    t_noroot_only
+t_auth
+t_noroot_only
+t_app_login
+t_side_fixed
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist

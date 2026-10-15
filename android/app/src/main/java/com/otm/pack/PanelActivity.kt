@@ -64,7 +64,7 @@ class PanelActivity : AppCompatActivity() {
         }
 
         setupWeb()
-        web.loadUrl("file:///android_asset/panel/index.html")
+        web.loadUrl("file:///android_asset/panel/login.html")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -102,7 +102,7 @@ class PanelActivity : AppCompatActivity() {
     private fun injectHeaderButtons(view: WebView) {
         val js = """
             (function(){
-              var t = document.querySelector('header') || document.body;
+              var t = document.querySelector('header');
               if (!t || document.getElementById('otmConnect')) return;
               var mk = function(id, label, act){
                 var b = document.createElement('button');

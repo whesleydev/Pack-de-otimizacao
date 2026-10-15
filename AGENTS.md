@@ -145,8 +145,16 @@ ou por ADB Wi-Fi (pareamento), com os assets do pack embutidos.
 O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.
 
-- `PanelActivity` é o launcher: carrega `assets/panel/index.html` (o painel do
-  site pré-renderizado) numa WebView e injeta "Conectar"/"Som" no cabeçalho.
+- `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de
+  entrada) numa WebView e injeta "Conectar"/"Som" no cabeçalho do painel.
+- Login do app: `assets/panel/login.html` confere `SHA-256("usuario:senha")`
+  contra o hash embutido e guarda a sessão em `localStorage` (`otm_session`).
+  O `index.html` tem uma guarda no `<head>` que manda de volta ao login quando
+  não há sessão; o botão "Sair" limpa a sessão. Credencial: `00deUdia`/`159951`
+  (hash gerado com `scratch/build_panel.py`, constante `OTM_AUTH_HASH`).
+- Menu lateral do painel: `.side .panel` é `position:fixed` (trava na viewport,
+  sem "escorregar" ao rolar); no mobile (`<=960px`) vira gaveta `position:static`
+  dentro do `.side` fixo.
 - `PackBridge` é a ponte `JavascriptInterface` (`OTM.call(kind, payload, cbId)`):
   o painel chama por JS em vez de `api.php`. A execução é assíncrona (corrotina)
   e devolve o resultado por `window.__otmResolve`. Monta a ação igual ao

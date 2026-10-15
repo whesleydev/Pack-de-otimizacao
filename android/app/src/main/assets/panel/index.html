@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+try { if (localStorage.getItem("otm_session") !== "b6cddaaf9333c33071ae824248927b5349955fbb87167a5c1ddef5afa23d1a4d") location.replace("login.html"); } catch(e){}
+</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -102,8 +106,10 @@ button{font:inherit;color:inherit}
 /* ---- layout --------------------------------------------------------------- */
 .layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);
   gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px)}
-.side{align-self:start;position:sticky;top:calc(var(--top) + 12px)}
+.side{align-self:start;position:static}
 .side .panel{
+  position:fixed; top:calc(var(--top) + 12px); z-index:30;
+  left:calc(max((100vw - 1180px) / 2, 0px) + clamp(12px,3vw,22px)); width:250px;
   background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
   border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
   padding:12px; max-height:calc(100dvh - var(--top) - 24px); overflow:auto
@@ -227,7 +233,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
   .side{position:fixed;top:0;left:0;bottom:0;width:min(86vw,320px);z-index:56;padding:14px;
     transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.8,.3,1);
     padding-bottom:calc(14px + env(safe-area-inset-bottom,0))}
-  .side .panel{max-height:100%;height:100%;border-radius:0 var(--r) var(--r) 0;padding-top:calc(56px + env(safe-area-inset-top,0));
+  .side .panel{position:static;width:auto;left:auto;top:auto;max-height:100%;height:100%;border-radius:0 var(--r) var(--r) 0;padding-top:calc(56px + env(safe-area-inset-top,0));
     overflow:auto}
   body.drawer .side{transform:none}
   .side-close{display:inline-flex;position:absolute;top:calc(12px + env(safe-area-inset-top,0));right:12px}
@@ -288,6 +294,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <button class="iconbtn" id="btnConsole">Console</button>
   <button class="iconbtn" id="otmInfo" title="Estado do acesso">Acesso</button>
   <button class="iconbtn" id="btnApply" title="Aplicar o pack recomendado">⚡ Otimizar</button>
+  <button class="iconbtn" id="btnSair" title="Sair do painel">Sair</button>
 </header>
 
 <div class="banner">
@@ -2729,6 +2736,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
   // file:// não deixa mexer no hash em algumas WebViews
   const _rs = history.replaceState.bind(history);
   history.replaceState = function(a,b,c){ try { return _rs(a,b,c); } catch(e){} };
+  window.__otm = otm;
   addEventListener("DOMContentLoaded", () => {
     const b = document.getElementById("btnApply");
     if (b) b.onclick = () => { const c = document.querySelector('.card[data-id="apply"]'); if (c) window.run(c); };
@@ -2738,6 +2746,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
         openConsole("Acesso atual", (m.mode ? ("modo: " + m.mode + "\n") : "") + (m.text || "(sem saída)"));
       });
     };
+    const sair = document.getElementById("btnSair");
+    if (sair) sair.onclick = () => { try { localStorage.removeItem("otm_session"); } catch(e){} location.replace("login.html"); };
   });
 })();
 
