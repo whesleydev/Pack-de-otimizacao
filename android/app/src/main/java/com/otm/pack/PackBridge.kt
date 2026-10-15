@@ -51,6 +51,7 @@ class PackBridge(
     private val onConnect: () -> Unit,
     private val onSoundSet: (Boolean) -> Boolean,
     private val onActionSound: (String) -> Unit,
+    private val onRunDone: (String, Boolean) -> Unit,
     private val deliver: (cbId: String, json: String) -> Unit,
 ) {
 
@@ -137,6 +138,8 @@ class PackBridge(
                 (if (failed > 0) " ($failed tentativa(s) não pegaram)" else "") +
                 ".\nConfira o acesso em Configs: sem Shizuku/ADB/root os ajustes não aplicam."
         }
+
+        onRunDone(a.group, ok)
 
         return JSONObject()
             .put("ok", ok).put("code", res.code).put("out", text)

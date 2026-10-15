@@ -438,6 +438,61 @@ window_tweaks() {
     say "transições 0.5x + modo imersivo"
 }
 
+# --- permissões / bateria / segundo plano -------------------------------------
+# O app do pack e o Free Fire são mortos pelo sistema (Doze, modo restrito,
+# App Standby) quando não estão na lista de isenção. Isso é a causa mais comum
+# de "o pack parou de aplicar sozinho" ou "o jogo fecha no meio da partida".
+# perm_run <descrição> <comando de reversão> <comando de aplicação>
+perm_run() {
+    otm_v_inc apply
+    bkp_raw "$2"
+    if sh_run "$3" >/dev/null 2>&1; then
+        otm_v_inc changed
+        printf '   %bOK%b %s\n' "$C_G" "$C_R" "$1"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s\n' "$C_RD" "$C_R" "$1"
+    fi
+}
+
+# Libera um pacote para rodar em segundo plano sem ser congelado.
+perm_pkg() {
+    p="$1"
+    perm_run "isento do Doze · $p" "cmd deviceidle whitelist -$p" "cmd deviceidle whitelist +$p"
+    perm_run "rodar em 2º plano · $p" "cmd appops set $p RUN_IN_BACKGROUND default" "cmd appops set $p RUN_IN_BACKGROUND allow"
+    perm_run "rodar sempre em 2º plano · $p" "cmd appops set $p RUN_ANY_IN_BACKGROUND default" "cmd appops set $p RUN_ANY_IN_BACKGROUND allow"
+    perm_run "wake lock · $p" "cmd appops set $p WAKE_LOCK default" "cmd appops set $p WAKE_LOCK allow"
+    perm_run "iniciar em 2º plano · $p" "cmd appops set $p START_FOREGROUND default" "cmd appops set $p START_FOREGROUND allow"
+}
+
+perm_app() {
+    bkp_begin
+    say "Permissões do app do pack (segundo plano e bateria)"
+    perm_pkg "com.otm.pack"
+}
+
+perm_ff() {
+    bkp_begin
+    say "Permissões do Free Fire (segundo plano e bateria)"
+    perm_pkg "com.dts.freefireth"
+    perm_pkg "com.dts.freefiremax"
+}
+
+perm_battery() {
+    bkp_begin
+    say "Bateria: sem economia agressiva"
+    bkp_set global low_power 0
+    bkp_set global adaptive_battery_management_enabled 0
+    bkp_set global app_standby_enabled 0
+    say "economia de bateria e App Standby desligados"
+}
+
+perm_all() {
+    perm_app; echo
+    perm_ff; echo
+    perm_battery
+}
+
 # --- restaurar tudo -----------------------------------------------------------
 restore_all() {
     say "Restaurando configurações originais"
@@ -458,7 +513,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot obscure mobile_net notif window_tweaks restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot obscure mobile_net notif window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

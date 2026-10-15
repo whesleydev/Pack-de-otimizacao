@@ -172,10 +172,22 @@ nativa além do necessário para conectar e rodar os comandos.
   renderizado (`scratch/build_panel.py`); ao mexer em `index.php`/`lib.php`, os
   dois painéis (`web/index.php` e `assets/panel/index.html`) precisam ficar em
   sincronia (o CSS/JS é o mesmo nos dois).
-- Configurações do painel (engrenagem): tema, cor de destaque e som ficam em
-  `localStorage` e são aplicados antes do resto do JS (`initAppearance`). A ação
-  de registro `appearance` (`"ui" => "appearance"` em `lib.php`) abre o modal;
-  por não ter `argv`, `PackBridge` a ignora (o painel trata a UI).
+- Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
+  DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
+  `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).
+  A ação de registro `appearance` (`"ui" => "appearance"` em `lib.php`) abre o
+  modal; por não ter `argv`, `PackBridge` a ignora (o painel trata a UI). O DPI é
+  um `zoom` no `<html>` com `width: calc(100% / escala)` e `html{overflow-x:clip}`
+  para não reintroduzir o arrasto lateral (medido com Playwright em 360/412px).
+- Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
+  que rodam `adb-tweaks.sh perm_app|perm_ff|perm_battery|perm_all` (grupos novos,
+  reversíveis: entram na isenção do Doze via `cmd deviceidle whitelist`, ganham
+  `appops` de `RUN_IN_BACKGROUND`/`RUN_ANY_IN_BACKGROUND`/`WAKE_LOCK`/
+  `START_FOREGROUND` e desligam economia de bateria/App Standby). No lado nativo,
+  `Permissions.kt` cuida só do que o app pede sozinho (canal de notificação,
+  `POST_NOTIFICATIONS` no Android 13+ e `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`),
+  sem bloquear o painel. `PanelActivity.injectHeaderButtons` garante o botão
+  "Conectar" após cada carga da página.
 - Arrasto lateral: o topo usa `min-height` + `flex-wrap` e a página usa
   `overflow-x:clip` (o `hidden` deixava o `body` virar contêiner de rolagem e o
   menu fixo ainda esticava a largura). Papel de parede: `contain` na camada

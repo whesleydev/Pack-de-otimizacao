@@ -420,6 +420,84 @@ t_app_fixes() {
         && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
 }
 
+t_perm_script() {
+    printf '\n  # permissões/segundo plano: Doze, appops e bateria (sem root)\n'
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/perm.log"; : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_all 2>&1)
+    printf '%s\n' "$out" > "$TMP/permout"
+    assert_contains "$TMP/permout" 'Permissões do app do pack' "perm_all libera o app do pack"
+    assert_contains "$TMP/permout" 'Permissões do Free Fire' "perm_all libera o Free Fire"
+    assert_contains "$TMP/permout" 'sem economia agressiva' "perm_all desliga a economia de bateria"
+    grep -q '^deviceidle whitelist +com.otm.pack$' "$TMP_CMD_LOG" \
+        && ok "isenta o app do pack do Doze" || bad "não isentou o app do Doze"
+    grep -q '^deviceidle whitelist +com.dts.freefireth$' "$TMP_CMD_LOG" \
+        && ok "isenta o Free Fire do Doze" || bad "não isentou o Free Fire"
+    grep -q '^appops set com.otm.pack RUN_IN_BACKGROUND allow$' "$TMP_CMD_LOG" \
+        && ok "libera o app para rodar em segundo plano" || bad "não liberou segundo plano"
+    grep -q '^appops set com.dts.freefireth RUN_ANY_IN_BACKGROUND allow$' "$TMP_CMD_LOG" \
+        && ok "libera o Free Fire sempre em segundo plano" || bad "não liberou 2º plano do FF"
+    # reversível: guarda os comandos de desfazer no backup
+    grep -q 'deviceidle whitelist -com.otm.pack' "$HOME/.packotm/off.sh" \
+        && ok "reversão do Doze guardada (Reverter TUDO)" || bad "sem reversão do Doze"
+    grep -q 'appops set com.otm.pack RUN_IN_BACKGROUND default' "$HOME/.packotm/off.sh" \
+        && ok "reversão do appops guardada" || bad "sem reversão do appops"
+    # bateria sem economia: aplica de verdade e é reversível
+    OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_battery >/dev/null 2>&1
+    assert_eq "0" "$(cat "$TMP_STORE/global.low_power" 2>/dev/null)" "economia de bateria desligada"
+    assert_eq "0" "$(cat "$TMP_STORE/global.app_standby_enabled" 2>/dev/null)" "App Standby desligado"
+    grep -q 'settings put global low_power' "$HOME/.packotm/off.sh" \
+        && ok "reversão da bateria guardada" || bad "sem reversão da bateria"
+    rm -rf "$HOME/.packotm"
+}
+
+t_perm_actions() {
+    printf '\n  # painel: ações de permissão registradas e sem root\n'
+    if command -v php >/dev/null 2>&1; then
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $ids=["perm.app","perm.ff","perm.battery","perm.all"];
+                 $miss=[]; foreach($ids as $i){ if(!otm_action($i)) $miss[]=$i; }
+                 echo $miss ? ("FALTA:".implode(",",$miss)) : "OK";' > "$TMP/perma" 2>&1
+        assert_contains "$TMP/perma" "OK" "ações de permissão existem no registro"
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $a=otm_action("perm.app");
+                 echo ($a && ($a["risk"] ?? "safe")==="safe") ? "SAFE" : "RISCO";' > "$TMP/permb" 2>&1
+        assert_contains "$TMP/permb" "SAFE" "permissão do app é ação segura"
+    else
+        printf '  [skip] php ausente: pulei testes das ações de permissão\n'
+    fi
+    grep -q 'perm_all\|perm_app' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "grupos de permissão existem no adb-tweaks" || bad "sem grupos de permissão"
+    grep -q '"perm.app"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem as permissões" || bad "app: actions.json sem permissões"
+    grep -q 'Permissões e segundo plano' "$ROOT/android/app/src/main/assets/panel/index.html" \
+        && ok "app: engrenagem mostra as permissões exigidas" || bad "app: sem lista de permissões"
+    grep -q 'id="setPermApp"' "$ROOT/android/app/src/main/assets/panel/index.html" \
+        && ok "app: botões de permissão existem" || bad "app: sem botões de permissão"
+}
+
+t_personalization() {
+    printf '\n  # personalização: fonte, tema, cor, DPI e restaurar padrão\n'
+    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    grep -q 'id="setFont"' "$app" && ok "app: controle de fonte existe" || bad "app: sem fonte"
+    grep -q 'id="setScale"' "$app" && ok "app: controle de DPI existe" || bad "app: sem DPI"
+    grep -q 'id="gearReset"' "$app" && ok "app: botão restaurar padrão existe" || bad "app: sem restaurar"
+    grep -q 'otm-font' "$app" && ok "app: fonte é salva (localStorage)" || bad "app: fonte não persiste"
+    grep -q 'otm-scale' "$app" && ok "app: DPI é salvo (localStorage)" || bad "app: DPI não persiste"
+    grep -q 'setFontQuiet' "$app" && grep -q 'setScaleQuiet' "$app" \
+        && ok "app: fonte/DPI aplicados no painel" || bad "app: fonte/DPI não aplicados"
+    # paridade web x app (mesmos controles e mesmas chaves)
+    for k in 'id="setFont"' 'id="setScale"' 'id="gearReset"' 'otm-font' 'otm-scale'; do
+        grep -q "$k" "$web" || bad "web: falta $k (sem paridade com o app)"
+    done
+    ok "web: personalização em paridade com o app"
+    # DPI não pode reintroduzir o arrasto lateral: largura compensada e topo clipado
+    grep -q 'calc(100% / ' "$app" && ok "DPI compensa a largura (sem estouro)" || bad "DPI sem compensação de largura"
+    grep -q 'overflow-x:clip' "$web" && ok "web: topo clipa o transbordo" || bad "web: transbordo não clipado"
+}
+
+
 t_plugin_mark_once() {
     printf '\n  # plugin 02: loop não duplica/toca o backup após o 1o apply (deep_mark)\n'
     p="$TMP/p02"; rm -rf "$p"; cp -r "$ROOT/00 Otimizações/Plugins AxManager/Nossos/02-webui-control" "$p"
@@ -764,6 +842,9 @@ t_noroot_only
 t_app_login
 t_app_exec
 t_app_fixes
+t_perm_script
+t_perm_actions
+t_personalization
 t_side_fixed
 t_plugin_mark_once
 t_plugin_restore

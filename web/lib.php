@@ -664,10 +664,28 @@ function otm_actions(): array {
           'help' => 'Remove o arquivo de configuração. O pack volta a detectar sozinho o melhor caminho (Shizuku, ADB, root ou local).',
           'argv' => ['config.sh', 'reset']]);
 
+    // ----- Configs: permissões e segundo plano (feitas pelo shell) -----
+    $add(['id' => 'perm.app', 'group' => 'Configs', 'label' => 'Permitir o app do pack',
+          'desc' => 'Libera o app do pack para rodar em segundo plano, sem restrição de bateria e fora do Doze.',
+          'help' => 'Sem isso o Android adormece o app do pack: as otimizações param sozinhas, o som não toca e o acesso cai. Aqui o app entra na lista de isenção do Doze, ganha permissão de rodar em segundo plano e de manter a CPU acordada. Reversível em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'perm_app'], 'timeout' => 120]);
+    $add(['id' => 'perm.ff', 'group' => 'Configs', 'label' => 'Permitir o Free Fire',
+          'desc' => 'Libera o Free Fire para rodar em segundo plano sem ser congelado.',
+          'help' => 'Impede o sistema de congelar o Free Fire quando você troca de app ou a tela apaga — evita o jogo fechar no meio da partida. Também tira a restrição de bateria. Reversível em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'perm_ff'], 'timeout' => 120]);
+    $add(['id' => 'perm.battery', 'group' => 'Configs', 'label' => 'Bateria sem economia agressiva',
+          'desc' => 'Desliga o modo de economia, o App Standby e a gestão adaptativa de bateria.',
+          'help' => 'Desliga a economia de bateria que corta o desempenho e o App Standby (que suspende apps em segundo plano). É o que deixa o pack e o jogo "acordados". Reversível em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'perm_battery'], 'timeout' => 120]);
+    $add(['id' => 'perm.all', 'group' => 'Configs', 'label' => 'Aplicar todas as permissões',
+          'desc' => 'App do pack + Free Fire + bateria, de uma vez.',
+          'help' => 'Faz tudo o que o pack precisa para funcionar em segundo plano: libera o app do pack, libera o Free Fire e desliga a economia agressiva de bateria. É o "recomendado" para quem não quer mexer um por um.',
+          'argv' => ['adb-tweaks.sh', 'perm_all'], 'timeout' => 180]);
+
     // ----- Configs: aparência do painel (feita pelo próprio painel) -----
     $add(['id' => 'appearance', 'group' => 'Configs', 'label' => 'Aparência e som',
-          'desc' => 'Tema claro/escuro, cor de destaque e som do app.',
-          'help' => 'Abre as configurações de aparência: tema (claro, escuro ou automático), cor de destaque e ligar/desligar os sons. Fica salvo neste aparelho.',
+          'desc' => 'Permissões, tema, cor, fonte, DPI e som do app.',
+          'help' => 'Abre as configurações do painel: as permissões que o app precisa para funcionar (bateria, segundo plano, Doze), o tema (claro, escuro ou automático), a cor de destaque, a fonte, o DPI do app e ligar/desligar os sons. Fica salvo neste aparelho.',
           'argv' => [], 'ui' => 'appearance']);
 
     return $A;

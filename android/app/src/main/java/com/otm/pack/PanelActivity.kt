@@ -65,6 +65,8 @@ class PanelActivity : AppCompatActivity() {
 
         setupWeb()
         web.loadUrl("file:///android_asset/panel/login.html")
+        Permissions.ensureChannel(applicationContext)
+        Permissions.askOnce(this)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -98,7 +100,7 @@ class PanelActivity : AppCompatActivity() {
         }
     }
 
-    /** Garante o botão "Conectar" no cabeçalho do painel (após cada carga). */
+    /** Garante os botões do app no cabeçalho do painel (após cada carga). */
     private fun injectHeaderButtons(view: WebView) {
         val js = """
             (function(){
@@ -124,6 +126,13 @@ class PanelActivity : AppCompatActivity() {
             sound.muted
         },
         onActionSound = { file -> sound.play(file) },
+        onRunDone = { group, ok ->
+            val what = if (group.isBlank()) "Ação" else group
+            Permissions.notify(
+                applicationContext,
+                if (ok) "$what concluído." else "$what terminou com avisos — veja o console.",
+            )
+        },
         deliver = { cbId, json ->
             runOnUiThread {
                 val js = "window.__otmResolve(" + jsString(cbId) + "," + jsString(json) + ");"

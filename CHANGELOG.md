@@ -3,6 +3,40 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.8.0] - 2026-10-05
+
+### Adicionado
+- **Configs: permissões e segundo plano.** A engrenagem agora mostra as permissões
+  que o app precisa (notificações, bateria sem restrição, rodar em segundo plano,
+  isento do Doze e acesso por Shizuku/ADB) e tem botões para conceder de verdade:
+  - **App do pack** (`perm.app`) e **Free Fire** (`perm.ff`): entram na lista de
+    isenção do Doze e ganham permissão de segundo plano, wake lock e início em
+    segundo plano via `appops`.
+  - **Bateria sem economia** (`perm.battery`): desliga o modo de economia, o
+    App Standby e a gestão adaptativa.
+  - **Aplicar todas** (`perm.all`): faz os três de uma vez.
+  Tudo reversível em "Reverter TUDO" (os comandos de desfazer vão para o backup).
+- **Permissões do próprio app no Android.** O `AndroidManifest` declara
+  `POST_NOTIFICATIONS`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` e
+  `FOREGROUND_SERVICE`. O app cria um canal de notificação, pede para sair da
+  otimização de bateria (uma vez por versão) e mostra uma notificação curta quando
+  uma ação termina. Nada disso bloqueia o painel: recusar só custa som/avisos.
+- **Personalização do app dentro do painel.** Além de tema, cor de destaque e som,
+  a engrenagem ganhou **fonte** (sistema, serifa, mono), **DPI do app** (100% a
+  140%) e **restaurar padrão**. Tudo salvo em `localStorage` (`otm-font`,
+  `otm-scale`), aplicado tanto no app quanto no painel web.
+- **Botão "Conectar" garantido no app.** O `PanelActivity` injeta o botão de
+  conexão após cada carga da página, então ele nunca some mesmo se a página for
+  atualizada.
+
+### Corrigido
+- **DPI sem arrasto lateral.** O zoom do DPI compensa a largura
+  (`width: calc(100% / escala)`) e o `<html>` clipa o transbordo
+  (`overflow-x: clip`), então aumentar o DPI não reintroduz o arrasto lateral.
+- **Ação longa vira erro de verdade.** Uma ação aplicadora que não muda nada no
+  sistema agora retorna `ok:false` no app (antes o resultado podia aparecer como
+  sucesso mesmo sem efeito).
+
 ## [2.7.0] - 2026-10-05
 
 ### Adicionado

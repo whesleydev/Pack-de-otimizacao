@@ -104,7 +104,7 @@ html[data-theme="dark"]{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;overflow-x:clip}
 html,body{margin:0}
 body{
   font-family:var(--font); color:var(--ink); line-height:1.55; min-height:100dvh;
@@ -305,6 +305,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .switch{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
 .switch input{width:18px;height:18px;accent-color:var(--accent)}
 .set-hint{font-size:12px;color:var(--muted);margin:6px 0 0 2px}
+.slider{display:flex;align-items:center;gap:10px}
+.slider input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
+.slider .val{min-width:56px;text-align:right;font-size:13px;font-weight:700;color:var(--accent)}
+.modal.wide{max-width:520px;max-height:86vh;overflow:auto}
+.set-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.set-actions .btn{flex:1;min-width:120px}
+.perms{display:flex;flex-direction:column;gap:8px}
+.perm{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--glass-2)}
+.perm .ico{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:15px}
+.perm b{display:block;font-size:13.5px}
+.perm span{display:block;font-size:12px;color:var(--muted);line-height:1.45}
+.perm .tag{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--warn)}
 
 /* ---- responsivo ----------------------------------------------------------- */
 @media (max-width:960px){
@@ -508,9 +520,31 @@ body.drawer .scrim{opacity:1;visibility:visible}
 </div>
 
 <div class="mask" id="gearMask" role="dialog" aria-modal="true" aria-labelledby="gearTitle">
-  <div class="modal">
+  <div class="modal wide">
     <h3 id="gearTitle">Configurações</h3>
-    <p>Aparência e som. Fica salvo neste aparelho.</p>
+    <p>Permissões, aparência e som. Fica tudo salvo neste aparelho.</p>
+
+    <div class="set-group">
+      <div class="set-label">Permissões e segundo plano</div>
+      <div class="perms" id="permList">
+        <div class="perm"><span class="ico" aria-hidden="true">🔔</span><div>
+          <b>Notificações</b><span>Mostrar o aviso do pack e o andamento das ações.</span></div></div>
+        <div class="perm"><span class="ico" aria-hidden="true">🔋</span><div>
+          <b>Bateria sem restrição</b><span>Sem isso o Android adormece o app e as otimizações param sozinhas.</span></div></div>
+        <div class="perm"><span class="ico" aria-hidden="true">♾️</span><div>
+          <b>Rodar em segundo plano</b><span>Mantém o pack ativo quando a tela apaga ou você troca de app.</span></div></div>
+        <div class="perm"><span class="ico" aria-hidden="true">🛡️</span><div>
+          <b>Isento do Doze</b><span>Impede o sistema de congelar o pack e o jogo em modo de espera.</span></div></div>
+        <div class="perm"><span class="ico" aria-hidden="true">📶</span><div>
+          <b>Acesso por Shizuku ou ADB</b><span>É o que dá poder de shell ao pack. Configure em Configs.</span></div></div>
+      </div>
+      <div class="set-actions">
+        <button class="btn primary" id="setPermApp" type="button">Conceder ao app do pack</button>
+        <button class="btn" id="setPermFF" type="button">Ao Free Fire</button>
+        <button class="btn" id="setPermBattery" type="button">Bateria sem economia</button>
+      </div>
+      <div class="set-hint" id="setPermHint">Precisa de Shizuku, ADB por Wi-Fi ou root. Dá para desfazer em "Reverter TUDO".</div>
+    </div>
 
     <div class="set-group">
       <div class="set-label">Tema</div>
@@ -533,13 +567,33 @@ body.drawer .scrim{opacity:1;visibility:visible}
       </div>
     </div>
 
+    <div class="set-group">
+      <div class="set-label">Fonte</div>
+      <div class="seg" id="setFont">
+        <button class="seg-btn" data-font="sistema" type="button">Sistema</button>
+        <button class="seg-btn" data-font="serif" type="button">Serifa</button>
+        <button class="seg-btn" data-font="mono" type="button">Mono</button>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Tamanho da interface (DPI)</div>
+      <div class="slider"><span style="font-size:12px;color:var(--muted)">DPI</span>
+        <input type="range" id="setScale" min="100" max="140" step="5" value="100">
+        <span class="val" id="setScaleVal">100%</span></div>
+      <div class="set-hint">Aumenta ou diminui tudo no painel (zoom do app, não do sistema).</div>
+    </div>
+
     <div class="set-group" id="setSoundGroup">
       <div class="set-label">Som</div>
       <label class="switch"><input type="checkbox" id="setSound"><span>Reproduzir sons ao executar</span></label>
       <div class="set-hint">Se o volume de mídia do aparelho estiver no mínimo, não dá para ouvir.</div>
     </div>
 
-    <div class="row"><button class="btn primary" id="gearDone" type="button">Pronto</button></div>
+    <div class="row">
+      <button class="btn" id="gearReset" type="button">Restaurar padrão</button>
+      <button class="btn primary" id="gearDone" type="button">Pronto</button>
+    </div>
   </div>
 </div>
 
@@ -561,18 +615,41 @@ const ACCENTS = {
   rosa:{accent:"#ec4899",ink:"#2a0616",ring:"rgba(236,72,153,.35)"},
   vermelho:{accent:"#e5484d",ink:"#2a0506",ring:"rgba(229,72,77,.35)"}
 };
+const FONTS = {
+  sistema:'"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif',
+  serif:'Georgia,"Times New Roman",serif',
+  mono:'ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace'
+};
 function setAccentQuiet(name){
   const a = ACCENTS[name]; if (!a) return;
   const r = document.documentElement.style;
   r.setProperty("--accent", a.accent); r.setProperty("--accent-ink", a.ink); r.setProperty("--ring", a.ring);
+}
+/* DPI do app: zoom no <html>. A largura vira 100%/escala para o conteúdo não
+   ultrapassar a tela (foi o que causava o arrasto lateral). */
+function setScaleQuiet(pct){
+  const z = Math.min(1.4, Math.max(1, (pct || 100) / 100));
+  const r = document.documentElement.style;
+  if (z === 1){ r.removeProperty("zoom"); r.removeProperty("width"); }
+  else { r.setProperty("zoom", String(z)); r.setProperty("width", "calc(100% / " + z + ")"); }
+}
+function setFontQuiet(name){
+  document.documentElement.style.setProperty("--font", FONTS[name] || FONTS.sistema);
 }
 function syncGear(){
   const t = localStorage.getItem("otm-theme") || "auto";
   document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === t ? "true" : "false"));
   const a = localStorage.getItem("otm-accent") || "laranja";
   document.querySelectorAll("#setAccent .sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.accent === a ? "true" : "false"));
+  const f = localStorage.getItem("otm-font") || "sistema";
+  document.querySelectorAll("#setFont .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.font === f ? "true" : "false"));
+  const sc = parseInt(localStorage.getItem("otm-scale") || "100", 10);
+  const scEl = document.getElementById("setScale"); if (scEl) scEl.value = sc;
+  const scVal = document.getElementById("setScaleVal"); if (scVal) scVal.textContent = sc + "%";
   const s = document.getElementById("setSound"); if (s) s.checked = localStorage.getItem("otm-sound") !== "0";
   const sg = document.getElementById("setSoundGroup"); if (sg && !window.OTM) sg.style.display = "none";
+  const pl = document.getElementById("setPermHint");
+  if (pl && !window.OTM) pl.textContent = "No site (PC) não dá para mexer no aparelho — isso funciona no app do celular.";
 }
 function setTheme(v){
   if (v === "auto"){ delete document.documentElement.dataset.theme; }
@@ -581,14 +658,34 @@ function setTheme(v){
   syncGear();
 }
 function setAccent(name){ setAccentQuiet(name); localStorage.setItem("otm-accent", name); syncGear(); }
+function setFont(name){ setFontQuiet(name); localStorage.setItem("otm-font", name); syncGear(); }
+function setScale(pct){ setScaleQuiet(pct); localStorage.setItem("otm-scale", String(pct)); syncGear(); }
 function setSound(on){
   localStorage.setItem("otm-sound", on ? "1" : "0");
   try { if (window.OTM) window.OTM.call("sound", on ? "test" : "off", "snd"); } catch(e){}
   syncGear();
 }
+/* Permissões/segundo plano: manda a ação de registro pelo mesmo caminho das
+   outras (no app vira OTM.call; no site, o aviso de que é só no celular). */
+function askPermission(id, label){
+  if (!window.OTM){ toast("Permissões: use o app no celular.", "bad"); return; }
+  openConsole(label, "concedendo…");
+  fetch("api.php?do=run", { method:"POST",
+    headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
+    body: JSON.stringify({id:id, params:{}, confirm:false}) })
+    .then(r => r.json())
+    .then(j => {
+      const head = (j.ok ? "✔ " : "✘ ") + "[" + (j.code ?? "?") + "]";
+      openConsole(label, head + "\n\n" + (j.out || j.error || ""));
+      if (j.ok) toast("Feito: " + label, "ok"); else toast("Falhou: " + label, "bad");
+    })
+    .catch(e => { openConsole(label, "erro: " + e); toast("Erro", "bad"); });
+}
 (function initAppearance(){
   const t = localStorage.getItem("otm-theme"); if (t && t !== "auto") document.documentElement.dataset.theme = t;
   const a = localStorage.getItem("otm-accent"); if (a) setAccentQuiet(a);
+  const f = localStorage.getItem("otm-font"); if (f) setFontQuiet(f);
+  const sc = localStorage.getItem("otm-scale"); if (sc) setScaleQuiet(parseInt(sc, 10));
   if (localStorage.getItem("otm-sound") === "0" && window.OTM)
     try { window.OTM.call("sound", "off", "init"); } catch(e){}
 })();
@@ -602,7 +699,20 @@ $("#gearDone").onclick = () => $("#gearMask").classList.remove("open");
 $("#gearMask").onclick = e => { if (e.target.id === "gearMask") $("#gearMask").classList.remove("open"); };
 document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.onclick = () => setTheme(b.dataset.theme));
 document.querySelectorAll("#setAccent .sw").forEach(b => b.onclick = () => setAccent(b.dataset.accent));
+document.querySelectorAll("#setFont .seg-btn").forEach(b => b.onclick = () => setFont(b.dataset.font));
+document.getElementById("setScale").oninput = e => setScale(parseInt(e.target.value, 10));
 document.getElementById("setSound").onchange = e => setSound(e.target.checked);
+const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(id === "setPermApp" ? "perm.app" : id === "setPermFF" ? "perm.ff" : "perm.battery", label); };
+permBtn("setPermApp", "Permissões do app do pack");
+permBtn("setPermFF", "Permissões do Free Fire");
+permBtn("setPermBattery", "Bateria sem economia");
+const gearReset = document.getElementById("gearReset");
+if (gearReset) gearReset.onclick = () => {
+  ["otm-theme","otm-accent","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
+  delete document.documentElement.dataset.theme;
+  setAccentQuiet("laranja"); setFontQuiet("sistema"); setScaleQuiet(100);
+  syncGear(); toast("Aparência restaurada ao padrão.", "ok");
+};
 
 /* navegação */
 function go(g, push){
