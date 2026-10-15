@@ -382,6 +382,44 @@ plugin_state() {
     fi
 }
 
+# --- correções pedidas no aparelho (arrasto, topo, papel de parede, engrenagem, som)
+t_app_fixes() {
+    printf '\n  # correções do painel (arrasto, topo, papel de parede, engrenagem, som)\n'
+    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local src="$ROOT/android/app/src/main/java/com/otm/pack"
+    tr '\n' ' ' < "$app" > "$TMP/fx1"
+    tr '\n' ' ' < "$web" > "$TMP/fx2"
+    # 1) não arrasta para o lado: transbordo clipado e topo sem largura fixa
+    grep -q 'overflow-x:clip' "$app" && ok "app: overflow-x clipado (sem arrasto lateral)" || bad "app: overflow-x não clipado"
+    grep -q 'overflow-x:clip' "$web" && ok "web: overflow-x clipado" || bad "web: overflow-x não clipado"
+    grep -qE '\.top\{ *position:sticky; top:0; z-index:40; min-height:var\(--top\)' "$TMP/fx1" \
+        && ok "app: topo usa min-height (não estoura a largura)" || bad "app: topo com altura fixa"
+    # 2) topo organizado: quebra de linha e botões que não encolhem
+    grep -q 'flex-wrap:wrap' "$TMP/fx1" && ok "app: topo organizado (flex-wrap)" || bad "app: topo sem flex-wrap"
+    grep -q 'flex:none' "$TMP/fx1" && ok "app: botões do topo não encolhem" || bad "app: botões encolhem"
+    # 3) papel de parede inteiro (contain) com fundo que preenche (cover)
+    grep -q "wallpaper.jpeg') center/contain" "$TMP/fx1" && ok "app: papel de parede inteiro (contain)" || bad "app: papel de parede cortado"
+    grep -q "wallpaper.jpeg') center/cover" "$TMP/fx1" && ok "app: fundo preenche a tela (cover)" || bad "app: fundo sem cover"
+    grep -q "wallpaper.jpeg') center/contain" "$TMP/fx2" && ok "web: papel de parede inteiro (contain)" || bad "web: papel de parede cortado"
+    # 4) engrenagem + modal de configurações (tema, cor, som)
+    grep -q 'id="btnGear"' "$app" && ok "app: botão de engrenagem existe" || bad "app: sem engrenagem"
+    grep -q 'id="gearMask"' "$app" && ok "app: modal de configurações existe" || bad "app: sem modal de config"
+    grep -q 'id="btnGear"' "$web" && ok "web: botão de engrenagem existe" || bad "web: sem engrenagem"
+    grep -q 'id="setTheme"\|id="setAccent"\|id="setSound"' "$app" && ok "app: config tem tema/cor/som" || bad "app: config incompleta"
+    grep -q "ui' => 'appearance'" "$ROOT/web/lib.php" && ok "registro tem a ação de aparência" || bad "sem ação de aparência"
+    grep -q '"appearance"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem a ação de aparência" || bad "app: actions.json sem aparência"
+    grep -q 'a.id === "appearance"' "$app" && ok "app: card de aparência abre a engrenagem" || bad "app: card não abre a engrenagem"
+    # 5) som: ligar/desligar e sem corte pelo timer do som anterior
+    grep -q 'onSoundSet' "$src/PanelActivity.kt" && ok "som: painel liga/desliga (onSoundSet)" || bad "som: painel sem onSoundSet"
+    grep -q 'removeCallbacks(autoStop)' "$src/SoundPlayer.kt" \
+        && ok "som: timer antigo é cancelado (não corta o próximo)" || bad "som: timer não cancelado"
+    grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
+    grep -q 'if (a.argv.isEmpty())' "$src/PackBridge.kt" \
+        && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
+}
+
 t_plugin_mark_once() {
     printf '\n  # plugin 02: loop não duplica/toca o backup após o 1o apply (deep_mark)\n'
     p="$TMP/p02"; rm -rf "$p"; cp -r "$ROOT/00 Otimizações/Plugins AxManager/Nossos/02-webui-control" "$p"
@@ -725,6 +763,7 @@ t_auth
 t_noroot_only
 t_app_login
 t_app_exec
+t_app_fixes
 t_side_fixed
 t_plugin_mark_once
 t_plugin_restore

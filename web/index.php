@@ -108,32 +108,38 @@ html{scroll-behavior:smooth}
 html,body{margin:0}
 body{
   font-family:var(--font); color:var(--ink); line-height:1.55; min-height:100dvh;
-  -webkit-text-size-adjust:100%; overflow-x:hidden;
-  background:url('assets/wallpaper.jpeg') center/cover fixed no-repeat var(--paper);
+  -webkit-text-size-adjust:100%; overflow-x:clip;
+  background:var(--paper);
 }
+/* papel de parede: fundo preenche a tela e a imagem aparece inteira (sem corte) */
+html::before{content:"";position:fixed;inset:0;z-index:-3;
+  background:url('assets/wallpaper.jpeg') center/cover no-repeat}
+body::after{content:"";position:fixed;inset:0;z-index:-2;
+  background:url('assets/wallpaper.jpeg') center/contain no-repeat}
 /* véu para dar contraste ao conteúdo sobre o wallpaper */
-body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper);opacity:.8}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper);opacity:.62}
 a{color:var(--accent)}
 button{font:inherit;color:inherit}
 
 /* ---- topo (vidro) --------------------------------------------------------- */
 .top{
-  position:sticky; top:0; z-index:40; height:var(--top);
-  display:flex; align-items:center; gap:10px;
-  padding:0 clamp(10px,3vw,20px);
+  position:sticky; top:0; z-index:40; min-height:var(--top);
+  display:flex; align-items:center; flex-wrap:wrap; gap:8px; row-gap:8px;
+  padding:8px clamp(10px,3vw,20px);
   background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
   border-bottom:1px solid var(--line);
 }
 .mark{width:36px;height:36px;flex:none;border-radius:11px;background:var(--accent);color:var(--accent-ink);
   display:grid;place-items:center;font-weight:800;font-size:14px;letter-spacing:-.05em}
-.name{font-weight:800;letter-spacing:-.02em;font-size:15px;line-height:1.05;white-space:nowrap}
+.name{font-weight:800;letter-spacing:-.02em;font-size:15px;line-height:1.05;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .name small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:0}
 .grow{flex:1}
 .iconbtn{
   border:1px solid var(--line);background:var(--glass-2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-radius:10px;padding:8px 11px;cursor:pointer;font-size:13px;font-weight:600;
+  border-radius:10px;padding:8px 11px;cursor:pointer;font-size:13px;font-weight:600;flex:none;
   display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;text-decoration:none
 }
+.iconbtn svg{width:17px;height:17px;display:block}
 .iconbtn:hover{border-color:var(--line-strong)}
 .iconbtn:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 .burger{display:none}
@@ -287,6 +293,19 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.ok{border-left-color:var(--teal)} .toast.bad{border-left-color:var(--danger)}
 
+/* ---- configurações (engrenagem) ------------------------------------------ */
+.set-group{margin:0 0 16px}
+.set-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:0 0 8px 2px}
+.seg{display:flex;gap:6px;background:var(--glass-2);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg-btn{flex:1;border:0;background:transparent;border-radius:9px;padding:9px 8px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)}
+.seg-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:34px;height:34px;border-radius:10px;border:2px solid var(--line-strong);background:var(--sw);cursor:pointer;transition:.15s}
+.sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--ring)}
+.switch{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
+.switch input{width:18px;height:18px;accent-color:var(--accent)}
+.set-hint{font-size:12px;color:var(--muted);margin:6px 0 0 2px}
+
 /* ---- responsivo ----------------------------------------------------------- */
 @media (max-width:960px){
   .layout{grid-template-columns:1fr;gap:14px;padding-left:clamp(12px,4vw,20px);padding-right:clamp(12px,4vw,20px)}
@@ -312,6 +331,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
   .go{gap:10px}
   .console{max-height:70dvh}
   .toast{bottom:calc(16px + env(safe-area-inset-bottom,0))}
+  .top{gap:6px;padding:7px clamp(8px,3vw,16px)}
+  .iconbtn{padding:8px 10px;font-size:12.5px}
 }
 @media (max-width:380px){
   .name{font-size:14px}
@@ -348,7 +369,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="name">00deUdia Otimizações<small>painel de controle</small></div>
   <div class="grow"></div>
   <span class="iconbtn hide-sm" id="modePill" style="cursor:default"><span class="dot"></span><span id="modeTxt">verificando…</span></span>
-  <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro">◐</button>
+  <button class="iconbtn hide-sm" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro">◐</button>
+  <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
   <button class="iconbtn hide-sm" id="btnStatus">Status</button>
   <button class="iconbtn hide-sm" id="btnLog">Histórico</button>
   <button class="iconbtn" id="btnConsole">Console</button>
@@ -485,6 +507,42 @@ body.drawer .scrim{opacity:1;visibility:visible}
   </div>
 </div>
 
+<div class="mask" id="gearMask" role="dialog" aria-modal="true" aria-labelledby="gearTitle">
+  <div class="modal">
+    <h3 id="gearTitle">Configurações</h3>
+    <p>Aparência e som. Fica salvo neste aparelho.</p>
+
+    <div class="set-group">
+      <div class="set-label">Tema</div>
+      <div class="seg" id="setTheme">
+        <button class="seg-btn" data-theme="light" type="button">Claro</button>
+        <button class="seg-btn" data-theme="dark" type="button">Escuro</button>
+        <button class="seg-btn" data-theme="auto" type="button">Automático</button>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Cor de destaque</div>
+      <div class="swatches" id="setAccent">
+        <button class="sw" data-accent="laranja" style="--sw:#ff6a2b" aria-label="Laranja" type="button"></button>
+        <button class="sw" data-accent="azul" style="--sw:#2f7bff" aria-label="Azul" type="button"></button>
+        <button class="sw" data-accent="verde" style="--sw:#17a673" aria-label="Verde" type="button"></button>
+        <button class="sw" data-accent="roxo" style="--sw:#8b5cf6" aria-label="Roxo" type="button"></button>
+        <button class="sw" data-accent="rosa" style="--sw:#ec4899" aria-label="Rosa" type="button"></button>
+        <button class="sw" data-accent="vermelho" style="--sw:#e5484d" aria-label="Vermelho" type="button"></button>
+      </div>
+    </div>
+
+    <div class="set-group" id="setSoundGroup">
+      <div class="set-label">Som</div>
+      <label class="switch"><input type="checkbox" id="setSound"><span>Reproduzir sons ao executar</span></label>
+      <div class="set-hint">Se o volume de mídia do aparelho estiver no mínimo, não dá para ouvir.</div>
+    </div>
+
+    <div class="row"><button class="btn primary" id="gearDone" type="button">Pronto</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -494,16 +552,57 @@ const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
 const $ = s => document.querySelector(s);
 let pending = null;
 
-/* tema */
-const saved = localStorage.getItem("otm-theme");
-if (saved) document.documentElement.dataset.theme = saved;
+/* tema + aparência (engrenagem) */
+const ACCENTS = {
+  laranja:{accent:"#ff6a2b",ink:"#180d06",ring:"rgba(255,106,43,.35)"},
+  azul:{accent:"#2f7bff",ink:"#04122e",ring:"rgba(47,123,255,.35)"},
+  verde:{accent:"#17a673",ink:"#04160f",ring:"rgba(23,166,115,.35)"},
+  roxo:{accent:"#8b5cf6",ink:"#120726",ring:"rgba(139,92,246,.35)"},
+  rosa:{accent:"#ec4899",ink:"#2a0616",ring:"rgba(236,72,153,.35)"},
+  vermelho:{accent:"#e5484d",ink:"#2a0506",ring:"rgba(229,72,77,.35)"}
+};
+function setAccentQuiet(name){
+  const a = ACCENTS[name]; if (!a) return;
+  const r = document.documentElement.style;
+  r.setProperty("--accent", a.accent); r.setProperty("--accent-ink", a.ink); r.setProperty("--ring", a.ring);
+}
+function syncGear(){
+  const t = localStorage.getItem("otm-theme") || "auto";
+  document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === t ? "true" : "false"));
+  const a = localStorage.getItem("otm-accent") || "laranja";
+  document.querySelectorAll("#setAccent .sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.accent === a ? "true" : "false"));
+  const s = document.getElementById("setSound"); if (s) s.checked = localStorage.getItem("otm-sound") !== "0";
+  const sg = document.getElementById("setSoundGroup"); if (sg && !window.OTM) sg.style.display = "none";
+}
+function setTheme(v){
+  if (v === "auto"){ delete document.documentElement.dataset.theme; }
+  else { document.documentElement.dataset.theme = v; }
+  localStorage.setItem("otm-theme", v);
+  syncGear();
+}
+function setAccent(name){ setAccentQuiet(name); localStorage.setItem("otm-accent", name); syncGear(); }
+function setSound(on){
+  localStorage.setItem("otm-sound", on ? "1" : "0");
+  try { if (window.OTM) window.OTM.call("sound", on ? "test" : "off", "snd"); } catch(e){}
+  syncGear();
+}
+(function initAppearance(){
+  const t = localStorage.getItem("otm-theme"); if (t && t !== "auto") document.documentElement.dataset.theme = t;
+  const a = localStorage.getItem("otm-accent"); if (a) setAccentQuiet(a);
+  if (localStorage.getItem("otm-sound") === "0" && window.OTM)
+    try { window.OTM.call("sound", "off", "init"); } catch(e){}
+})();
 $("#btnTheme").onclick = () => {
   const cur = document.documentElement.dataset.theme ||
     (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  const next = cur === "dark" ? "light" : "dark";
-  document.documentElement.dataset.theme = next;
-  localStorage.setItem("otm-theme", next);
+  setTheme(cur === "dark" ? "light" : "dark");
 };
+$("#btnGear").onclick = () => { syncGear(); $("#gearMask").classList.add("open"); };
+$("#gearDone").onclick = () => $("#gearMask").classList.remove("open");
+$("#gearMask").onclick = e => { if (e.target.id === "gearMask") $("#gearMask").classList.remove("open"); };
+document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.onclick = () => setTheme(b.dataset.theme));
+document.querySelectorAll("#setAccent .sw").forEach(b => b.onclick = () => setAccent(b.dataset.accent));
+document.getElementById("setSound").onchange = e => setSound(e.target.checked);
 
 /* navegação */
 function go(g, push){
@@ -569,6 +668,7 @@ function run(card, confirmed){
 }
 async function doRun(card, params, confirmed){
   const a = ACTIONS[card.dataset.id];
+  if (a.id === "appearance"){ syncGear(); $("#gearMask").classList.add("open"); return; }
   const btn = card.querySelector("[data-run]");
   setBusy(true, btn);
   openConsole(a.label, "executando…");
@@ -614,7 +714,7 @@ $("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
   openConsole("Histórico", (j.log || []).map(x => (x.ok ? "✔" : "✘") + "  " + x.ts + "  " + x.label).join("\n") || "(nada ainda)"); };
 
 window.addEventListener("hashchange", fromHash);
-addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); document.body.classList.remove("drawer"); } });
+addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); $("#gearMask").classList.remove("open"); document.body.classList.remove("drawer"); } });
 
 /* apps instalados (autocomplete) + estado do modo de acesso */
 (async () => {

@@ -3,6 +3,35 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.7.0] - 2026-10-05
+
+### Adicionado
+- **Botão de configurações (engrenagem)** no topo do painel (app e web), abrindo um
+  modal com **tema** (claro/escuro/automático), **cor de destaque** (6 opções) e
+  **som** (ligar/desligar). As preferências ficam salvas no aparelho
+  (`localStorage`). O botão ◐ do topo continua como atalho de tema.
+- **Card "Aparência e som"** na aba **Configs**, que abre o mesmo modal. É uma ação
+  de interface (`"ui" => "appearance"` em `web/lib.php`), então aparece nos dois
+  painéis sem depender de comando no shell.
+
+### Corrigido
+- **Arrasto lateral excessivo.** A barra do topo tinha mais largura que a tela
+  (`scrollWidth` 674px num aparelho de 360px), o que permitia arrastar a página
+  para o lado. Agora o topo usa `min-height` + `flex-wrap` (quebra em linhas em
+  vez de estourar) e a página clipa o transbordo horizontal (`overflow-x:clip`),
+  então não há mais arrasto lateral em nenhuma largura.
+- **Botões do topo desorganizados.** Os botões não encolhem mais (`flex:none`),
+  quebram em linhas alinhadas e ficaram mais compactos no celular; "Status",
+  "Histórico" e o tema já se escondem nas telas estreitas.
+- **Papel de parede cortado.** A imagem passou a aparecer **inteira**
+  (`center/contain`) sobre um fundo que preenche a tela (`center/cover`), no
+  painel, no login do app e no painel web. O véu de contraste ficou mais suave
+  para o papel de parede aparecer melhor.
+- **Sons.** O botão de som do app agora **liga/desliga** de verdade (antes só
+  alternava um estado) e toca um aviso curto ao ligar. Um som novo não é mais
+  cortado pelo temporizador do som anterior (`SoundPlayer` cancela o timer antes
+  de agendar o próximo). A ponte ignora ações sem comando (como a de aparência).
+
 ## [2.6.0] - 2026-10-05
 
 ### Corrigido

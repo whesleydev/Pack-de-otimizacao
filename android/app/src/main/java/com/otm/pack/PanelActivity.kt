@@ -98,24 +98,17 @@ class PanelActivity : AppCompatActivity() {
         }
     }
 
-    /** Insere "Conectar" e "Som" no cabeçalho do painel (após cada carga). */
+    /** Garante o botão "Conectar" no cabeçalho do painel (após cada carga). */
     private fun injectHeaderButtons(view: WebView) {
         val js = """
             (function(){
               var t = document.querySelector('header');
               if (!t || document.getElementById('otmConnect')) return;
-              var mk = function(id, label, act){
-                var b = document.createElement('button');
-                b.className = 'iconbtn'; b.id = id; b.textContent = label;
-                b.onclick = act; return b;
-              };
-              t.appendChild(mk('otmConnect','Conectar', function(){ window.OTM.call('connect','','c'); }));
-              var mb = mk('otmSound','🔊', function(){
-                window.__otmMuted = !window.__otmMuted;
-                window.OTM.call('sound','','s');
-                this.textContent = window.__otmMuted ? '🔇' : '🔊';
-              });
-              t.appendChild(mb);
+              var b = document.createElement('button');
+              b.className = 'iconbtn'; b.id = 'otmConnect'; b.title = 'Conectar (Shizuku/ADB)';
+              b.textContent = 'Conectar';
+              b.onclick = function(){ window.OTM.call('connect','','c'); };
+              t.appendChild(b);
             })();
         """.trimIndent()
         view.evaluateJavascript(js, null)
@@ -125,8 +118,9 @@ class PanelActivity : AppCompatActivity() {
         context = applicationContext,
         runnerProvider = { runner },
         onConnect = { askConnect() },
-        onSoundToggle = {
-            sound.muted = !sound.muted
+        onSoundSet = { on ->
+            sound.muted = !on
+            if (on) sound.play("login_feito_com_sucesso.mp3")
             sound.muted
         },
         onActionSound = { file -> sound.play(file) },

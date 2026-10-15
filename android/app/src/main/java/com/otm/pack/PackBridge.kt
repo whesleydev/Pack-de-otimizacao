@@ -49,7 +49,7 @@ class PackBridge(
     private val context: Context,
     private val runnerProvider: () -> ShellRunner?,
     private val onConnect: () -> Unit,
-    private val onSoundToggle: () -> Boolean,
+    private val onSoundSet: (Boolean) -> Boolean,
     private val onActionSound: (String) -> Unit,
     private val deliver: (cbId: String, json: String) -> Unit,
 ) {
@@ -73,8 +73,11 @@ class PackBridge(
                     "actions" -> actionsImpl()
                     "info" -> infoImpl()
                     "connect" -> { withContext(Dispatchers.Main) { onConnect() }; okJson() }
-                    "sound" -> JSONObject().put("ok", true)
-                        .put("muted", withContext(Dispatchers.Main) { onSoundToggle() }).toString()
+                    "sound" -> {
+                        val want = payload.trim().lowercase() != "off"
+                        val muted = withContext(Dispatchers.Main) { onSoundSet(want) }
+                        JSONObject().put("ok", true).put("muted", muted).toString()
+                    }
                     else -> err("ação desconhecida: $kind")
                 }
             } catch (t: Throwable) {
@@ -93,6 +96,7 @@ class PackBridge(
         val confirm = body.optBoolean("confirm", false)
 
         val a = actions[id] ?: return err("ação desconhecida: $id")
+        if (a.argv.isEmpty()) return err("esta ação é feita pelo próprio painel")
         if (a.confirm && !confirm) {
             return JSONObject().put("ok", false).put("need_confirm", true)
                 .put("out", "esta ação pede confirmação").toString()

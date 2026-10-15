@@ -664,6 +664,12 @@ function otm_actions(): array {
           'help' => 'Remove o arquivo de configuração. O pack volta a detectar sozinho o melhor caminho (Shizuku, ADB, root ou local).',
           'argv' => ['config.sh', 'reset']]);
 
+    // ----- Configs: aparência do painel (feita pelo próprio painel) -----
+    $add(['id' => 'appearance', 'group' => 'Configs', 'label' => 'Aparência e som',
+          'desc' => 'Tema claro/escuro, cor de destaque e som do app.',
+          'help' => 'Abre as configurações de aparência: tema (claro, escuro ou automático), cor de destaque e ligar/desligar os sons. Fica salvo neste aparelho.',
+          'argv' => [], 'ui' => 'appearance']);
+
     return $A;
 }
 

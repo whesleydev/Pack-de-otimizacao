@@ -168,20 +168,24 @@ nativa além do necessário para conectar e rodar os comandos.
   serve só para o app ler os `.txt` do nível 1. `PackAssets.EXEC_DIR` guarda o
   caminho.
 - O catálogo do painel vem de `assets/panel/actions.json` (gerado a partir de
-  `web/lib.php`, via `scratch/actions.json`).
-- Gerar o painel estático: `scratch/build_panel.py` (injeta a ponte em
-  `scratch/panel.html`, o painel renderizado pelo PHP). Gerar ícones:
-  `scratch/build_icons.py` (usa `scratch/logo.jpg`).
-- Fontes em `android/app/src/main/java/com/otm/pack/`: `PanelActivity`,
-  `PackBridge`, `WifiDialog`, `PackAssets` (extrai `assets/pack`/`assets/panel`
-  para `filesDir` e copia os scripts para `/data/local/tmp/otm-pack`), `ShellRunner` + `ShizukuRunner` + `AdbRunner`, `SoundPlayer`,
-  `SelfSignedCert`.
-- AIDL oficial do Shizuku em `android/app/src/main/aidl/moe/shizuku/server/`.
-- Assets: `assets/pack` (scripts/comandos), `assets/panel` (painel + catálogo) e
-  `assets/audio` (avisos de voz).
+  `web/lib.php`, via `scratch/actions.json`). O painel do app é o HTML do PHP já
+  renderizado (`scratch/build_panel.py`); ao mexer em `index.php`/`lib.php`, os
+  dois painéis (`web/index.php` e `assets/panel/index.html`) precisam ficar em
+  sincronia (o CSS/JS é o mesmo nos dois).
+- Configurações do painel (engrenagem): tema, cor de destaque e som ficam em
+  `localStorage` e são aplicados antes do resto do JS (`initAppearance`). A ação
+  de registro `appearance` (`"ui" => "appearance"` em `lib.php`) abre o modal;
+  por não ter `argv`, `PackBridge` a ignora (o painel trata a UI).
+- Arrasto lateral: o topo usa `min-height` + `flex-wrap` e a página usa
+  `overflow-x:clip` (o `hidden` deixava o `body` virar contêiner de rolagem e o
+  menu fixo ainda esticava a largura). Papel de parede: `contain` na camada
+  visível sobre `cover` no fundo.
 - Áudio: `SoundPlayer` toca MP3 de `assets/audio` via `MediaPlayer`+`openFd`
-  (por isso o APK guarda os MP3 STORED, sem compressão). O botão 🔊/🔇 silencia.
-  `PackBridge.soundFor(grupo)` escolhe o som conforme o grupo da ação.
+  (por isso o APK guarda os MP3 STORED, sem compressão). O botão 🔊 do painel
+  chama `OTM.call("sound", "test"|"off")` → `onSoundSet` liga/desliga (e toca um
+  aviso ao ligar). `SoundPlayer` cancela o timer do som anterior antes de agendar
+  o próximo (senão o timer antigo cortava o som novo). `PackBridge.soundFor(grupo)`
+  escolhe o som conforme o grupo da ação.
 
 Build local (sem Android Studio):
 

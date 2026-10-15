@@ -18,6 +18,7 @@ class SoundPlayer(private val context: Context) {
 
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
+    private val autoStop = Runnable { stop() }
 
     /**
      * Toca [file] (nome do arquivo em assets/audio). O som para quando terminar
@@ -43,13 +44,15 @@ class SoundPlayer(private val context: Context) {
             }
             afd.close()
             player = mp
-            handler.postDelayed({ stop() }, maxMillis)
+            handler.removeCallbacks(autoStop)
+            handler.postDelayed(autoStop, maxMillis)
         } catch (t: Throwable) {
             stop()
         }
     }
 
     fun stop() {
+        handler.removeCallbacks(autoStop)
         try { player?.stop() } catch (_: Throwable) {}
         try { player?.release() } catch (_: Throwable) {}
         player = null
