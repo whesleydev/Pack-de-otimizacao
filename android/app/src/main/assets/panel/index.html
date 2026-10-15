@@ -1,0 +1,2533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>00deUdia Otimizações</title>
+<style>
+/* ---- identidade: tinta quente + laranja, com efeito de vidro ---------------- */
+:root{
+  --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
+  --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
+  --accent:#e4571c; --accent-ink:#fff; --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a;
+  --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
+  --blur:saturate(150%) blur(18px);
+  --ring:rgba(228,87,28,.35);
+  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35);
+  --r:16px; --r-sm:11px;
+  --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --top:58px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
+    --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
+    --accent:#ff6a2b; --accent-ink:#180d06; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
+    --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
+    --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
+  }
+}
+html[data-theme="light"]{ --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
+  --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34); --accent:#e4571c; --accent-ink:#fff;
+  --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a; --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
+  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35); }
+html[data-theme="dark"]{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
+  --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2); --accent:#ff6a2b; --accent-ink:#180d06;
+  --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e; --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+html,body{margin:0}
+body{
+  font-family:var(--font); color:var(--ink); line-height:1.55; min-height:100dvh;
+  -webkit-text-size-adjust:100%; overflow-x:hidden;
+  background:url('assets/wallpaper.jpeg') center/cover fixed no-repeat var(--paper);
+}
+/* véu para dar contraste ao conteúdo sobre o wallpaper */
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper);opacity:.8}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+
+/* ---- topo (vidro) --------------------------------------------------------- */
+.top{
+  position:sticky; top:0; z-index:40; height:var(--top);
+  display:flex; align-items:center; gap:10px;
+  padding:0 clamp(10px,3vw,20px);
+  background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--line);
+}
+.mark{width:36px;height:36px;flex:none;border-radius:11px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:800;font-size:14px;letter-spacing:-.05em}
+.name{font-weight:800;letter-spacing:-.02em;font-size:15px;line-height:1.05;white-space:nowrap}
+.name small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:0}
+.grow{flex:1}
+.iconbtn{
+  border:1px solid var(--line);background:var(--glass-2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-radius:10px;padding:8px 11px;cursor:pointer;font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;text-decoration:none
+}
+.iconbtn:hover{border-color:var(--line-strong)}
+.iconbtn:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
+.burger{display:none}
+
+/* ---- faixa/banner --------------------------------------------------------- */
+.banner{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
+  background:url('assets/banner.jpeg') center/cover no-repeat #241f19;color:#fff}
+.banner::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(18,14,10,.9),rgba(18,14,10,.5) 60%,rgba(18,14,10,.78))}
+.banner .in{position:relative;z-index:1;max-width:1180px;margin:0 auto;
+  padding:clamp(18px,5vw,38px) clamp(12px,3vw,22px)}
+.banner h1{margin:0;font-size:clamp(20px,4.6vw,33px);font-weight:800;letter-spacing:-.03em}
+.banner p{margin:6px 0 0;color:#e9e2d7;font-size:clamp(12.5px,2.6vw,15px);max-width:62ch}
+.banner .tag{display:inline-flex;align-items:center;gap:7px;margin-top:13px;padding:5px 11px;border-radius:999px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);font-size:12px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
+
+/* ---- animações ------------------------------------------------------------- */
+@keyframes otmRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes otmFade{from{opacity:0}to{opacity:1}}
+@keyframes otmPop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes otmSheen{0%{background-position:-160% 0}60%,100%{background-position:260% 0}}
+@keyframes otmPulse{0%,100%{box-shadow:0 0 0 0 var(--ring)}50%{box-shadow:0 0 0 6px transparent}}
+@keyframes otmSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  html{scroll-behavior:auto}
+}
+
+/* ---- layout --------------------------------------------------------------- */
+.layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);
+  gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px)}
+.side{align-self:start;position:sticky;top:calc(var(--top) + 12px)}
+.side .panel{
+  background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
+  padding:12px; max-height:calc(100dvh - var(--top) - 24px); overflow:auto
+}
+.side h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:2px 0 10px 8px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r-sm);
+  color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:600;border:1px solid transparent;
+  position:relative;transition:background .15s ease, border-color .15s ease, transform .12s ease}
+.nav a .c{width:6px;height:6px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .2s}
+.nav a:hover{background:var(--glass-2);transform:translateX(2px)}
+.nav a:active{transform:translateX(0) scale(.99)}
+.nav a[aria-current="true"]{background:var(--glass-2);border-color:var(--line-strong)}
+.nav a[aria-current="true"]::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;
+  border-radius:3px;background:var(--accent);animation:otmPop .25s both}
+.nav a[aria-current="true"] .c{background:var(--accent)}
+.nav .count{margin-left:auto;font-size:11px;color:var(--muted);font-weight:700}
+
+/* ---- conteúdo ------------------------------------------------------------- */
+.head h2{margin:0;font-size:clamp(18px,3.6vw,23px);font-weight:800;letter-spacing:-.02em}
+.head p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.note{display:flex;gap:10px;align-items:flex-start;margin:16px 0;padding:12px 14px;border-radius:var(--r-sm);
+  background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--line);color:var(--muted);font-size:13px}
+.note b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:13px}
+section[hidden]{display:none}
+
+.card{
+  background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--line); border-radius:var(--r); padding:15px;
+  display:flex; flex-direction:column; gap:9px; box-shadow:var(--shadow);
+  animation:otmRise .42s cubic-bezier(.2,.7,.3,1) both;
+  animation-delay:calc(var(--i,0)*45ms);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease
+}
+@media (hover:hover){
+  .card:hover{transform:translateY(-3px);border-color:var(--line-strong);
+    box-shadow:0 2px 4px rgba(25,22,18,.08),0 22px 46px -22px rgba(25,22,18,.45)}
+}
+.card:active{transform:translateY(-1px) scale(.995)}
+section[data-g] .head{animation:otmFade .3s both}
+.card .row{display:flex;align-items:flex-start;gap:8px}
+.card h3{margin:0;font-size:14.5px;font-weight:700;flex:1;letter-spacing:-.01em}
+.card p{margin:0;color:var(--muted);font-size:12.8px}
+.chip{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;
+  border-radius:999px;border:1px solid var(--line-strong);color:var(--muted);white-space:nowrap}
+.chip.careful{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.chip.root{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+.help-btn{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line-strong);
+  background:var(--glass-2);cursor:pointer;font-weight:800;font-size:13px;line-height:1;display:grid;place-items:center}
+.help-btn:hover{border-color:var(--accent);color:var(--accent)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.wide{grid-column:1/-1}
+.field label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.field input{width:100%;padding:9px 11px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);color:var(--ink);font-size:14px;backdrop-filter:var(--blur)}
+.field input:focus-visible{outline:2px solid var(--ring);outline-offset:1px;border-color:var(--accent)}
+.go{margin-top:auto;display:flex;gap:8px}
+.btn{border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);
+  padding:10px 15px;font-size:13.5px;font-weight:700;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .12s ease,border-color .15s ease,filter .15s ease,box-shadow .15s ease}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.primary::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+  background-size:220% 100%;animation:otmSheen 4.6s ease-in-out infinite}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.busy::before{content:"";display:inline-block;width:12px;height:12px;margin-right:7px;vertical-align:-2px;
+  border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:otmSpin .7s linear infinite}
+.help-btn{transition:transform .15s ease,border-color .15s,color .15s}
+.help-btn:active{transform:scale(.9)}
+
+/* ---- gaveta lateral (celular) -------------------------------------------- */
+.scrim{position:fixed;inset:0;z-index:54;background:rgba(12,10,8,.5);backdrop-filter:blur(3px);
+  opacity:0;visibility:hidden;transition:opacity .24s ease, visibility .24s}
+body.drawer .scrim{opacity:1;visibility:visible}
+.side-close{display:none}
+
+/* ---- console -------------------------------------------------------------- */
+.console{position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.3,1);
+  background:rgba(12,11,9,.92);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  color:#ece6da;border-top:1px solid rgba(255,255,255,.12);max-height:56vh;display:flex;flex-direction:column;
+  box-shadow:0 -14px 44px -22px rgba(0,0,0,.85);
+  padding-bottom:env(safe-area-inset-bottom,0)}
+.console.open{transform:none}
+.console .bar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
+.console .bar b{font-size:13px}
+.console pre{margin:0;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap}
+.close-x{border:1px solid rgba(255,255,255,.2);background:transparent;color:#ece6da;border-radius:8px;padding:6px 10px;cursor:pointer}
+
+/* ---- modal ---------------------------------------------------------------- */
+.mask{position:fixed;inset:0;z-index:70;background:rgba(12,10,8,.55);backdrop-filter:blur(4px);
+  display:none;place-items:center;padding:16px;animation:otmFade .18s both}
+.mask.open{display:grid}
+.modal{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--line-strong);border-radius:20px;max-width:min(92vw,460px);width:100%;
+  padding:22px;box-shadow:var(--shadow);max-height:86dvh;overflow:auto;animation:otmPop .26s cubic-bezier(.2,.8,.3,1) both}
+.modal h3{margin:0 0 6px;font-size:18px;letter-spacing:-.02em}
+.modal p{margin:0 0 14px;color:var(--muted);font-size:13.5px}
+.modal .long{color:var(--ink);font-size:13.5px;line-height:1.6;margin:0 0 16px;
+  padding:12px 14px;border-radius:var(--r-sm);background:var(--glass-2);border:1px solid var(--line)}
+.ack{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--glass-2);font-size:13px;margin-bottom:16px}
+.ack input{margin-top:2px;flex:none}
+.modal .row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,14px);z-index:80;
+  background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--line-strong);border-left:4px solid var(--accent);border-radius:12px;
+  padding:11px 16px;font-size:13px;box-shadow:var(--shadow);opacity:0;transition:.2s;max-width:92vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.ok{border-left-color:var(--teal)} .toast.bad{border-left-color:var(--danger)}
+
+/* ---- responsivo ----------------------------------------------------------- */
+@media (max-width:960px){
+  .layout{grid-template-columns:1fr;gap:14px;padding-left:clamp(12px,4vw,20px);padding-right:clamp(12px,4vw,20px)}
+  .side{position:fixed;top:0;left:0;bottom:0;width:min(86vw,320px);z-index:56;padding:14px;
+    transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.8,.3,1);
+    padding-bottom:calc(14px + env(safe-area-inset-bottom,0))}
+  .side .panel{max-height:100%;height:100%;border-radius:0 var(--r) var(--r) 0;padding-top:calc(56px + env(safe-area-inset-top,0));
+    overflow:auto}
+  body.drawer .side{transform:none}
+  .side-close{display:inline-flex;position:absolute;top:calc(12px + env(safe-area-inset-top,0));right:12px}
+  .burger{display:inline-flex}
+}
+@media (max-width:560px){
+  :root{--top:58px}
+  .name small{display:none}
+  .hide-sm{display:none}
+  .grid{grid-template-columns:1fr}
+  .fields{grid-template-columns:1fr}
+  .banner .in{padding:16px 14px}
+  .head h2{font-size:19px}
+  .card{padding:14px}
+  .btn{width:100%;padding:12px 15px}   /* alvo de toque maior no celular */
+  .go{gap:10px}
+  .console{max-height:70dvh}
+  .toast{bottom:calc(16px + env(safe-area-inset-bottom,0))}
+}
+@media (max-width:380px){
+  .name{font-size:14px}
+  .mark{width:32px;height:32px;font-size:12px}
+  .card{padding:12px}
+}
+/* ---- rodapé / créditos ---------------------------------------------------- */
+.credits{border-top:1px solid var(--line); background:var(--glass); backdrop-filter:var(--blur);
+  -webkit-backdrop-filter:var(--blur); padding:22px clamp(12px,3vw,22px)}
+.credits .in{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.credits .who{font-size:13px; color:var(--muted)}
+.credits .who b{color:var(--ink)}
+.credits .who code{color:var(--accent); background:var(--glass-2); border:1px solid var(--line);
+  border-radius:6px; padding:1px 6px}
+.credits .sp{flex:1}
+.dcb{display:inline-flex; align-items:center; gap:7px; text-decoration:none; color:var(--ink);
+  border:1px solid var(--line); background:var(--glass-2); border-radius:10px; padding:8px 12px;
+  font-size:12.5px; font-weight:700; transition:.15s; white-space:nowrap}
+.dcb:hover{border-color:var(--accent); transform:translateY(-1px)}
+.dcb:focus-visible{outline:2px solid var(--ring); outline-offset:1px}
+.dcb svg{width:16px; height:16px; fill:currentColor; flex:none}
+.dcb .arw{font-size:11px; color:var(--muted)}
+@media (max-width:520px){ .credits .who{font-size:12px} .credits .in{gap:9px} }
+@media (max-height:520px){
+  .side .panel{padding-top:48px}
+  .console{max-height:80dvh}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="iconbtn burger" id="burger" aria-label="Abrir categorias" aria-expanded="false">☰</button>
+  <div class="mark" aria-hidden="true">00</div>
+  <div class="name">00deUdia Otimizações<small>painel de controle</small></div>
+  <div class="grow"></div>
+  <span class="iconbtn hide-sm" id="modePill" style="cursor:default"><span class="dot"></span><span id="modeTxt">verificando…</span></span>
+  <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro">◐</button>
+  <button class="iconbtn hide-sm" id="btnStatus">Status</button>
+  <button class="iconbtn hide-sm" id="btnLog">Histórico</button>
+  <button class="iconbtn" id="btnConsole">Console</button>
+  <button class="iconbtn" id="otmInfo" title="Estado do acesso">Acesso</button>
+  <button class="iconbtn" id="btnApply" title="Aplicar o pack recomendado">⚡ Otimizar</button>
+</header>
+
+<div class="banner">
+  <div class="in">
+    <h1>00deUdia Otimizações</h1>
+    <p>Controle o pack inteiro pelo navegador: DNS, RAM, renderizador, touch do Free Fire, debloat e ajustes profundos. Toque no <b>?</b> de cada cartão para entender o que ele faz.</p>
+    <span class="tag"><span class="dot"></span>conectado ao pack local</span>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="layout">
+  <aside class="side" id="side" aria-label="Categorias">
+    <div class="panel">
+      <button class="iconbtn side-close" id="sideClose" aria-label="Fechar">✕</button>
+      <h2>Categorias</h2>
+      <nav class="nav" id="nav">
+                  <a href="#R%C3%A1pido" data-g="Rápido"
+             aria-current="true">
+            <span class="c"></span>Rápido            <span class="count">6</span>
+          </a>
+                  <a href="#DNS" data-g="DNS"
+             aria-current="false">
+            <span class="c"></span>DNS privado            <span class="count">11</span>
+          </a>
+                  <a href="#RAM%20%2F%20Limpeza" data-g="RAM / Limpeza"
+             aria-current="false">
+            <span class="c"></span>RAM e limpeza            <span class="count">4</span>
+          </a>
+                  <a href="#Renderizador" data-g="Renderizador"
+             aria-current="false">
+            <span class="c"></span>Renderizador            <span class="count">5</span>
+          </a>
+                  <a href="#Por%20app%20%2F%20jogo" data-g="Por app / jogo"
+             aria-current="false">
+            <span class="c"></span>Por app ou jogo            <span class="count">6</span>
+          </a>
+                  <a href="#Touch%20%2F%20Free%20Fire" data-g="Touch / Free Fire"
+             aria-current="false">
+            <span class="c"></span>Touch e Free Fire            <span class="count">10</span>
+          </a>
+                  <a href="#Performance" data-g="Performance"
+             aria-current="false">
+            <span class="c"></span>Performance            <span class="count">8</span>
+          </a>
+                  <a href="#Congelar%20apps" data-g="Congelar apps"
+             aria-current="false">
+            <span class="c"></span>Congelar apps            <span class="count">5</span>
+          </a>
+                  <a href="#Debloat" data-g="Debloat"
+             aria-current="false">
+            <span class="c"></span>Debloat            <span class="count">10</span>
+          </a>
+                  <a href="#Profundas%20%28root%29" data-g="Profundas (root)"
+             aria-current="false">
+            <span class="c"></span>Profundas (root)            <span class="count">13</span>
+          </a>
+                  <a href="#Extremos%20%28root%29" data-g="Extremos (root)"
+             aria-current="false">
+            <span class="c"></span>Extremos (root)            <span class="count">25</span>
+          </a>
+                  <a href="#Avan%C3%A7ado%20%28sem%20root%29" data-g="Avançado (sem root)"
+             aria-current="false">
+            <span class="c"></span>Avançado (sem root)            <span class="count">4</span>
+          </a>
+                  <a href="#Wi-Fi%20e%20rede" data-g="Wi-Fi e rede"
+             aria-current="false">
+            <span class="c"></span>Wi-Fi e rede            <span class="count">3</span>
+          </a>
+                  <a href="#Diagn%C3%B3stico" data-g="Diagnóstico"
+             aria-current="false">
+            <span class="c"></span>Diagnóstico            <span class="count">7</span>
+          </a>
+                  <a href="#M%C3%B3dulos" data-g="Módulos"
+             aria-current="false">
+            <span class="c"></span>Módulos            <span class="count">1</span>
+          </a>
+                  <a href="#Configs" data-g="Configs"
+             aria-current="false">
+            <span class="c"></span>Configs            <span class="count">4</span>
+          </a>
+              </nav>
+    </div>
+  </aside>
+
+  <main class="content">
+          <section id="g-R%C3%A1pido" data-g="Rápido"
+               >
+        <div class="head">
+          <h2>Rápido</h2>
+          <p>Aplique o conjunto seguro, reverta tudo ou salve um snapshot.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="apply"
+                     style="--i:0">
+              <div class="row">
+                <h3>Aplicar o pack recomendado</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="apply"
+                        aria-label="O que faz: Aplicar o pack recomendado" title="O que isso faz?">?</button>
+              </div>
+              <p>Aplica o conjunto seguro (sem root): performance, RAM, GPU, rede e jogo.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="restore_all"
+                     style="--i:1">
+              <div class="row">
+                <h3>Reverter TUDO</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="restore_all"
+                        aria-label="O que faz: Reverter TUDO" title="O que isso faz?">?</button>
+              </div>
+              <p>Desfaz níveis 2, otimizações profundas e debloat de uma vez.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="snapshot_save"
+                     style="--i:2">
+              <div class="row">
+                <h3>Salvar snapshot</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="snapshot_save"
+                        aria-label="O que faz: Salvar snapshot" title="O que isso faz?">?</button>
+              </div>
+              <p>Tira uma foto das configurações atuais para poder voltar depois.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="snapshot_list"
+                     style="--i:3">
+              <div class="row">
+                <h3>Ver snapshots salvos</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="snapshot_list"
+                        aria-label="O que faz: Ver snapshots salvos" title="O que isso faz?">?</button>
+              </div>
+              <p>Lista os snapshots que você já tirou.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="snapshot_diff"
+                     style="--i:4">
+              <div class="row">
+                <h3>Comparar com o último snapshot</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="snapshot_diff"
+                        aria-label="O que faz: Comparar com o último snapshot" title="O que isso faz?">?</button>
+              </div>
+              <p>Mostra o que mudou desde o snapshot mais recente.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="snapshot_restore"
+                     style="--i:5">
+              <div class="row">
+                <h3>Restaurar último snapshot</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="snapshot_restore"
+                        aria-label="O que faz: Restaurar último snapshot" title="O que isso faz?">?</button>
+              </div>
+              <p>Volta as configurações para o último snapshot salvo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-DNS" data-g="DNS"
+               hidden>
+        <div class="head">
+          <h2>DNS privado</h2>
+          <p>Perfis de DNS-over-TLS: privacidade, anúncios, família e latência.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="dns.cloudflare"
+                     style="--i:0">
+              <div class="row">
+                <h3>Cloudflare</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.cloudflare"
+                        aria-label="O que faz: Cloudflare" title="O que isso faz?">?</button>
+              </div>
+              <p>Privacidade e velocidade, sem registro.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.quad9"
+                     style="--i:1">
+              <div class="row">
+                <h3>Quad9</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.quad9"
+                        aria-label="O que faz: Quad9" title="O que isso faz?">?</button>
+              </div>
+              <p>Privacidade e bloqueio de sites maliciosos.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.adguard"
+                     style="--i:2">
+              <div class="row">
+                <h3>AdGuard</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.adguard"
+                        aria-label="O que faz: AdGuard" title="O que isso faz?">?</button>
+              </div>
+              <p>Bloqueia anúncios e rastreadores.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.adguard-family"
+                     style="--i:3">
+              <div class="row">
+                <h3>AdGuard Família</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.adguard-family"
+                        aria-label="O que faz: AdGuard Família" title="O que isso faz?">?</button>
+              </div>
+              <p>Anúncios + bloqueio de conteúdo adulto.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.cloudflare-family"
+                     style="--i:4">
+              <div class="row">
+                <h3>Cloudflare Família</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.cloudflare-family"
+                        aria-label="O que faz: Cloudflare Família" title="O que isso faz?">?</button>
+              </div>
+              <p>Bloqueia conteúdo adulto.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.mullvad"
+                     style="--i:5">
+              <div class="row">
+                <h3>Mullvad</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.mullvad"
+                        aria-label="O que faz: Mullvad" title="O que isso faz?">?</button>
+              </div>
+              <p>Privacidade sem registro (anônimo).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.dnsforge"
+                     style="--i:6">
+              <div class="row">
+                <h3>DNSForge</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.dnsforge"
+                        aria-label="O que faz: DNSForge" title="O que isso faz?">?</button>
+              </div>
+              <p>Bloqueia anúncios, sem guardar logs.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.google"
+                     style="--i:7">
+              <div class="row">
+                <h3>Google</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.google"
+                        aria-label="O que faz: Google" title="O que isso faz?">?</button>
+              </div>
+              <p>Compatibilidade máxima com qualquer rede.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.gaming"
+                     style="--i:8">
+              <div class="row">
+                <h3>Gaming</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.gaming"
+                        aria-label="O que faz: Gaming" title="O que isso faz?">?</button>
+              </div>
+              <p>Baixa latência para jogos + rede otimizada.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.custom"
+                     style="--i:9">
+              <div class="row">
+                <h3>DNS personalizado (host DoT)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.custom"
+                        aria-label="O que faz: DNS personalizado (host DoT)" title="O que isso faz?">?</button>
+              </div>
+              <p>Use qualquer hostname de DNS-over-TLS que você quiser.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="dns.custom-host">Hostname DoT</label>
+                      <input id="dns.custom-host"
+                             data-p="host"
+                             type="text"
+                             value=""
+                                                          placeholder="dns.exemplo.com"                                                                                       >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dns.off"
+                     style="--i:10">
+              <div class="row">
+                <h3>DNS automático (desligar)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dns.off"
+                        aria-label="O que faz: DNS automático (desligar)" title="O que isso faz?">?</button>
+              </div>
+              <p>Volta o DNS para o padrão da operadora.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-RAM%20%2F%20Limpeza" data-g="RAM / Limpeza"
+               hidden>
+        <div class="head">
+          <h2>RAM e limpeza</h2>
+          <p>Mais memória livre e limpeza de cache.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="mem.padrao"
+                     style="--i:0">
+              <div class="row">
+                <h3>RAM: perfil padrão</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="mem.padrao"
+                        aria-label="O que faz: RAM: perfil padrão" title="O que isso faz?">?</button>
+              </div>
+              <p>Multitarefa: mantém mais apps prontos na memória (32 em cache).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="mem.gaming"
+                     style="--i:1">
+              <div class="row">
+                <h3>RAM: perfil gaming</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="mem.gaming"
+                        aria-label="O que faz: RAM: perfil gaming" title="O que isso faz?">?</button>
+              </div>
+              <p>Libera mais RAM para o jogo (só 8 apps em cache).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="clean"
+                     style="--i:2">
+              <div class="row">
+                <h3>Limpar cache e RAM</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="clean"
+                        aria-label="O que faz: Limpar cache e RAM" title="O que isso faz?">?</button>
+              </div>
+              <p>Apaga o cache de todos os apps e libera a memória em uso.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="clean.aot"
+                     style="--i:3">
+              <div class="row">
+                <h3>Limpar dexopt (AOT)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="clean.aot"
+                        aria-label="O que faz: Limpar dexopt (AOT)" title="O que isso faz?">?</button>
+              </div>
+              <p>Recupera espaço e evita o compilador travar o aparelho.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Renderizador" data-g="Renderizador"
+               hidden>
+        <div class="head">
+          <h2>Renderizador</h2>
+          <p>Troque o motor gráfico: OpenGL, SkiaGL ou Skia Vulkan.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="gpu"
+                     style="--i:0">
+              <div class="row">
+                <h3>Aplicar conjunto GPU</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="gpu"
+                        aria-label="O que faz: Aplicar conjunto GPU" title="O que isso faz?">?</button>
+              </div>
+              <p>Renderizador + força GPU + remove desfoques.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="gpu.opengl"
+                     style="--i:1">
+              <div class="row">
+                <h3>Renderizador: OpenGL (padrão)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="gpu.opengl"
+                        aria-label="O que faz: Renderizador: OpenGL (padrão)" title="O que isso faz?">?</button>
+              </div>
+              <p>Motor gráfico de fábrica. Mais compatível.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="gpu.skiagl"
+                     style="--i:2">
+              <div class="row">
+                <h3>Renderizador: SkiaGL</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="gpu.skiagl"
+                        aria-label="O que faz: Renderizador: SkiaGL" title="O que isso faz?">?</button>
+              </div>
+              <p>Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="gpu.skiavk"
+                     style="--i:3">
+              <div class="row">
+                <h3>Renderizador: Skia Vulkan</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="gpu.skiavk"
+                        aria-label="O que faz: Renderizador: Skia Vulkan" title="O que isso faz?">?</button>
+              </div>
+              <p>Skia sobre Vulkan. Costuma dar mais fluidez.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="gpu.force"
+                     style="--i:4">
+              <div class="row">
+                <h3>Forçar renderização por GPU</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="gpu.force"
+                        aria-label="O que faz: Forçar renderização por GPU" title="O que isso faz?">?</button>
+              </div>
+              <p>Usa a GPU para desenhar a interface (não a CPU).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Por%20app%20%2F%20jogo" data-g="Por app / jogo"
+               hidden>
+        <div class="head">
+          <h2>Por app ou jogo</h2>
+          <p>Escolha um app e mude renderizador, modo ou resolução.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="app.angle"
+                     style="--i:0">
+              <div class="row">
+                <h3>Usar ANGLE (OpenGL→Vulkan) no app</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="app.angle"
+                        aria-label="O que faz: Usar ANGLE (OpenGL→Vulkan) no app" title="O que isso faz?">?</button>
+              </div>
+              <p>Faz o app usar Vulkan no lugar do OpenGL. Escolha o app/jogo.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="app.angle-pkg">App/jogo</label>
+                      <input id="app.angle-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="app.angle_remove"
+                     style="--i:1">
+              <div class="row">
+                <h3>Tirar ANGLE do app</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="app.angle_remove"
+                        aria-label="O que faz: Tirar ANGLE do app" title="O que isso faz?">?</button>
+              </div>
+              <p>Volta o app a usar o driver gráfico nativo.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="app.angle_remove-pkg">App/jogo</label>
+                      <input id="app.angle_remove-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="app.angle_reset"
+                     style="--i:2">
+              <div class="row">
+                <h3>Resetar ANGLE (todos)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="app.angle_reset"
+                        aria-label="O que faz: Resetar ANGLE (todos)" title="O que isso faz?">?</button>
+              </div>
+              <p>Remove a seleção de ANGLE de todos os apps de uma vez.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="app.perf"
+                     style="--i:3">
+              <div class="row">
+                <h3>Modo performance no app</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="app.perf"
+                        aria-label="O que faz: Modo performance no app" title="O que isso faz?">?</button>
+              </div>
+              <p>Prioriza o app/jogo escolhido (Game Mode).</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="app.perf-pkg">App/jogo</label>
+                      <input id="app.perf-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="app.downscale"
+                     style="--i:4">
+              <div class="row">
+                <h3>Reduzir resolução do jogo (FPS)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="app.downscale"
+                        aria-label="O que faz: Reduzir resolução do jogo (FPS)" title="O que isso faz?">?</button>
+              </div>
+              <p>Renderiza em resolução menor para ganhar FPS. 1.0 = nativo.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="app.downscale-pkg">App/jogo</label>
+                      <input id="app.downscale-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                      <div class="field">
+                      <label for="app.downscale-scale">Downscale</label>
+                      <input id="app.downscale-scale"
+                             data-p="scale"
+                             type="number"
+                             value="0.9"
+                                                                                       min="0.3"                             max="1"                             step="0.05">
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="app.reset"
+                     style="--i:5">
+              <div class="row">
+                <h3>Resetar tuning do app</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="app.reset"
+                        aria-label="O que faz: Resetar tuning do app" title="O que isso faz?">?</button>
+              </div>
+              <p>Remove overlay, ANGLE e modo do app escolhido.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="app.reset-pkg">App/jogo</label>
+                      <input id="app.reset-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Touch%20%2F%20Free%20Fire" data-g="Touch / Free Fire"
+               hidden>
+        <div class="head">
+          <h2>Touch e Free Fire</h2>
+          <p>Perfis de sensibilidade, mira e ajustes do jogo.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="touch.balanced"
+                     style="--i:0">
+              <div class="row">
+                <h3>Touch: Equilibrado</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="touch.balanced"
+                        aria-label="O que faz: Touch: Equilibrado" title="O que isso faz?">?</button>
+              </div>
+              <p>Ajuste geral, bom para a maioria.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="touch.headshot"
+                     style="--i:1">
+              <div class="row">
+                <h3>Touch: Headshot</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="touch.headshot"
+                        aria-label="O que faz: Touch: Headshot" title="O que isso faz?">?</button>
+              </div>
+              <p>Resposta mais rápida: mira ágil.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="touch.spray"
+                     style="--i:2">
+              <div class="row">
+                <h3>Touch: Spray</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="touch.spray"
+                        aria-label="O que faz: Touch: Spray" title="O que isso faz?">?</button>
+              </div>
+              <p>Mais controle de recuo no tiro contínuo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="touch.sniper"
+                     style="--i:3">
+              <div class="row">
+                <h3>Touch: Sniper</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="touch.sniper"
+                        aria-label="O que faz: Touch: Sniper" title="O que isso faz?">?</button>
+              </div>
+              <p>Mira precisa e estável para longa distância.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="touch.speed"
+                     style="--i:4">
+              <div class="row">
+                <h3>Touch: Speed</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="touch.speed"
+                        aria-label="O que faz: Touch: Speed" title="O que isso faz?">?</button>
+              </div>
+              <p>Máxima reatividade: resposta imediata.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="touch.custom"
+                     style="--i:5">
+              <div class="row">
+                <h3>Touch: personalizado</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="touch.custom"
+                        aria-label="O que faz: Touch: personalizado" title="O que isso faz?">?</button>
+              </div>
+              <p>Ajuste fino dos 4 parâmetros do toque.</p>                              <div class="fields">
+                                      <div class="field">
+                      <label for="touch.custom-tr">responsiveness</label>
+                      <input id="touch.custom-tr"
+                             data-p="tr"
+                             type="number"
+                             value="110"
+                                                                                       min="50"                             max="200"                             >
+                    </div>
+                                      <div class="field">
+                      <label for="touch.custom-lp">long press (ms)</label>
+                      <input id="touch.custom-lp"
+                             data-p="lp"
+                             type="number"
+                             value="350"
+                                                                                       min="100"                             max="800"                             >
+                    </div>
+                                      <div class="field">
+                      <label for="touch.custom-ps">pointer speed</label>
+                      <input id="touch.custom-ps"
+                             data-p="ps"
+                             type="number"
+                             value="0"
+                                                                                       min="-5"                             max="5"                             >
+                    </div>
+                                      <div class="field">
+                      <label for="touch.custom-slop">touch slop</label>
+                      <input id="touch.custom-slop"
+                             data-p="slop"
+                             type="number"
+                             value="4"
+                                                                                       min="0"                             max="30"                             >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="touch.restore"
+                     style="--i:6">
+              <div class="row">
+                <h3>Restaurar touch</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="touch.restore"
+                        aria-label="O que faz: Restaurar touch" title="O que isso faz?">?</button>
+              </div>
+              <p>Apaga os ajustes de toque e volta ao padrão.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ff"
+                     style="--i:7">
+              <div class="row">
+                <h3>Preparar e abrir o Free Fire</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="ff"
+                        aria-label="O que faz: Preparar e abrir o Free Fire" title="O que isso faz?">?</button>
+              </div>
+              <p>Fecha apps de fundo, aplica o preset do FF e abre o jogo.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="game_mode"
+                     style="--i:8">
+              <div class="row">
+                <h3>Ligar Game Mode</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="game_mode"
+                        aria-label="O que faz: Ligar Game Mode" title="O que isso faz?">?</button>
+              </div>
+              <p>Ativa o modo de jogo do sistema.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ff_open"
+                     style="--i:9">
+              <div class="row">
+                <h3>Abrir o Free Fire</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="ff_open"
+                        aria-label="O que faz: Abrir o Free Fire" title="O que isso faz?">?</button>
+              </div>
+              <p>Abre o jogo (útil depois de aplicar os ajustes).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Performance" data-g="Performance"
+               hidden>
+        <div class="head">
+          <h2>Performance</h2>
+          <p>Animações, tela, bateria e modo não perturbe.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="perf"
+                     style="--i:0">
+              <div class="row">
+                <h3>Performance (animações 0.5x)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="perf"
+                        aria-label="O que faz: Performance (animações 0.5x)" title="O que isso faz?">?</button>
+              </div>
+              <p>Deixa as animações mais rápidas: interface parece mais ágil.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="perf_max"
+                     style="--i:1">
+              <div class="row">
+                <h3>Performance extrema (animações 0)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="perf_max"
+                        aria-label="O que faz: Performance extrema (animações 0)" title="O que isso faz?">?</button>
+              </div>
+              <p>Remove as animações: transições instantâneas.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="fluidez"
+                     style="--i:2">
+              <div class="row">
+                <h3>Fluidez (toque + Hz + animações)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="fluidez"
+                        aria-label="O que faz: Fluidez (toque + Hz + animações)" title="O que isso faz?">?</button>
+              </div>
+              <p>Pacote geral de fluidez: toque, taxa de atualização e animações.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dnd"
+                     style="--i:3">
+              <div class="row">
+                <h3>Não perturbe (DND)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dnd"
+                        aria-label="O que faz: Não perturbe (DND)" title="O que isso faz?">?</button>
+              </div>
+              <p>Silencia notificações durante o jogo.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="dnd_off"
+                     style="--i:4">
+              <div class="row">
+                <h3>Desligar DND</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="dnd_off"
+                        aria-label="O que faz: Desligar DND" title="O que isso faz?">?</button>
+              </div>
+              <p>Volta a receber notificações normalmente.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="screen"
+                     style="--i:5">
+              <div class="row">
+                <h3>Tela / refresh alto</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="screen"
+                        aria-label="O que faz: Tela / refresh alto" title="O que isso faz?">?</button>
+              </div>
+              <p>Fixa a taxa de atualização no máximo do aparelho.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="battery"
+                     style="--i:6">
+              <div class="row">
+                <h3>Economia de bateria</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="battery"
+                        aria-label="O que faz: Economia de bateria" title="O que isso faz?">?</button>
+              </div>
+              <p>Ativa o modo de economia e o repouso profundo (Doze).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="battery_off"
+                     style="--i:7">
+              <div class="row">
+                <h3>Desligar economia</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="battery_off"
+                        aria-label="O que faz: Desligar economia" title="O que isso faz?">?</button>
+              </div>
+              <p>Volta ao consumo normal (recomendado para jogar).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Congelar%20apps" data-g="Congelar apps"
+               hidden>
+        <div class="head">
+          <h2>Congelar apps</h2>
+          <p>Congele apps em segundo plano para liberar RAM.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="freeze"
+                     style="--i:0">
+              <div class="row">
+                <h3>Congelar apps (cache freezer)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="freeze"
+                        aria-label="O que faz: Congelar apps (cache freezer)" title="O que isso faz?">?</button>
+              </div>
+              <p>Ativa o congelador do sistema e aplica a lista.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="unfreeze"
+                     style="--i:1">
+              <div class="row">
+                <h3>Descongelar todos os apps</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="unfreeze"
+                        aria-label="O que faz: Descongelar todos os apps" title="O que isso faz?">?</button>
+              </div>
+              <p>Garante que nenhum app fique preso em segundo plano.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="freezer_off"
+                     style="--i:2">
+              <div class="row">
+                <h3>Desligar o congelador</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="freezer_off"
+                        aria-label="O que faz: Desligar o congelador" title="O que isso faz?">?</button>
+              </div>
+              <p>Desliga o congelador de apps em cache do sistema.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="freeze_now"
+                     style="--i:3">
+              <div class="row">
+                <h3>Congelar agora (aplicar lista)</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="freeze_now"
+                        aria-label="O que faz: Congelar agora (aplicar lista)" title="O que isso faz?">?</button>
+              </div>
+              <p>Congela os apps da lista negra (menos a whitelist).</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="unfreeze_now"
+                     style="--i:4">
+              <div class="row">
+                <h3>Descongelar agora (todos)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="unfreeze_now"
+                        aria-label="O que faz: Descongelar agora (todos)" title="O que isso faz?">?</button>
+              </div>
+              <p>Acorda todos os apps e desliga o congelador.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Debloat" data-g="Debloat"
+               hidden>
+        <div class="head">
+          <h2>Debloat</h2>
+          <p>Desativa bloatware por perfil ou por app. Tudo é reversível.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="debloat.leve"
+                     style="--i:0">
+              <div class="row">
+                <h3>Debloat: perfil Leve</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="debloat.leve"
+                        aria-label="O que faz: Debloat: perfil Leve" title="O que isso faz?">?</button>
+              </div>
+              <p>Desativa redes sociais rodando em segundo plano. (reversível)</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.medio"
+                     style="--i:1">
+              <div class="row">
+                <h3>Debloat: perfil Médio</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="debloat.medio"
+                        aria-label="O que faz: Debloat: perfil Médio" title="O que isso faz?">?</button>
+              </div>
+              <p>Redes sociais + apps de streaming. (reversível)</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.pesado"
+                     style="--i:2">
+              <div class="row">
+                <h3>Debloat: perfil Pesado</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="debloat.pesado"
+                        aria-label="O que faz: Debloat: perfil Pesado" title="O que isso faz?">?</button>
+              </div>
+              <p>Redes + streaming + apps extras. (reversível)</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.off"
+                     style="--i:3">
+              <div class="row">
+                <h3>Debloat: reverter tudo</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="debloat.off"
+                        aria-label="O que faz: Debloat: reverter tudo" title="O que isso faz?">?</button>
+              </div>
+              <p>Reativa tudo que o debloat desativou.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.app.disable"
+                     style="--i:4">
+              <div class="row">
+                <h3>Desativar um app</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="debloat.app.disable"
+                        aria-label="O que faz: Desativar um app" title="O que isso faz?">?</button>
+              </div>
+              <p>Desativa um app específico (some da gaveta, mas fica instalado).</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="debloat.app.disable-pkg">App</label>
+                      <input id="debloat.app.disable-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.app.enable"
+                     style="--i:5">
+              <div class="row">
+                <h3>Reativar um app</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="debloat.app.enable"
+                        aria-label="O que faz: Reativar um app" title="O que isso faz?">?</button>
+              </div>
+              <p>Liga de novo um app que você desativou.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="debloat.app.enable-pkg">App</label>
+                      <input id="debloat.app.enable-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.app.uninstall"
+                     style="--i:6">
+              <div class="row">
+                <h3>Desinstalar p/ o usuário</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="debloat.app.uninstall"
+                        aria-label="O que faz: Desinstalar p/ o usuário" title="O que isso faz?">?</button>
+              </div>
+              <p>Remove o app só para você (dá para reinstalar depois).</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="debloat.app.uninstall-pkg">App</label>
+                      <input id="debloat.app.uninstall-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.app.restore"
+                     style="--i:7">
+              <div class="row">
+                <h3>Reinstalar app</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="debloat.app.restore"
+                        aria-label="O que faz: Reinstalar app" title="O que isso faz?">?</button>
+              </div>
+              <p>Traz de volta um app que você desinstalou para o usuário.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="debloat.app.restore-pkg">App</label>
+                      <input id="debloat.app.restore-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.app.restrict"
+                     style="--i:8">
+              <div class="row">
+                <h3>Restringir em 2º plano</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="debloat.app.restrict"
+                        aria-label="O que faz: Restringir em 2º plano" title="O que isso faz?">?</button>
+              </div>
+              <p>Impede o app de rodar escondido (modo restrito).</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="debloat.app.restrict-pkg">App</label>
+                      <input id="debloat.app.restrict-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="debloat.app.unrestrict"
+                     style="--i:9">
+              <div class="row">
+                <h3>Tirar restrição</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="debloat.app.unrestrict"
+                        aria-label="O que faz: Tirar restrição" title="O que isso faz?">?</button>
+              </div>
+              <p>Devolve o app ao funcionamento normal.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="debloat.app.unrestrict-pkg">App</label>
+                      <input id="debloat.app.unrestrict-pkg"
+                             data-p="pkg"
+                             type="text"
+                             value=""
+                             list="applist" placeholder="com.exemplo.app"                                                                                                                    >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Profundas%20%28root%29" data-g="Profundas (root)"
+               hidden>
+        <div class="head">
+          <h2>Profundas (root)</h2>
+          <p>Mexem em kernel e sistema. Só com root, use com cuidado.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="deep.freq"
+                     style="--i:0">
+              <div class="row">
+                <h3>Frequência CPU/GPU</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.freq"
+                        aria-label="O que faz: Frequência CPU/GPU" title="O que isso faz?">?</button>
+              </div>
+              <p>Segura clocks altos para não cair em jogo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.freq.off"
+                     style="--i:1">
+              <div class="row">
+                <h3>Frequência CPU/GPU — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.freq.off"
+                        aria-label="O que faz: Frequência CPU/GPU — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte este módulo profundo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.io"
+                     style="--i:2">
+              <div class="row">
+                <h3>I/O + memória</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.io"
+                        aria-label="O que faz: I/O + memória" title="O que isso faz?">?</button>
+              </div>
+              <p>Ajusta leitura/escrita e faz fstrim.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.io.off"
+                     style="--i:3">
+              <div class="row">
+                <h3>I/O + memória — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.io.off"
+                        aria-label="O que faz: I/O + memória — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte este módulo profundo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.mem"
+                     style="--i:4">
+              <div class="row">
+                <h3>Memória (MGLRU/zRAM/KSM)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.mem"
+                        aria-label="O que faz: Memória (MGLRU/zRAM/KSM)" title="O que isso faz?">?</button>
+              </div>
+              <p>Gerência de memória mais eficiente.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.mem.off"
+                     style="--i:5">
+              <div class="row">
+                <h3>Memória (MGLRU/zRAM/KSM) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.mem.off"
+                        aria-label="O que faz: Memória (MGLRU/zRAM/KSM) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte este módulo profundo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.net"
+                     style="--i:6">
+              <div class="row">
+                <h3>Rede BBR + fq_codel</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.net"
+                        aria-label="O que faz: Rede BBR + fq_codel" title="O que isso faz?">?</button>
+              </div>
+              <p>Congestionamento moderno: menos lag de rede.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.net.off"
+                     style="--i:7">
+              <div class="row">
+                <h3>Rede BBR + fq_codel — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.net.off"
+                        aria-label="O que faz: Rede BBR + fq_codel — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte este módulo profundo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.latency"
+                     style="--i:8">
+              <div class="row">
+                <h3>Reduzir latência (vsync)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.latency"
+                        aria-label="O que faz: Reduzir latência (vsync)" title="O que isso faz?">?</button>
+              </div>
+              <p>Ajusta o SurfaceFlinger para menos atraso.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.latency.off"
+                     style="--i:9">
+              <div class="row">
+                <h3>Reduzir latência (vsync) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.latency.off"
+                        aria-label="O que faz: Reduzir latência (vsync) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte este módulo profundo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.gaming"
+                     style="--i:10">
+              <div class="row">
+                <h3>MODO JOGO TURBO</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.gaming"
+                        aria-label="O que faz: MODO JOGO TURBO" title="O que isso faz?">?</button>
+              </div>
+              <p>Liga todas as otimizações profundas de uma vez.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.thermal"
+                     style="--i:11">
+              <div class="row">
+                <h3>Ajustar limite térmico</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="deep.thermal"
+                        aria-label="O que faz: Ajustar limite térmico" title="O que isso faz?">?</button>
+              </div>
+              <p>Deixa esquentar mais para segurar o clock (tem trava automática).</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="deep.detect"
+                     style="--i:0">
+              <div class="row">
+                <h3>Detectar hardware</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="deep.detect"
+                        aria-label="O que faz: Detectar hardware" title="O que isso faz?">?</button>
+              </div>
+              <p>Mostra CPU, GPU e kernel com recomendações.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Extremos%20%28root%29" data-g="Extremos (root)"
+               hidden>
+        <div class="head">
+          <h2>Extremos (root)</h2>
+          <p>Knobs avançados que quase ninguém conhece: VM, escalonador, GPU, núcleos, input, idle, zRAM e mais.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="ext.vm"
+                     style="--i:0">
+              <div class="row">
+                <h3>VM / kernel de memória</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.vm"
+                        aria-label="O que faz: VM / kernel de memória" title="O que isso faz?">?</button>
+              </div>
+              <p>Menos engasgo de I/O e apps que reabrem rápido.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.vm.off"
+                     style="--i:1">
+              <div class="row">
+                <h3>VM / kernel de memória — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.vm.off"
+                        aria-label="O que faz: VM / kernel de memória — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.sched"
+                     style="--i:2">
+              <div class="row">
+                <h3>Escalonador / EAS</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.sched"
+                        aria-label="O que faz: Escalonador / EAS" title="O que isso faz?">?</button>
+              </div>
+              <p>Menos &quot;pulos&quot; de clock e resposta mais imediata.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.sched.off"
+                     style="--i:3">
+              <div class="row">
+                <h3>Escalonador / EAS — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.sched.off"
+                        aria-label="O que faz: Escalonador / EAS — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.gpu"
+                     style="--i:4">
+              <div class="row">
+                <h3>GPU extrema (KGSL/Mali)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.gpu"
+                        aria-label="O que faz: GPU extrema (KGSL/Mali)" title="O que isso faz?">?</button>
+              </div>
+              <p>Trava a GPU no topo e desliga economia dela.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.gpu.off"
+                     style="--i:5">
+              <div class="row">
+                <h3>GPU extrema (KGSL/Mali) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.gpu.off"
+                        aria-label="O que faz: GPU extrema (KGSL/Mali) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.cores"
+                     style="--i:6">
+              <div class="row">
+                <h3>Núcleos sempre ligados</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.cores"
+                        aria-label="O que faz: Núcleos sempre ligados" title="O que isso faz?">?</button>
+              </div>
+              <p>Evita o atraso de &quot;acordar&quot; núcleo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.cores.off"
+                     style="--i:7">
+              <div class="row">
+                <h3>Núcleos sempre ligados — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.cores.off"
+                        aria-label="O que faz: Núcleos sempre ligados — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.input"
+                     style="--i:8">
+              <div class="row">
+                <h3>Input / touch boost</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.input"
+                        aria-label="O que faz: Input / touch boost" title="O que isso faz?">?</button>
+              </div>
+              <p>Sobe a CPU no instante do toque.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.input.off"
+                     style="--i:9">
+              <div class="row">
+                <h3>Input / touch boost — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.input.off"
+                        aria-label="O que faz: Input / touch boost — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.idle"
+                     style="--i:10">
+              <div class="row">
+                <h3>CPU idle (menu)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.idle"
+                        aria-label="O que faz: CPU idle (menu)" title="O que isso faz?">?</button>
+              </div>
+              <p>Desliga o idle profundo para acordar rápido.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.idle.off"
+                     style="--i:11">
+              <div class="row">
+                <h3>CPU idle (menu) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.idle.off"
+                        aria-label="O que faz: CPU idle (menu) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.net2"
+                     style="--i:0">
+              <div class="row">
+                <h3>Rede avançada 2 (BBR2)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.net2"
+                        aria-label="O que faz: Rede avançada 2 (BBR2)" title="O que isso faz?">?</button>
+              </div>
+              <p>Menos lag de rede em jogo online.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.net2.off"
+                     style="--i:1">
+              <div class="row">
+                <h3>Rede avançada 2 (BBR2) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.net2.off"
+                        aria-label="O que faz: Rede avançada 2 (BBR2) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.zram"
+                     style="--i:2">
+              <div class="row">
+                <h3>zRAM avançada (zstd)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.zram"
+                        aria-label="O que faz: zRAM avançada (zstd)" title="O que isso faz?">?</button>
+              </div>
+              <p>Mais RAM efetiva trocando CPU por memória.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.zram.off"
+                     style="--i:3">
+              <div class="row">
+                <h3>zRAM avançada (zstd) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.zram.off"
+                        aria-label="O que faz: zRAM avançada (zstd) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.kernel"
+                     style="--i:4">
+              <div class="row">
+                <h3>Kernel: tirar overhead</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.kernel"
+                        aria-label="O que faz: Kernel: tirar overhead" title="O que isso faz?">?</button>
+              </div>
+              <p>Desliga rastreamento/debug do kernel.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.kernel.off"
+                     style="--i:5">
+              <div class="row">
+                <h3>Kernel: tirar overhead — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.kernel.off"
+                        aria-label="O que faz: Kernel: tirar overhead — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.dalvik"
+                     style="--i:6">
+              <div class="row">
+                <h3>Dalvik / ART (heaps)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.dalvik"
+                        aria-label="O que faz: Dalvik / ART (heaps)" title="O que isso faz?">?</button>
+              </div>
+              <p>Heaps maiores para jogos, menos GC no meio.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.dalvik.off"
+                     style="--i:7">
+              <div class="row">
+                <h3>Dalvik / ART (heaps) — desligar</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.dalvik.off"
+                        aria-label="O que faz: Dalvik / ART (heaps) — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte só este ajuste extremo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.display"
+                     style="--i:8">
+              <div class="row">
+                <h3>Display / HWUI (props)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="ext.display"
+                        aria-label="O que faz: Display / HWUI (props)" title="O que isso faz?">?</button>
+              </div>
+              <p>Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa. SEM root.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.display.off"
+                     style="--i:9">
+              <div class="row">
+                <h3>Display / HWUI — desligar</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="ext.display.off"
+                        aria-label="O que faz: Display / HWUI — desligar" title="O que isso faz?">?</button>
+              </div>
+              <p>Reverte as props de display.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.turbo"
+                     style="--i:10">
+              <div class="row">
+                <h3>⚡ MODO EXTREMO (tudo)</h3>
+                <span class="chip root">root</span>
+                <button class="help-btn" data-help="ext.turbo"
+                        aria-label="O que faz: ⚡ MODO EXTREMO (tudo)" title="O que isso faz?">?</button>
+              </div>
+              <p>Turbo + TODOS os ajustes avançados de uma vez. Esquenta muito.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.dexopt"
+                     style="--i:11">
+              <div class="row">
+                <h3>Recompilar apps (dexopt)</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="ext.dexopt"
+                        aria-label="O que faz: Recompilar apps (dexopt)" title="O que isso faz?">?</button>
+              </div>
+              <p>Compila os apps antecipadamente (AOT). Demora, mas reduz engasgo.</p>                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="ext.dexopt_status"
+                     style="--i:0">
+              <div class="row">
+                <h3>Ver estado do dexopt</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="ext.dexopt_status"
+                        aria-label="O que faz: Ver estado do dexopt" title="O que isso faz?">?</button>
+              </div>
+              <p>Mostra como está a compilação dos apps.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Avan%C3%A7ado%20%28sem%20root%29" data-g="Avançado (sem root)"
+               hidden>
+        <div class="head">
+          <h2>Avançado (sem root)</h2>
+          <p>Ajustes pouco conhecidos que não pedem root: standby, rede móvel, notificações e janelas.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="adv.obscure"
+                     style="--i:0">
+              <div class="row">
+                <h3>Ajustes obscuros</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="adv.obscure"
+                        aria-label="O que faz: Ajustes obscuros" title="O que isso faz?">?</button>
+              </div>
+              <p>Menos kills em 2º plano e o jogo fora do Doze. SEM root.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="adv.mobile_net"
+                     style="--i:1">
+              <div class="row">
+                <h3>Rede móvel / economia de dados</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="adv.mobile_net"
+                        aria-label="O que faz: Rede móvel / economia de dados" title="O que isso faz?">?</button>
+              </div>
+              <p>Desliga a economia de dados que estrangula a velocidade.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="adv.notif"
+                     style="--i:2">
+              <div class="row">
+                <h3>Menos notificações (heads-up)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="adv.notif"
+                        aria-label="O que faz: Menos notificações (heads-up)" title="O que isso faz?">?</button>
+              </div>
+              <p>Reduz o trabalho do sistema com notificações pop-up.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="adv.window"
+                     style="--i:3">
+              <div class="row">
+                <h3>Janelas / modo imersivo</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="adv.window"
+                        aria-label="O que faz: Janelas / modo imersivo" title="O que isso faz?">?</button>
+              </div>
+              <p>Transições mais curtas e modo imersivo (esconde barras).</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Wi-Fi%20e%20rede" data-g="Wi-Fi e rede"
+               hidden>
+        <div class="head">
+          <h2>Wi-Fi e rede</h2>
+          <p>Varredura de Wi-Fi, buffers TCP e reset de rede.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="wifi"
+                     style="--i:0">
+              <div class="row">
+                <h3>Ajustes de Wi-Fi</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="wifi"
+                        aria-label="O que faz: Ajustes de Wi-Fi" title="O que isso faz?">?</button>
+              </div>
+              <p>Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="net"
+                     style="--i:1">
+              <div class="row">
+                <h3>Rede / TCP (DNS + buffers)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="net"
+                        aria-label="O que faz: Rede / TCP (DNS + buffers)" title="O que isso faz?">?</button>
+              </div>
+              <p>DNS Cloudflare + buffers TCP maiores para menos travada em jogo.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="net_reset"
+                     style="--i:2">
+              <div class="row">
+                <h3>Rede: voltar ao automático</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="net_reset"
+                        aria-label="O que faz: Rede: voltar ao automático" title="O que isso faz?">?</button>
+              </div>
+              <p>Volta o DNS e a rede para o padrão da operadora.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Diagn%C3%B3stico" data-g="Diagnóstico"
+               hidden>
+        <div class="head">
+          <h2>Diagnóstico</h2>
+          <p>Detecta o aparelho, mede e mostra o estado atual. Só leitura.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="diag.profile"
+                     style="--i:0">
+              <div class="row">
+                <h3>Perfil do aparelho (SoC/GPU)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.profile"
+                        aria-label="O que faz: Perfil do aparelho (SoC/GPU)" title="O que isso faz?">?</button>
+              </div>
+              <p>Detecta o processador, a GPU e o que combina com o seu aparelho.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="diag.profile_save"
+                     style="--i:1">
+              <div class="row">
+                <h3>Salvar perfil do aparelho</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.profile_save"
+                        aria-label="O que faz: Salvar perfil do aparelho" title="O que isso faz?">?</button>
+              </div>
+              <p>Salva o relatório do aparelho num arquivo.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="diag.deep_detect"
+                     style="--i:2">
+              <div class="row">
+                <h3>Detectar hardware (root)</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.deep_detect"
+                        aria-label="O que faz: Detectar hardware (root)" title="O que isso faz?">?</button>
+              </div>
+              <p>Mostra CPU, GPU, kernel e recomendações.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="diag.thermal"
+                     style="--i:3">
+              <div class="row">
+                <h3>Ver temperatura atual</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.thermal"
+                        aria-label="O que faz: Ver temperatura atual" title="O que isso faz?">?</button>
+              </div>
+              <p>Lê a temperatura do aparelho agora.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="diag.dns"
+                     style="--i:4">
+              <div class="row">
+                <h3>Ver DNS atual</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.dns"
+                        aria-label="O que faz: Ver DNS atual" title="O que isso faz?">?</button>
+              </div>
+              <p>Mostra qual perfil de DNS está ativo agora.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="diag.bench_before"
+                     style="--i:5">
+              <div class="row">
+                <h3>Benchmark: marcar ANTES</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.bench_before"
+                        aria-label="O que faz: Benchmark: marcar ANTES" title="O que isso faz?">?</button>
+              </div>
+              <p>Guarda o estado atual para comparar depois de otimizar.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="diag.bench_before-label">Rótulo</label>
+                      <input id="diag.bench_before-label"
+                             data-p="label"
+                             type="text"
+                             value="antes"
+                                                                                                                                                 >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="diag.bench_after"
+                     style="--i:6">
+              <div class="row">
+                <h3>Benchmark: marcar DEPOIS</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="diag.bench_after"
+                        aria-label="O que faz: Benchmark: marcar DEPOIS" title="O que isso faz?">?</button>
+              </div>
+              <p>Mede de novo e compara com o &quot;antes&quot;.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="diag.bench_after-label">Rótulo</label>
+                      <input id="diag.bench_after-label"
+                             data-p="label"
+                             type="text"
+                             value="depois"
+                                                                                                                                                 >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-M%C3%B3dulos" data-g="Módulos"
+               hidden>
+        <div class="head">
+          <h2>Módulos</h2>
+          <p>Complementos do pack (tweaks, touch, GPU, bateria).</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="module.run"
+                     style="--i:0">
+              <div class="row">
+                <h3>Executar um módulo</h3>
+                <span class="chip careful">cuidado</span>
+                <button class="help-btn" data-help="module.run"
+                        aria-label="O que faz: Executar um módulo" title="O que isso faz?">?</button>
+              </div>
+              <p>Roda um dos módulos/plugins incluídos no pack.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="module.run-name">Nome do módulo</label>
+                      <input id="module.run-name"
+                             data-p="name"
+                             type="text"
+                             value=""
+                                                                                                                                                 >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn " data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+          <section id="g-Configs" data-g="Configs"
+               hidden>
+        <div class="head">
+          <h2>Configs</h2>
+          <p>Como o pack conversa com o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático. Sem root por padrão.</p>
+        </div>
+        <div class="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
+        </div>
+        <div class="grid">
+                      <article class="card" data-id="config.set"
+                     style="--i:0">
+              <div class="row">
+                <h3>Definir conexão do pack</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="config.set"
+                        aria-label="O que faz: Definir conexão do pack" title="O que isso faz?">?</button>
+              </div>
+              <p>Escolha como o pack acessa o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático.</p>                              <div class="fields">
+                                      <div class="field wide">
+                      <label for="config.set-mode">Modo</label>
+                      <input id="config.set-mode"
+                             data-p="mode"
+                             type="text"
+                             value="auto"
+                                                                                                                                                 >
+                    </div>
+                                      <div class="field wide">
+                      <label for="config.set-target">Endereço (só p/ ADB: host:porta)</label>
+                      <input id="config.set-target"
+                             data-p="target"
+                             type="text"
+                             value=""
+                                                                                                                                                 >
+                    </div>
+                                  </div>
+                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="config.test"
+                     style="--i:1">
+              <div class="row">
+                <h3>Testar conexão</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="config.test"
+                        aria-label="O que faz: Testar conexão" title="O que isso faz?">?</button>
+              </div>
+              <p>Confere de verdade se o pack consegue mandar comandos ao aparelho.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="config.show"
+                     style="--i:2">
+              <div class="row">
+                <h3>Ver configuração</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="config.show"
+                        aria-label="O que faz: Ver configuração" title="O que isso faz?">?</button>
+              </div>
+              <p>Mostra o modo atual e o que foi detectado.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                      <article class="card" data-id="config.reset"
+                     style="--i:3">
+              <div class="row">
+                <h3>Voltar ao automático</h3>
+                <span class="chip safe">seguro</span>
+                <button class="help-btn" data-help="config.reset"
+                        aria-label="O que faz: Voltar ao automático" title="O que isso faz?">?</button>
+              </div>
+              <p>Apaga a configuração e volta à detecção automática.</p>                            <div class="go">
+                <button class="btn primary" data-run>Executar</button>
+              </div>
+            </article>
+                  </div>
+      </section>
+      </main>
+</div>
+
+<footer class="credits">
+  <div class="in">
+    <p class="who">Criado por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
+    <span class="sp"></span>
+    <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
+       title="Abrir meu perfil no Discord">
+      <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+      Meu Discord <span class="arw">↗</span>
+    </a>
+    <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
+       title="Entrar no meu servidor do Discord">
+      <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+      Servidor <span class="arw">↗</span>
+    </a>
+  </div>
+</footer>
+
+<div class="console" id="console" role="region" aria-label="Saída">
+  <div class="bar"><b id="consoleTitle">Saída</b><span class="grow"></span>
+    <button class="close-x" id="consoleClose">fechar ✕</button></div>
+  <pre id="consoleOut"></pre>
+</div>
+
+<div class="mask" id="mask" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal">
+    <h3 id="mTitle">Confirmar</h3>
+    <p id="mDesc"></p>
+    <div class="long" id="mLong" hidden></div>
+    <label class="ack" id="mAck"><input type="checkbox" id="mCheck">
+      <span id="mAckLabel">Estou ciente dos riscos e quero continuar.</span></label>
+    <div class="row">
+      <button class="btn" id="mCancel">Cancelar</button>
+      <button class="btn danger" id="mGo" disabled>Executar mesmo assim</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+
+/* ===== ponte nativa do app 00 Otimização ===== */
+(function(){
+  const pendingCbs = {};
+  let cbSeq = 0;
+  window.__otmResolve = function(cbId, jsonStr){
+    const p = pendingCbs[cbId];
+    if (!p) return;
+    delete pendingCbs[cbId];
+    let j;
+    try { j = JSON.parse(jsonStr); } catch(e){ j = {ok:false, error:String(e)}; }
+    p({ ok:true, status:200, json: async () => j, text: async () => JSON.stringify(j) });
+  };
+  function otm(kind, payload){
+    return new Promise(resolve => {
+      const cbId = "cb" + (++cbSeq);
+      pendingCbs[cbId] = resolve;
+      try { window.OTM.call(kind, payload || "", cbId); }
+      catch(e){
+        delete pendingCbs[cbId];
+        resolve({ ok:true, status:200,
+          json: async () => ({ok:false, error:String(e)}),
+          text: async () => JSON.stringify({ok:false, error:String(e)}) });
+      }
+    });
+  }
+  const origFetch = window.fetch ? window.fetch.bind(window) : null;
+  window.fetch = async (url, opts) => {
+    const s = String(url);
+    if (s.indexOf("api.php") === -1) { return origFetch ? origFetch(url, opts) : Promise.reject("sem rede"); }
+    const u = new URL(s, "http://localhost/");
+    const action = u.searchParams.get("action");
+    if (u.searchParams.get("do") === "run") {
+      let body = {}; try { body = JSON.parse((opts && opts.body) || "{}"); } catch(e){}
+      return otm("run", JSON.stringify(body));
+    }
+    if (action === "status")     return otm("status");
+    if (action === "dns_status") return otm("dns");
+    if (action === "mode")       return otm("mode");
+    if (action === "apps")       return otm("apps");
+    if (action === "modules")    return otm("modules");
+    if (action === "log")        return otm("log");
+    if (action === "actions")    return otm("actions");
+    if (action === "info")       return otm("info");
+    return otm("unknown");
+  };
+  // file:// não deixa mexer no hash em algumas WebViews
+  const _rs = history.replaceState.bind(history);
+  history.replaceState = function(a,b,c){ try { return _rs(a,b,c); } catch(e){} };
+  addEventListener("DOMContentLoaded", () => {
+    const b = document.getElementById("btnApply");
+    if (b) b.onclick = () => { const c = document.querySelector('.card[data-id="apply"]'); if (c) window.run(c); };
+    const info = document.getElementById("otmInfo");
+    if (info) info.onclick = () => {
+      otm("mode").then(r => r.json()).then(m => {
+        openConsole("Acesso atual", (m.mode ? ("modo: " + m.mode + "\n") : "") + (m.text || "(sem saída)"));
+      });
+    };
+  });
+})();
+
+
+const TOKEN = "app";
+const ACTIONS = {"apply":{"id":"apply","group":"Rápido","label":"Aplicar o pack recomendado","desc":"Aplica o conjunto seguro (sem root): performance, RAM, GPU, rede e jogo.","help":"Liga de uma vez as otimizações seguras que não precisam de root: animações mais rápidas, GPU na interface, RAM ajustada, DNS\/rede e modo de jogo. É o \"faz tudo\" para começar. Dá para desfazer em \"Reverter TUDO\".","argv":["adb-tweaks.sh","all"],"confirm":true,"timeout":300,"params":[],"risk":"safe"},"restore_all":{"id":"restore_all","group":"Rápido","label":"Reverter TUDO","desc":"Desfaz níveis 2, otimizações profundas e debloat de uma vez.","help":"Volta o aparelho ao estado de fábrica de configuração: desfaz as otimizações, as profundas (root) e o debloat. Use quando quiser \"limpar\" tudo o que o pack aplicou.","argv":["pack.sh","restore"],"confirm":true,"timeout":300,"params":[],"risk":"safe"},"snapshot_save":{"id":"snapshot_save","group":"Rápido","label":"Salvar snapshot","desc":"Tira uma foto das configurações atuais para poder voltar depois.","help":"Guarda o estado atual das configurações num \"snapshot\". Se algo der errado, você restaura essa foto e volta exatamente como estava. Faça isso ANTES de mexer em qualquer coisa.","argv":["snapshot.sh","save"],"params":[],"confirm":false,"risk":"safe"},"dns.cloudflare":{"id":"dns.cloudflare","group":"DNS","label":"Cloudflare","desc":"Privacidade e velocidade, sem registro.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","cloudflare"],"params":[],"confirm":false,"risk":"safe"},"dns.quad9":{"id":"dns.quad9","group":"DNS","label":"Quad9","desc":"Privacidade e bloqueio de sites maliciosos.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","quad9"],"params":[],"confirm":false,"risk":"safe"},"dns.adguard":{"id":"dns.adguard","group":"DNS","label":"AdGuard","desc":"Bloqueia anúncios e rastreadores.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","adguard"],"params":[],"confirm":false,"risk":"safe"},"dns.adguard-family":{"id":"dns.adguard-family","group":"DNS","label":"AdGuard Família","desc":"Anúncios + bloqueio de conteúdo adulto.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","adguard-family"],"params":[],"confirm":false,"risk":"safe"},"dns.cloudflare-family":{"id":"dns.cloudflare-family","group":"DNS","label":"Cloudflare Família","desc":"Bloqueia conteúdo adulto.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","cloudflare-family"],"params":[],"confirm":false,"risk":"safe"},"dns.mullvad":{"id":"dns.mullvad","group":"DNS","label":"Mullvad","desc":"Privacidade sem registro (anônimo).","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","mullvad"],"params":[],"confirm":false,"risk":"safe"},"dns.dnsforge":{"id":"dns.dnsforge","group":"DNS","label":"DNSForge","desc":"Bloqueia anúncios, sem guardar logs.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","dnsforge"],"params":[],"confirm":false,"risk":"safe"},"dns.google":{"id":"dns.google","group":"DNS","label":"Google","desc":"Compatibilidade máxima com qualquer rede.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","google"],"params":[],"confirm":false,"risk":"safe"},"dns.gaming":{"id":"dns.gaming","group":"DNS","label":"Gaming","desc":"Baixa latência para jogos + rede otimizada.","help":"DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".","argv":["dns.sh","gaming"],"params":[],"confirm":false,"risk":"safe"},"dns.custom":{"id":"dns.custom","group":"DNS","label":"DNS personalizado (host DoT)","desc":"Use qualquer hostname de DNS-over-TLS que você quiser.","help":"Se você já tem um DNS privado favorito, digite aqui o hostname (ex.: dns.exemplo.com). Ele será usado como DNS do aparelho, com criptografia.","argv":["dns.sh","custom","{host}"],"params":[{"name":"host","type":"host","label":"Hostname DoT"}],"confirm":false,"risk":"safe"},"dns.off":{"id":"dns.off","group":"DNS","label":"DNS automático (desligar)","desc":"Volta o DNS para o padrão da operadora.","help":"Desliga o DNS privado e devolve o aparelho para o DNS automático da sua operadora\/rede. Use se algum site parar de abrir.","argv":["dns.sh","off"],"params":[],"confirm":false,"risk":"safe"},"mem.padrao":{"id":"mem.padrao","group":"RAM \/ Limpeza","label":"RAM: perfil padrão","desc":"Multitarefa: mantém mais apps prontos na memória (32 em cache).","help":"Ajusta quantos apps o sistema pode manter na memória. O perfil padrão guarda mais apps abertos (bom para o dia a dia, alternar entre apps é mais rápido).","argv":["adb-tweaks.sh","mem","padrao"],"params":[],"confirm":false,"risk":"safe"},"mem.gaming":{"id":"mem.gaming","group":"RAM \/ Limpeza","label":"RAM: perfil gaming","desc":"Libera mais RAM para o jogo (só 8 apps em cache).","help":"Deixa o sistema manter menos apps na memória para sobrar mais RAM para o jogo. Resultado: menos engasgo em partidas. Trade-off: alternar entre apps fica um pouco mais lento.","argv":["adb-tweaks.sh","mem","gaming"],"params":[],"confirm":false,"risk":"safe"},"clean":{"id":"clean","group":"RAM \/ Limpeza","label":"Limpar cache e RAM","desc":"Apaga o cache de todos os apps e libera a memória em uso.","help":"Remove arquivos temporários (cache) e limpa processos parados na memória. Libera espaço e RAM na hora. Não apaga seus dados nem conversas — só cache.","argv":["adb-tweaks.sh","clean"],"params":[],"confirm":false,"risk":"safe"},"clean.aot":{"id":"clean.aot","group":"RAM \/ Limpeza","label":"Limpar dexopt (AOT)","desc":"Recupera espaço e evita o compilador travar o aparelho.","help":"O Android compila os apps em segundo plano e isso ocupa espaço e às vezes trava. Aqui essa compilação é limpa: recupera armazenamento. Os apps recompilam sozinhos quando você abre.","argv":["adb-tweaks.sh","aot"],"params":[],"confirm":false,"risk":"safe"},"gpu":{"id":"gpu","group":"Renderizador","label":"Aplicar conjunto GPU","desc":"Renderizador + força GPU + remove desfoques.","help":"Pacote gráfico completo: usa a GPU para desenhar a interface, remove os efeitos de desfoque (blur) que pesam e liga o driver de jogo. Deixa a navegação mais fluida.","argv":["adb-tweaks.sh","gpu"],"params":[],"confirm":false,"risk":"safe"},"gpu.opengl":{"id":"gpu.opengl","group":"Renderizador","label":"Renderizador: OpenGL (padrão)","desc":"Motor gráfico de fábrica. Mais compatível.","help":"Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.","argv":["adb-tweaks.sh","raw","setprop debug.hwui.renderer opengl"],"params":[],"confirm":false,"risk":"safe"},"gpu.skiagl":{"id":"gpu.skiagl","group":"Renderizador","label":"Renderizador: SkiaGL","desc":"Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.","help":"Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.","argv":["adb-tweaks.sh","raw","setprop debug.hwui.renderer skiagl"],"params":[],"confirm":false,"risk":"safe"},"gpu.skiavk":{"id":"gpu.skiavk","group":"Renderizador","label":"Renderizador: Skia Vulkan","desc":"Skia sobre Vulkan. Costuma dar mais fluidez.","help":"Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.","argv":["adb-tweaks.sh","raw","setprop debug.hwui.renderer skiavk"],"params":[],"confirm":false,"risk":"safe"},"gpu.force":{"id":"gpu.force","group":"Renderizador","label":"Forçar renderização por GPU","desc":"Usa a GPU para desenhar a interface (não a CPU).","help":"Faz a interface ser desenhada pela GPU em vez da CPU. Isso libera a CPU para outras tarefas e deixa a rolagem mais suave.","argv":["adb-tweaks.sh","raw","settings put global force_gpu_rendering 1"],"params":[],"confirm":false,"risk":"safe"},"app.angle":{"id":"app.angle","group":"Por app \/ jogo","label":"Usar ANGLE (OpenGL→Vulkan) no app","desc":"Faz o app usar Vulkan no lugar do OpenGL. Escolha o app\/jogo.","help":"ANGLE traduz os comandos de OpenGL para Vulkan. Em muitos jogos isso melhora o desempenho. Escolha o app na lista (ex.: com.dts.freefireth). Se piorar, use \"Tirar ANGLE do app\".","argv":["deep-tune.sh","angle","add","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App\/jogo"}],"confirm":false,"risk":"safe"},"app.angle_remove":{"id":"app.angle_remove","group":"Por app \/ jogo","label":"Tirar ANGLE do app","desc":"Volta o app a usar o driver gráfico nativo.","help":"Remove o ANGLE do app escolhido, devolvendo ele ao driver nativo do aparelho. Use se o jogo ficou instável ou com gráfico estranho.","argv":["deep-tune.sh","angle","remove","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App\/jogo"}],"confirm":false,"risk":"safe"},"app.angle_reset":{"id":"app.angle_reset","group":"Por app \/ jogo","label":"Resetar ANGLE (todos)","desc":"Remove a seleção de ANGLE de todos os apps de uma vez.","help":"Limpa tudo: nenhum app fica mais usando ANGLE. Bom para recomeçar do zero quando você não lembra quais apps configurou.","argv":["deep-tune.sh","angle","reset"],"confirm":true,"params":[],"risk":"safe"},"app.perf":{"id":"app.perf","group":"Por app \/ jogo","label":"Modo performance no app","desc":"Prioriza o app\/jogo escolhido (Game Mode).","help":"Pede ao sistema para tratar o app como jogo: mais prioridade de CPU\/GPU e menos interrupções. Escolha o pacote do jogo (ex.: com.dts.freefireth).","argv":["game-per-app.sh","mode","{pkg}","performance"],"params":[{"name":"pkg","type":"pkg","label":"App\/jogo"}],"confirm":false,"risk":"safe"},"app.downscale":{"id":"app.downscale","group":"Por app \/ jogo","label":"Reduzir resolução do jogo (FPS)","desc":"Renderiza em resolução menor para ganhar FPS. 1.0 = nativo.","help":"Diminui a resolução interna do jogo (0.3 a 1.0) mantendo o tamanho na tela. Menos pixels = mais FPS e menos aquecimento. 0.9 é quase imperceptível e já ajuda. Reinicie o jogo depois.","argv":["game-per-app.sh","custom","{pkg}","{scale}"],"params":[{"name":"pkg","type":"pkg","label":"App\/jogo"},{"name":"scale","type":"float","label":"Downscale","min":0.3,"max":1,"step":0.05,"default":0.9}],"confirm":true,"risk":"safe"},"app.reset":{"id":"app.reset","group":"Por app \/ jogo","label":"Resetar tuning do app","desc":"Remove overlay, ANGLE e modo do app escolhido.","help":"Desfaz tudo o que foi aplicado só nesse app (ANGLE, resolução, modo de jogo), voltando ao normal.","argv":["game-per-app.sh","reset","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App\/jogo"}],"confirm":false,"risk":"safe"},"touch.balanced":{"id":"touch.balanced","group":"Touch \/ Free Fire","label":"Touch: Equilibrado","desc":"Ajuste geral, bom para a maioria.","help":"Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".","argv":["ff-touch.sh","balanced"],"risk":"careful","params":[],"confirm":false},"touch.headshot":{"id":"touch.headshot","group":"Touch \/ Free Fire","label":"Touch: Headshot","desc":"Resposta mais rápida: mira ágil.","help":"Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".","argv":["ff-touch.sh","headshot"],"risk":"careful","params":[],"confirm":false},"touch.spray":{"id":"touch.spray","group":"Touch \/ Free Fire","label":"Touch: Spray","desc":"Mais controle de recuo no tiro contínuo.","help":"Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".","argv":["ff-touch.sh","spray"],"risk":"careful","params":[],"confirm":false},"touch.sniper":{"id":"touch.sniper","group":"Touch \/ Free Fire","label":"Touch: Sniper","desc":"Mira precisa e estável para longa distância.","help":"Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".","argv":["ff-touch.sh","sniper"],"risk":"careful","params":[],"confirm":false},"touch.speed":{"id":"touch.speed","group":"Touch \/ Free Fire","label":"Touch: Speed","desc":"Máxima reatividade: resposta imediata.","help":"Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".","argv":["ff-touch.sh","speed"],"risk":"careful","params":[],"confirm":false},"touch.custom":{"id":"touch.custom","group":"Touch \/ Free Fire","label":"Touch: personalizado","desc":"Ajuste fino dos 4 parâmetros do toque.","help":"Para quem quer calibrar na mão: responsiveness (rapidez da resposta), long press (tempo de toque longo), pointer speed (velocidade do ponteiro) e touch slop (quanto o dedo pode tremer antes de contar como arrasto).","argv":["ff-touch.sh","custom","{tr}","{lp}","{ps}","{slop}"],"params":[{"name":"tr","type":"int","label":"responsiveness","min":50,"max":200,"default":110},{"name":"lp","type":"int","label":"long press (ms)","min":100,"max":800,"default":350},{"name":"ps","type":"int","label":"pointer speed","min":-5,"max":5,"default":0},{"name":"slop","type":"int","label":"touch slop","min":0,"max":30,"default":4}],"risk":"careful","confirm":false},"touch.restore":{"id":"touch.restore","group":"Touch \/ Free Fire","label":"Restaurar touch","desc":"Apaga os ajustes de toque e volta ao padrão.","help":"Remove todos os ajustes de sensibilidade\/toque, devolvendo o toque ao padrão do aparelho.","argv":["ff-touch.sh","restore"],"params":[],"confirm":false,"risk":"safe"},"ff":{"id":"ff","group":"Touch \/ Free Fire","label":"Preparar e abrir o Free Fire","desc":"Fecha apps de fundo, aplica o preset do FF e abre o jogo.","help":"Prepara o aparelho para o Free Fire: fecha apps pesados que estavam abertos, aplica o modo de jogo e abre o FF. É o \"entrar em modo partida\" com um clique.","argv":["adb-tweaks.sh","ff"],"params":[],"confirm":false,"risk":"safe"},"game_mode":{"id":"game_mode","group":"Touch \/ Free Fire","label":"Ligar Game Mode","desc":"Ativa o modo de jogo do sistema.","help":"Liga o modo de jogo do Android, que dá prioridade ao jogo em execução e segura interrupções. Vale para todos os jogos.","argv":["adb-tweaks.sh","game"],"params":[],"confirm":false,"risk":"safe"},"perf":{"id":"perf","group":"Performance","label":"Performance (animações 0.5x)","desc":"Deixa as animações mais rápidas: interface parece mais ágil.","help":"Reduz a duração das animações do sistema pela metade. O celular parece mais rápido sem mudar nada de verdade — só a sensação de velocidade melhora.","argv":["adb-tweaks.sh","perf"],"params":[],"confirm":false,"risk":"safe"},"perf_max":{"id":"perf_max","group":"Performance","label":"Performance extrema (animações 0)","desc":"Remove as animações: transições instantâneas.","help":"Desliga as animações de vez. Tudo abre instantaneamente. Ótimo para aparelhos lentos, mas o visual fica mais \"seco\".","argv":["adb-tweaks.sh","perf_max"],"params":[],"confirm":false,"risk":"safe"},"fluidez":{"id":"fluidez","group":"Performance","label":"Fluidez (toque + Hz + animações)","desc":"Pacote geral de fluidez: toque, taxa de atualização e animações.","help":"Combina vários ajustes que, juntos, deixam o uso mais fluido: resposta de toque melhor, taxa de atualização no máximo e animações mais rápidas. É o \"tudo para fluidez\".","argv":["adb-tweaks.sh","fluidez"],"params":[],"confirm":false,"risk":"safe"},"dnd":{"id":"dnd","group":"Performance","label":"Não perturbe (DND)","desc":"Silencia notificações durante o jogo.","help":"Ativa o modo Não Perturbe: nada de notificações atrapalhando no meio da partida. Desligue com \"Desligar DND\" quando terminar.","argv":["adb-tweaks.sh","dnd"],"params":[],"confirm":false,"risk":"safe"},"dnd_off":{"id":"dnd_off","group":"Performance","label":"Desligar DND","desc":"Volta a receber notificações normalmente.","help":"Desliga o modo Não Perturbe e traz as notificações de volta.","argv":["adb-tweaks.sh","dnd_off"],"params":[],"confirm":false,"risk":"safe"},"screen":{"id":"screen","group":"Performance","label":"Tela \/ refresh alto","desc":"Fixa a taxa de atualização no máximo do aparelho.","help":"Trava a tela na maior taxa de atualização (Hz) que o aparelho suporta. Rolagem e jogo ficam mais suaves. Gasta um pouco mais de bateria.","argv":["adb-tweaks.sh","screen"],"params":[],"confirm":false,"risk":"safe"},"battery":{"id":"battery","group":"Performance","label":"Economia de bateria","desc":"Ativa o modo de economia e o repouso profundo (Doze).","help":"Liga a economia de energia e força o aparelho a \"dormir\" mais fundo quando parado. Dura mais a bateria. NÃO use enquanto joga — pode derrubar o desempenho.","argv":["adb-tweaks.sh","battery"],"params":[],"confirm":false,"risk":"safe"},"battery_off":{"id":"battery_off","group":"Performance","label":"Desligar economia","desc":"Volta ao consumo normal (recomendado para jogar).","help":"Desliga a economia de bateria e o repouso profundo. Use antes de jogar para o desempenho não ser limitado.","argv":["adb-tweaks.sh","battery_off"],"params":[],"confirm":false,"risk":"safe"},"freeze":{"id":"freeze","group":"Congelar apps","label":"Congelar apps (cache freezer)","desc":"Ativa o congelador do sistema e aplica a lista.","help":"Liga o congelador de apps em cache do sistema: apps que você não está usando ficam pausados em vez de gastar RAM\/bateria. Ótimo para liberar memória. Reverta em \"Descongelar todos os apps\".","argv":["adb-tweaks.sh","freezer"],"confirm":true,"params":[],"risk":"safe"},"unfreeze":{"id":"unfreeze","group":"Congelar apps","label":"Descongelar todos os apps","desc":"Garante que nenhum app fique preso em segundo plano.","help":"Acorda todos os apps e desliga o congelador. Use se algum app parou de notificar ou não abre direito.","argv":["adb-tweaks.sh","unfreeze_apps"],"params":[],"confirm":false,"risk":"safe"},"debloat.leve":{"id":"debloat.leve","group":"Debloat","label":"Debloat: perfil Leve","desc":"Desativa redes sociais rodando em segundo plano. (reversível)","help":"Debloat desativa apps de fábrica que você provavelmente não usa, liberando RAM, bateria e espaço. O perfil leve mexe só em redes sociais; o pesado mexe em mais apps. Tudo é reversível em \"Debloat: reverter tudo\".","argv":["debloat.sh","on","leve"],"confirm":true,"risk":"careful","timeout":180,"params":[]},"debloat.medio":{"id":"debloat.medio","group":"Debloat","label":"Debloat: perfil Médio","desc":"Redes sociais + apps de streaming. (reversível)","help":"Debloat desativa apps de fábrica que você provavelmente não usa, liberando RAM, bateria e espaço. O perfil leve mexe só em redes sociais; o pesado mexe em mais apps. Tudo é reversível em \"Debloat: reverter tudo\".","argv":["debloat.sh","on","medio"],"confirm":true,"risk":"careful","timeout":180,"params":[]},"debloat.pesado":{"id":"debloat.pesado","group":"Debloat","label":"Debloat: perfil Pesado","desc":"Redes + streaming + apps extras. (reversível)","help":"Debloat desativa apps de fábrica que você provavelmente não usa, liberando RAM, bateria e espaço. O perfil leve mexe só em redes sociais; o pesado mexe em mais apps. Tudo é reversível em \"Debloat: reverter tudo\".","argv":["debloat.sh","on","pesado"],"confirm":true,"risk":"careful","timeout":180,"params":[]},"debloat.off":{"id":"debloat.off","group":"Debloat","label":"Debloat: reverter tudo","desc":"Reativa tudo que o debloat desativou.","help":"Traz de volta todos os apps que o debloat desativou, deixando o sistema como estava antes.","argv":["debloat.sh","off"],"timeout":180,"params":[],"confirm":false,"risk":"safe"},"deep.freq":{"id":"deep.freq","group":"Profundas (root)","label":"Frequência CPU\/GPU","desc":"Segura clocks altos para não cair em jogo.","help":"Mantém a CPU e a GPU em frequências mais altas por mais tempo, evitando quedas de desempenho no meio da partida. Só funciona com root. Requer root e pede confirmação.","argv":["deep-tune.sh","freq","on"],"risk":"root","confirm":true,"params":[]},"deep.freq.off":{"id":"deep.freq.off","group":"Profundas (root)","label":"Frequência CPU\/GPU — desligar","desc":"Reverte este módulo profundo.","help":"Desliga só este ajuste profundo, deixando os outros como estão.","argv":["deep-tune.sh","freq","off"],"risk":"root","params":[],"confirm":false},"deep.io":{"id":"deep.io","group":"Profundas (root)","label":"I\/O + memória","desc":"Ajusta leitura\/escrita e faz fstrim.","help":"Otimiza a forma como o sistema lê e grava dados (scheduler de I\/O) e roda o fstrim, que mantém o armazenamento rápido. Requer root e pede confirmação.","argv":["deep-tune.sh","io","on"],"risk":"root","confirm":true,"params":[]},"deep.io.off":{"id":"deep.io.off","group":"Profundas (root)","label":"I\/O + memória — desligar","desc":"Reverte este módulo profundo.","help":"Desliga só este ajuste profundo, deixando os outros como estão.","argv":["deep-tune.sh","io","off"],"risk":"root","params":[],"confirm":false},"deep.mem":{"id":"deep.mem","group":"Profundas (root)","label":"Memória (MGLRU\/zRAM\/KSM)","desc":"Gerência de memória mais eficiente.","help":"Ajusta o gerenciamento de memória do kernel (reciclagem de páginas, compressão e deduplicação). Mais RAM útil e menos travadas. Requer root e pede confirmação.","argv":["deep-tune.sh","mem","on"],"risk":"root","confirm":true,"params":[]},"deep.mem.off":{"id":"deep.mem.off","group":"Profundas (root)","label":"Memória (MGLRU\/zRAM\/KSM) — desligar","desc":"Reverte este módulo profundo.","help":"Desliga só este ajuste profundo, deixando os outros como estão.","argv":["deep-tune.sh","mem","off"],"risk":"root","params":[],"confirm":false},"deep.net":{"id":"deep.net","group":"Profundas (root)","label":"Rede BBR + fq_codel","desc":"Congestionamento moderno: menos lag de rede.","help":"Troca o controle de congestionamento da rede pelo BBR e a fila pelo fq_codel. Resultado: menos picos de ping em jogos online. Requer root e pede confirmação.","argv":["deep-tune.sh","net","on"],"risk":"root","confirm":true,"params":[]},"deep.net.off":{"id":"deep.net.off","group":"Profundas (root)","label":"Rede BBR + fq_codel — desligar","desc":"Reverte este módulo profundo.","help":"Desliga só este ajuste profundo, deixando os outros como estão.","argv":["deep-tune.sh","net","off"],"risk":"root","params":[],"confirm":false},"deep.latency":{"id":"deep.latency","group":"Profundas (root)","label":"Reduzir latência (vsync)","desc":"Ajusta o SurfaceFlinger para menos atraso.","help":"Mexe no SurfaceFlinger para reduzir o atraso entre o toque e o que aparece na tela. Sensação de resposta mais imediata. Requer root e pede confirmação.","argv":["deep-tune.sh","latency","on"],"risk":"root","confirm":true,"params":[]},"deep.latency.off":{"id":"deep.latency.off","group":"Profundas (root)","label":"Reduzir latência (vsync) — desligar","desc":"Reverte este módulo profundo.","help":"Desliga só este ajuste profundo, deixando os outros como estão.","argv":["deep-tune.sh","latency","off"],"risk":"root","params":[],"confirm":false},"deep.gaming":{"id":"deep.gaming","group":"Profundas (root)","label":"MODO JOGO TURBO","desc":"Liga todas as otimizações profundas de uma vez.","help":"Ativa de uma vez frequência, I\/O, memória, rede e latência. É o \"turbo\" completo para jogar. Requer root. Desfaça com \"Reverter TUDO\" ou módulo por módulo.","argv":["deep-tune.sh","gaming","on"],"risk":"root","confirm":true,"timeout":180,"params":[]},"deep.thermal":{"id":"deep.thermal","group":"Profundas (root)","label":"Ajustar limite térmico","desc":"Deixa esquentar mais para segurar o clock (tem trava automática).","help":"Sobe o limite de temperatura em que o aparelho começa a reduzir o desempenho. Isso segura o clock por mais tempo, mas o aparelho esquenta mais. Há uma trava automática de segurança.","argv":["deep-tune.sh","thermal","on"],"risk":"root","confirm":true,"params":[]},"deep.detect":{"id":"deep.detect","group":"Profundas (root)","label":"Detectar hardware","desc":"Mostra CPU, GPU e kernel com recomendações.","help":"Lê os dados de hardware do aparelho e sugere quais ajustes profundos fazem sentido. Só informa, não muda nada.","argv":["deep-tune.sh","detect"],"params":[],"confirm":false,"risk":"safe"},"ext.vm":{"id":"ext.vm","group":"Extremos (root)","label":"VM \/ kernel de memória","desc":"Menos engasgo de I\/O e apps que reabrem rápido.","help":"Ajusta o gerenciador de memória do kernel: pressão de cache, escrita suja e reserva mínima. Efeito: menos microtravadas ao abrir\/voltar de apps. Knob pouco conhecido, ganho constante. Requer root. Reversível em \"VM \/ kernel de memória — desligar\".","argv":["deep-tune.sh","vm","on"],"risk":"root","confirm":true,"params":[]},"ext.vm.off":{"id":"ext.vm.off","group":"Extremos (root)","label":"VM \/ kernel de memória — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","vm","off"],"risk":"root","params":[],"confirm":false},"ext.sched":{"id":"ext.sched","group":"Extremos (root)","label":"Escalonador \/ EAS","desc":"Menos \"pulos\" de clock e resposta mais imediata.","help":"Mexe em como o kernel distribui as tarefas e acorda núcleos, além de dar boost ao app em foco (schedtune). Sensação de interface mais responsiva. Requer root. Reversível em \"Escalonador \/ EAS — desligar\".","argv":["deep-tune.sh","sched","on"],"risk":"root","confirm":true,"params":[]},"ext.sched.off":{"id":"ext.sched.off","group":"Extremos (root)","label":"Escalonador \/ EAS — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","sched","off"],"risk":"root","params":[],"confirm":false},"ext.gpu":{"id":"ext.gpu","group":"Extremos (root)","label":"GPU extrema (KGSL\/Mali)","desc":"Trava a GPU no topo e desliga economia dela.","help":"Trava o clock da GPU no máximo e desliga o throttling\/idle da GPU (Adreno\/KGSL ou Mali\/devfreq). É o ajuste que mais segura o FPS em jogo — e que quase ninguém aplica. Esquenta mais. Requer root. Reversível em \"GPU extrema (KGSL\/Mali) — desligar\".","argv":["deep-tune.sh","gpu","on"],"risk":"root","confirm":true,"params":[]},"ext.gpu.off":{"id":"ext.gpu.off","group":"Extremos (root)","label":"GPU extrema (KGSL\/Mali) — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","gpu","off"],"risk":"root","params":[],"confirm":false},"ext.cores":{"id":"ext.cores","group":"Extremos (root)","label":"Núcleos sempre ligados","desc":"Evita o atraso de \"acordar\" núcleo.","help":"Desliga o hotplug\/core_ctl e mantém todos os núcleos ligados. Reduz o atraso de acordar núcleo no meio da ação. Custa bateria. Requer root. Reversível em \"Núcleos sempre ligados — desligar\".","argv":["deep-tune.sh","cores","on"],"risk":"root","confirm":true,"params":[]},"ext.cores.off":{"id":"ext.cores.off","group":"Extremos (root)","label":"Núcleos sempre ligados — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","cores","off"],"risk":"root","params":[],"confirm":false},"ext.input":{"id":"ext.input","group":"Extremos (root)","label":"Input \/ touch boost","desc":"Sobe a CPU no instante do toque.","help":"Liga o boost de CPU no toque (input boost). É o que dá a sensação de resposta instantânea. Knobs variam por fabricante. Requer root. Reversível em \"Input \/ touch boost — desligar\".","argv":["deep-tune.sh","input","on"],"risk":"root","confirm":true,"params":[]},"ext.input.off":{"id":"ext.input.off","group":"Extremos (root)","label":"Input \/ touch boost — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","input","off"],"risk":"root","params":[],"confirm":false},"ext.idle":{"id":"ext.idle","group":"Extremos (root)","label":"CPU idle (menu)","desc":"Desliga o idle profundo para acordar rápido.","help":"Troca o governor de idle e desliga os estados de idle mais profundos. Acorda mais rápido (menos latência), gasta mais bateria. Requer root. Reversível em \"CPU idle (menu) — desligar\".","argv":["deep-tune.sh","idle","on"],"risk":"root","confirm":true,"params":[]},"ext.idle.off":{"id":"ext.idle.off","group":"Extremos (root)","label":"CPU idle (menu) — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","idle","off"],"risk":"root","params":[],"confirm":false},"ext.net2":{"id":"ext.net2","group":"Extremos (root)","label":"Rede avançada 2 (BBR2)","desc":"Menos lag de rede em jogo online.","help":"Além do BBR: tenta BBR2, desliga slow-start após ocioso, liga MTU probing e reaproveita conexões. Menos picos de ping. Requer root. Reversível em \"Rede avançada 2 (BBR2) — desligar\".","argv":["deep-tune.sh","net2","on"],"risk":"root","confirm":true,"params":[]},"ext.net2.off":{"id":"ext.net2.off","group":"Extremos (root)","label":"Rede avançada 2 (BBR2) — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","net2","off"],"risk":"root","params":[],"confirm":false},"ext.zram":{"id":"ext.zram","group":"Extremos (root)","label":"zRAM avançada (zstd)","desc":"Mais RAM efetiva trocando CPU por memória.","help":"Troca a compressão da memória para zstd e ajusta o swappiness. Mais RAM efetiva; usa um pouco mais de CPU. Requer root. Reversível em \"zRAM avançada (zstd) — desligar\".","argv":["deep-tune.sh","zram","on"],"risk":"root","confirm":true,"params":[]},"ext.zram.off":{"id":"ext.zram.off","group":"Extremos (root)","label":"zRAM avançada (zstd) — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","zram","off"],"risk":"root","params":[],"confirm":false},"ext.kernel":{"id":"ext.kernel","group":"Extremos (root)","label":"Kernel: tirar overhead","desc":"Desliga rastreamento\/debug do kernel.","help":"Desliga tracing e debug do kernel e sobe limites do sistema (arquivos, backlog). Ganho pequeno e constante. Requer root. Reversível em \"Kernel: tirar overhead — desligar\".","argv":["deep-tune.sh","kernel","on"],"risk":"root","confirm":true,"params":[]},"ext.kernel.off":{"id":"ext.kernel.off","group":"Extremos (root)","label":"Kernel: tirar overhead — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","kernel","off"],"risk":"root","params":[],"confirm":false},"ext.dalvik":{"id":"ext.dalvik","group":"Extremos (root)","label":"Dalvik \/ ART (heaps)","desc":"Heaps maiores para jogos, menos GC no meio.","help":"Aumenta os heaps da máquina virtual e a compilação em modo speed. Ajuda apps grandes (jogos) a não sofrerem GC no meio do uso. Requer root. Reversível em \"Dalvik \/ ART (heaps) — desligar\".","argv":["deep-tune.sh","dalvik","on"],"risk":"root","confirm":true,"params":[]},"ext.dalvik.off":{"id":"ext.dalvik.off","group":"Extremos (root)","label":"Dalvik \/ ART (heaps) — desligar","desc":"Reverte só este ajuste extremo.","help":"Desliga apenas este ajuste extremo, mantendo os outros como estão.","argv":["deep-tune.sh","dalvik","off"],"risk":"root","params":[],"confirm":false},"ext.display":{"id":"ext.display","group":"Extremos (root)","label":"Display \/ HWUI (props)","desc":"Props do SurfaceFlinger\/HWUI que deixam a rolagem mais lisa. SEM root.","help":"Ajusta props \"debug.*\" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Não precisa de root e deixa a rolagem mais lisa.","argv":["deep-tune.sh","display","on"],"params":[],"confirm":false,"risk":"safe"},"ext.display.off":{"id":"ext.display.off","group":"Extremos (root)","label":"Display \/ HWUI — desligar","desc":"Reverte as props de display.","help":"Restaura as props de display\/HWUI ao valor anterior.","argv":["deep-tune.sh","display","off"],"params":[],"confirm":false,"risk":"safe"},"ext.turbo":{"id":"ext.turbo","group":"Extremos (root)","label":"⚡ MODO EXTREMO (tudo)","desc":"Turbo + TODOS os ajustes avançados de uma vez. Esquenta muito.","help":"Liga o modo turbo e mais todos os knobs avançados: VM, escalonador, GPU, núcleos, input, idle, rede2, zRAM, kernel, display e dalvik. É o máximo de desempenho que o pack entrega. Esquenta MUITO e consome bateria — use com o aparelho ventilado. Reverte em \"Reverter TUDO\".","argv":["deep-tune.sh","extreme"],"risk":"root","confirm":true,"timeout":300,"params":[]},"ext.dexopt":{"id":"ext.dexopt","group":"Extremos (root)","label":"Recompilar apps (dexopt)","desc":"Compila os apps antecipadamente (AOT). Demora, mas reduz engasgo.","help":"Recompila todos os apps em modo speed (AOT). A primeira abertura fica mais fluida e some o engasgo do compilador em segundo plano. Demora vários minutos e esquenta; roda melhor com o celular na tomada.","argv":["deep-tune.sh","dexopt","run"],"timeout":900,"risk":"careful","confirm":true,"params":[]},"ext.dexopt_status":{"id":"ext.dexopt_status","group":"Extremos (root)","label":"Ver estado do dexopt","desc":"Mostra como está a compilação dos apps.","help":"Mostra o estado da compilação AOT dos apps (o que já foi otimizado). Só leitura.","argv":["deep-tune.sh","dexopt","status"],"params":[],"confirm":false,"risk":"safe"},"adv.obscure":{"id":"adv.obscure","group":"Avançado (sem root)","label":"Ajustes obscuros","desc":"Menos kills em 2º plano e o jogo fora do Doze. SEM root.","help":"Reúne knobs pouco conhecidos: standby de apps, whitelist do Doze para o Free Fire e ajustes de memória. Resultado: apps não são mortos à toa e o jogo não sofre com o repouso profundo.","argv":["adb-tweaks.sh","obscure"],"params":[],"confirm":false,"risk":"safe"},"adv.mobile_net":{"id":"adv.mobile_net","group":"Avançado (sem root)","label":"Rede móvel \/ economia de dados","desc":"Desliga a economia de dados que estrangula a velocidade.","help":"Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.","argv":["adb-tweaks.sh","mobile_net"],"params":[],"confirm":false,"risk":"safe"},"adv.notif":{"id":"adv.notif","group":"Avançado (sem root)","label":"Menos notificações (heads-up)","desc":"Reduz o trabalho do sistema com notificações pop-up.","help":"Desliga os balões (heads-up) e as bolhas de notificação. O sistema trabalha menos e sobra fluidez — bom para jogar.","argv":["adb-tweaks.sh","notif"],"params":[],"confirm":false,"risk":"safe"},"adv.window":{"id":"adv.window","group":"Avançado (sem root)","label":"Janelas \/ modo imersivo","desc":"Transições mais curtas e modo imersivo (esconde barras).","help":"Reduz as animações de janela e ativa o modo imersivo, escondendo as barras de status\/navegação. Mais tela e menos distração no jogo.","argv":["adb-tweaks.sh","window_tweaks"],"params":[],"confirm":false,"risk":"safe"},"wifi":{"id":"wifi","group":"Wi-Fi e rede","label":"Ajustes de Wi-Fi","desc":"Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.","help":"O Android fica varrendo redes Wi-Fi o tempo todo, mesmo conectado. Isso gasta bateria e cria picos de uso da CPU. Aqui a varredura em segundo plano é desligada e a economia de energia do Wi-Fi é ligada. Reverte em \"Rede: voltar ao automático\".","argv":["adb-tweaks.sh","wifi"],"params":[],"confirm":false,"risk":"safe"},"net":{"id":"net","group":"Wi-Fi e rede","label":"Rede \/ TCP (DNS + buffers)","desc":"DNS Cloudflare + buffers TCP maiores para menos travada em jogo.","help":"Aumenta os buffers de rede (TCP) e troca o DNS para o Cloudflare. Resultado: menos picos de latência e carregamento mais estável. Não é o mesmo que o perfil de DNS gaming — aqui o foco é o buffer de rede.","argv":["adb-tweaks.sh","net"],"params":[],"confirm":false,"risk":"safe"},"net_reset":{"id":"net_reset","group":"Wi-Fi e rede","label":"Rede: voltar ao automático","desc":"Volta o DNS e a rede para o padrão da operadora.","help":"Desfaz os ajustes de rede: DNS volta para automático e os buffers deixam de ser forçados. Use se a internet ficar estranha depois de aplicar.","argv":["adb-tweaks.sh","net_reset"],"params":[],"confirm":false,"risk":"safe"},"freezer_off":{"id":"freezer_off","group":"Congelar apps","label":"Desligar o congelador","desc":"Desliga o congelador de apps em cache do sistema.","help":"O congelador do sistema (cached_apps_freezer) pausa apps em segundo plano para liberar RAM. Aqui ele é desligado — útil se algum app parou de receber notificações.","argv":["adb-tweaks.sh","freezer_off"],"params":[],"confirm":false,"risk":"safe"},"freeze_now":{"id":"freeze_now","group":"Congelar apps","label":"Congelar agora (aplicar lista)","desc":"Congela os apps da lista negra (menos a whitelist).","help":"Aplica o congelamento na hora: os apps da lista negra são suspensos, exceto os protegidos pela whitelist. Ganha RAM livre. Reverte em \"Descongelar agora\".","argv":["adb-tweaks.sh","freeze_apps"],"confirm":true,"risk":"careful","params":[]},"unfreeze_now":{"id":"unfreeze_now","group":"Congelar apps","label":"Descongelar agora (todos)","desc":"Acorda todos os apps e desliga o congelador.","help":"Garante que nenhum app fique preso em segundo plano: reativa todos e desliga o congelador. Use se algo não abrir ou não notificar.","argv":["adb-tweaks.sh","unfreeze_apps"],"params":[],"confirm":false,"risk":"safe"},"debloat.app.disable":{"id":"debloat.app.disable","group":"Debloat","label":"Desativar um app","desc":"Desativa um app específico (some da gaveta, mas fica instalado).","help":"Desativa só o app que você escolher. Ele para de rodar e de gastar bateria, mas continua instalado. Reversível em \"Reativar um app\".","argv":["debloat.sh","disable","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App"}],"risk":"careful","confirm":true},"debloat.app.enable":{"id":"debloat.app.enable","group":"Debloat","label":"Reativar um app","desc":"Liga de novo um app que você desativou.","help":"Traz de volta um app desativado. Ele volta a aparecer e a rodar normalmente.","argv":["debloat.sh","enable","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App"}],"confirm":false,"risk":"safe"},"debloat.app.uninstall":{"id":"debloat.app.uninstall","group":"Debloat","label":"Desinstalar p\/ o usuário","desc":"Remove o app só para você (dá para reinstalar depois).","help":"Desinstala o app apenas para o seu usuário — o sistema continua com a cópia e você pode reinstalar sem baixar de novo. Ótimo para tirar bloatware sem risco. Reversível em \"Reinstalar app\".","argv":["debloat.sh","uninstall","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App"}],"risk":"careful","confirm":true},"debloat.app.restore":{"id":"debloat.app.restore","group":"Debloat","label":"Reinstalar app","desc":"Traz de volta um app que você desinstalou para o usuário.","help":"Reinstala o app removido com \"Desinstalar p\/ o usuário\", sem precisar baixar nada.","argv":["debloat.sh","restore","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App"}],"confirm":false,"risk":"safe"},"debloat.app.restrict":{"id":"debloat.app.restrict","group":"Debloat","label":"Restringir em 2º plano","desc":"Impede o app de rodar escondido (modo restrito).","help":"Coloca o app no modo restrito: ele não roda em segundo plano nem gasta bateria, mas continua abrindo normalmente quando você toca. Reversível em \"Tirar restrição\".","argv":["debloat.sh","restrict","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App"}],"risk":"careful","confirm":false},"debloat.app.unrestrict":{"id":"debloat.app.unrestrict","group":"Debloat","label":"Tirar restrição","desc":"Devolve o app ao funcionamento normal.","help":"Remove o modo restrito do app, deixando ele rodar em segundo plano de novo.","argv":["debloat.sh","unrestrict","{pkg}"],"params":[{"name":"pkg","type":"pkg","label":"App"}],"confirm":false,"risk":"safe"},"snapshot_list":{"id":"snapshot_list","group":"Rápido","label":"Ver snapshots salvos","desc":"Lista os snapshots que você já tirou.","help":"Mostra todas as fotos de configuração que você salvou, com data e id. Serve para escolher qual restaurar.","argv":["snapshot.sh","list"],"params":[],"confirm":false,"risk":"safe"},"snapshot_diff":{"id":"snapshot_diff","group":"Rápido","label":"Comparar com o último snapshot","desc":"Mostra o que mudou desde o snapshot mais recente.","help":"Compara as configurações atuais com o último snapshot e lista só o que mudou. Bom para conferir o que o pack alterou.","argv":["snapshot.sh","diff","latest"],"params":[],"confirm":false,"risk":"safe"},"snapshot_restore":{"id":"snapshot_restore","group":"Rápido","label":"Restaurar último snapshot","desc":"Volta as configurações para o último snapshot salvo.","help":"Devolve o aparelho ao estado do último snapshot: desfaz as mudanças feitas depois dele. É o \"botão de voltar\" mais seguro.","argv":["snapshot.sh","restore","latest"],"risk":"careful","confirm":true,"params":[]},"diag.profile":{"id":"diag.profile","group":"Diagnóstico","label":"Perfil do aparelho (SoC\/GPU)","desc":"Detecta o processador, a GPU e o que combina com o seu aparelho.","help":"Lê as informações do seu aparelho (família do processador, GPU, kernel) e recomenda quais otimizações profundas tendem a funcionar melhor. Não muda nada — só informa.","argv":["device-profile.sh"],"params":[],"confirm":false,"risk":"safe"},"diag.profile_save":{"id":"diag.profile_save","group":"Diagnóstico","label":"Salvar perfil do aparelho","desc":"Salva o relatório do aparelho num arquivo.","help":"Gera um arquivo com o perfil completo do aparelho. Útil para guardar ou compartilhar ao pedir ajuda.","argv":["device-profile.sh","save"],"params":[],"confirm":false,"risk":"safe"},"diag.deep_detect":{"id":"diag.deep_detect","group":"Diagnóstico","label":"Detectar hardware (root)","desc":"Mostra CPU, GPU, kernel e recomendações.","help":"Versão aprofundada da detecção, com detalhes de CPU\/GPU e sugestões de tuning. Só leitura.","argv":["deep-tune.sh","detect"],"params":[],"confirm":false,"risk":"safe"},"diag.thermal":{"id":"diag.thermal","group":"Diagnóstico","label":"Ver temperatura atual","desc":"Lê a temperatura do aparelho agora.","help":"Mostra a temperatura atual (quando o aparelho expõe esse sensor). Bom para ver se o ajuste térmico passou do ponto.","argv":["deep-tune.sh","thermal","temp"],"params":[],"confirm":false,"risk":"safe"},"diag.dns":{"id":"diag.dns","group":"Diagnóstico","label":"Ver DNS atual","desc":"Mostra qual perfil de DNS está ativo agora.","help":"Confere se o DNS privado está ligado e qual servidor está em uso.","argv":["dns.sh","status"],"params":[],"confirm":false,"risk":"safe"},"diag.bench_before":{"id":"diag.bench_before","group":"Diagnóstico","label":"Benchmark: marcar ANTES","desc":"Guarda o estado atual para comparar depois de otimizar.","help":"Tira uma medida de referência antes de aplicar as otimizações. Depois use \"marcar DEPOIS\" para ver o ganho. Dica: use os nomes \"antes\" e \"depois\".","argv":["bench.sh","save","{label}"],"params":[{"name":"label","type":"name","label":"Rótulo","default":"antes"}],"confirm":false,"risk":"safe"},"diag.bench_after":{"id":"diag.bench_after","group":"Diagnóstico","label":"Benchmark: marcar DEPOIS","desc":"Mede de novo e compara com o \"antes\".","help":"Coleta o estado atual e compara com a medida anterior, mostrando a diferença. Rode depois de aplicar o pack.","argv":["bench.sh","run","{label}"],"params":[{"name":"label","type":"name","label":"Rótulo","default":"depois"}],"confirm":false,"risk":"safe"},"module.run":{"id":"module.run","group":"Módulos","label":"Executar um módulo","desc":"Roda um dos módulos\/plugins incluídos no pack.","help":"Os módulos são os complementos (tweaks, touch, GPU, bateria). Digite o nome exato do módulo — veja a lista na aba Módulos. Ação reversível conforme o módulo.","argv":["modules.sh","run","{name}"],"params":[{"name":"name","type":"name","label":"Nome do módulo"}],"risk":"careful","confirm":true,"timeout":180},"ff_open":{"id":"ff_open","group":"Touch \/ Free Fire","label":"Abrir o Free Fire","desc":"Abre o jogo (útil depois de aplicar os ajustes).","help":"Manda o Free Fire abrir. Use depois de aplicar touch\/modo de jogo para já entrar otimizado.","argv":["adb-tweaks.sh","ff_open"],"params":[],"confirm":false,"risk":"safe"},"config.set":{"id":"config.set","group":"Configs","label":"Definir conexão do pack","desc":"Escolha como o pack acessa o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático.","help":"Define por onde o pack manda os comandos. Sem root, use Shizuku (rish) no celular ou a depuração por Wi-Fi (ADB, informe o IP:porta do aparelho). \"automático\" deixa o pack detectar sozinho. Depois clique em \"Testar conexão\" para confirmar.","argv":["config.sh","set","{mode}","{target}"],"params":[{"name":"mode","type":"name","label":"Modo","default":"auto"},{"name":"target","type":"text","label":"Endereço (só p\/ ADB: host:porta)","optional":true}],"confirm":false,"risk":"safe"},"config.test":{"id":"config.test","group":"Configs","label":"Testar conexão","desc":"Confere de verdade se o pack consegue mandar comandos ao aparelho.","help":"Faz um teste real: lê o modelo do aparelho, a versão do Android e tenta ler\/gravar um ajuste. Se falhar, diz o que falta (Shizuku ativo ou depuração por Wi-Fi ligada).","argv":["config.sh","test"],"params":[],"confirm":false,"risk":"safe"},"config.show":{"id":"config.show","group":"Configs","label":"Ver configuração","desc":"Mostra o modo atual e o que foi detectado.","help":"Mostra o arquivo de configuração, o modo salvo e o que o pack detectou agora (Shizuku\/ADB\/root\/local). Só leitura.","argv":["config.sh","show"],"params":[],"confirm":false,"risk":"safe"},"config.reset":{"id":"config.reset","group":"Configs","label":"Voltar ao automático","desc":"Apaga a configuração e volta à detecção automática.","help":"Remove o arquivo de configuração. O pack volta a detectar sozinho o melhor caminho (Shizuku, ADB, root ou local).","argv":["config.sh","reset"],"params":[],"confirm":false,"risk":"safe"}};
+const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
+const $ = s => document.querySelector(s);
+let pending = null;
+
+/* tema */
+const saved = localStorage.getItem("otm-theme");
+if (saved) document.documentElement.dataset.theme = saved;
+$("#btnTheme").onclick = () => {
+  const cur = document.documentElement.dataset.theme ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem("otm-theme", next);
+};
+
+/* navegação */
+function go(g, push){
+  document.querySelectorAll("section[data-g]").forEach(s => s.hidden = s.dataset.g !== g);
+  document.querySelectorAll("#nav a").forEach(a => a.setAttribute("aria-current", a.dataset.g === g ? "true" : "false"));
+  document.body.classList.remove("drawer");
+  $("#burger").setAttribute("aria-expanded", "false");
+  if (push !== false) history.replaceState(null, "", "#" + encodeURIComponent(g));
+  window.scrollTo({top:0, behavior:"instant"});
+}
+document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
+const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); if (g) go(g, false); };
+
+/* gaveta */
+$("#burger").onclick = () => { document.body.classList.add("drawer"); $("#burger").setAttribute("aria-expanded","true"); };
+$("#scrim").onclick = $("#sideClose").onclick = () => { document.body.classList.remove("drawer"); $("#burger").setAttribute("aria-expanded","false"); };
+
+/* ajuda */
+function showHelp(id){
+  const a = ACTIONS[id]; if (!a) return;
+  $("#mTitle").textContent = a.label;
+  $("#mDesc").textContent = a.desc || "";
+  const long = $("#mLong");
+  long.textContent = a.help || "Sem explicação adicional.";
+  long.hidden = false;
+  $("#mAck").hidden = true;
+  $("#mGo").hidden = true;
+  $("#mCancel").textContent = "Entendi";
+  pending = null;
+  $("#mask").classList.add("open");
+}
+document.querySelectorAll(".help-btn").forEach(b => b.onclick = () => showHelp(b.dataset.help));
+
+/* executar */
+const collect = card => {
+  const out = {};
+  const a = ACTIONS[card.dataset.id];
+  (a.params || []).forEach(p => {
+    const i = card.querySelector('[data-p="' + p.name + '"]');
+    out[p.name] = i ? i.value.trim() : (p.default ?? "");
+  });
+  return out;
+};
+function run(card, confirmed){
+  const a = ACTIONS[card.dataset.id];
+  if (a.confirm && !confirmed){
+    pending = card;
+    $("#mTitle").textContent = a.label;
+    $("#mDesc").textContent = a.desc || "";
+    const long = $("#mLong");
+    if (a.help){ long.textContent = a.help; long.hidden = false; } else { long.hidden = true; }
+    $("#mAck").hidden = false;
+    $("#mGo").hidden = false;
+    $("#mCancel").textContent = "Cancelar";
+    $("#mAckLabel").textContent = a.risk === "root"
+      ? "Estou ciente: mexe no kernel/sistema, pode esquentar ou instabilizar. Quero continuar."
+      : "Estou ciente dos riscos e quero continuar.";
+    $("#mCheck").checked = false; $("#mGo").disabled = true;
+    $("#mask").classList.add("open");
+    return;
+  }
+  doRun(card, collect(card), confirmed);
+}
+async function doRun(card, params, confirmed){
+  const a = ACTIONS[card.dataset.id];
+  const btn = card.querySelector("[data-run]");
+  setBusy(true, btn);
+  openConsole(a.label, "executando…");
+  try{
+    const r = await fetch("api.php?do=run", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
+      body: JSON.stringify({id:a.id, params, confirm:!!confirmed})
+    });
+    const j = await r.json();
+    let head = (j.ok ? "✔ " : "✘ ") + "[" + (j.code ?? "?") + "]";
+    if (j.applied && !j.real) head += "  — nenhuma mudança real no sistema";
+    else if (j.changed > 0) head += "  — " + j.changed + " mudança(s) confirmada(s)";
+    openConsole(a.label, head + "\n\n" + (j.out || j.error || ""));
+    if (j.ok) toast("Feito: " + a.label, "ok");
+    else if (j.applied && !j.real) toast("Nada mudou de verdade — veja Configs", "bad");
+    else toast("Falhou: " + a.label, "bad");
+  }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); }
+  setBusy(false, btn);
+}
+document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.closest(".card")));
+const setBusy = (b, btn) => {
+  document.querySelectorAll("[data-run]").forEach(x => x.disabled = b);
+  if (btn) btn.classList.toggle("busy", b);
+};
+
+function openConsole(t, out){ $("#consoleTitle").textContent = t; $("#consoleOut").textContent = out; $("#console").classList.add("open"); }
+function toast(m, k){ const t = $("#toast"); t.textContent = m; t.className = "toast show " + (k || "");
+  clearTimeout(t._h); t._h = setTimeout(() => t.className = "toast", 3200); }
+const apiGet = async a => (await fetch("api.php?action=" + a, {headers:{"X-OTM-Token":TOKEN}})).json();
+
+$("#consoleClose").onclick = () => $("#console").classList.remove("open");
+$("#btnConsole").onclick = () => $("#console").classList.toggle("open");
+$("#mCancel").onclick = () => { $("#mask").classList.remove("open"); pending = null; };
+$("#mCheck").onchange = e => $("#mGo").disabled = !e.target.checked;
+$("#mGo").onclick = () => { $("#mask").classList.remove("open");
+  if (pending) doRun(pending, collect(pending), true); };
+$("#mask").onclick = e => { if (e.target.id === "mask"){ $("#mask").classList.remove("open"); pending = null; } };
+$("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo…");
+  const j = await apiGet("status"); openConsole("Status do aparelho", j.text || "(sem saída)"); };
+$("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
+  const j = await apiGet("log");
+  openConsole("Histórico", (j.log || []).map(x => (x.ok ? "✔" : "✘") + "  " + x.ts + "  " + x.label).join("\n") || "(nada ainda)"); };
+
+window.addEventListener("hashchange", fromHash);
+addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); document.body.classList.remove("drawer"); } });
+
+/* apps instalados (autocomplete) + estado do modo de acesso */
+(async () => {
+  try{
+    const m = await apiGet("mode");
+    const names = {rish:"Shizuku", adb:"ADB Wi-Fi", su:"root", local:"local (sem acesso)"};
+    const txt = names[m.mode] || m.mode || "auto";
+    $("#modeTxt").textContent = txt;
+    const pill = $("#modePill");
+    if (pill) pill.title = "Acesso: " + txt + (m.priv ? " — " + m.priv : "") + ". Configure em Configs.";
+  }catch(e){ $("#modeTxt").textContent = "offline"; }
+  try{ const i = await apiGet("info");
+    if (!document.getElementById("modeTxt").textContent || document.getElementById("modeTxt").textContent === "verificando…")
+      $("#modeTxt").textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
+  }catch(e){}
+  try{ const j = await apiGet("apps");
+    const dl = document.createElement("datalist"); dl.id = "applist";
+    (j.apps || []).forEach(p => { const o = document.createElement("option"); o.value = p; dl.appendChild(o); });
+    document.body.appendChild(dl);
+  }catch(e){}
+})();
+
+fromHash();
+</script>
+</body>
+</html>

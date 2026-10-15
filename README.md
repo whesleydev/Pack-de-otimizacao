@@ -477,6 +477,10 @@ releases/         zips publicados (via GitHub Releases)
 
 ## Créditos
 
+Criado por **00deUdia** (Discord `cute_axolotl_51194`).
+- Perfil: <https://discord.com/users/cute_axolotl_51194>
+- Servidor: <https://discord.gg/w9hFBeVKw8>
+
 Todo o conteúdo deste repositório é **próprio**: os scripts (`scripts/`), os perfis de
 toque, o menu, os 5 plugins em `Plugins AxManager/Nossos/` e os módulos em `Modulos/`.
 

@@ -1,0 +1,21 @@
+# ============================================================
+#  13 · DESCONGELAR APPS
+#  Libera de volta os apps congelados pelo 12-congelar-apps.txt.
+# ============================================================
+
+# --- desliga o congelamento nativo ---
+settings put global cached_apps_freezer disabled
+
+# ===== DESCONGELA TUDO (o mais seguro) =====
+# pega todos os apps de terceiros e descongela/reativa um por um
+for a in $(pm list packages -u -3 | sed 's/^package://'); do
+    pm unsuspend --user 0 "$a"
+    pm enable --user 0 "$a"
+done
+
+# --- descongela UM app específico (troque o pacote pelos seus) ---
+# pm unsuspend --user 0 com.exemplo
+# pm enable --user 0 com.exemplo
+
+# --- confirma que não sobrou nenhum suspenso ---
+# pm list packages -u | grep -i suspend

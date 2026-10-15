@@ -1,0 +1,40 @@
+# ============================================================
+#  05 · BATERIA / ECONOMIA
+#  Economiza bateria. NÃO use junto com performance em partidas
+#  longas (pode reduzir o desempenho).
+#
+#  Dica: em JOGO use o 09 (game mode), não este. Este é para o
+#  dia a dia (fora do jogo).
+# ============================================================
+
+# --- modo economia de bateria ---
+settings put global low_power 1
+
+# --- desliga a bateria adaptativa (aprende seu uso) ---
+settings put global adaptive_battery_management_enabled 0
+
+# --- modo espera (Doze) agressivo ---
+dumpsys deviceidle enable
+dumpsys deviceidle force-idle
+
+# --- economia sem vibração (evita gasto) ---
+settings put global battery_saver_constants vibration_disabled=true
+
+# --- modo espera de apps (app standby) ---
+settings put global app_standby_enabled 1
+
+# --- coloca apps de fundo em "restricted" (não rodam sozinhos) ---
+# troque os pacotes pelos seus apps que mais gastam bateria
+for a in com.instagram.android com.facebook.katana com.facebook.orca \
+         com.ss.android.ugc.trill com.twitter.android com.spotify.music; do
+    am set-standby-bucket "$a" restricted
+done
+
+# --- limita apps em background (Android 13+, por app) ---
+# cmd appops set com.exemplo RUN_IN_BACKGROUND ignore
+
+# --- Doze mais rápido ao desligar a tela (root, cuidado) ---
+# settings put global device_idle_constants inactive_to=30000,sensing_to=0,locating_to=0
+
+# --- desliga o GMS de alta precisão quando ocioso (economia real) ---
+# settings put global high_power_location_mode 0

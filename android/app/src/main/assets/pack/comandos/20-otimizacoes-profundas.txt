@@ -1,0 +1,74 @@
+# ============================================================
+#  20 · OTIMIZAÇÕES PROFUNDAS (parte SEM root)
+#  Estas mexem em recursos avançados do Android, mas NÃO precisam
+#  de root — funcionam via Brevent / Shizuku / ADB.
+#
+#  Para as partes que PRECISAM de root (frequência, térmico, I/O,
+#  memória, rede BBR), use: sh scripts/deep-tune.sh
+#
+#  Reversão: cole o 99-restaurar-tudo.txt ou rode
+#            sh scripts/deep-tune.sh restore
+# ============================================================
+
+# ===== 1) ANGLE / VULKAN POR JOGO ===========================
+# Converte o jogo de OpenGL para ANGLE (Vulkan). Em vários jogos
+# isso sobe o FPS de verdade e é reversível.
+#
+# Liste os pacotes que quer (separados por vírgula) e, na MESMA
+# ordem, o driver "angle" para cada um.
+
+settings put global angle_gl_driver_selection_pkgs com.dts.freefireth,com.activision.callofduty.shooter
+settings put global angle_gl_driver_selection_values angle,angle
+
+# Para ver o que está configurado:
+#   settings get global angle_gl_driver_selection_pkgs
+#   settings get global angle_gl_driver_selection_values
+#
+# Para remover (voltar ao driver nativo):
+#   settings delete global angle_gl_driver_selection_pkgs
+#   settings delete global angle_gl_driver_selection_values
+
+# ===== 2) DEBLOAT REAL (appops + standby buckets) ===========
+# Jeito CERTO de impedir app de rodar em background: restrição de
+# política (appops) + balde de standby. Não é force-stop — é o que
+# o próprio Android usa. Reversível.
+
+cmd appops set com.facebook.katana RUN_IN_BACKGROUND ignore
+cmd appops set com.facebook.katana RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.facebook.katana restricted
+
+cmd appops set com.instagram.android RUN_IN_BACKGROUND ignore
+cmd appops set com.instagram.android RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.instagram.android restricted
+
+cmd appops set com.ss.android.ugc.trill RUN_IN_BACKGROUND ignore
+cmd appops set com.ss.android.ugc.trill RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.ss.android.ugc.trill restricted
+
+cmd appops set com.google.android.youtube RUN_IN_BACKGROUND ignore
+cmd appops set com.google.android.youtube RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.google.android.youtube restricted
+
+cmd appops set com.android.chrome RUN_IN_BACKGROUND ignore
+cmd appops set com.android.chrome RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.android.chrome restricted
+
+cmd appops set com.spotify.music RUN_IN_BACKGROUND ignore
+cmd appops set com.spotify.music RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.spotify.music restricted
+
+cmd appops set com.discord RUN_IN_BACKGROUND ignore
+cmd appops set com.discord RUN_ANY_IN_BACKGROUND ignore
+am set-standby-bucket com.discord restricted
+
+# Reverter um app específico:
+#   cmd appops set <pkg> RUN_IN_BACKGROUND allow
+#   cmd appops set <pkg> RUN_ANY_IN_BACKGROUND allow
+#   am set-standby-bucket <pkg> active
+
+# ===== 3) GAME MODE estendido (por jogo) ====================
+# Além do downscale, dá para ligar ANGLE e escala direto no Game Mode.
+device_config put game_overlay com.dts.freefireth mode=2,downscaleFactor=0.9,useAngle=1:mode=3,downscaleFactor=0.9,useAngle=1
+
+# Reverter:
+#   device_config delete game_overlay com.dts.freefireth

@@ -2,6 +2,12 @@
 
 Guia para agentes que trabalharem neste repositório.
 
+## Autor
+
+**00deUdia** (GitHub `whesleydev`) — Discord `cute_axolotl_51194`,
+perfil <https://discord.com/users/cute_axolotl_51194>, servidor <https://discord.gg/w9hFBeVKw8>.
+O painel web e o site trazem esses créditos num rodapé com botões para o perfil e o servidor.
+
 ## O que é
 
 Pack de otimização para Android (foco Free Fire) em 4 níveis:
@@ -121,3 +127,55 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 - Revogar o token exposto no histórico e purgar o `apps_otm.zip` (`docs/SEGURANCA.md`).
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
+
+## App Android (`android/`)
+
+App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
+ou por ADB Wi-Fi (pareamento), com os assets do pack embutidos.
+
+O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
+nativa além do necessário para conectar e rodar os comandos.
+
+- `PanelActivity` é o launcher: carrega `assets/panel/index.html` (o painel do
+  site pré-renderizado) numa WebView e injeta "Conectar"/"Som" no cabeçalho.
+- `PackBridge` é a ponte `JavascriptInterface` (`OTM.call(kind, payload, cbId)`):
+  o painel chama por JS em vez de `api.php`. A execução é assíncrona (corrotina)
+  e devolve o resultado por `window.__otmResolve`. Monta a ação igual ao
+  `otm_run` do `web/lib.php` (valida parâmetros, troca `{nome}`, roda
+  `sh <script> <args>` com `HOME` na pasta do app).
+- O catálogo do painel vem de `assets/panel/actions.json` (gerado a partir de
+  `web/lib.php`, via `scratch/actions.json`).
+- Gerar o painel estático: `scratch/build_panel.py` (injeta a ponte em
+  `scratch/panel.html`, o painel renderizado pelo PHP). Gerar ícones:
+  `scratch/build_icons.py` (usa `scratch/logo.jpg`).
+- Fontes em `android/app/src/main/java/com/otm/pack/`: `PanelActivity`,
+  `PackBridge`, `WifiDialog`, `PackAssets` (extrai `assets/pack`/`assets/panel`
+  para `filesDir`), `ShellRunner` + `ShizukuRunner` + `AdbRunner`, `SoundPlayer`,
+  `SelfSignedCert`.
+- AIDL oficial do Shizuku em `android/app/src/main/aidl/moe/shizuku/server/`.
+- Assets: `assets/pack` (scripts/comandos), `assets/panel` (painel + catálogo) e
+  `assets/audio` (avisos de voz).
+- Áudio: `SoundPlayer` toca MP3 de `assets/audio` via `MediaPlayer`+`openFd`
+  (por isso o APK guarda os MP3 STORED, sem compressão). O botão 🔊/🔇 silencia.
+  `PackBridge.soundFor(grupo)` escolhe o som conforme o grupo da ação.
+
+Build local (sem Android Studio):
+
+```sh
+# toolchain em /workspace/project/.toolchain (JDK 21 + SDK 34 + Gradle 8.7)
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export ANDROID_HOME=/workspace/project/.toolchain/sdk
+cd android && GRADLE_USER_HOME=/workspace/project/.toolchain/.gradle \
+  ./gradlew :app:assembleRelease
+# saída: app/build/outputs/apk/release/app-release-unsigned.apk
+# assinar (keystore de debug) + alinhar:
+BT=$ANDROID_HOME/build-tools/34.0.0
+$BT/zipalign -f 4 app-release-unsigned.apk /tmp/a.apk
+$BT/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
+  --key-pass pass:android --ks-key-alias androiddebugkey --out out.apk /tmp/a.apk
+```
+
+A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
+`android/app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
+publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git).
+

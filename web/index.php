@@ -316,7 +316,23 @@ body.drawer .scrim{opacity:1;visibility:visible}
   .mark{width:32px;height:32px;font-size:12px}
   .card{padding:12px}
 }
-/* tela baixa em paisagem: gaveta rolável e console menor */
+/* ---- rodapé / créditos ---------------------------------------------------- */
+.credits{border-top:1px solid var(--line); background:var(--glass); backdrop-filter:var(--blur);
+  -webkit-backdrop-filter:var(--blur); padding:22px clamp(12px,3vw,22px)}
+.credits .in{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.credits .who{font-size:13px; color:var(--muted)}
+.credits .who b{color:var(--ink)}
+.credits .who code{color:var(--accent); background:var(--glass-2); border:1px solid var(--line);
+  border-radius:6px; padding:1px 6px}
+.credits .sp{flex:1}
+.dcb{display:inline-flex; align-items:center; gap:7px; text-decoration:none; color:var(--ink);
+  border:1px solid var(--line); background:var(--glass-2); border-radius:10px; padding:8px 12px;
+  font-size:12.5px; font-weight:700; transition:.15s; white-space:nowrap}
+.dcb:hover{border-color:var(--accent); transform:translateY(-1px)}
+.dcb:focus-visible{outline:2px solid var(--ring); outline-offset:1px}
+.dcb svg{width:16px; height:16px; fill:currentColor; flex:none}
+.dcb .arw{font-size:11px; color:var(--muted)}
+@media (max-width:520px){ .credits .who{font-size:12px} .credits .in{gap:9px} }
 @media (max-height:520px){
   .side .panel{padding-top:48px}
   .console{max-height:80dvh}
@@ -419,6 +435,23 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <?php endforeach; ?>
   </main>
 </div>
+
+<footer class="credits">
+  <div class="in">
+    <p class="who">Criado por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
+    <span class="sp"></span>
+    <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
+       title="Abrir meu perfil no Discord">
+      <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+      Meu Discord <span class="arw">↗</span>
+    </a>
+    <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
+       title="Entrar no meu servidor do Discord">
+      <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+      Servidor <span class="arw">↗</span>
+    </a>
+  </div>
+</footer>
 
 <div class="console" id="console" role="region" aria-label="Saída">
   <div class="bar"><b id="consoleTitle">Saída</b><span class="grow"></span>

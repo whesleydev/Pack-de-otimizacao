@@ -176,3 +176,9 @@ com o que faz e como voltar atrás.
 ---
 
 **Bom proveito! Seu celular (e seu jogo) vão agradecer. 🚀**
+
+---
+
+Criado por **00deUdia** · Discord `cute_axolotl_51194` ·
+[meu perfil](https://discord.com/users/cute_axolotl_51194) ·
+[meu servidor](https://discord.gg/w9hFBeVKw8)

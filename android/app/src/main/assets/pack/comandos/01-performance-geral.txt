@@ -1,0 +1,27 @@
+# ============================================================
+#  01 · PERFORMANCE GERAL
+#  Deixa o sistema mais rápido e responsivo. Seguro e reversível.
+#  Cole tudo no Brevent (ou "adb shell" no PC).
+#  Reverter: use o 99-restaurar-tudo.txt
+# ============================================================
+
+# --- mais processos em cache (troca de app mais rápida) ---
+settings put global activity_manager_constants max_cached_processes=32
+
+# --- renderizador de UI mais rápido ---
+setprop debug.hwui.renderer skiagl
+
+# --- desliga o rastreamento de execução (consome CPU) ---
+setprop persist.traced.enable 0
+
+# --- NÃO mostrar erro de app em segundo plano ---
+settings put global anr_show_background 0
+
+# --- menos diálogos de erro atrapalhando ---
+settings put global show_first_crash_dialog 0
+
+# --- recompila os apps em AOT (abre mais rápido; consome CPU uma vez) ---
+# cmd package bg-dexopt-job
+
+# --- compacta o ART em background (menos RAM por app, root) ---
+# cmd package compile -m speed-profile -a

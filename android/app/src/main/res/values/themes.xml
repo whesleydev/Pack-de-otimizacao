@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PackOtimizacao" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#E4571C</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:statusBarColor">#0D0C0A</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
