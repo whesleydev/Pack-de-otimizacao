@@ -68,6 +68,7 @@ function otm_allowed_scripts(): array {
     return [
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
+        'turbo.sh',
         'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
@@ -410,6 +411,117 @@ function otm_actions(): array {
           'help' => 'Reduz as animações de janela e ativa o modo imersivo, escondendo as barras de status/navegação. Mais tela e menos distração no jogo.',
           'argv' => ['adb-tweaks.sh', 'window_tweaks']]);
 
+
+    // ----- Turbo (sem root) — compilação, hibernação, caches, refresh -----
+    $add(['id' => 'turbo.status', 'group' => 'Turbo (sem root)', 'label' => 'Estado do Turbo',
+          'desc' => 'Mostra phantom killer, refresh, logs e scans em uma tela.',
+          'help' => 'Resume o estado dos recursos turbo: Phantom Process Killer, taxa de atualização travada, logs persistentes e scans de Wi-Fi/Bluetooth "sempre disponível". Bom para conferir antes e depois de aplicar.',
+          'argv' => ['turbo.sh', 'status']]);
+    $add(['id' => 'turbo.art', 'group' => 'Turbo (sem root)', 'label' => 'Recompilar um app (ART)',
+          'desc' => 'Compila um app em speed-profile/speed para abrir mais rápido.',
+          'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com "Verificar/limpar".',
+          'argv' => ['turbo.sh', 'art', '{pkg}', '{mode}'],
+          'params' => [
+              ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
+              ['name' => 'mode', 'type' => 'enum', 'label' => 'Modo',
+               'options' => ['speed-profile', 'speed', 'everything'], 'default' => 'speed-profile']],
+          'timeout' => 600, 'risk' => 'careful']);
+    $add(['id' => 'turbo.art_all', 'group' => 'Turbo (sem root)', 'label' => 'Recompilar todos os apps (ART)',
+          'desc' => 'Aplica speed-profile em todos os apps (melhora abertura geral).',
+          'help' => 'Recompila todos os apps instalados em speed-profile. Deixa o sistema mais responsivo no geral. Demora vários minutos e consome bateria — rode com o aparelho carregando.',
+          'argv' => ['turbo.sh', 'art-all', 'speed-profile'], 'timeout' => 900,
+          'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'turbo.dexopt_bg', 'group' => 'Turbo (sem root)', 'label' => 'Disparar bg-dexopt-job',
+          'desc' => 'Pede ao sistema a compilação ociosa dos apps agora.',
+          'help' => 'Dispara o job de compilação em segundo plano do Android (bg-dexopt-job). Ele roda quando o aparelho estiver parado e compila os apps sem travar você.',
+          'argv' => ['turbo.sh', 'dexopt-bg']]);
+    $add(['id' => 'turbo.standby', 'group' => 'Turbo (sem root)', 'label' => 'App Standby Bucket',
+          'desc' => 'Define a "prioridade" de um app no plano de fundo.',
+          'help' => 'Cada app tem um bucket (caixa) que diz quanto ele pode rodar em segundo plano. "restricted" quase congela; "rare" deixa rodar pouco; "active" libera. Útil para segurar apps que gastam bateria sem desativá-los.',
+          'argv' => ['turbo.sh', 'standby', '{pkg}', '{bucket}'],
+          'params' => [
+              ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
+              ['name' => 'bucket', 'type' => 'enum', 'label' => 'Bucket',
+               'options' => ['active', 'working', 'frequent', 'rare', 'restricted'], 'default' => 'rare']]]);
+    $add(['id' => 'turbo.hibernate', 'group' => 'Turbo (sem root)', 'label' => 'Hibernar um app',
+          'desc' => 'Suspende um app por completo (estilo Hail).',
+          'help' => 'Hiberna o app: para ele na hora e o deixa inativo (não roda nem em segundo plano) até você abrir de novo. Igual ao app Hail. Ótimo para redes sociais que ficam acordando o aparelho.',
+          'argv' => ['turbo.sh', 'hibernate', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful']);
+    $add(['id' => 'turbo.hibernate_all', 'group' => 'Turbo (sem root)', 'label' => 'Hibernar todos os apps',
+          'desc' => 'Hiberna todos os apps de usuário (poupando o jogo).',
+          'help' => 'Hiberna de uma vez todos os apps que você instalou, exceto o Free Fire e uma allowlist. Libera bastante RAM e bateria. Reversível em "Descongelar agora" ou abrindo os apps.',
+          'argv' => ['turbo.sh', 'hibernate', 'now'], 'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'turbo.killbg', 'group' => 'Turbo (sem root)', 'label' => 'Matar 2º plano (seletivo)',
+          'desc' => 'Encerra apps em segundo plano, poupando o jogo.',
+          'help' => 'Fecha os apps que estão rodando escondidos para liberar RAM na hora, sem mexer no Free Fire. É um "matar tudo" mais seguro que o do sistema.',
+          'argv' => ['turbo.sh', 'killbg'], 'risk' => 'careful']);
+    $add(['id' => 'turbo.phantom_on', 'group' => 'Turbo (sem root)', 'label' => 'Phantom Killer: ligar',
+          'desc' => 'Volta o limite de processos-fantasma ao padrão do Android.',
+          'help' => 'O Phantom Process Killer mata processos "fantasma" (filhos de apps como Termux/emuladores). Aqui ele volta ao padrão do sistema. Use se você não precisa de serviços em segundo plano.',
+          'argv' => ['turbo.sh', 'phantom', 'on']]);
+    $add(['id' => 'turbo.phantom_off', 'group' => 'Turbo (sem root)', 'label' => 'Phantom Killer: desligar',
+          'desc' => 'Desliga o limite (bom p/ Termux, emuladores e serviços).',
+          'help' => 'Desliga o Phantom Process Killer: apps como Termux, emuladores e servidores deixam de ter processos mortos pelo sistema. Pode aumentar um pouco o uso de bateria.',
+          'argv' => ['turbo.sh', 'phantom', 'off'], 'risk' => 'careful']);
+    $add(['id' => 'turbo.trim', 'group' => 'Turbo (sem root)', 'label' => 'Poda de caches real',
+          'desc' => 'Libera espaço dos caches sem apagar dados de apps.',
+          'help' => 'Usa o trim-caches oficial do Android: apaga só arquivos de cache temporários, nunca seus dados, contas ou conversas. Mostra o espaço livre antes e depois.',
+          'argv' => ['turbo.sh', 'trim']]);
+    $add(['id' => 'turbo.refresh_max', 'group' => 'Turbo (sem root)', 'label' => 'Refresh no máximo',
+          'desc' => 'Trava a tela na maior taxa de atualização (ex.: 120Hz).',
+          'help' => 'Trava a taxa de atualização no valor mais alto suportado pela tela. Rolagem e jogo ficam mais lisos. Gasta um pouco mais de bateria. Reverte em "Refresh automático".',
+          'argv' => ['turbo.sh', 'refresh', 'max'], 'risk' => 'careful']);
+    $add(['id' => 'turbo.refresh_auto', 'group' => 'Turbo (sem root)', 'label' => 'Refresh automático',
+          'desc' => 'Devolve o controle da taxa de atualização ao sistema.',
+          'help' => 'Remove a trava de refresh e deixa o Android escolher a taxa conforme a tela e a bateria.',
+          'argv' => ['turbo.sh', 'refresh', 'auto']]);
+    $add(['id' => 'turbo.perfmode_on', 'group' => 'Turbo (sem root)', 'label' => 'Modo desempenho fixo: ligar',
+          'desc' => 'Força o aparelho a priorizar desempenho.',
+          'help' => 'Trava o aparelho em modo de desempenho (não reduz clocks por bateria). Mais FPS sustentado, mais calor e mais consumo. Reverte em "desligar".',
+          'argv' => ['turbo.sh', 'perfmode', 'on'], 'risk' => 'careful']);
+    $add(['id' => 'turbo.perfmode_off', 'group' => 'Turbo (sem root)', 'label' => 'Modo desempenho fixo: desligar',
+          'desc' => 'Volta o controle de energia ao sistema.',
+          'help' => 'Desliga o modo de desempenho fixo e devolve o gerenciamento de energia ao Android.',
+          'argv' => ['turbo.sh', 'perfmode', 'off']]);
+    $add(['id' => 'turbo.telemetry_off', 'group' => 'Turbo (sem root)', 'label' => 'Telemetria e logs: desligar',
+          'desc' => 'Desliga logs persistentes e scans "sempre disponível".',
+          'help' => 'Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth "sempre disponível". Menos trabalho em segundo plano e mais privacidade. Reversível em "religar".',
+          'argv' => ['turbo.sh', 'telemetry', 'off'], 'risk' => 'careful']);
+    $add(['id' => 'turbo.telemetry_on', 'group' => 'Turbo (sem root)', 'label' => 'Telemetria e logs: religar',
+          'desc' => 'Volta os logs e scans ao padrão.',
+          'help' => 'Religa os logs e as varreduras que o modo privacidade desligou, voltando ao comportamento padrão do Android.',
+          'argv' => ['turbo.sh', 'telemetry', 'on']]);
+
+    // ----- Jogo: modo desempenho genérico (Android 12+) -----
+    $add(['id' => 'game.mode', 'group' => 'Por app / jogo', 'label' => 'Modo do jogo (genérico)',
+          'desc' => 'Define performance/battery/standard para qualquer jogo ou app.',
+          'help' => 'Usa o Game Mode do Android 12+: "performance" prioriza FPS, "battery" prioriza economia, "standard" deixa o sistema decidir. Funciona em qualquer app, não só no Free Fire.',
+          'argv' => ['game-per-app.sh', 'mode', '{pkg}', '{mode}'],
+          'params' => [
+              ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
+              ['name' => 'mode', 'type' => 'enum', 'label' => 'Modo',
+               'options' => ['performance', 'standard', 'battery'], 'default' => 'performance']],
+          'risk' => 'careful']);
+
+    // ----- Debloat: preview com classificação de risco -----
+    $add(['id' => 'debloat.preview', 'group' => 'Debloat', 'label' => 'Prévia do debloat (com risco)',
+          'desc' => 'Mostra o que seria desativado, com selo SAFE/CAUTION/DANGER.',
+          'help' => 'Antes de aplicar, veja exatamente o que o debloat faria e o risco de cada app: SAFE (pode desativar sem medo), CAUTION (cuidado, pode quebrar algo) ou DANGEROUS (não mexa). Nada é alterado na prévia.',
+          'argv' => ['debloat.sh', 'preview', '{profile}'],
+          'params' => [['name' => 'profile', 'type' => 'enum', 'label' => 'Perfil',
+                        'options' => ['leve', 'medio', 'pesado'], 'default' => 'medio']]]);
+
+    // ----- DNS: NextDNS e benchmark de latência -----
+    $add(['id' => 'dns.nextdns', 'group' => 'DNS', 'label' => 'NextDNS',
+          'desc' => 'Filtragem e privacidade configuráveis (NextDNS).',
+          'help' => 'Aponta o DNS privado para o NextDNS: filtragem de anúncios/rastreadores e privacidade, configurável no site do NextDNS. Volte ao normal em "DNS automático".',
+          'argv' => ['dns.sh', 'nextdns']]);
+    $add(['id' => 'dns.bench', 'group' => 'DNS', 'label' => 'Benchmark de DNS',
+          'desc' => 'Mede a latência de cada perfil de DNS.',
+          'help' => 'Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.',
+          'argv' => ['dns.sh', 'bench'], 'timeout' => 180]);
+
     // ----- Wi-Fi e rede -----
     $add(['id' => 'wifi', 'group' => 'Wi-Fi e rede', 'label' => 'Ajustes de Wi-Fi',
           'desc' => 'Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.',
@@ -599,6 +711,11 @@ function otm_run(string $id, array $params, bool $confirmed): array {
                 break;
             case 'name':
                 if (!otm_valid_name($val)) return ['ok' => false, 'out' => "$name inválido"];
+                break;
+            case 'enum':
+                if (!in_array($val, $p['options'] ?? [], true)) {
+                    return ['ok' => false, 'out' => "$name inválido (use: " . implode('|', $p['options'] ?? []) . ")"];
+                }
                 break;
             default:
                 if (!otm_valid_text($val)) return ['ok' => false, 'out' => "$name inválido"];

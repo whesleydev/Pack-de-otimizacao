@@ -409,9 +409,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <div class="fields">
                   <?php foreach ($a['params'] as $p):
                     $t = $p['type'] ?? 'text';
-                    $wide = in_array($t, ['pkg', 'host', 'text', 'name'], true); ?>
+                    $wide = in_array($t, ['pkg', 'host', 'text', 'name', 'enum'], true); ?>
                     <div class="field<?= $wide ? ' wide' : '' ?>">
                       <label for="<?= htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES) ?>"><?= htmlspecialchars($p['label']) ?></label>
+                      <?php if ($t === 'enum'): ?>
+                        <select id="<?= htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES) ?>"
+                                data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>">
+                          <?php foreach (($p['options'] ?? []) as $opt): ?>
+                            <option value="<?= htmlspecialchars((string) $opt, ENT_QUOTES) ?>"
+                              <?= ((string) $opt === (string) ($p['default'] ?? '')) ? ' selected' : '' ?>><?= htmlspecialchars((string) $opt) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      <?php else: ?>
                       <input id="<?= htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES) ?>"
                              data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
                              type="<?= in_array($t, ['int', 'float'], true) ? 'number' : 'text' ?>"
@@ -421,6 +430,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
                              <?= isset($p['min']) ? 'min="' . htmlspecialchars((string) $p['min'], ENT_QUOTES) . '"' : '' ?>
                              <?= isset($p['max']) ? 'max="' . htmlspecialchars((string) $p['max'], ENT_QUOTES) . '"' : '' ?>
                              <?= isset($p['step']) ? 'step="' . htmlspecialchars((string) $p['step'], ENT_QUOTES) . '"' : '' ?>>
+                      <?php endif; ?>
                     </div>
                   <?php endforeach; ?>
                 </div>

@@ -36,6 +36,7 @@ dns_profiles() {
         mullvad           "dns.mullvad.net"                  "Privacidade (sem registro)" \
         dnsforge          "dnsforge.de"                      "Bloqueio de anúncios (sem log)" \
         google            "dns.google"                       "Compatibilidade máxima" \
+        nextdns           "dns.nextdns.io"                    "Filtragem e privacidade (NextDNS)" \
         gaming            "1dot1dot1dot1.cloudflare-dns.com" "Baixa latência p/ jogos (+ TCP + scan off)"
 }
 
@@ -107,6 +108,30 @@ dns_list() {
     printf '\n  %soff/auto%s volta o DNS automático · %scustom <host>%s usa o seu\n' "$C_A" "$C_R" "$C_A" "$C_R"
 }
 
+# --- benchmark de latência ----------------------------------------------------
+# Testa a latência de cada perfil (não altera nada). Usa ping/curl se existirem.
+dns_bench() {
+    printf '  %sBenchmark de DNS (latência, menor = melhor)%s\n\n' "$C_A" "$C_R"
+    have_ping=0; have_curl=0
+    command -v ping >/dev/null 2>&1 && have_ping=1
+    command -v curl >/dev/null 2>&1 && have_curl=1
+    [ "$have_ping" = 0 ] && [ "$have_curl" = 0 ] && {
+        warn "sem ping nem curl disponíveis para medir"; return 0; }
+    dns_profiles | while IFS="$(printf '\t')" read -r n h d; do
+        ms=""
+        if [ "$have_ping" = 1 ]; then
+            r="$(sh_get "ping -c 2 -W 2 $h" 2>/dev/null | sed -n 's#.*= [0-9.]*/\([0-9.]*\)/.*#\1#p')"
+            [ -n "$r" ] && ms="$r ms"
+        fi
+        if [ -z "$ms" ] && [ "$have_curl" = 1 ]; then
+            t="$(sh_get "curl -o /dev/null -s -w '%{time_total}' --connect-timeout 3 https://$h" 2>/dev/null)"
+            [ -n "$t" ] && ms="${t}s (https)"
+        fi
+        printf '   %s%-18s%s %-34s %s\n' "$C_G" "$n" "$C_R" "$h" "${ms:-(sem resposta)}"
+    done
+    printf '\n  %sDica:%s o mais rápido costuma ser o melhor; teste no Wi-Fi E nos dados.\n' "$C_A" "$C_R"
+}
+
 # --- submenu interativo -------------------------------------------------------
 dns_menu() {
     while :; do
@@ -140,6 +165,7 @@ dns_menu() {
 case "${1:-status}" in
     menu)              dns_menu ;;
     list|perfis)       dns_list ;;
+    bench|latencia)    dns_bench ;;
     status)            dns_status ;;
     off|auto|reset)    dns_off ;;
     custom)            [ -n "$2" ] && dns_apply "$2" || { err "faltou o hostname"; exit 1; } ;;

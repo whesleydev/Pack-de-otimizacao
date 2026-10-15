@@ -62,6 +62,15 @@ O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
 - `scripts/adb-tweaks.sh` — grupos de comandos via `settings`/`cmd` (sem root). Além dos
   clássicos, tem `obscure`, `mobile_net`, `notif` e `window_tweaks`. Para criar um grupo,
   escreva a função, registre em `GRUPOS` e use `bkp_set`/`bkp_raw` para a reversão.
+- `scripts/turbo.sh` — recursos "turbo" sem root que faltavam: `art`/`art-all` (ART por
+  app, speed-profile/speed), `dexopt-bg` (bg-dexopt-job), `standby` (App Standby Buckets),
+  `hibernate` (estilo Hail: force-stop + set-inactive), `killbg`, `phantom on|off`
+  (Phantom Process Killer), `trim` (cmd package trim-caches), `refresh`, `perfmode`
+  (modo desempenho fixo) e `telemetry on|off` (logpersist + scans sempre-disponível).
+  Tudo registra reversão em `~/.packotm/off.sh` (revertido por `pack.sh restore`).
+- `scripts/debloat.sh preview <perfil>` — mostra o que o perfil faria com selo de risco
+  por app (SAFE/CAUTION/DANGEROUS), sem alterar nada. Classificação em `risk_of`.
+- `scripts/dns.sh bench` — mede a latência de cada perfil de DNS (não altera nada).
 
 `main.sh` (raiz) é a **entrada alternativa**: baixa os recursos full (`codeload` do
 GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). Não aplica
@@ -81,7 +90,7 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
   com `sh main.sh web senha`. O formulário de login usa **CSRF** (`otm_csrf`).
 - `web/api.php` também aceita o **token** (`web/.token`, gerado no `main.sh web start`) como
   defesa em profundidade, e só roda scripts da lista branca `otm_allowed_scripts()`. Parâmetros
-  são validados por tipo (pkg/host/int/float). Nunca passe input do usuário direto para o shell.
+  são validados por tipo (pkg/host/int/float/enum). Nunca passe input do usuário direto para o shell.
 - Ações com `confirm:true` exigem `confirm=1` no POST (o `index.php` mostra o modal).
 - `web/.token`, `web/.state/` e `web/auth.json` são **locais** (no `.gitignore` e removidos do zip).
 

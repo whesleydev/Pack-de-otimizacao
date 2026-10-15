@@ -29,6 +29,7 @@ private class Param(
     val optional: Boolean,
     val min: Double?,
     val max: Double?,
+    val options: List<String>,
 )
 
 /**
@@ -262,6 +263,7 @@ class PackBridge(
                 if (p.max != null && f > p.max) return "${p.name} acima do máximo"
             }
             "name" -> if (!NAME.matches(v)) return "${p.name} inválido"
+            "enum" -> if (v !in p.options) return "${p.name} inválido (use: ${p.options.joinToString("|")})"
             else -> if (!TEXT.matches(v)) return "${p.name} inválido"
         }
         return null
@@ -301,6 +303,7 @@ class PackBridge(
                             optional = p.optBoolean("optional", false),
                             min = if (p.has("min")) p.getDouble("min") else null,
                             max = if (p.has("max")) p.getDouble("max") else null,
+                            options = p.optJSONArray("options")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                         )
                     )
                 }
