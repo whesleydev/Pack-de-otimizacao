@@ -340,6 +340,26 @@ t_app_login() {
         && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre o login"
 }
 
+# --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
+t_app_exec() {
+    printf '\n  # scripts rodam em /data/local/tmp (shell lê)\n'
+    local src="$ROOT/android/app/src/main/java/com/otm/pack"
+    grep -q '/data/local/tmp/otm-pack' "$src/PackAssets.kt" \
+        && ok "scripts vão para /data/local/tmp/otm-pack" || bad "scripts não vão p/ /data/local/tmp"
+    grep -q 'ensureShellCopy' "$src/PackAssets.kt" \
+        && ok "PackAssets copia p/ o shell" || bad "sem ensureShellCopy"
+    # o bridge monta o comando a partir da pasta visível ao shell
+    grep -q 'execDir()' "$src/PackBridge.kt" \
+        && ok "PackBridge usa a pasta de execução" || bad "PackBridge ainda usa filesDir"
+    # o comando de execução não pode apontar para o filesDir do app (0700)
+    awk '/private fun scriptCommand/,/^    }/' "$src/PackBridge.kt" > "$TMP/scmd"
+    if grep -q 'packDir()' "$TMP/scmd"; then
+        bad "comando ainda usa o filesDir do app"
+    else
+        ok "comando usa a pasta visível ao shell"
+    fi
+}
+
 # --- menu lateral do painel: fica fixo ao rolar ------------------------------
 t_side_fixed() {
     printf '\n  # menu lateral fica fixo (não escorrega)\n'
@@ -704,6 +724,7 @@ t_config
 t_auth
 t_noroot_only
 t_app_login
+t_app_exec
 t_side_fixed
 t_plugin_mark_once
 t_plugin_restore

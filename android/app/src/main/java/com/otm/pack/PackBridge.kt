@@ -224,9 +224,10 @@ class PackBridge(
     private fun textResult(cmd: String): String =
         JSONObject().put("ok", true).put("text", output(cmd)).toString()
 
-    /** Monta `sh <pasta>/scripts/<script> <args>` com HOME na pasta do app. */
+    /** Monta `sh <execDir>/scripts/<script> <args>` com HOME na pasta de execução. */
     private fun scriptCommand(script: String, args: List<String>): String {
-        val dir = packDir().absolutePath
+        val dir = execDir()
+        if (dir == null) return "echo 'sem acesso (conecte o Shizuku ou o ADB)' >&2; exit 1"
         val sb = StringBuilder()
         sb.append("export HOME='").append(dir).append("'; ")
         sb.append("cd '").append(dir).append("'; ")
@@ -234,6 +235,13 @@ class PackBridge(
         for (a in args) sb.append(" '").append(a.replace("'", "'\\''")).append('\'')
         return sb.toString()
     }
+
+    /**
+     * Pasta de execução visível ao usuário `shell` (Shizuku/ADB): `/data/local/tmp`.
+     * O `filesDir` do app (modo 0700) é ilegível para o shell, então os scripts
+     * precisam morar aqui. Devolve null quando não há runner conectado.
+     */
+    private fun execDir(): String? = PackAssets.ensureShellCopy(context, runnerProvider())
 
     private fun packDir(): File = PackAssets.ensureExtracted(context)
 

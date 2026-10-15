@@ -159,7 +159,14 @@ nativa além do necessário para conectar e rodar os comandos.
   o painel chama por JS em vez de `api.php`. A execução é assíncrona (corrotina)
   e devolve o resultado por `window.__otmResolve`. Monta a ação igual ao
   `otm_run` do `web/lib.php` (valida parâmetros, troca `{nome}`, roda
-  `sh <script> <args>` com `HOME` na pasta do app).
+  `sh <script> <args>` com `HOME` na pasta de execução).
+- Onde os scripts rodam: o Shizuku/ADB executa como usuário `shell` (uid 2000),
+  que **não** lê `/data/user/0/com.otm.pack` (modo 0700). Por isso
+  `PackAssets.ensureShellCopy` copia `assets/pack/scripts` + `VERSION` para
+  `/data/local/tmp/otm-pack` (visível ao shell) e o `HOME` aponta para lá — o
+  estado (`~/.packotm`) fica no mesmo lugar. A cópia local em `filesDir/pack`
+  serve só para o app ler os `.txt` do nível 1. `PackAssets.EXEC_DIR` guarda o
+  caminho.
 - O catálogo do painel vem de `assets/panel/actions.json` (gerado a partir de
   `web/lib.php`, via `scratch/actions.json`).
 - Gerar o painel estático: `scratch/build_panel.py` (injeta a ponte em
@@ -167,7 +174,7 @@ nativa além do necessário para conectar e rodar os comandos.
   `scratch/build_icons.py` (usa `scratch/logo.jpg`).
 - Fontes em `android/app/src/main/java/com/otm/pack/`: `PanelActivity`,
   `PackBridge`, `WifiDialog`, `PackAssets` (extrai `assets/pack`/`assets/panel`
-  para `filesDir`), `ShellRunner` + `ShizukuRunner` + `AdbRunner`, `SoundPlayer`,
+  para `filesDir` e copia os scripts para `/data/local/tmp/otm-pack`), `ShellRunner` + `ShizukuRunner` + `AdbRunner`, `SoundPlayer`,
   `SelfSignedCert`.
 - AIDL oficial do Shizuku em `android/app/src/main/aidl/moe/shizuku/server/`.
 - Assets: `assets/pack` (scripts/comandos), `assets/panel` (painel + catálogo) e

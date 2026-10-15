@@ -3,6 +3,21 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.6.0] - 2026-10-05
+
+### Corrigido
+- **App: "Permission denied" ao executar qualquer ação.** O Shizuku/ADB roda como
+  usuário `shell` (uid 2000), que não consegue ler nem executar nada dentro de
+  `/data/user/0/com.otm.pack` (modo 0700). Os scripts eram extraídos justamente
+  ali, então `cd`/`sh` falhavam com `Permission denied` e o painel mostrava
+  "Falhou". Agora `PackAssets.ensureShellCopy` copia `scripts/` + `VERSION` para
+  **`/data/local/tmp/otm-pack`** (acessível ao shell) e o `HOME` aponta para lá,
+  de modo que o estado (`~/.packotm`) também fica num lugar que o shell alcança.
+  A cópia local em `filesDir/pack` continua servindo só para o app ler os `.txt`
+  do nível 1 (que são enviados como comandos prontos, sem o shell tocar o arquivo).
+  A cópia é refeita quando o selo de versão não bate (primeira vez, atualização
+  ou reboot).
+
 ## [2.5.0] - 2026-10-05
 
 ### Adicionado
