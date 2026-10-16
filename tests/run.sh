@@ -491,6 +491,86 @@ t_app_fixes() {
     done
 }
 
+t_new_features() {
+    printf '\n  # novos recursos: refresh fixo, áudio, compactação, foco de jogo, boot, multitouch\n'
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/new.log"
+    # refresh fixo: min = peak = hz, valida 60/90/120/144 e rejeita inválidos
+    : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" refresh_fixed 120 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_out"
+    assert_contains "$TMP/nf_out" "120" "refresh_fixed aplica a taxa escolhida"
+    grep -q '120.0' "$TMP_STORE/system.peak_refresh_rate" \
+        && ok "refresh_fixed trava peak=120" || bad "refresh_fixed sem peak"
+    grep -q '120.0' "$TMP_STORE/system.min_refresh_rate" \
+        && ok "refresh_fixed trava min=120" || bad "refresh_fixed sem min"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" refresh_fixed 75 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_bad"
+    assert_contains "$TMP/nf_bad" "uso:" "refresh_fixed recusa taxa inválida"
+    # áudio de baixa latência (root): deep_buffer=0 + persistência no boot
+    : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" audio on 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_audio"
+    assert_contains "$TMP/nf_audio" "baixa latência" "turbo audio liga o modo de baixa latência"
+    grep -q '0' "$TMP_STORE/prop.audio.deep_buffer.media" \
+        && ok "audio: deep_buffer desligado" || bad "audio: sem deep_buffer"
+    test -s "$HOME/.packotm/boot.sh" && grep -q 'audio.deep_buffer.media 0' "$HOME/.packotm/boot.sh" \
+        && ok "audio: registrado para o boot" || bad "audio: não persistiu no boot"
+    # compactação de memória (root): não mata apps
+    : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" mem_compact on 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_mc"
+    assert_contains "$TMP/nf_mc" "compactação" "turbo mem_compact liga a compactação"
+    grep -q 'compact_memory' "$ROOT/scripts/turbo.sh" && ok "mem_compact: usa compact_memory" || bad "mem_compact: sem compact_memory"
+    if sed -n '/^mem_compact()/,/^}/p' "$ROOT/scripts/turbo.sh" | grep -q 'kill'; then
+        bad "mem_compact não deve matar apps"
+    else
+        ok "mem_compact não mata apps"
+    fi
+    # foco de jogo (DND extremo)
+    : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_focus 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_focus"
+    assert_contains "$TMP/nf_focus" "foco de jogo" "game_focus ativa o foco de jogo"
+    grep -q 'notification set_dnd on' "$TMP_CMD_LOG" && ok "foco: DND ligado" || bad "foco: sem DND"
+    # multitouch
+    : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" touch_multi 150 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_multi"
+    assert_contains "$TMP/nf_multi" "150ms" "touch_multi aplica a janela"
+    grep -q '150' "$TMP_STORE/system.multi_press_timeout" \
+        && ok "touch_multi grava multi_press_timeout" || bad "touch_multi sem multi_press_timeout"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" touch_multi 9999 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_multi2"
+    assert_contains "$TMP/nf_multi2" "800ms" "touch_multi limita ao máximo 800ms"
+    # persistência no boot: registra e instala o wrapper (root)
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    export OTM_BOOT_DIR="$TMP/service.d"; mkdir -p "$OTM_BOOT_DIR"
+    : > "$TMP_CMD_LOG"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" boot on 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_boot"
+    assert_contains "$TMP/nf_boot" "nada para persistir" "boot sem ajustes avisa"
+    # agora com um ajuste salvo, instala o wrapper de verdade
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" refresh_fixed 90 >/dev/null 2>&1
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" boot on 2>&1)
+    printf '%s\n' "$out" > "$TMP/nf_boot2"
+    assert_contains "$TMP/nf_boot2" "instalada" "boot instala o reaplicador"
+    test -f "$OTM_BOOT_DIR/otm-pack.sh" && ok "boot: wrapper gravado em service.d" || bad "boot: sem wrapper"
+    grep -q 'boot.sh' "$OTM_BOOT_DIR/otm-pack.sh" && ok "boot: wrapper reaplica o boot.sh" || bad "boot: wrapper sem boot.sh"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" boot off 2>&1)
+    test ! -f "$OTM_BOOT_DIR/otm-pack.sh" && ok "boot: 'off' remove o wrapper" || bad "boot: 'off' não removeu"
+    # as ações estão registradas no painel
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["turbo.refresh_fixed","turbo.audio","turbo.mem_compact","game_focus",
+                       "touch.multi","turbo.boot"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/nf_reg" 2>&1
+    test ! -s "$TMP/nf_reg" && ok "novas ações no registro do painel" || bad "registro: $(cat "$TMP/nf_reg")"
+    grep -q '"turbo.refresh_fixed"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o refresh fixo" || bad "app: actions.json sem refresh fixo"
+    grep -q 'boot_install' "$ROOT/scripts/common.sh" && ok "common: helper de boot presente" || bad "common: sem helper de boot"
+}
+
 t_perm_script() {
     printf '\n  # permissões/segundo plano: Doze, appops e bateria (sem root)\n'
     rm -rf "$HOME/.packotm"
@@ -920,6 +1000,7 @@ t_noroot_only
 t_app_login
 t_app_exec
 t_app_fixes
+t_new_features
 t_perm_script
 t_perm_actions
 t_personalization

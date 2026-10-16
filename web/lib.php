@@ -240,6 +240,12 @@ function otm_actions(): array {
           'desc' => 'Apaga os ajustes de toque e volta ao padrão.',
           'help' => 'Remove todos os ajustes de sensibilidade/toque, devolvendo o toque ao padrão do aparelho.',
           'argv' => ['ff-touch.sh', 'restore']]);
+    $add(['id' => 'touch.multi', 'group' => 'Display & Touch', 'label' => 'Toque: janela multitouch',
+          'desc' => 'Define a janela de resposta com vários dedos (100–800 ms).',
+          'help' => 'Define quanto tempo o sistema espera ao usar vários dedos. Menor = resposta mais imediata quando você usa 3–4 dedos (evita o toque "atrasar" no meio da ação). 100ms é o mais reativo; 800ms o mais tolerante. Reinicie o jogo depois.',
+          'argv' => ['adb-tweaks.sh', 'touch_multi', '{ms}'],
+          'params' => [['name' => 'ms', 'type' => 'int', 'label' => 'Milissegundos', 'min' => 100, 'max' => 800, 'default' => 300]],
+          'risk' => 'careful']);
     $add(['id' => 'ff', 'group' => 'Display & Touch', 'label' => 'Preparar e abrir o Free Fire',
           'desc' => 'Fecha apps de fundo, aplica o preset do FF e abre o jogo.',
           'help' => 'Prepara o aparelho para o Free Fire: fecha apps pesados que estavam abertos, aplica o modo de jogo e abre o FF. É o "entrar em modo partida" com um clique.',
@@ -270,6 +276,14 @@ function otm_actions(): array {
           'desc' => 'Volta a receber notificações normalmente.',
           'help' => 'Desliga o modo Não Perturbe e traz as notificações de volta.',
           'argv' => ['adb-tweaks.sh', 'dnd_off']]);
+    $add(['id' => 'game_focus', 'group' => 'Display & Touch', 'label' => 'Foco de jogo (DND extremo)',
+          'desc' => 'Silencia tudo na partida: heads-up, bolhas e som de notificação.',
+          'help' => 'Modo foco total para jogar: ativa o Não Perturbe, desliga os balões (heads-up) e as bolhas de notificação. O sistema deixa de gastar CPU desenhando avisos em primeiro plano. Chamadas de contatos de emergência continuam passando. Reverta em "Foco de jogo: desligar".',
+          'argv' => ['adb-tweaks.sh', 'game_focus'], 'risk' => 'careful']);
+    $add(['id' => 'game_focus_off', 'group' => 'Display & Touch', 'label' => 'Foco de jogo: desligar',
+          'desc' => 'Volta as notificações ao normal.',
+          'help' => 'Desliga o modo foco de jogo e devolve as notificações normais.',
+          'argv' => ['adb-tweaks.sh', 'game_focus_off']]);
     $add(['id' => 'screen', 'group' => 'Desempenho', 'label' => 'Tela / refresh alto',
           'desc' => 'Fixa a taxa de atualização no máximo do aparelho.',
           'help' => 'Trava a tela na maior taxa de atualização (Hz) que o aparelho suporta. Rolagem e jogo ficam mais suaves. Gasta um pouco mais de bateria.',
@@ -476,6 +490,37 @@ function otm_actions(): array {
           'desc' => 'Devolve o controle da taxa de atualização ao sistema.',
           'help' => 'Remove a trava de refresh e deixa o Android escolher a taxa conforme a tela e a bateria.',
           'argv' => ['turbo.sh', 'refresh', 'auto']]);
+    $add(['id' => 'turbo.refresh_fixed', 'group' => 'Desempenho', 'label' => 'Refresh fixo (frametime)',
+          'desc' => 'Trava a tela numa taxa fixa (60/90/120/144Hz) para estabilizar o frametime.',
+          'help' => 'Trava a tela numa taxa fixa. Quando a taxa oscila (60↔120Hz) no meio da partida, o frametime "pula" e dá micro-travada mesmo com FPS alto. Travar em uma taxa deixa o frametime constante. Use "Refresh automático" para voltar ao dia a dia.',
+          'argv' => ['turbo.sh', 'refresh_fixed', '{hz}'],
+          'params' => [['name' => 'hz', 'type' => 'enum', 'label' => 'Taxa (Hz)',
+                        'options' => ['60', '90', '120', '144'], 'default' => '120']],
+          'risk' => 'careful']);
+    $add(['id' => 'turbo.audio', 'group' => 'Display & Touch', 'label' => 'Áudio de baixa latência',
+          'desc' => 'Reduz o buffer de áudio: ouve passos/tiros mais cedo (root).',
+          'help' => 'Reduz o buffer de áudio e liga o modo de baixa latência. Em jogos como o Free Fire, ouvir o passo do inimigo alguns milissegundos mais cedo pode decidir a briga. Requer root e reiniciar o jogo.',
+          'argv' => ['turbo.sh', 'audio', 'on'], 'risk' => 'root', 'confirm' => true]);
+    $add(['id' => 'turbo.audio_off', 'group' => 'Display & Touch', 'label' => 'Áudio de baixa latência — desligar',
+          'desc' => 'Volta o áudio ao padrão.',
+          'help' => 'Desfaz o ajuste de áudio de baixa latência, voltando ao buffer padrão do Android.',
+          'argv' => ['turbo.sh', 'audio', 'off'], 'risk' => 'root']);
+    $add(['id' => 'turbo.mem_compact', 'group' => 'Desempenho', 'label' => 'Compactar memória (sem matar apps)',
+          'desc' => 'Recupera RAM compactando páginas ociosas em vez de encerrar apps (root).',
+          'help' => 'Em vez de "matar" apps em segundo plano (que o Android reabre e gasta mais CPU), força o kernel a compactar as páginas ociosas da memória. Recupera RAM sem encerrar nada. Requer root.',
+          'argv' => ['turbo.sh', 'mem_compact', 'on'], 'risk' => 'root', 'confirm' => true]);
+    $add(['id' => 'turbo.mem_compact_off', 'group' => 'Desempenho', 'label' => 'Compactação de memória — desligar',
+          'desc' => 'Volta a compactação ao padrão do kernel.',
+          'help' => 'Desliga a compactação proativa de memória, voltando ao comportamento padrão.',
+          'argv' => ['turbo.sh', 'mem_compact', 'off'], 'risk' => 'root']);
+    $add(['id' => 'turbo.boot', 'group' => 'Sistema', 'label' => 'Persistir no boot (ativo no boot)',
+          'desc' => 'Reaplica os ajustes aplicados sempre que o aparelho reinicia (root).',
+          'help' => 'Muitos ajustes se perdem quando você reinicia o celular. Aqui o pack instala um reaplicador no boot (Magisk service.d ou init.d) que reaplica tudo o que você ligou. Requer root. Veja o que está salvo e remova em "Persistir no boot: desligar".',
+          'argv' => ['turbo.sh', 'boot', 'on'], 'risk' => 'root', 'confirm' => true, 'timeout' => 120]);
+    $add(['id' => 'turbo.boot_off', 'group' => 'Sistema', 'label' => 'Persistir no boot: desligar',
+          'desc' => 'Remove o reaplicador de boot.',
+          'help' => 'Remove a persistência no boot. Os ajustes deixam de ser reaplicados quando o aparelho reinicia.',
+          'argv' => ['turbo.sh', 'boot', 'off'], 'risk' => 'root']);
     $add(['id' => 'turbo.perfmode_on', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: ligar',
           'desc' => 'Força o aparelho a priorizar desempenho.',
           'help' => 'Trava o aparelho em modo de desempenho (não reduz clocks por bateria). Mais FPS sustentado, mais calor e mais consumo. Reverte em "desligar".',

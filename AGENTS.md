@@ -60,14 +60,20 @@ O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
   `deep_begin`, `sys_write`/`sysctl_write` (guardam o valor antigo) e `deep_restore <tag>`.
   Módulos que dependem de root chamam `require_root`.
 - `scripts/adb-tweaks.sh` — grupos de comandos via `settings`/`cmd` (sem root). Além dos
-  clássicos, tem `obscure`, `mobile_net`, `notif` e `window_tweaks`. Para criar um grupo,
+  clássicos, tem `obscure`, `mobile_net`, `notif`, `game_focus`/`game_focus_off` (DND
+  extremo), `touch_multi <ms>` (janela multitouch) e `window_tweaks`. Para criar um grupo,
   escreva a função, registre em `GRUPOS` e use `bkp_set`/`bkp_raw` para a reversão.
 - `scripts/turbo.sh` — recursos "turbo" sem root que faltavam: `art`/`art-all` (ART por
   app, speed-profile/speed), `dexopt-bg` (bg-dexopt-job), `standby` (App Standby Buckets),
   `hibernate` (estilo Hail: force-stop + set-inactive), `killbg`, `phantom on|off`
-  (Phantom Process Killer), `trim` (cmd package trim-caches), `refresh`, `perfmode`
+  (Phantom Process Killer), `trim` (cmd package trim-caches), `refresh`,
+  `refresh_fixed` (trava min=peak numa taxa), `audio on|off` (buffer de áudio baixo,
+  root), `mem_compact on|off` (compacta RAM sem matar apps, root), `boot on|off`
+  (reaplicador no boot via Magisk service.d/init.d, root), `perfmode`
   (modo desempenho fixo) e `telemetry on|off` (logpersist + scans sempre-disponível).
   Tudo registra reversão em `~/.packotm/off.sh` (revertido por `pack.sh restore`).
+  A persistência no boot usa `boot_add`/`boot_install` (helpers em `common.sh`):
+  os ajustes que se perdem no reboot chamam `boot_add` com a linha de reaplicação.
 - `scripts/debloat.sh preview <perfil>` — mostra o que o perfil faria com selo de risco
   por app (SAFE/CAUTION/DANGEROUS), sem alterar nada. Classificação em `risk_of`.
 - `scripts/dns.sh bench` — mede a latência de cada perfil de DNS (não altera nada).

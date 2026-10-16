@@ -3,6 +3,27 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.12.0] - 2026-10-05
+
+### Adicionado
+- **Refresh fixo** (`turbo.refresh_fixed`, 60/90/120/144Hz): trava min = peak para
+  estabilizar o frametime quando a tela oscila de taxa no meio da partida.
+- **Áudio de baixa latência** (`turbo.audio`, root): reduz o buffer de áudio
+  (`audio.deep_buffer.media=0`) — ouvir passos/tiros mais cedo.
+- **Compactação de memória** (`turbo.mem_compact`, root): recupera RAM compactando
+  páginas ociosas, sem matar apps (`am kill-all` é evitado de propósito).
+- **Foco de jogo / DND extremo** (`game_focus`): DND + heads-up + bolhas.
+- **Janela multitouch** (`touch.multi`, 100–800 ms): resposta mais imediata com
+  vários dedos.
+- **Persistir no boot** (`turbo.boot`, root): reaplicador em Magisk `service.d` ou
+  init.d que reaplica os ajustes após reiniciar.
+
+### Notas
+- Auditoria crítica do "app laranja"/NexaCore em `docs/ROADMAP.md` §12: boa parte
+  dos itens já existia (ANGLE, SkiaGL/SkiaVK, frame pacing, Wi-Fi scan, DNS, DND);
+  o que era placebo/inseguro ficou de fora.
+- Versão `2.12.0` (`versionCode` 33).
+
 ## [2.11.0] - 2026-10-05
 
 ### Alterado

@@ -94,6 +94,39 @@ Separação do que dá para entregar com o que já existe do que exige muito. O 
 - VPN local, banco de hardware na nuvem, IA de tuning.
 - HUD overlay, gravador de tela, keymapper, macros.
 
+### 12. Auditoria do "app laranja" / NexaCore — o que foi implementado
+Revisão crítica da lista de recursos sugeridos (não copiar o visual, só a função).
+Vários itens **já existiam** no pack; só o que era real e fazia sentido virou ação.
+
+**Já existia (nada a fazer):**
+- Game Driver **ANGLE** por jogo: `deep-tune.sh angle` + `app.angle*`.
+- **SkiaGL / SkiaVK / OpenGL**: `gpu.skiagl|skiavk|opengl`.
+- **Hardware Composition / VDS**: coberto por `ext.display` (props de SurfaceFlinger/HWUI).
+- **Frame pacing / SurfaceFlinger**: `deep-tune.sh latency` + `ext.display`.
+- **Refresh (max/auto)**: `turbo.sh refresh`.
+- **Wi-Fi scan em 2º plano** e **DNS privado (Cloudflare)**: `adb-tweaks.sh wifi`, `dns.sh`.
+- **DND / heads-up**: `adb-tweaks.sh dnd`, `notif`.
+- **Restaurar padrões** e **aplicar tudo**: `pack.sh restore`, ação `apply`.
+
+**Implementado agora (2.12.0) — real e com risco controlado:**
+- **Refresh fixo** (`turbo.refresh_fixed`, 60/90/120/144Hz): min = peak, estabiliza o
+  frametime quando a tela oscila.
+- **Áudio de baixa latência** (`turbo.audio`, root): baixa o buffer de áudio (`deep_buffer=0`).
+- **Compactação de memória** (`turbo.mem_compact`, root): recupera RAM compactando
+  páginas ociosas — **sem** matar apps (`am kill-all` é evitado de propósito).
+- **Foco de jogo / DND extremo** (`game_focus`): DND + heads-up + bolhas.
+- **Janela multitouch** (`touch.multi`, 100–800 ms).
+- **Persistir no boot** (`turbo.boot`, root): reaplicador em Magisk `service.d`/init.d,
+  que reaplica os ajustes após reiniciar.
+
+**Deliberadamente NÃO implementado (placebo, inseguro ou mentira):**
+- "IA de sugestão de hardware" que promete FPS: não medimos FPS, então não inventamos.
+- Matar Google Services "cirurgicamente": quebra notificação; já temos modo restrito.
+- Sliders de "frame pacing" que viram número mágico: só o que mexemos de verdade
+  (`debug.sf.*`, `latency`) é exposto.
+- Overlay de frametime/HUD: exige serviço de sobreposição e permissão extra — grande
+  demais e fora do escopo de um pack ADB/Shizuku.
+
 ## O que NÃO vamos fazer
 
 - Prometer FPS que não medimos.

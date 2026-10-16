@@ -425,6 +425,48 @@ notif() {
     say "heads-up e bolhas desligados"
 }
 
+# --- modo foco de jogo (DND extremo) ------------------------------------------
+# Silencia tudo durante a partida (heads-up, bolhas, som de notificação) e
+# ativa o Não Perturbe. Não bloqueia chamadas de contatos de emergência.
+game_focus() {
+    bkp_begin
+    say "Modo foco de jogo (DND extremo)"
+    sh_run "cmd notification set_dnd on" >/dev/null 2>&1
+    bkp_raw "cmd notification set_dnd off"
+    bkp_set global heads_up_notifications_enabled 0
+    bkp_set global notification_bubbles 0
+    sh_run "settings put secure zen_mode 3" >/dev/null 2>&1
+    sh_run "settings put secure zen_mode_config_etag -1" >/dev/null 2>&1
+    bkp_raw "settings put secure zen_mode 0"
+    boot_add "cmd notification set_dnd on; settings put global heads_up_notifications_enabled 0"
+    say "notificações silenciadas. Reverta em 'Foco de jogo: desligar'."
+}
+
+game_focus_off() {
+    bkp_begin
+    say "Foco de jogo desligado"
+    sh_run "cmd notification set_dnd off" >/dev/null 2>&1
+    bkp_set global heads_up_notifications_enabled 1
+    bkp_set global notification_bubbles 1
+    sh_run "settings put secure zen_mode 0" >/dev/null 2>&1
+    say "notificações normais"
+}
+
+# --- toque multitouch (janela de resposta) ------------------------------------
+# multi <ms>  -> ajusta a janela de multitouch (100..800ms). Menor = resposta
+# mais imediata com vários dedos na tela (evita "atraso" no toque).
+touch_multi() {
+    ms="${1:-}"
+    case "$ms" in
+        ''|*[!0-9]*) err "uso: touch_multi <100..800>"; return 1 ;;
+    esac
+    [ "$ms" -lt 100 ] && ms=100
+    [ "$ms" -gt 800 ] && ms=800
+    bkp_begin
+    bkp_set system multi_press_timeout "$ms"
+    say "janela multitouch = ${ms}ms (reinicie o jogo)"
+}
+
 # --- janela / transições (sem root) -------------------------------------------
 # Além das animações: desliga "rotação lenta" e transições de tema escuro.
 window_tweaks() {
@@ -513,7 +555,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot obscure mobile_net notif window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi fluidez game_tune clean aot obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
