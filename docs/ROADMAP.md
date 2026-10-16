@@ -73,6 +73,27 @@ dono do projeto** (contas, permissões, canais). A ordem segue impacto real.
 - [ ] **Dono:** licença/ativação (Hotmart/Kiwify/Gumroad), canal de suporte
       (Discord/Telegram), FAQ e política de reembolso. Ver `docs/PRODUTO.md`.
 
+### 11. Funções pedidas — classificação por viabilidade
+Separação do que dá para entregar com o que já existe do que exige muito. O lote
+"viável" só vira trabalho depois da escolha do dono (Passo C3).
+
+**Já existe (reaproveita script atual):**
+- Térmico/curva: `deep-tune.sh thermal` (com trava automática).
+- I/O scheduler, zRAM/memória (`mem`), TCP BBR/rede (`net`).
+- Modo desempenho/refresh (`turbo.sh`), modo por jogo (`game-per-app.sh`).
+- Debloat (`debloat.sh`), DNS/DoT (`dns.sh`), snapshot/reversão (`snapshot.sh`).
+
+**Parcial/novo e viável (reaproveita `deep-tune.sh restore` etc.):**
+- Perfis por jogo com aplicação automática (hoje é manual via `game-per-app.sh`).
+- Botão de pânico "reverter tudo" na UI (já existe `pack.sh restore`; falta o atalho).
+- Renice/pinning de processo por app.
+- Read-ahead de armazenamento.
+- Limpeza seletiva de cache.
+
+**Grande/complexo (exige muito — não fazer agora):**
+- VPN local, banco de hardware na nuvem, IA de tuning.
+- HUD overlay, gravador de tela, keymapper, macros.
+
 ## O que NÃO vamos fazer
 
 - Prometer FPS que não medimos.

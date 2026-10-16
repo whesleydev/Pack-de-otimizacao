@@ -196,11 +196,19 @@ nativa além do necessário para conectar e rodar os comandos.
   menu fixo ainda esticava a largura). Papel de parede: `contain` na camada
   visível sobre `cover` no fundo.
 - Áudio: `SoundPlayer` toca MP3 de `assets/audio` via `MediaPlayer`+`openFd`
-  (por isso o APK guarda os MP3 STORED, sem compressão). O botão de som (ícone SVG)
-  chama `OTM.call("sound", "test"|"off")` → `onSoundSet` liga/desliga (e toca um
-  aviso ao ligar). `SoundPlayer` cancela o timer do som anterior antes de agendar
-  o próximo (senão o timer antigo cortava o som novo). `PackBridge.soundFor(grupo)`
-  escolhe o som conforme o grupo da ação.
+  (por isso o APK guarda os MP3 STORED, sem compressão — `noCompress += "mp3"` no
+  `build.gradle.kts`; sem isso `openFd` lança e o som some). Usa
+  `USAGE_MEDIA` (canal de **mídia**, não de sonificação): o canal de sonificação
+  fica mudo em muitos aparelhos mesmo com o volume de mídia alto. Falhas vão para
+  o logcat com a tag `SoundPlayer`. O botão de som do cabeçalho (`#otmSound`, ícone
+  SVG) tem handler no shim (`build_panel.py`): liga/desliga via `setSound` e
+  esmaece quando desligado. `SoundPlayer` cancela o timer do som anterior antes de
+  agendar o próximo (senão o timer antigo cortava o som novo).
+  `PackBridge.soundFor(grupo)` escolhe o som conforme o grupo da ação.
+- Aparência: `ACCENTS`/`FONTS` em `web/index.php` são a fonte de verdade das cores
+  de destaque (inclui **prata**) e fontes; os swatches/segmentos são casados por
+  `data-accent`/`data-font` com essas chaves. O seletor de fonte quebra em várias
+  linhas (`#setFont{flex-wrap:wrap}`) por ter 7 opções.
 
 Build local (sem Android Studio):
 
