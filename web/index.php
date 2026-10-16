@@ -35,10 +35,15 @@ if (!otm_auth_logged_in()) {
 
 $actions = array_values(otm_actions());
 
-// Ordem fixa das categorias (visão simplificada, agrupada por assunto).
-$GROUP_ORDER = ['Geral', 'Display & Touch', 'Rede e conexão', 'Desempenho', 'Apps e jogos', 'Sistema'];
+// Ordem fixa das categorias. Menu enxuto: 5 categorias (Rede entra em Desempenho).
+$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'Apps e jogos', 'Sistema'];
+$GROUP_ALIAS = ['Rede e conexão' => 'Desempenho'];
 $byGroup = [];
-foreach ($actions as $a) { $byGroup[$a['group']][] = $a; }
+foreach ($actions as $a) {
+    $g = $GROUP_ALIAS[$a['group']] ?? $a['group'];
+    $a['_group'] = $g;
+    $byGroup[$g][] = $a;
+}
 $groups = [];
 foreach ($GROUP_ORDER as $g) { if (!empty($byGroup[$g])) $groups[$g] = $byGroup[$g]; }
 foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $items; }  // fallback
@@ -46,13 +51,31 @@ foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $ite
 $meta = [
     'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
     'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, resolução e sensibilidade de toque (Free Fire).'],
-    'Rede e conexão'  => ['t' => 'Rede e conexão',   's' => 'DNS privado (DoT), Wi-Fi e buffers TCP.'],
-    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, congelar apps e ajustes profundos (root).'],
+    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, rede, congelar apps e ajustes profundos (root).'],
     'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo, Game Mode e debloat (por perfil ou por app).'],
     'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],
 ];
 
 $riskLabel = ['safe' => 'seguro', 'careful' => 'cuidado', 'root' => 'root'];
+
+// --- grupos de escolha: opções lado a lado num único cartão -------------------
+$CHOICE = otm_choices();
+$choiceMembers = [];               // choiceKey => [ações]
+foreach ($actions as $a) { if (!empty($a['choice'])) $choiceMembers[$a['choice']][] = $a; }
+// dados que o JS usa para marcar a opção em uso (lida do aparelho)
+$choiceMeta = [];
+foreach ($CHOICE as $k => $c) {
+    $opts = [];
+    foreach ($choiceMembers[$k] ?? [] as $a) {
+        $opts[] = [
+            'id' => $a['id'], 'label' => $a['option'] ?? $a['label'],
+            'desc' => $a['desc'] ?? '', 'risk' => $a['risk'] ?? 'safe',
+            'state_value' => $a['state_value'] ?? null, 'state_match' => $a['state_match'] ?? null,
+        ];
+    }
+    $choiceMeta[$k] = ['title' => $c['title'], 'desc' => $c['desc'], 'risk' => $c['risk'] ?? 'safe',
+                       'state' => $c['state'] ?? null, 'opts' => $opts];
+}
 
 $token = is_file(__DIR__ . '/.token') ? trim((string) file_get_contents(__DIR__ . '/.token')) : '';
 $first = array_key_first($groups);
@@ -71,6 +94,7 @@ $first = array_key_first($groups);
   --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
   --accent:#e4571c; --accent-ink:#fff; --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a;
   --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
+  --glass-card:rgba(255,255,255,.78); --glass-bar:rgba(255,255,255,.72);
   --blur:saturate(150%) blur(18px);
   --ring:rgba(228,87,28,.35);
   --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35);
@@ -85,16 +109,19 @@ $first = array_key_first($groups);
     --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
     --accent:#ff6a2b; --accent-ink:#180d06; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
     --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
+    --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
     --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
   }
 }
 html[data-theme="light"]{ --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
   --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34); --accent:#e4571c; --accent-ink:#fff;
   --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a; --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
+  --glass-card:rgba(255,255,255,.78); --glass-bar:rgba(255,255,255,.72);
   --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35); }
 html[data-theme="dark"]{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
   --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2); --accent:#ff6a2b; --accent-ink:#180d06;
   --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e; --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
+  --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
   --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); }
 
 *{box-sizing:border-box}
@@ -121,7 +148,7 @@ button{font:inherit;color:inherit}
   position:sticky; top:0; z-index:40; min-height:var(--top);
   display:flex; align-items:center; flex-wrap:wrap; gap:8px; row-gap:8px;
   padding:8px clamp(10px,3vw,20px);
-  background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  background:var(--glass-bar); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
   border-bottom:1px solid var(--line);
 }
 .mark{width:36px;height:36px;flex:none;border-radius:11px;background:var(--accent);color:var(--accent-ink);
@@ -178,18 +205,19 @@ button{font:inherit;color:inherit}
   padding:12px; max-height:calc(100dvh - var(--top) - 24px); overflow:auto
 }
 .side h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:2px 0 10px 8px}
-.nav{display:flex;flex-direction:column;gap:2px}
-.nav a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r-sm);
-  color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:600;border:1px solid transparent;
-  position:relative;transition:background .15s ease, border-color .15s ease, transform .12s ease}
-.nav a .c{width:6px;height:6px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .2s}
-.nav a:hover{background:var(--glass-2);transform:translateX(2px)}
+.nav{display:flex;flex-direction:column;gap:6px}
+.nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:13px;
+  color:var(--ink);text-decoration:none;font-size:14px;font-weight:600;border:1px solid var(--line);
+  position:relative;background:var(--glass-2);transition:background .15s ease, border-color .15s ease, transform .12s ease}
+.nav a .c{width:9px;height:9px;border-radius:50%;background:var(--line-strong);flex:none;transition:background .2s, box-shadow .2s}
+.nav a:hover{background:var(--glass);transform:translateX(2px);border-color:var(--line-strong)}
 .nav a:active{transform:translateX(0) scale(.99)}
-.nav a[aria-current="true"]{background:var(--glass-2);border-color:var(--line-strong)}
+.nav a[aria-current="true"]{background:var(--glass);border-color:color-mix(in srgb,var(--accent) 45%,var(--line-strong))}
 .nav a[aria-current="true"]::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;
   border-radius:3px;background:var(--accent);animation:otmPop .25s both}
-.nav a[aria-current="true"] .c{background:var(--accent)}
-.nav .count{margin-left:auto;font-size:11px;color:var(--muted);font-weight:700}
+.nav a[aria-current="true"] .c{background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
+.nav .count{margin-left:auto;font-size:11px;color:var(--muted);font-weight:700;
+  background:var(--glass-2);border:1px solid var(--line);border-radius:999px;padding:1px 8px;min-width:22px;text-align:center}
 
 /* ---- conteúdo ------------------------------------------------------------- */
 .head h2{margin:0;font-size:clamp(18px,3.6vw,23px);font-weight:800;letter-spacing:-.02em}
@@ -202,7 +230,7 @@ button{font:inherit;color:inherit}
 section[hidden]{display:none}
 
 .card{
-  background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  background:var(--glass-card);
   border:1px solid var(--line); border-radius:var(--r); padding:15px;
   display:flex; flex-direction:column; gap:9px; box-shadow:var(--shadow);
   animation:otmRise .42s cubic-bezier(.2,.7,.3,1) both;
@@ -240,15 +268,36 @@ section[data-g] .head{animation:otmFade .3s both}
 .btn:active{transform:scale(.97)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.primary:hover{filter:brightness(1.06)}
-.btn.primary::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
-  background-size:220% 100%;animation:otmSheen 4.6s ease-in-out infinite}
 .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
 .btn:disabled{opacity:.55;cursor:progress}
 .btn.busy::before{content:"";display:inline-block;width:12px;height:12px;margin-right:7px;vertical-align:-2px;
   border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:otmSpin .7s linear infinite}
 .help-btn{transition:transform .15s ease,border-color .15s,color .15s}
 .help-btn:active{transform:scale(.9)}
+
+/* ---- cartão de escolha: opções lado a lado -------------------------------- */
+.card-choice .opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{flex:1 1 88px;min-width:88px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:12px 8px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);cursor:pointer;color:var(--ink);text-align:center;
+  transition:transform .12s ease,border-color .15s ease,background .15s ease}
+.opt:hover{border-color:var(--accent)}
+.opt:active{transform:scale(.97)}
+.opt .opt-t{font-size:13px;font-weight:700;line-height:1.2}
+.opt .opt-s{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--glass-2))}
+.opt[aria-pressed="true"] .opt-t{color:var(--accent)}
+.opt[aria-pressed="true"] .opt-s{color:var(--accent)}
+.now{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
+.now b{color:var(--ink)}
+
+/* ---- sliders (ajuste fino) ------------------------------------------------ */
+.slider{display:flex;align-items:center;gap:10px}
+.slider input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:26px}
+.slider .num{width:66px;flex:none;padding:7px 8px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);color:var(--ink);font-size:14px;font-weight:700;text-align:center}
+.slider .num:focus-visible{outline:2px solid var(--ring);outline-offset:1px;border-color:var(--accent)}
+.field-val{float:right;font-weight:800;color:var(--accent);font-size:11px}
 
 /* ---- gaveta lateral (celular) -------------------------------------------- */
 .scrim{position:fixed;inset:0;z-index:54;background:rgba(12,10,8,.5);backdrop-filter:blur(3px);
@@ -383,7 +432,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="name">00deUdia Otimizações<small>painel de controle</small></div>
   <div class="grow"></div>
   <span class="iconbtn hide-sm" id="modePill" style="cursor:default"><span class="dot"></span><span id="modeTxt">verificando…</span></span>
-  <button class="iconbtn hide-sm" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
+  <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
   <button class="iconbtn hide-sm" id="btnStatus">Status</button>
   <button class="iconbtn hide-sm" id="btnLog">Histórico</button>
@@ -432,7 +481,41 @@ body.drawer .scrim{opacity:1;visibility:visible}
           Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
         </div>
         <div class="grid">
-          <?php foreach ($items as $ci => $a):
+          <?php
+          $renderedChoice = [];
+          foreach ($items as $ci => $a):
+            // opções de um grupo de escolha viram um único cartão, na 1ª posição
+            if (!empty($a['choice'])):
+              $ck = $a['choice'];
+              if (isset($renderedChoice[$ck])) continue;
+              $renderedChoice[$ck] = true;
+              $c = $choiceMeta[$ck];
+              $crisk = $c['risk']; ?>
+              <article class="card card-choice" data-choice="<?= htmlspecialchars($ck, ENT_QUOTES) ?>"
+                       data-state-key="<?= htmlspecialchars((string)($c['state'] ?? ''), ENT_QUOTES) ?>"
+                       style="--i:<?= (int)($ci % 12) ?>">
+                <div class="row">
+                  <h3><?= htmlspecialchars($c['title']) ?></h3>
+                  <span class="chip <?= htmlspecialchars($crisk, ENT_QUOTES) ?>"><?= htmlspecialchars($riskLabel[$crisk] ?? $crisk) ?></span>
+                </div>
+                <p><?= htmlspecialchars($c['desc']) ?></p>
+                <div class="opts" role="group" aria-label="<?= htmlspecialchars($c['title'], ENT_QUOTES) ?>">
+                  <?php foreach ($c['opts'] as $o): ?>
+                    <button class="opt" type="button" data-opt="<?= htmlspecialchars($o['id'], ENT_QUOTES) ?>"
+                            data-optlabel="<?= htmlspecialchars($o['label'], ENT_QUOTES) ?>"
+                            data-state-value="<?= htmlspecialchars((string)($o['state_value'] ?? ''), ENT_QUOTES) ?>"
+                            data-state-match="<?= htmlspecialchars((string)($o['state_match'] ?? ''), ENT_QUOTES) ?>"
+                            aria-pressed="false">
+                      <span class="opt-t"><?= htmlspecialchars($o['label']) ?></span>
+                      <span class="opt-s">Selecionar</span>
+                    </button>
+                  <?php endforeach; ?>
+                </div>
+                <div class="now" data-now hidden></div>
+              </article>
+            <?php
+              continue;
+            endif;
             $risk = $a['risk'] ?? 'safe'; ?>
             <article class="card" data-id="<?= htmlspecialchars($a['id'], ENT_QUOTES) ?>"
                      style="--i:<?= (int)($ci % 12) ?>">
@@ -447,19 +530,37 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <div class="fields">
                   <?php foreach ($a['params'] as $p):
                     $t = $p['type'] ?? 'text';
-                    $wide = in_array($t, ['pkg', 'host', 'text', 'name', 'enum'], true); ?>
+                    $wide = in_array($t, ['pkg', 'host', 'text', 'name', 'enum'], true);
+                    $pid = htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES);
+                    $slider = in_array($t, ['int', 'float'], true) && isset($p['min'], $p['max']); ?>
                     <div class="field<?= $wide ? ' wide' : '' ?>">
-                      <label for="<?= htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES) ?>"><?= htmlspecialchars($p['label']) ?></label>
+                      <label for="<?= $pid ?>"><?= htmlspecialchars($p['label']) ?><?php
+                        if ($slider): ?> <span class="field-val" data-for="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"><?= htmlspecialchars((string)($p['default'] ?? '')) ?></span><?php endif; ?></label>
                       <?php if ($t === 'enum'): ?>
-                        <select id="<?= htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES) ?>"
-                                data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>">
+                        <select id="<?= $pid ?>" data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>">
                           <?php foreach (($p['options'] ?? []) as $opt): ?>
                             <option value="<?= htmlspecialchars((string) $opt, ENT_QUOTES) ?>"
                               <?= ((string) $opt === (string) ($p['default'] ?? '')) ? ' selected' : '' ?>><?= htmlspecialchars((string) $opt) ?></option>
                           <?php endforeach; ?>
                         </select>
+                      <?php elseif ($slider): ?>
+                        <div class="slider">
+                          <input id="<?= $pid ?>" data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
+                                 data-state="<?= htmlspecialchars((string)($p['state'] ?? ''), ENT_QUOTES) ?>"
+                                 type="range" value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>"
+                                 min="<?= htmlspecialchars((string) $p['min'], ENT_QUOTES) ?>"
+                                 max="<?= htmlspecialchars((string) $p['max'], ENT_QUOTES) ?>"
+                                 step="<?= htmlspecialchars((string) ($p['step'] ?? 1), ENT_QUOTES) ?>">
+                          <input class="num" type="number" data-pnum="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
+                                 data-state="<?= htmlspecialchars((string)($p['state'] ?? ''), ENT_QUOTES) ?>"
+                                 value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>"
+                                 min="<?= htmlspecialchars((string) $p['min'], ENT_QUOTES) ?>"
+                                 max="<?= htmlspecialchars((string) $p['max'], ENT_QUOTES) ?>"
+                                 step="<?= htmlspecialchars((string) ($p['step'] ?? 1), ENT_QUOTES) ?>"
+                                 inputmode="numeric" aria-label="<?= htmlspecialchars($p['label'], ENT_QUOTES) ?>">
+                        </div>
                       <?php else: ?>
-                      <input id="<?= htmlspecialchars($a['id'] . '-' . $p['name'], ENT_QUOTES) ?>"
+                      <input id="<?= $pid ?>"
                              data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
                              type="<?= in_array($t, ['int', 'float'], true) ? 'number' : 'text' ?>"
                              value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>"
@@ -794,12 +895,36 @@ function run(card, confirmed){
     $("#mask").classList.add("open");
     return;
   }
-  doRun(card, collect(card), confirmed);
+  doRun(a, collect(card), confirmed, card.querySelector("[data-run]"));
 }
-async function doRun(card, params, confirmed){
-  const a = ACTIONS[card.dataset.id];
+/* opção de um grupo de escolha (renderizador, perfis de toque): "Selecionar" */
+function selectOption(btn, confirmed){
+  const a = ACTIONS[btn.dataset.opt];
+  if (!a) return;
+  if (a.confirm && !confirmed){
+    pending = btn;
+    $("#mTitle").textContent = a.label;
+    $("#mDesc").textContent = a.desc || "";
+    const long = $("#mLong");
+    if (a.help){ long.textContent = a.help; long.hidden = false; } else { long.hidden = true; }
+    $("#mAck").hidden = false;
+    $("#mGo").hidden = false;
+    $("#mCancel").textContent = "Cancelar";
+    $("#mAckLabel").textContent = "Estou ciente dos riscos e quero continuar.";
+    $("#mCheck").checked = false; $("#mGo").disabled = true;
+    $("#mask").classList.add("open");
+    return;
+  }
+  doRun(a, {}, confirmed, btn);
+}
+/* reexecuta o que está pendente (cartão comum ou opção) depois do "ok" */
+function runPending(){
+  const p = pending; if (!p) return;
+  if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], {}, true, p);
+  else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
+}
+async function doRun(a, params, confirmed, btn){
   if (a.id === "appearance"){ syncGear(); $("#gearMask").classList.add("open"); return; }
-  const btn = card.querySelector("[data-run]");
   setBusy(true, btn);
   openConsole(a.label, "executando…");
   try{
@@ -816,10 +941,72 @@ async function doRun(card, params, confirmed){
     if (j.ok) toast("Feito: " + a.label, "ok");
     else if (j.applied && !j.real) toast("Nada mudou de verdade — veja Configs", "bad");
     else toast("Falhou: " + a.label, "bad");
+    if (j.ok && btn && btn.classList.contains("opt")) loadState();
   }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); }
   setBusy(false, btn);
 }
 document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.closest(".card")));
+document.querySelectorAll(".opt").forEach(b => b.onclick = () => selectOption(b));
+
+/* ---- estado real do aparelho (renderizador em uso, toque, refresh) ---------- */
+let STATE = {};
+const TOUCH_KEYS = ["touch_responsiveness","long_press_timeout","pointer_speed","touch_slop"];
+function stateNum(v){ const n = parseFloat(v); return (v === undefined || v === null || v === "" || isNaN(n)) ? null : n; }
+function applyState(){
+  document.querySelectorAll(".card-choice").forEach(card => {
+    const key = card.dataset.stateKey || "";
+    const isTouch = card.dataset.choice === "touchprofile";
+    let active = null;
+    card.querySelectorAll(".opt").forEach(o => {
+      let on = false;
+      if (o.dataset.stateValue && key && STATE[key] !== undefined && STATE[key] !== ""){
+        on = String(STATE[key]).toLowerCase() === o.dataset.stateValue.toLowerCase();
+      } else if (o.dataset.stateMatch){
+        const want = o.dataset.stateMatch.split(":")[1].split(",");
+        on = TOUCH_KEYS.every((k,i) => stateNum(STATE[k]) !== null && String(stateNum(STATE[k])) === want[i]);
+      }
+      o.setAttribute("aria-pressed", on ? "true" : "false");
+      const s = o.querySelector(".opt-s"); if (s) s.textContent = on ? "Em uso" : "Selecionar";
+      if (on) active = o.dataset.optlabel;
+    });
+    const now = card.querySelector("[data-now]");
+    if (!now) return;
+    let txt = "";
+    if (isTouch){
+      const cur = TOUCH_KEYS.map(k => stateNum(STATE[k]));
+      if (cur.some(v => v !== null))
+        txt = "No aparelho: responsiveness " + (cur[0] ?? "?") + " · long press " + (cur[1] ?? "?") + " ms · pointer " + (cur[2] ?? "?") + " · slop " + (cur[3] ?? "?");
+    } else if (key === "renderer" && STATE.renderer){
+      txt = "Em uso agora: " + (active || STATE.renderer) + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
+    }
+    now.textContent = txt;
+    now.hidden = !txt;
+  });
+  // sliders: parte do valor REAL do aparelho quando existe
+  document.querySelectorAll('.card .slider input[type="range"][data-state]').forEach(range => {
+    const v = stateNum(STATE[range.dataset.state]);
+    if (v !== null) setSliderValue(range, v);
+  });
+}
+function setSliderValue(range, val){
+  const sl = range.closest(".slider"); if (!sl) return;
+  range.value = val;
+  const num = sl.querySelector("[data-pnum]"); if (num) num.value = val;
+  const card = range.closest(".card");
+  const fv = card && card.querySelector('.field-val[data-for="' + range.dataset.p + '"]');
+  if (fv) fv.textContent = val;
+}
+document.querySelectorAll(".slider").forEach(sl => {
+  const range = sl.querySelector('input[type="range"]');
+  const num = sl.querySelector("[data-pnum]");
+  if (!range) return;
+  range.addEventListener("input", () => setSliderValue(range, range.value));
+  if (num) num.addEventListener("input", () => { if (num.value !== "") setSliderValue(range, num.value); });
+});
+async function loadState(){
+  try{ const j = await apiGet("state"); STATE = (j && j.state) || {}; }catch(e){ STATE = {}; }
+  applyState();
+}
 const setBusy = (b, btn) => {
   document.querySelectorAll("[data-run]").forEach(x => x.disabled = b);
   if (btn) btn.classList.toggle("busy", b);
@@ -835,7 +1022,7 @@ $("#btnConsole").onclick = () => $("#console").classList.toggle("open");
 $("#mCancel").onclick = () => { $("#mask").classList.remove("open"); pending = null; };
 $("#mCheck").onchange = e => $("#mGo").disabled = !e.target.checked;
 $("#mGo").onclick = () => { $("#mask").classList.remove("open");
-  if (pending) doRun(pending, collect(pending), true); };
+  runPending(); pending = null; };
 $("#mask").onclick = e => { if (e.target.id === "mask"){ $("#mask").classList.remove("open"); pending = null; } };
 $("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo…");
   const j = await apiGet("status"); openConsole("Status do aparelho", j.text || "(sem saída)"); };
@@ -865,6 +1052,7 @@ addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList
     (j.apps || []).forEach(p => { const o = document.createElement("option"); o.value = p; dl.appendChild(o); });
     document.body.appendChild(dl);
   }catch(e){}
+  loadState();
 })();
 
 fromHash();

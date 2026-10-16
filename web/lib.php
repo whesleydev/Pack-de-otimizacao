@@ -68,7 +68,7 @@ function otm_allowed_scripts(): array {
     return [
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
-        'turbo.sh',
+        'turbo.sh', 'panel-state.sh',
         'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
@@ -85,6 +85,26 @@ function otm_valid_name(string $s): bool {
 }
 function otm_valid_text(string $s): bool {
     return (bool)preg_match('/^[A-Za-z0-9 ._:-]{0,40}$/', $s);
+}
+
+// --- grupos de escolha (opções lado a lado) -----------------------------------
+// Ações marcadas com 'choice' viram UM cartão com as opções lado a lado (ex.:
+// renderizador, perfis de toque). Cada ação vira um botão "Selecionar".
+// 'state' aponta para a chave lida por panel-state.sh, o que marca a opção em uso.
+function otm_choices(): array {
+    return [
+        'renderer' => [
+            'title' => 'Motor gráfico (renderizador)',
+            'desc'  => 'Escolha como a interface é desenhada. OpenGL é o padrão do Android (mais compatível); SkiaGL fica no meio; Skia Vulkan costuma dar mais fluidez. Se um app ficar com tela estranha, volte para OpenGL.',
+            'state' => 'renderer',
+            'risk'  => 'careful',
+        ],
+        'touchprofile' => [
+            'title' => 'Sensibilidade do toque (perfis)',
+            'desc'  => 'Perfis prontos de toque do sistema para o jogo. Teste um no treino, jogue e veja qual combina com você. Para calibrar na mão, use "Touch: personalizado". Reverta em "Restaurar touch".',
+            'risk'  => 'careful',
+        ],
+    ];
 }
 
 // --- registro de ações --------------------------------------------------------
@@ -164,14 +184,17 @@ function otm_actions(): array {
     $add(['id' => 'gpu.opengl', 'group' => 'Display & Touch', 'label' => 'Renderizador: OpenGL (padrão)',
           'desc' => 'Motor gráfico de fábrica. Mais compatível.',
           'help' => 'Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.',
+          'choice' => 'renderer', 'option' => 'OpenGL', 'state_value' => 'opengl',
           'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer opengl']]);
     $add(['id' => 'gpu.skiagl', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL',
           'desc' => 'Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.',
           'help' => 'Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.',
+          'choice' => 'renderer', 'option' => 'SkiaGL', 'state_value' => 'skiagl',
           'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer skiagl']]);
     $add(['id' => 'gpu.skiavk', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan',
           'desc' => 'Skia sobre Vulkan. Costuma dar mais fluidez.',
           'help' => 'Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.',
+          'choice' => 'renderer', 'option' => 'Skia Vulkan', 'state_value' => 'skiavk',
           'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer skiavk']]);
     $add(['id' => 'gpu.force', 'group' => 'Display & Touch', 'label' => 'Forçar renderização por GPU',
           'desc' => 'Usa a GPU para desenhar a interface (não a CPU).',
@@ -213,17 +236,20 @@ function otm_actions(): array {
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
 
     // ----- Touch / Free Fire -----
+    // 'state_match' = tr,lp,ps,slop de cada perfil. O painel compara com os
+    // valores reais lidos do aparelho e marca o perfil em uso.
     $touch = [
-        'balanced' => ['Equilibrado', 'Ajuste geral, bom para a maioria.'],
-        'headshot' => ['Headshot', 'Resposta mais rápida: mira ágil.'],
-        'spray' => ['Spray', 'Mais controle de recuo no tiro contínuo.'],
-        'sniper' => ['Sniper', 'Mira precisa e estável para longa distância.'],
-        'speed' => ['Speed', 'Máxima reatividade: resposta imediata.'],
+        'balanced' => ['Equilibrado', 'Ajuste geral, bom para a maioria.', '100,400,0,8'],
+        'headshot' => ['Headshot', 'Resposta mais rápida: mira ágil.', '110,350,0,4'],
+        'spray'    => ['Spray', 'Mais controle de recuo no tiro contínuo.', '105,300,0,6'],
+        'sniper'   => ['Sniper', 'Mira precisa e estável para longa distância.', '95,500,-1,10'],
+        'speed'    => ['Speed', 'Máxima reatividade: resposta imediata.', '120,300,1,2'],
     ];
     foreach ($touch as $k => $v) {
         $add(['id' => "touch.$k", 'group' => 'Display & Touch', 'label' => "Touch: {$v[0]}",
               'desc' => $v[1],
               'help' => 'Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em "Restaurar touch".',
+              'choice' => 'touchprofile', 'option' => $v[0], 'state_match' => 'touch:' . $v[2],
               'argv' => ['ff-touch.sh', $k], 'risk' => 'careful']);
     }
     $add(['id' => 'touch.custom', 'group' => 'Display & Touch', 'label' => 'Touch: personalizado',
@@ -231,10 +257,10 @@ function otm_actions(): array {
           'help' => 'Para quem quer calibrar na mão: responsiveness (rapidez da resposta), long press (tempo de toque longo), pointer speed (velocidade do ponteiro) e touch slop (quanto o dedo pode tremer antes de contar como arrasto).',
           'argv' => ['ff-touch.sh', 'custom', '{tr}', '{lp}', '{ps}', '{slop}'],
           'params' => [
-              ['name' => 'tr', 'type' => 'int', 'label' => 'responsiveness', 'min' => 50, 'max' => 200, 'default' => 110],
-              ['name' => 'lp', 'type' => 'int', 'label' => 'long press (ms)', 'min' => 100, 'max' => 800, 'default' => 350],
-              ['name' => 'ps', 'type' => 'int', 'label' => 'pointer speed', 'min' => -5, 'max' => 5, 'default' => 0],
-              ['name' => 'slop', 'type' => 'int', 'label' => 'touch slop', 'min' => 0, 'max' => 30, 'default' => 4],
+              ['name' => 'tr', 'type' => 'int', 'label' => 'responsiveness', 'min' => 50, 'max' => 200, 'default' => 110, 'state' => 'touch_responsiveness'],
+              ['name' => 'lp', 'type' => 'int', 'label' => 'long press (ms)', 'min' => 100, 'max' => 800, 'default' => 350, 'state' => 'long_press_timeout'],
+              ['name' => 'ps', 'type' => 'int', 'label' => 'pointer speed', 'min' => -5, 'max' => 5, 'default' => 0, 'state' => 'pointer_speed'],
+              ['name' => 'slop', 'type' => 'int', 'label' => 'touch slop', 'min' => 0, 'max' => 30, 'default' => 4, 'state' => 'touch_slop'],
           ], 'risk' => 'careful']);
     $add(['id' => 'touch.restore', 'group' => 'Display & Touch', 'label' => 'Restaurar touch',
           'desc' => 'Apaga os ajustes de toque e volta ao padrão.',
@@ -887,6 +913,20 @@ function otm_module_run(string $name): array {
 function otm_dns_status(): array {
     $r = otm_script('dns.sh', ['status'], 20);
     return ['text' => $r['out']];
+}
+
+// Estado REAL do aparelho para o painel (renderizador, toque, refresh...).
+// Lê via panel-state.sh; devolve um array com chaves simples. Nada fictício:
+// o que não foi possível ler volta como string vazia.
+function otm_state_read(): array {
+    $r = otm_script('panel-state.sh', [], 20);
+    $line = '';
+    foreach (explode("\n", (string)($r['out'] ?? '')) as $l) {
+        $l = trim($l);
+        if ($l !== '' && $l[0] === '{') { $line = $l; break; }
+    }
+    $j = $line !== '' ? json_decode($line, true) : null;
+    return is_array($j) ? $j : [];
 }
 
 // modo de acesso atual (rish/adb/su/local), lido do config.sh show

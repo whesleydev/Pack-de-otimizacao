@@ -173,11 +173,23 @@ nativa além do necessário para conectar e rodar os comandos.
   estado (`~/.packotm`) fica no mesmo lugar. A cópia local em `filesDir/pack`
   serve só para o app ler os `.txt` do nível 1. `PackAssets.EXEC_DIR` guarda o
   caminho.
-- O catálogo do painel vem de `assets/panel/actions.json` (gerado a partir de
-  `web/lib.php`, via `scratch/actions.json`). O painel do app é o HTML do PHP já
-  renderizado (`scratch/build_panel.py`); ao mexer em `index.php`/`lib.php`, os
-  dois painéis (`web/index.php` e `assets/panel/index.html`) precisam ficar em
-  sincronia (o CSS/JS é o mesmo nos dois).
+- O catálogo do painel vem de `assets/panel/actions.json`, gerado de
+  `web/lib.php` por `scratch/gen_actions.php` (regera após mexer nas ações).
+  O painel do app é o HTML do PHP já renderizado (`scratch/render_panel.php` →
+  `scratch/panel.html` → `scratch/build_panel.py`); ao mexer em
+  `index.php`/`lib.php`, os dois painéis (`web/index.php` e
+  `assets/panel/index.html`) precisam ficar em sincronia (o CSS/JS é o mesmo).
+- **Opções lado a lado** (`otm_choices()` em `lib.php`): ações com `'choice' =>
+  'renderer'` (renderizador) ou `'touchprofile'` (perfis de toque) são fundidas
+  num único cartão com botões; cada ação traz `option` (rótulo) e
+  `state_value`/`state_match` para o painel marcar a opção **em uso**. Ali o
+  botão diz **"Selecionar"** (não "Executar"), porque é escolha de configuração.
+- **Estado real do aparelho** (`scripts/panel-state.sh`, na whitelist do
+  `lib.php`): devolve uma linha JSON com renderizador em uso, toque atual, refresh
+  e ANGLE. O painel consome via `api.php?action=state` (web) ou `OTM.call("state")`
+  (app, `stateImpl()` no `PackBridge`). Nada fictício: campo ilegível volta `""` e
+  a UI não mostra número inventado. Parâmetros com `'state' => '<chave>'` abrem o
+  slider já no valor do aparelho.
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).

@@ -64,6 +64,7 @@ if ($method === 'POST' && ($_GET['do'] ?? '') === 'run') {
 switch ($action) {
     case 'status':     otm_json(otm_status()); break;
     case 'dns_status': otm_json(otm_dns_status()); break;
+    case 'state':      otm_json(['ok' => true, 'state' => otm_state_read()]); break;
     case 'mode':       otm_json(['ok' => true] + otm_mode()); break;
     case 'apps':       otm_json(['ok' => true, 'apps' => otm_apps()]); break;
     case 'modules':    otm_json(['ok' => true, 'modules' => otm_modules()]); break;

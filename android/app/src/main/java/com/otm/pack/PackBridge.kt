@@ -69,6 +69,7 @@ class PackBridge(
                     "run" -> runImpl(payload)
                     "status" -> textResult(scriptCommand("pack.sh", listOf("status")))
                     "dns" -> textResult(scriptCommand("dns.sh", listOf("status")))
+                    "state" -> stateImpl()
                     "mode" -> modeImpl()
                     "apps" -> appsImpl()
                     "modules" -> modulesImpl()
@@ -158,6 +159,23 @@ class PackBridge(
         val m = Regex("detectado agora\\s*:\\s*(\\S+)").find(out)?.groupValues?.get(1) ?: ""
         val priv = Regex("privilégio\\s*:\\s*([^\\n]+)").find(out)?.groupValues?.get(1)?.trim() ?: ""
         return JSONObject().put("ok", true).put("mode", m).put("priv", priv).put("text", out).toString()
+    }
+
+    /**
+     * Lê o estado REAL do aparelho (renderizador em uso, toque, refresh) para o
+     * painel não mostrar número fictício. Reusa `panel-state.sh`, que devolve
+     * uma linha JSON; se o shell não tiver acesso, volta um objeto vazio.
+     */
+    private fun stateImpl(): String {
+        val out = output(scriptCommand("panel-state.sh", emptyList()))
+        var state: JSONObject? = null
+        for (line in out.split("\n")) {
+            val l = line.trim()
+            if (l.startsWith("{")) { state = try { JSONObject(l) } catch (e: Exception) { null }; if (state != null) break }
+        }
+        return JSONObject().put("ok", true)
+            .put("state", state ?: JSONObject())
+            .toString()
     }
 
     private fun appsImpl(): String {

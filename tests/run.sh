@@ -571,6 +571,61 @@ t_new_features() {
     grep -q 'boot_install' "$ROOT/scripts/common.sh" && ok "common: helper de boot presente" || bad "common: sem helper de boot"
 }
 
+t_panel_state() {
+    printf '\n  # estado REAL do aparelho (panel-state.sh) para o painel\n'
+    rm -rf "$HOME/.packotm"
+    # o aparelho "tem" estes valores reais
+    printf 'skiagl' > "$TMP_STORE/prop.debug.hwui.renderer"
+    printf '110'    > "$TMP_STORE/system.touch_responsiveness"
+    printf '350'    > "$TMP_STORE/system.long_press_timeout"
+    printf '0'      > "$TMP_STORE/system.pointer_speed"
+    printf '4'      > "$TMP_STORE/system.touch_slop"
+    printf '90.0'   > "$TMP_STORE/system.min_refresh_rate"
+    printf '90.0'   > "$TMP_STORE/system.peak_refresh_rate"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/st_out"
+    grep -q '"renderer":"skiagl"' "$TMP/st_out" && ok "state: lê o renderizador em uso" || bad "state: sem renderer"
+    grep -q '"touch_responsiveness":"110"' "$TMP/st_out" && ok "state: lê responsiveness real" || bad "state: sem responsiveness"
+    grep -q '"long_press_timeout":"350"' "$TMP/st_out" && ok "state: lê long press real" || bad "state: sem long press"
+    grep -q '"pointer_speed":"0"' "$TMP/st_out" && ok "state: lê pointer speed real" || bad "state: sem pointer speed"
+    grep -q '"touch_slop":"4"' "$TMP/st_out" && ok "state: lê touch slop real" || bad "state: sem touch slop"
+    grep -q '"refresh_peak":"90.0"' "$TMP/st_out" && ok "state: lê o refresh atual" || bad "state: sem refresh"
+    # sem prop setada, o Android usa o padrão (OpenGL) — nada fictício
+    rm -f "$TMP_STORE/prop.debug.hwui.renderer"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/st_out2"
+    grep -q '"renderer":"opengl"' "$TMP/st_out2" && ok "state: sem prop assume OpenGL (padrão)" || bad "state: default renderer errado"
+    # o JSON é válido
+    php -r '$j=json_decode(file_get_contents($argv[1]),true);
+             echo is_array($j) && isset($j["renderer"]) ? "OK" : "RUIM";' "$TMP/st_out" > "$TMP/st_json" 2>&1
+    assert_contains "$TMP/st_json" "OK" "state: JSON válido"
+    # lib.php expõe o leitor e o script está na whitelist
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("panel-state.sh", otm_allowed_scripts(), true) ? "whitelist " : "";
+             echo function_exists("otm_state_read") ? "reader" : "";' > "$TMP/st_lib" 2>&1
+    assert_contains "$TMP/st_lib" "whitelist reader" "lib: leitor de estado na whitelist"
+    grep -q "case 'state'" "$ROOT/web/api.php" && ok "api.php: endpoint de estado" || bad "api.php: sem endpoint de estado"
+    grep -q '"state" -> stateImpl()' "$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "app: ponte responde ao estado real" || bad "app: ponte sem estado"
+    grep -q 'fun stateImpl' "$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "app: stateImpl presente" || bad "app: sem stateImpl"
+    # o painel marca a opção em uso e mostra os valores reais
+    grep -q 'applyState' "$ROOT/web/index.php" && ok "painel: aplica o estado real (applyState)" || bad "painel: sem applyState"
+    grep -q 'Em uso' "$ROOT/web/index.php" && ok "painel: marca a opção 'Em uso'" || bad "painel: sem marcação de uso"
+    grep -q 'functional\|card-choice' "$ROOT/web/index.php" && ok "painel: cartões de escolha presentes" || bad "painel: sem cartões de escolha"
+    # catálogo do app carrega os metadados de escolha
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             echo !empty($a["gpu.skiagl"]["state_value"]) ? "r " : "";
+             echo !empty($a["touch.headshot"]["state_match"]) ? "t " : "";
+             foreach ($a["touch.custom"]["params"] as $p) if (($p["name"]??"")==="tr" && !empty($p["state"])) echo "s";' \
+        > "$TMP/st_meta" 2>&1
+    assert_contains "$TMP/st_meta" "r t s" "lib: metadados de estado por opção/parâmetro"
+    grep -q '"state_value": "skiagl"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem state_value" || bad "app: actions.json sem state_value"
+    grep -q '"state_match": "touch:110,350,0,4"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem state_match do toque" || bad "app: actions.json sem state_match"
+}
+
 t_perm_script() {
     printf '\n  # permissões/segundo plano: Doze, appops e bateria (sem root)\n'
     rm -rf "$HOME/.packotm"
@@ -903,10 +958,27 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 6 ] && ok "index.php renderiza as 6 categorias" || bad "categorias: $n_sec (esperado 6)"
-        for cat in "Geral" "Display &amp; Touch" "Rede e conexão" "Desempenho" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 5 ] && ok "index.php renderiza as 5 categorias" || bad "categorias: $n_sec (esperado 5)"
+        for cat in "Geral" "Display &amp; Touch" "Desempenho" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
+        # menu enxuto: Rede e conexão foi unificada em Desempenho (não é seção própria)
+        grep -q '<section id="g-Rede' "$TMP/web_html" && bad "Rede ainda é seção separada" \
+            || ok "Rede e conexão unificada em Desempenho"
+        # grupos de escolha: opções lado a lado com botão "Selecionar"
+        n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
+        [ "$n_choice" -eq 2 ] && ok "renderiza 2 grupos de escolha (renderizador, toque)" \
+            || bad "grupos de escolha: $n_choice (esperado 2)"
+        n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
+        [ "$n_opts" -eq 8 ] && ok "opções lado a lado: 3 renderizadores + 5 toques ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 8)"
+        assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
+        # ajuste fino com slider (arrastar) + campo numérico
+        n_slider=$(grep -c 'class="slider"' "$TMP/web_html")
+        [ "$n_slider" -ge 4 ] && ok "parâmetros numéricos viram sliders ($n_slider)" \
+            || bad "sliders: $n_slider (esperado >=4)"
+        grep -q 'type="range"' "$TMP/web_html" && ok "slider arrastável presente" || bad "sem range"
+        grep -q 'data-pnum' "$TMP/web_html" && ok "campo numérico ao lado do slider" || bad "sem campo numérico"
         grep -q '@media' "$TMP/web_html" && ok "index.php tem CSS responsivo" || bad "sem media queries"
         grep -q 'backdrop-filter' "$TMP/web_html" && ok "index.php usa efeito de vidro (glass)" || bad "sem glass"
         n_help=$(grep -c 'help-btn' "$TMP/web_html")
@@ -1001,6 +1073,7 @@ t_app_login
 t_app_exec
 t_app_fixes
 t_new_features
+t_panel_state
 t_perm_script
 t_perm_actions
 t_personalization

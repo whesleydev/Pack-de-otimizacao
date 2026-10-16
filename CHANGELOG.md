@@ -3,6 +3,35 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.13.0] - 2026-10-05
+
+### Adicionado
+- **O painel mostra o estado REAL do aparelho** (`scripts/panel-state.sh`): qual
+  renderizador está de fato em uso (`debug.hwui.renderer`), se a GPU está forçada,
+  e os valores ATUAIS do toque (`touch_responsiveness`, `long_press_timeout`,
+  `pointer_speed`, `touch_slop`), o refresh (`min/peak_refresh_rate`) e o ANGLE
+  por app. Nada de número fictício: o que não dá para ler volta em branco.
+  Novo endpoint `api.php?action=state` e `stateImpl()` na ponte do app.
+
+### Alterado
+- **Renderizador e perfis de toque viraram opções lado a lado.** Em vez de vários
+  cartões soltos, um único cartão com OpenGL / SkiaGL / Skia Vulkan (e outro com os
+  5 perfis de toque), botões clicáveis que marcam a opção **em uso** e mostram
+  **"Selecionar"** no lugar de "Executar" — afinal, ali você escolhe uma
+  configuração, não aplica uma otimização.
+- **Ajuste fino do toque agora tem slider arrastável** (arraste com o dedo) com
+  campo numérico ao lado, para responsiveness, long press, pointer speed e touch
+  slop. Os valores abrem já com o que está no aparelho.
+- **Botão de tema ao lado da engrenagem** e visível no celular (antes sumia por
+  causa do `hide-sm`).
+- **Menu lateral redesenhado:** 5 categorias (Rede e conexão entrou em Desempenho),
+  itens maiores, com contador em pílula e destaque melhor.
+- **Painel mais leve:** removido o `backdrop-filter` por cartão e a animação de
+  brilho do botão primário (eram as maiores fontes de travamento na rolagem).
+
+### Notas
+- Versão `2.13.0` (`versionCode` 34).
+
 ## [2.12.0] - 2026-10-05
 
 ### Adicionado
