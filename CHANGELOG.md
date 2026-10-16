@@ -3,6 +3,21 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.11.0] - 2026-10-05
+
+### Alterado
+- **Painel reorganizado em 6 categorias** (antes eram 16, difíceis de achar):
+  - **Geral** — aplicar/reverter o pack, snapshots e módulos.
+  - **Display & Touch** — renderizador, resolução, display/HWUI e toque do Free Fire.
+  - **Rede e conexão** — DNS privado, Wi-Fi, rede móvel e buffers TCP.
+  - **Desempenho** — RAM, limpeza, turbo/RAM, tela/bateria, congelar apps e os
+    ajustes profundos/extremos (root).
+  - **Apps e jogos** — tuning por app/jogo (ANGLE, Game Mode, resolução), debloat
+    por perfil e por app.
+  - **Sistema** — conexão do pack, permissões, aparência, notificações e diagnóstico.
+- Os avisos de voz seguem a categoria nova (som por assunto).
+- Versão `2.11.0` (`versionCode` 32).
+
 ## [2.10.0] - 2026-10-05
 
 ### Corrigido

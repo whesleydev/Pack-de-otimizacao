@@ -209,6 +209,12 @@ nativa além do necessário para conectar e rodar os comandos.
   de destaque (inclui **prata**) e fontes; os swatches/segmentos são casados por
   `data-accent`/`data-font` com essas chaves. O seletor de fonte quebra em várias
   linhas (`#setFont{flex-wrap:wrap}`) por ter 7 opções.
+- Categorias do painel: são 6, definidas em `otm_actions()` pelo campo `group`
+  (`Geral`, `Display & Touch`, `Rede e conexão`, `Desempenho`, `Apps e jogos`,
+  `Sistema`). A ordem de exibição vem de `$GROUP_ORDER` em `web/index.php` (com
+  fallback para grupos fora da lista). `actions.json` do app é gerado a partir de
+  `otm_actions()` (mesmo `group`). Ao renomear categoria, ajuste também
+  `PackBridge.soundFor` (som por grupo) e os testes em `tests/run.sh`.
 
 Build local (sem Android Studio):
 

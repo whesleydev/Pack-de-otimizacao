@@ -98,15 +98,15 @@ function otm_actions(): array {
     };
 
     // ----- Rápido -----
-    $add(['id' => 'apply', 'group' => 'Rápido', 'label' => 'Aplicar o pack recomendado',
+    $add(['id' => 'apply', 'group' => 'Geral', 'label' => 'Aplicar o pack recomendado',
           'desc' => 'Aplica o conjunto seguro (sem root): performance, RAM, GPU, rede e jogo.',
           'help' => 'Liga de uma vez as otimizações seguras que não precisam de root: animações mais rápidas, GPU na interface, RAM ajustada, DNS/rede e modo de jogo. É o "faz tudo" para começar. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 300]);
-    $add(['id' => 'restore_all', 'group' => 'Rápido', 'label' => 'Reverter TUDO',
+    $add(['id' => 'restore_all', 'group' => 'Geral', 'label' => 'Reverter TUDO',
           'desc' => 'Desfaz níveis 2, otimizações profundas e debloat de uma vez.',
           'help' => 'Volta o aparelho ao estado de fábrica de configuração: desfaz as otimizações, as profundas (root) e o debloat. Use quando quiser "limpar" tudo o que o pack aplicou.',
           'argv' => ['pack.sh', 'restore'], 'confirm' => true, 'timeout' => 300]);
-    $add(['id' => 'snapshot_save', 'group' => 'Rápido', 'label' => 'Salvar snapshot',
+    $add(['id' => 'snapshot_save', 'group' => 'Geral', 'label' => 'Salvar snapshot',
           'desc' => 'Tira uma foto das configurações atuais para poder voltar depois.',
           'help' => 'Guarda o estado atual das configurações num "snapshot". Se algo der errado, você restaura essa foto e volta exatamente como estava. Faça isso ANTES de mexer em qualquer coisa.',
           'argv' => ['snapshot.sh', 'save']]);
@@ -124,81 +124,81 @@ function otm_actions(): array {
         'gaming'            => ['Gaming', 'Baixa latência para jogos + rede otimizada.'],
     ];
     foreach ($dns as $k => $v) {
-        $add(['id' => "dns.$k", 'group' => 'DNS', 'label' => $v[0], 'desc' => $v[1],
+        $add(['id' => "dns.$k", 'group' => 'Rede e conexão', 'label' => $v[0], 'desc' => $v[1],
               'help' => 'DNS é o serviço que "traduz" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em "DNS automático".',
               'argv' => ['dns.sh', $k]]);
     }
-    $add(['id' => 'dns.custom', 'group' => 'DNS', 'label' => 'DNS personalizado (host DoT)',
+    $add(['id' => 'dns.custom', 'group' => 'Rede e conexão', 'label' => 'DNS personalizado (host DoT)',
           'desc' => 'Use qualquer hostname de DNS-over-TLS que você quiser.',
           'help' => 'Se você já tem um DNS privado favorito, digite aqui o hostname (ex.: dns.exemplo.com). Ele será usado como DNS do aparelho, com criptografia.',
           'argv' => ['dns.sh', 'custom', '{host}'],
           'params' => [['name' => 'host', 'type' => 'host', 'label' => 'Hostname DoT']]]);
-    $add(['id' => 'dns.off', 'group' => 'DNS', 'label' => 'DNS automático (desligar)',
+    $add(['id' => 'dns.off', 'group' => 'Rede e conexão', 'label' => 'DNS automático (desligar)',
           'desc' => 'Volta o DNS para o padrão da operadora.',
           'help' => 'Desliga o DNS privado e devolve o aparelho para o DNS automático da sua operadora/rede. Use se algum site parar de abrir.',
           'argv' => ['dns.sh', 'off']]);
 
     // ----- RAM / Limpeza -----
-    $add(['id' => 'mem.padrao', 'group' => 'RAM / Limpeza', 'label' => 'RAM: perfil padrão',
+    $add(['id' => 'mem.padrao', 'group' => 'Desempenho', 'label' => 'RAM: perfil padrão',
           'desc' => 'Multitarefa: mantém mais apps prontos na memória (32 em cache).',
           'help' => 'Ajusta quantos apps o sistema pode manter na memória. O perfil padrão guarda mais apps abertos (bom para o dia a dia, alternar entre apps é mais rápido).',
           'argv' => ['adb-tweaks.sh', 'mem', 'padrao']]);
-    $add(['id' => 'mem.gaming', 'group' => 'RAM / Limpeza', 'label' => 'RAM: perfil gaming',
+    $add(['id' => 'mem.gaming', 'group' => 'Desempenho', 'label' => 'RAM: perfil gaming',
           'desc' => 'Libera mais RAM para o jogo (só 8 apps em cache).',
           'help' => 'Deixa o sistema manter menos apps na memória para sobrar mais RAM para o jogo. Resultado: menos engasgo em partidas. Trade-off: alternar entre apps fica um pouco mais lento.',
           'argv' => ['adb-tweaks.sh', 'mem', 'gaming']]);
-    $add(['id' => 'clean', 'group' => 'RAM / Limpeza', 'label' => 'Limpar cache e RAM',
+    $add(['id' => 'clean', 'group' => 'Desempenho', 'label' => 'Limpar cache e RAM',
           'desc' => 'Apaga o cache de todos os apps e libera a memória em uso.',
           'help' => 'Remove arquivos temporários (cache) e limpa processos parados na memória. Libera espaço e RAM na hora. Não apaga seus dados nem conversas — só cache.',
           'argv' => ['adb-tweaks.sh', 'clean']]);
-    $add(['id' => 'clean.aot', 'group' => 'RAM / Limpeza', 'label' => 'Limpar dexopt (AOT)',
+    $add(['id' => 'clean.aot', 'group' => 'Desempenho', 'label' => 'Limpar dexopt (AOT)',
           'desc' => 'Recupera espaço e evita o compilador travar o aparelho.',
           'help' => 'O Android compila os apps em segundo plano e isso ocupa espaço e às vezes trava. Aqui essa compilação é limpa: recupera armazenamento. Os apps recompilam sozinhos quando você abre.',
           'argv' => ['adb-tweaks.sh', 'aot']]);
 
     // ----- Renderizador -----
-    $add(['id' => 'gpu', 'group' => 'Renderizador', 'label' => 'Aplicar conjunto GPU',
+    $add(['id' => 'gpu', 'group' => 'Display & Touch', 'label' => 'Aplicar conjunto GPU',
           'desc' => 'Renderizador + força GPU + remove desfoques.',
           'help' => 'Pacote gráfico completo: usa a GPU para desenhar a interface, remove os efeitos de desfoque (blur) que pesam e liga o driver de jogo. Deixa a navegação mais fluida.',
           'argv' => ['adb-tweaks.sh', 'gpu']]);
-    $add(['id' => 'gpu.opengl', 'group' => 'Renderizador', 'label' => 'Renderizador: OpenGL (padrão)',
+    $add(['id' => 'gpu.opengl', 'group' => 'Display & Touch', 'label' => 'Renderizador: OpenGL (padrão)',
           'desc' => 'Motor gráfico de fábrica. Mais compatível.',
           'help' => 'Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.',
           'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer opengl']]);
-    $add(['id' => 'gpu.skiagl', 'group' => 'Renderizador', 'label' => 'Renderizador: SkiaGL',
+    $add(['id' => 'gpu.skiagl', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL',
           'desc' => 'Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.',
           'help' => 'Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.',
           'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer skiagl']]);
-    $add(['id' => 'gpu.skiavk', 'group' => 'Renderizador', 'label' => 'Renderizador: Skia Vulkan',
+    $add(['id' => 'gpu.skiavk', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan',
           'desc' => 'Skia sobre Vulkan. Costuma dar mais fluidez.',
           'help' => 'Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.',
           'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer skiavk']]);
-    $add(['id' => 'gpu.force', 'group' => 'Renderizador', 'label' => 'Forçar renderização por GPU',
+    $add(['id' => 'gpu.force', 'group' => 'Display & Touch', 'label' => 'Forçar renderização por GPU',
           'desc' => 'Usa a GPU para desenhar a interface (não a CPU).',
           'help' => 'Faz a interface ser desenhada pela GPU em vez da CPU. Isso libera a CPU para outras tarefas e deixa a rolagem mais suave.',
           'argv' => ['adb-tweaks.sh', 'raw', 'settings put global force_gpu_rendering 1']]);
 
     // ----- Renderizador por app (Vulkan/OpenGL/ANGLE) -----
-    $add(['id' => 'app.angle', 'group' => 'Por app / jogo', 'label' => 'Usar ANGLE (OpenGL para Vulkan) no app',
+    $add(['id' => 'app.angle', 'group' => 'Apps e jogos', 'label' => 'Usar ANGLE (OpenGL para Vulkan) no app',
           'desc' => 'Faz o app usar Vulkan no lugar do OpenGL. Escolha o app/jogo.',
           'help' => 'ANGLE traduz os comandos de OpenGL para Vulkan. Em muitos jogos isso melhora o desempenho. Escolha o app na lista (ex.: com.dts.freefireth). Se piorar, use "Tirar ANGLE do app".',
           'argv' => ['deep-tune.sh', 'angle', 'add', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
-    $add(['id' => 'app.angle_remove', 'group' => 'Por app / jogo', 'label' => 'Tirar ANGLE do app',
+    $add(['id' => 'app.angle_remove', 'group' => 'Apps e jogos', 'label' => 'Tirar ANGLE do app',
           'desc' => 'Volta o app a usar o driver gráfico nativo.',
           'help' => 'Remove o ANGLE do app escolhido, devolvendo ele ao driver nativo do aparelho. Use se o jogo ficou instável ou com gráfico estranho.',
           'argv' => ['deep-tune.sh', 'angle', 'remove', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
-    $add(['id' => 'app.angle_reset', 'group' => 'Por app / jogo', 'label' => 'Resetar ANGLE (todos)',
+    $add(['id' => 'app.angle_reset', 'group' => 'Apps e jogos', 'label' => 'Resetar ANGLE (todos)',
           'desc' => 'Remove a seleção de ANGLE de todos os apps de uma vez.',
           'help' => 'Limpa tudo: nenhum app fica mais usando ANGLE. Bom para recomeçar do zero quando você não lembra quais apps configurou.',
           'argv' => ['deep-tune.sh', 'angle', 'reset'], 'confirm' => true]);
-    $add(['id' => 'app.perf', 'group' => 'Por app / jogo', 'label' => 'Modo performance no app',
+    $add(['id' => 'app.perf', 'group' => 'Apps e jogos', 'label' => 'Modo performance no app',
           'desc' => 'Prioriza o app/jogo escolhido (Game Mode).',
           'help' => 'Pede ao sistema para tratar o app como jogo: mais prioridade de CPU/GPU e menos interrupções. Escolha o pacote do jogo (ex.: com.dts.freefireth).',
           'argv' => ['game-per-app.sh', 'mode', '{pkg}', 'performance'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
-    $add(['id' => 'app.downscale', 'group' => 'Por app / jogo', 'label' => 'Reduzir resolução do jogo (FPS)',
+    $add(['id' => 'app.downscale', 'group' => 'Apps e jogos', 'label' => 'Reduzir resolução do jogo (FPS)',
           'desc' => 'Renderiza em resolução menor para ganhar FPS. 1.0 = nativo.',
           'help' => 'Diminui a resolução interna do jogo (0.3 a 1.0) mantendo o tamanho na tela. Menos pixels = mais FPS e menos aquecimento. 0.9 é quase imperceptível e já ajuda. Reinicie o jogo depois.',
           'argv' => ['game-per-app.sh', 'custom', '{pkg}', '{scale}'],
@@ -206,7 +206,7 @@ function otm_actions(): array {
               ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
               ['name' => 'scale', 'type' => 'float', 'label' => 'Downscale', 'min' => 0.3, 'max' => 1.0, 'step' => 0.05, 'default' => 0.9],
           ], 'confirm' => true]);
-    $add(['id' => 'app.reset', 'group' => 'Por app / jogo', 'label' => 'Resetar tuning do app',
+    $add(['id' => 'app.reset', 'group' => 'Apps e jogos', 'label' => 'Resetar tuning do app',
           'desc' => 'Remove overlay, ANGLE e modo do app escolhido.',
           'help' => 'Desfaz tudo o que foi aplicado só nesse app (ANGLE, resolução, modo de jogo), voltando ao normal.',
           'argv' => ['game-per-app.sh', 'reset', '{pkg}'],
@@ -221,12 +221,12 @@ function otm_actions(): array {
         'speed' => ['Speed', 'Máxima reatividade: resposta imediata.'],
     ];
     foreach ($touch as $k => $v) {
-        $add(['id' => "touch.$k", 'group' => 'Touch / Free Fire', 'label' => "Touch: {$v[0]}",
+        $add(['id' => "touch.$k", 'group' => 'Display & Touch', 'label' => "Touch: {$v[0]}",
               'desc' => $v[1],
               'help' => 'Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em "Restaurar touch".',
               'argv' => ['ff-touch.sh', $k], 'risk' => 'careful']);
     }
-    $add(['id' => 'touch.custom', 'group' => 'Touch / Free Fire', 'label' => 'Touch: personalizado',
+    $add(['id' => 'touch.custom', 'group' => 'Display & Touch', 'label' => 'Touch: personalizado',
           'desc' => 'Ajuste fino dos 4 parâmetros do toque.',
           'help' => 'Para quem quer calibrar na mão: responsiveness (rapidez da resposta), long press (tempo de toque longo), pointer speed (velocidade do ponteiro) e touch slop (quanto o dedo pode tremer antes de contar como arrasto).',
           'argv' => ['ff-touch.sh', 'custom', '{tr}', '{lp}', '{ps}', '{slop}'],
@@ -236,59 +236,59 @@ function otm_actions(): array {
               ['name' => 'ps', 'type' => 'int', 'label' => 'pointer speed', 'min' => -5, 'max' => 5, 'default' => 0],
               ['name' => 'slop', 'type' => 'int', 'label' => 'touch slop', 'min' => 0, 'max' => 30, 'default' => 4],
           ], 'risk' => 'careful']);
-    $add(['id' => 'touch.restore', 'group' => 'Touch / Free Fire', 'label' => 'Restaurar touch',
+    $add(['id' => 'touch.restore', 'group' => 'Display & Touch', 'label' => 'Restaurar touch',
           'desc' => 'Apaga os ajustes de toque e volta ao padrão.',
           'help' => 'Remove todos os ajustes de sensibilidade/toque, devolvendo o toque ao padrão do aparelho.',
           'argv' => ['ff-touch.sh', 'restore']]);
-    $add(['id' => 'ff', 'group' => 'Touch / Free Fire', 'label' => 'Preparar e abrir o Free Fire',
+    $add(['id' => 'ff', 'group' => 'Display & Touch', 'label' => 'Preparar e abrir o Free Fire',
           'desc' => 'Fecha apps de fundo, aplica o preset do FF e abre o jogo.',
           'help' => 'Prepara o aparelho para o Free Fire: fecha apps pesados que estavam abertos, aplica o modo de jogo e abre o FF. É o "entrar em modo partida" com um clique.',
           'argv' => ['adb-tweaks.sh', 'ff']]);
-    $add(['id' => 'game_mode', 'group' => 'Touch / Free Fire', 'label' => 'Ligar Game Mode',
+    $add(['id' => 'game_mode', 'group' => 'Display & Touch', 'label' => 'Ligar Game Mode',
           'desc' => 'Ativa o modo de jogo do sistema.',
           'help' => 'Liga o modo de jogo do Android, que dá prioridade ao jogo em execução e segura interrupções. Vale para todos os jogos.',
           'argv' => ['adb-tweaks.sh', 'game']]);
 
     // ----- Performance / Tela / Bateria -----
-    $add(['id' => 'perf', 'group' => 'Performance', 'label' => 'Performance (animações 0.5x)',
+    $add(['id' => 'perf', 'group' => 'Desempenho', 'label' => 'Performance (animações 0.5x)',
           'desc' => 'Deixa as animações mais rápidas: interface parece mais ágil.',
           'help' => 'Reduz a duração das animações do sistema pela metade. O celular parece mais rápido sem mudar nada de verdade — só a sensação de velocidade melhora.',
           'argv' => ['adb-tweaks.sh', 'perf']]);
-    $add(['id' => 'perf_max', 'group' => 'Performance', 'label' => 'Performance extrema (animações 0)',
+    $add(['id' => 'perf_max', 'group' => 'Desempenho', 'label' => 'Performance extrema (animações 0)',
           'desc' => 'Remove as animações: transições instantâneas.',
           'help' => 'Desliga as animações de vez. Tudo abre instantaneamente. Ótimo para aparelhos lentos, mas o visual fica mais "seco".',
           'argv' => ['adb-tweaks.sh', 'perf_max']]);
-    $add(['id' => 'fluidez', 'group' => 'Performance', 'label' => 'Fluidez (toque + Hz + animações)',
+    $add(['id' => 'fluidez', 'group' => 'Desempenho', 'label' => 'Fluidez (toque + Hz + animações)',
           'desc' => 'Pacote geral de fluidez: toque, taxa de atualização e animações.',
           'help' => 'Combina vários ajustes que, juntos, deixam o uso mais fluido: resposta de toque melhor, taxa de atualização no máximo e animações mais rápidas. É o "tudo para fluidez".',
           'argv' => ['adb-tweaks.sh', 'fluidez']]);
-    $add(['id' => 'dnd', 'group' => 'Performance', 'label' => 'Não perturbe (DND)',
+    $add(['id' => 'dnd', 'group' => 'Desempenho', 'label' => 'Não perturbe (DND)',
           'desc' => 'Silencia notificações durante o jogo.',
           'help' => 'Ativa o modo Não Perturbe: nada de notificações atrapalhando no meio da partida. Desligue com "Desligar DND" quando terminar.',
           'argv' => ['adb-tweaks.sh', 'dnd']]);
-    $add(['id' => 'dnd_off', 'group' => 'Performance', 'label' => 'Desligar DND',
+    $add(['id' => 'dnd_off', 'group' => 'Desempenho', 'label' => 'Desligar DND',
           'desc' => 'Volta a receber notificações normalmente.',
           'help' => 'Desliga o modo Não Perturbe e traz as notificações de volta.',
           'argv' => ['adb-tweaks.sh', 'dnd_off']]);
-    $add(['id' => 'screen', 'group' => 'Performance', 'label' => 'Tela / refresh alto',
+    $add(['id' => 'screen', 'group' => 'Desempenho', 'label' => 'Tela / refresh alto',
           'desc' => 'Fixa a taxa de atualização no máximo do aparelho.',
           'help' => 'Trava a tela na maior taxa de atualização (Hz) que o aparelho suporta. Rolagem e jogo ficam mais suaves. Gasta um pouco mais de bateria.',
           'argv' => ['adb-tweaks.sh', 'screen']]);
-    $add(['id' => 'battery', 'group' => 'Performance', 'label' => 'Economia de bateria',
+    $add(['id' => 'battery', 'group' => 'Desempenho', 'label' => 'Economia de bateria',
           'desc' => 'Ativa o modo de economia e o repouso profundo (Doze).',
           'help' => 'Liga a economia de energia e força o aparelho a "dormir" mais fundo quando parado. Dura mais a bateria. NÃO use enquanto joga — pode derrubar o desempenho.',
           'argv' => ['adb-tweaks.sh', 'battery']]);
-    $add(['id' => 'battery_off', 'group' => 'Performance', 'label' => 'Desligar economia',
+    $add(['id' => 'battery_off', 'group' => 'Desempenho', 'label' => 'Desligar economia',
           'desc' => 'Volta ao consumo normal (recomendado para jogar).',
           'help' => 'Desliga a economia de bateria e o repouso profundo. Use antes de jogar para o desempenho não ser limitado.',
           'argv' => ['adb-tweaks.sh', 'battery_off']]);
 
     // ----- Congelar apps -----
-    $add(['id' => 'freeze', 'group' => 'Congelar apps', 'label' => 'Congelar apps (cache freezer)',
+    $add(['id' => 'freeze', 'group' => 'Desempenho', 'label' => 'Congelar apps (cache freezer)',
           'desc' => 'Ativa o congelador do sistema e aplica a lista.',
           'help' => 'Liga o congelador de apps em cache do sistema: apps que você não está usando ficam pausados em vez de gastar RAM/bateria. Ótimo para liberar memória. Reverta em "Descongelar todos os apps".',
           'argv' => ['adb-tweaks.sh', 'freezer'], 'confirm' => true]);
-    $add(['id' => 'unfreeze', 'group' => 'Congelar apps', 'label' => 'Descongelar todos os apps',
+    $add(['id' => 'unfreeze', 'group' => 'Desempenho', 'label' => 'Descongelar todos os apps',
           'desc' => 'Garante que nenhum app fique preso em segundo plano.',
           'help' => 'Acorda todos os apps e desliga o congelador. Use se algum app parou de notificar ou não abre direito.',
           'argv' => ['adb-tweaks.sh', 'unfreeze_apps']]);
@@ -300,12 +300,12 @@ function otm_actions(): array {
         'pesado' => ['Pesado', 'Redes + streaming + apps extras.'],
     ];
     foreach ($debloat as $k => $v) {
-        $add(['id' => "debloat.$k", 'group' => 'Debloat', 'label' => "Debloat: perfil {$v[0]}",
+        $add(['id' => "debloat.$k", 'group' => 'Apps e jogos', 'label' => "Debloat: perfil {$v[0]}",
               'desc' => $v[1] . ' (reversível)',
               'help' => 'Debloat desativa apps de fábrica que você provavelmente não usa, liberando RAM, bateria e espaço. O perfil leve mexe só em redes sociais; o pesado mexe em mais apps. Tudo é reversível em "Debloat: reverter tudo".',
               'argv' => ['debloat.sh', 'on', $k], 'confirm' => true, 'risk' => 'careful', 'timeout' => 180]);
     }
-    $add(['id' => 'debloat.off', 'group' => 'Debloat', 'label' => 'Debloat: reverter tudo',
+    $add(['id' => 'debloat.off', 'group' => 'Apps e jogos', 'label' => 'Debloat: reverter tudo',
           'desc' => 'Reativa tudo que o debloat desativou.',
           'help' => 'Traz de volta todos os apps que o debloat desativou, deixando o sistema como estava antes.',
           'argv' => ['debloat.sh', 'off'], 'timeout' => 180]);
@@ -319,23 +319,23 @@ function otm_actions(): array {
         'latency' => ['Reduzir latência (vsync)', 'Ajusta o SurfaceFlinger para menos atraso.', 'Mexe no SurfaceFlinger para reduzir o atraso entre o toque e o que aparece na tela. Sensação de resposta mais imediata.'],
     ];
     foreach ($deep as $k => $v) {
-        $add(['id' => "deep.$k", 'group' => 'Profundas (root)', 'label' => $v[0],
+        $add(['id' => "deep.$k", 'group' => 'Desempenho', 'label' => $v[0],
               'desc' => $v[1], 'help' => $v[2] . ' Requer root e pede confirmação.',
               'argv' => ['deep-tune.sh', $k, 'on'], 'risk' => 'root', 'confirm' => true]);
-        $add(['id' => "deep.$k.off", 'group' => 'Profundas (root)', 'label' => $v[0] . ' — desligar',
+        $add(['id' => "deep.$k.off", 'group' => 'Desempenho', 'label' => $v[0] . ' — desligar',
               'desc' => 'Reverte este módulo profundo.',
               'help' => 'Desliga só este ajuste profundo, deixando os outros como estão.',
               'argv' => ['deep-tune.sh', $k, 'off'], 'risk' => 'root']);
     }
-    $add(['id' => 'deep.gaming', 'group' => 'Profundas (root)', 'label' => 'MODO JOGO TURBO',
+    $add(['id' => 'deep.gaming', 'group' => 'Desempenho', 'label' => 'MODO JOGO TURBO',
           'desc' => 'Liga todas as otimizações profundas de uma vez.',
           'help' => 'Ativa de uma vez frequência, I/O, memória, rede e latência. É o "turbo" completo para jogar. Requer root. Desfaça com "Reverter TUDO" ou módulo por módulo.',
           'argv' => ['deep-tune.sh', 'gaming', 'on'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
-    $add(['id' => 'deep.thermal', 'group' => 'Profundas (root)', 'label' => 'Ajustar limite térmico',
+    $add(['id' => 'deep.thermal', 'group' => 'Desempenho', 'label' => 'Ajustar limite térmico',
           'desc' => 'Deixa esquentar mais para segurar o clock (tem trava automática).',
           'help' => 'Sobe o limite de temperatura em que o aparelho começa a reduzir o desempenho. Isso segura o clock por mais tempo, mas o aparelho esquenta mais. Há uma trava automática de segurança.',
           'argv' => ['deep-tune.sh', 'thermal', 'on'], 'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'deep.detect', 'group' => 'Profundas (root)', 'label' => 'Detectar hardware',
+    $add(['id' => 'deep.detect', 'group' => 'Desempenho', 'label' => 'Detectar hardware',
           'desc' => 'Mostra CPU, GPU e kernel com recomendações.',
           'help' => 'Lê os dados de hardware do aparelho e sugere quais ajustes profundos fazem sentido. Só informa, não muda nada.',
           'argv' => ['deep-tune.sh', 'detect']]);
@@ -364,60 +364,60 @@ function otm_actions(): array {
                      'Aumenta os heaps da máquina virtual e a compilação em modo speed. Ajuda apps grandes (jogos) a não sofrerem GC no meio do uso.'],
     ];
     foreach ($ext as $k => $v) {
-        $add(['id' => "ext.$k", 'group' => 'Extremos (root)', 'label' => $v[0],
+        $add(['id' => "ext.$k", 'group' => 'Desempenho', 'label' => $v[0],
               'desc' => $v[1], 'help' => $v[2] . ' Requer root. Reversível em "' . $v[0] . ' — desligar".',
               'argv' => ['deep-tune.sh', $k, 'on'], 'risk' => 'root', 'confirm' => true]);
-        $add(['id' => "ext.$k.off", 'group' => 'Extremos (root)', 'label' => $v[0] . ' — desligar',
+        $add(['id' => "ext.$k.off", 'group' => 'Desempenho', 'label' => $v[0] . ' — desligar',
               'desc' => 'Reverte só este ajuste extremo.',
               'help' => 'Desliga apenas este ajuste extremo, mantendo os outros como estão.',
               'argv' => ['deep-tune.sh', $k, 'off'], 'risk' => 'root']);
     }
-    $add(['id' => 'ext.display', 'group' => 'Extremos (root)', 'label' => 'Display / HWUI (props)',
+    $add(['id' => 'ext.display', 'group' => 'Display & Touch', 'label' => 'Display / HWUI (props)',
           'desc' => 'Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa. SEM root.',
           'help' => 'Ajusta props "debug.*" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Não precisa de root e deixa a rolagem mais lisa.',
           'argv' => ['deep-tune.sh', 'display', 'on']]);
-    $add(['id' => 'ext.display.off', 'group' => 'Extremos (root)', 'label' => 'Display / HWUI — desligar',
+    $add(['id' => 'ext.display.off', 'group' => 'Display & Touch', 'label' => 'Display / HWUI — desligar',
           'desc' => 'Reverte as props de display.',
           'help' => 'Restaura as props de display/HWUI ao valor anterior.',
           'argv' => ['deep-tune.sh', 'display', 'off']]);
-    $add(['id' => 'ext.turbo', 'group' => 'Extremos (root)', 'label' => 'MODO EXTREMO (tudo)',
+    $add(['id' => 'ext.turbo', 'group' => 'Desempenho', 'label' => 'MODO EXTREMO (tudo)',
           'desc' => 'Turbo + TODOS os ajustes avançados de uma vez. Esquenta muito.',
           'help' => 'Liga o modo turbo e mais todos os knobs avançados: VM, escalonador, GPU, núcleos, input, idle, rede2, zRAM, kernel, display e dalvik. É o máximo de desempenho que o pack entrega. Esquenta MUITO e consome bateria — use com o aparelho ventilado. Reverte em "Reverter TUDO".',
           'argv' => ['deep-tune.sh', 'extreme'], 'risk' => 'root', 'confirm' => true, 'timeout' => 300]);
-    $add(['id' => 'ext.dexopt', 'group' => 'Extremos (root)', 'label' => 'Recompilar apps (dexopt)',
+    $add(['id' => 'ext.dexopt', 'group' => 'Desempenho', 'label' => 'Recompilar apps (dexopt)',
           'desc' => 'Compila os apps antecipadamente (AOT). Demora, mas reduz engasgo.',
           'help' => 'Recompila todos os apps em modo speed (AOT). A primeira abertura fica mais fluida e some o engasgo do compilador em segundo plano. Demora vários minutos e esquenta; roda melhor com o celular na tomada.',
           'argv' => ['deep-tune.sh', 'dexopt', 'run'], 'timeout' => 900, 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'ext.dexopt_status', 'group' => 'Extremos (root)', 'label' => 'Ver estado do dexopt',
+    $add(['id' => 'ext.dexopt_status', 'group' => 'Desempenho', 'label' => 'Ver estado do dexopt',
           'desc' => 'Mostra como está a compilação dos apps.',
           'help' => 'Mostra o estado da compilação AOT dos apps (o que já foi otimizado). Só leitura.',
           'argv' => ['deep-tune.sh', 'dexopt', 'status']]);
 
     // ----- Avançado (sem root) — pouco conhecido -----
-    $add(['id' => 'adv.obscure', 'group' => 'Avançado (sem root)', 'label' => 'Ajustes obscuros',
+    $add(['id' => 'adv.obscure', 'group' => 'Desempenho', 'label' => 'Ajustes obscuros',
           'desc' => 'Menos kills em 2º plano e o jogo fora do Doze. SEM root.',
           'help' => 'Reúne knobs pouco conhecidos: standby de apps, whitelist do Doze para o Free Fire e ajustes de memória. Resultado: apps não são mortos à toa e o jogo não sofre com o repouso profundo.',
           'argv' => ['adb-tweaks.sh', 'obscure']]);
-    $add(['id' => 'adv.mobile_net', 'group' => 'Avançado (sem root)', 'label' => 'Rede móvel / economia de dados',
+    $add(['id' => 'adv.mobile_net', 'group' => 'Rede e conexão', 'label' => 'Rede móvel / economia de dados',
           'desc' => 'Desliga a economia de dados que estrangula a velocidade.',
           'help' => 'Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.',
           'argv' => ['adb-tweaks.sh', 'mobile_net']]);
-    $add(['id' => 'adv.notif', 'group' => 'Avançado (sem root)', 'label' => 'Menos notificações (heads-up)',
+    $add(['id' => 'adv.notif', 'group' => 'Sistema', 'label' => 'Menos notificações (heads-up)',
           'desc' => 'Reduz o trabalho do sistema com notificações pop-up.',
           'help' => 'Desliga os balões (heads-up) e as bolhas de notificação. O sistema trabalha menos e sobra fluidez — bom para jogar.',
           'argv' => ['adb-tweaks.sh', 'notif']]);
-    $add(['id' => 'adv.window', 'group' => 'Avançado (sem root)', 'label' => 'Janelas / modo imersivo',
+    $add(['id' => 'adv.window', 'group' => 'Display & Touch', 'label' => 'Janelas / modo imersivo',
           'desc' => 'Transições mais curtas e modo imersivo (esconde barras).',
           'help' => 'Reduz as animações de janela e ativa o modo imersivo, escondendo as barras de status/navegação. Mais tela e menos distração no jogo.',
           'argv' => ['adb-tweaks.sh', 'window_tweaks']]);
 
 
     // ----- Turbo (sem root) — compilação, hibernação, caches, refresh -----
-    $add(['id' => 'turbo.status', 'group' => 'Turbo (sem root)', 'label' => 'Estado do Turbo',
+    $add(['id' => 'turbo.status', 'group' => 'Desempenho', 'label' => 'Estado do Turbo',
           'desc' => 'Mostra phantom killer, refresh, logs e scans em uma tela.',
           'help' => 'Resume o estado dos recursos turbo: Phantom Process Killer, taxa de atualização travada, logs persistentes e scans de Wi-Fi/Bluetooth "sempre disponível". Bom para conferir antes e depois de aplicar.',
           'argv' => ['turbo.sh', 'status']]);
-    $add(['id' => 'turbo.art', 'group' => 'Turbo (sem root)', 'label' => 'Recompilar um app (ART)',
+    $add(['id' => 'turbo.art', 'group' => 'Desempenho', 'label' => 'Recompilar um app (ART)',
           'desc' => 'Compila um app em speed-profile/speed para abrir mais rápido.',
           'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com "Verificar/limpar".',
           'argv' => ['turbo.sh', 'art', '{pkg}', '{mode}'],
@@ -426,16 +426,16 @@ function otm_actions(): array {
               ['name' => 'mode', 'type' => 'enum', 'label' => 'Modo',
                'options' => ['speed-profile', 'speed', 'everything'], 'default' => 'speed-profile']],
           'timeout' => 600, 'risk' => 'careful']);
-    $add(['id' => 'turbo.art_all', 'group' => 'Turbo (sem root)', 'label' => 'Recompilar todos os apps (ART)',
+    $add(['id' => 'turbo.art_all', 'group' => 'Desempenho', 'label' => 'Recompilar todos os apps (ART)',
           'desc' => 'Aplica speed-profile em todos os apps (melhora abertura geral).',
           'help' => 'Recompila todos os apps instalados em speed-profile. Deixa o sistema mais responsivo no geral. Demora vários minutos e consome bateria — rode com o aparelho carregando.',
           'argv' => ['turbo.sh', 'art-all', 'speed-profile'], 'timeout' => 900,
           'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'turbo.dexopt_bg', 'group' => 'Turbo (sem root)', 'label' => 'Disparar bg-dexopt-job',
+    $add(['id' => 'turbo.dexopt_bg', 'group' => 'Desempenho', 'label' => 'Disparar bg-dexopt-job',
           'desc' => 'Pede ao sistema a compilação ociosa dos apps agora.',
           'help' => 'Dispara o job de compilação em segundo plano do Android (bg-dexopt-job). Ele roda quando o aparelho estiver parado e compila os apps sem travar você.',
           'argv' => ['turbo.sh', 'dexopt-bg']]);
-    $add(['id' => 'turbo.standby', 'group' => 'Turbo (sem root)', 'label' => 'App Standby Bucket',
+    $add(['id' => 'turbo.standby', 'group' => 'Desempenho', 'label' => 'App Standby Bucket',
           'desc' => 'Define a "prioridade" de um app no plano de fundo.',
           'help' => 'Cada app tem um bucket (caixa) que diz quanto ele pode rodar em segundo plano. "restricted" quase congela; "rare" deixa rodar pouco; "active" libera. Útil para segurar apps que gastam bateria sem desativá-los.',
           'argv' => ['turbo.sh', 'standby', '{pkg}', '{bucket}'],
@@ -443,58 +443,58 @@ function otm_actions(): array {
               ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
               ['name' => 'bucket', 'type' => 'enum', 'label' => 'Bucket',
                'options' => ['active', 'working', 'frequent', 'rare', 'restricted'], 'default' => 'rare']]]);
-    $add(['id' => 'turbo.hibernate', 'group' => 'Turbo (sem root)', 'label' => 'Hibernar um app',
+    $add(['id' => 'turbo.hibernate', 'group' => 'Desempenho', 'label' => 'Hibernar um app',
           'desc' => 'Suspende um app por completo (estilo Hail).',
           'help' => 'Hiberna o app: para ele na hora e o deixa inativo (não roda nem em segundo plano) até você abrir de novo. Igual ao app Hail. Ótimo para redes sociais que ficam acordando o aparelho.',
           'argv' => ['turbo.sh', 'hibernate', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful']);
-    $add(['id' => 'turbo.hibernate_all', 'group' => 'Turbo (sem root)', 'label' => 'Hibernar todos os apps',
+    $add(['id' => 'turbo.hibernate_all', 'group' => 'Desempenho', 'label' => 'Hibernar todos os apps',
           'desc' => 'Hiberna todos os apps de usuário (poupando o jogo).',
           'help' => 'Hiberna de uma vez todos os apps que você instalou, exceto o Free Fire e uma allowlist. Libera bastante RAM e bateria. Reversível em "Descongelar agora" ou abrindo os apps.',
           'argv' => ['turbo.sh', 'hibernate', 'now'], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'turbo.killbg', 'group' => 'Turbo (sem root)', 'label' => 'Matar 2º plano (seletivo)',
+    $add(['id' => 'turbo.killbg', 'group' => 'Desempenho', 'label' => 'Matar 2º plano (seletivo)',
           'desc' => 'Encerra apps em segundo plano, poupando o jogo.',
           'help' => 'Fecha os apps que estão rodando escondidos para liberar RAM na hora, sem mexer no Free Fire. É um "matar tudo" mais seguro que o do sistema.',
           'argv' => ['turbo.sh', 'killbg'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.phantom_on', 'group' => 'Turbo (sem root)', 'label' => 'Phantom Killer: ligar',
+    $add(['id' => 'turbo.phantom_on', 'group' => 'Desempenho', 'label' => 'Phantom Killer: ligar',
           'desc' => 'Volta o limite de processos-fantasma ao padrão do Android.',
           'help' => 'O Phantom Process Killer mata processos "fantasma" (filhos de apps como Termux/emuladores). Aqui ele volta ao padrão do sistema. Use se você não precisa de serviços em segundo plano.',
           'argv' => ['turbo.sh', 'phantom', 'on']]);
-    $add(['id' => 'turbo.phantom_off', 'group' => 'Turbo (sem root)', 'label' => 'Phantom Killer: desligar',
+    $add(['id' => 'turbo.phantom_off', 'group' => 'Desempenho', 'label' => 'Phantom Killer: desligar',
           'desc' => 'Desliga o limite (bom p/ Termux, emuladores e serviços).',
           'help' => 'Desliga o Phantom Process Killer: apps como Termux, emuladores e servidores deixam de ter processos mortos pelo sistema. Pode aumentar um pouco o uso de bateria.',
           'argv' => ['turbo.sh', 'phantom', 'off'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.trim', 'group' => 'Turbo (sem root)', 'label' => 'Poda de caches real',
+    $add(['id' => 'turbo.trim', 'group' => 'Desempenho', 'label' => 'Poda de caches real',
           'desc' => 'Libera espaço dos caches sem apagar dados de apps.',
           'help' => 'Usa o trim-caches oficial do Android: apaga só arquivos de cache temporários, nunca seus dados, contas ou conversas. Mostra o espaço livre antes e depois.',
           'argv' => ['turbo.sh', 'trim']]);
-    $add(['id' => 'turbo.refresh_max', 'group' => 'Turbo (sem root)', 'label' => 'Refresh no máximo',
+    $add(['id' => 'turbo.refresh_max', 'group' => 'Desempenho', 'label' => 'Refresh no máximo',
           'desc' => 'Trava a tela na maior taxa de atualização (ex.: 120Hz).',
           'help' => 'Trava a taxa de atualização no valor mais alto suportado pela tela. Rolagem e jogo ficam mais lisos. Gasta um pouco mais de bateria. Reverte em "Refresh automático".',
           'argv' => ['turbo.sh', 'refresh', 'max'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.refresh_auto', 'group' => 'Turbo (sem root)', 'label' => 'Refresh automático',
+    $add(['id' => 'turbo.refresh_auto', 'group' => 'Desempenho', 'label' => 'Refresh automático',
           'desc' => 'Devolve o controle da taxa de atualização ao sistema.',
           'help' => 'Remove a trava de refresh e deixa o Android escolher a taxa conforme a tela e a bateria.',
           'argv' => ['turbo.sh', 'refresh', 'auto']]);
-    $add(['id' => 'turbo.perfmode_on', 'group' => 'Turbo (sem root)', 'label' => 'Modo desempenho fixo: ligar',
+    $add(['id' => 'turbo.perfmode_on', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: ligar',
           'desc' => 'Força o aparelho a priorizar desempenho.',
           'help' => 'Trava o aparelho em modo de desempenho (não reduz clocks por bateria). Mais FPS sustentado, mais calor e mais consumo. Reverte em "desligar".',
           'argv' => ['turbo.sh', 'perfmode', 'on'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.perfmode_off', 'group' => 'Turbo (sem root)', 'label' => 'Modo desempenho fixo: desligar',
+    $add(['id' => 'turbo.perfmode_off', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: desligar',
           'desc' => 'Volta o controle de energia ao sistema.',
           'help' => 'Desliga o modo de desempenho fixo e devolve o gerenciamento de energia ao Android.',
           'argv' => ['turbo.sh', 'perfmode', 'off']]);
-    $add(['id' => 'turbo.telemetry_off', 'group' => 'Turbo (sem root)', 'label' => 'Telemetria e logs: desligar',
+    $add(['id' => 'turbo.telemetry_off', 'group' => 'Desempenho', 'label' => 'Telemetria e logs: desligar',
           'desc' => 'Desliga logs persistentes e scans "sempre disponível".',
           'help' => 'Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth "sempre disponível". Menos trabalho em segundo plano e mais privacidade. Reversível em "religar".',
           'argv' => ['turbo.sh', 'telemetry', 'off'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.telemetry_on', 'group' => 'Turbo (sem root)', 'label' => 'Telemetria e logs: religar',
+    $add(['id' => 'turbo.telemetry_on', 'group' => 'Desempenho', 'label' => 'Telemetria e logs: religar',
           'desc' => 'Volta os logs e scans ao padrão.',
           'help' => 'Religa os logs e as varreduras que o modo privacidade desligou, voltando ao comportamento padrão do Android.',
           'argv' => ['turbo.sh', 'telemetry', 'on']]);
 
     // ----- Jogo: modo desempenho genérico (Android 12+) -----
-    $add(['id' => 'game.mode', 'group' => 'Por app / jogo', 'label' => 'Modo do jogo (genérico)',
+    $add(['id' => 'game.mode', 'group' => 'Apps e jogos', 'label' => 'Modo do jogo (genérico)',
           'desc' => 'Define performance/battery/standard para qualquer jogo ou app.',
           'help' => 'Usa o Game Mode do Android 12+: "performance" prioriza FPS, "battery" prioriza economia, "standard" deixa o sistema decidir. Funciona em qualquer app, não só no Free Fire.',
           'argv' => ['game-per-app.sh', 'mode', '{pkg}', '{mode}'],
@@ -505,7 +505,7 @@ function otm_actions(): array {
           'risk' => 'careful']);
 
     // ----- Debloat: preview com classificação de risco -----
-    $add(['id' => 'debloat.preview', 'group' => 'Debloat', 'label' => 'Prévia do debloat (com risco)',
+    $add(['id' => 'debloat.preview', 'group' => 'Apps e jogos', 'label' => 'Prévia do debloat (com risco)',
           'desc' => 'Mostra o que seria desativado, com selo SAFE/CAUTION/DANGER.',
           'help' => 'Antes de aplicar, veja exatamente o que o debloat faria e o risco de cada app: SAFE (pode desativar sem medo), CAUTION (cuidado, pode quebrar algo) ou DANGEROUS (não mexa). Nada é alterado na prévia.',
           'argv' => ['debloat.sh', 'preview', '{profile}'],
@@ -513,137 +513,137 @@ function otm_actions(): array {
                         'options' => ['leve', 'medio', 'pesado'], 'default' => 'medio']]]);
 
     // ----- DNS: NextDNS e benchmark de latência -----
-    $add(['id' => 'dns.nextdns', 'group' => 'DNS', 'label' => 'NextDNS',
+    $add(['id' => 'dns.nextdns', 'group' => 'Rede e conexão', 'label' => 'NextDNS',
           'desc' => 'Filtragem e privacidade configuráveis (NextDNS).',
           'help' => 'Aponta o DNS privado para o NextDNS: filtragem de anúncios/rastreadores e privacidade, configurável no site do NextDNS. Volte ao normal em "DNS automático".',
           'argv' => ['dns.sh', 'nextdns']]);
-    $add(['id' => 'dns.bench', 'group' => 'DNS', 'label' => 'Benchmark de DNS',
+    $add(['id' => 'dns.bench', 'group' => 'Rede e conexão', 'label' => 'Benchmark de DNS',
           'desc' => 'Mede a latência de cada perfil de DNS.',
           'help' => 'Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.',
           'argv' => ['dns.sh', 'bench'], 'timeout' => 180]);
 
     // ----- Wi-Fi e rede -----
-    $add(['id' => 'wifi', 'group' => 'Wi-Fi e rede', 'label' => 'Ajustes de Wi-Fi',
+    $add(['id' => 'wifi', 'group' => 'Rede e conexão', 'label' => 'Ajustes de Wi-Fi',
           'desc' => 'Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.',
           'help' => 'O Android fica varrendo redes Wi-Fi o tempo todo, mesmo conectado. Isso gasta bateria e cria picos de uso da CPU. Aqui a varredura em segundo plano é desligada e a economia de energia do Wi-Fi é ligada. Reverte em "Rede: voltar ao automático".',
           'argv' => ['adb-tweaks.sh', 'wifi']]);
-    $add(['id' => 'net', 'group' => 'Wi-Fi e rede', 'label' => 'Rede / TCP (DNS + buffers)',
+    $add(['id' => 'net', 'group' => 'Rede e conexão', 'label' => 'Rede / TCP (DNS + buffers)',
           'desc' => 'DNS Cloudflare + buffers TCP maiores para menos travada em jogo.',
           'help' => 'Aumenta os buffers de rede (TCP) e troca o DNS para o Cloudflare. Resultado: menos picos de latência e carregamento mais estável. Não é o mesmo que o perfil de DNS gaming — aqui o foco é o buffer de rede.',
           'argv' => ['adb-tweaks.sh', 'net']]);
-    $add(['id' => 'net_reset', 'group' => 'Wi-Fi e rede', 'label' => 'Rede: voltar ao automático',
+    $add(['id' => 'net_reset', 'group' => 'Rede e conexão', 'label' => 'Rede: voltar ao automático',
           'desc' => 'Volta o DNS e a rede para o padrão da operadora.',
           'help' => 'Desfaz os ajustes de rede: DNS volta para automático e os buffers deixam de ser forçados. Use se a internet ficar estranha depois de aplicar.',
           'argv' => ['adb-tweaks.sh', 'net_reset']]);
 
     // ----- Congelar apps (extras) -----
-    $add(['id' => 'freezer_off', 'group' => 'Congelar apps', 'label' => 'Desligar o congelador',
+    $add(['id' => 'freezer_off', 'group' => 'Desempenho', 'label' => 'Desligar o congelador',
           'desc' => 'Desliga o congelador de apps em cache do sistema.',
           'help' => 'O congelador do sistema (cached_apps_freezer) pausa apps em segundo plano para liberar RAM. Aqui ele é desligado — útil se algum app parou de receber notificações.',
           'argv' => ['adb-tweaks.sh', 'freezer_off']]);
-    $add(['id' => 'freeze_now', 'group' => 'Congelar apps', 'label' => 'Congelar agora (aplicar lista)',
+    $add(['id' => 'freeze_now', 'group' => 'Desempenho', 'label' => 'Congelar agora (aplicar lista)',
           'desc' => 'Congela os apps da lista negra (menos a whitelist).',
           'help' => 'Aplica o congelamento na hora: os apps da lista negra são suspensos, exceto os protegidos pela whitelist. Ganha RAM livre. Reverte em "Descongelar agora".',
           'argv' => ['adb-tweaks.sh', 'freeze_apps'], 'confirm' => true, 'risk' => 'careful']);
-    $add(['id' => 'unfreeze_now', 'group' => 'Congelar apps', 'label' => 'Descongelar agora (todos)',
+    $add(['id' => 'unfreeze_now', 'group' => 'Desempenho', 'label' => 'Descongelar agora (todos)',
           'desc' => 'Acorda todos os apps e desliga o congelador.',
           'help' => 'Garante que nenhum app fique preso em segundo plano: reativa todos e desliga o congelador. Use se algo não abrir ou não notificar.',
           'argv' => ['adb-tweaks.sh', 'unfreeze_apps']]);
 
     // ----- Debloat por app -----
-    $add(['id' => 'debloat.app.disable', 'group' => 'Debloat', 'label' => 'Desativar um app',
+    $add(['id' => 'debloat.app.disable', 'group' => 'Apps e jogos', 'label' => 'Desativar um app',
           'desc' => 'Desativa um app específico (some da gaveta, mas fica instalado).',
           'help' => 'Desativa só o app que você escolher. Ele para de rodar e de gastar bateria, mas continua instalado. Reversível em "Reativar um app".',
           'argv' => ['debloat.sh', 'disable', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'debloat.app.enable', 'group' => 'Debloat', 'label' => 'Reativar um app',
+    $add(['id' => 'debloat.app.enable', 'group' => 'Apps e jogos', 'label' => 'Reativar um app',
           'desc' => 'Liga de novo um app que você desativou.',
           'help' => 'Traz de volta um app desativado. Ele volta a aparecer e a rodar normalmente.',
           'argv' => ['debloat.sh', 'enable', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
-    $add(['id' => 'debloat.app.uninstall', 'group' => 'Debloat', 'label' => 'Desinstalar p/ o usuário',
+    $add(['id' => 'debloat.app.uninstall', 'group' => 'Apps e jogos', 'label' => 'Desinstalar p/ o usuário',
           'desc' => 'Remove o app só para você (dá para reinstalar depois).',
           'help' => 'Desinstala o app apenas para o seu usuário — o sistema continua com a cópia e você pode reinstalar sem baixar de novo. Ótimo para tirar bloatware sem risco. Reversível em "Reinstalar app".',
           'argv' => ['debloat.sh', 'uninstall', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'debloat.app.restore', 'group' => 'Debloat', 'label' => 'Reinstalar app',
+    $add(['id' => 'debloat.app.restore', 'group' => 'Apps e jogos', 'label' => 'Reinstalar app',
           'desc' => 'Traz de volta um app que você desinstalou para o usuário.',
           'help' => 'Reinstala o app removido com "Desinstalar p/ o usuário", sem precisar baixar nada.',
           'argv' => ['debloat.sh', 'restore', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
-    $add(['id' => 'debloat.app.restrict', 'group' => 'Debloat', 'label' => 'Restringir em 2º plano',
+    $add(['id' => 'debloat.app.restrict', 'group' => 'Apps e jogos', 'label' => 'Restringir em 2º plano',
           'desc' => 'Impede o app de rodar escondido (modo restrito).',
           'help' => 'Coloca o app no modo restrito: ele não roda em segundo plano nem gasta bateria, mas continua abrindo normalmente quando você toca. Reversível em "Tirar restrição".',
           'argv' => ['debloat.sh', 'restrict', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful']);
-    $add(['id' => 'debloat.app.unrestrict', 'group' => 'Debloat', 'label' => 'Tirar restrição',
+    $add(['id' => 'debloat.app.unrestrict', 'group' => 'Apps e jogos', 'label' => 'Tirar restrição',
           'desc' => 'Devolve o app ao funcionamento normal.',
           'help' => 'Remove o modo restrito do app, deixando ele rodar em segundo plano de novo.',
           'argv' => ['debloat.sh', 'unrestrict', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
 
     // ----- Snapshots (extras) -----
-    $add(['id' => 'snapshot_list', 'group' => 'Rápido', 'label' => 'Ver snapshots salvos',
+    $add(['id' => 'snapshot_list', 'group' => 'Geral', 'label' => 'Ver snapshots salvos',
           'desc' => 'Lista os snapshots que você já tirou.',
           'help' => 'Mostra todas as fotos de configuração que você salvou, com data e id. Serve para escolher qual restaurar.',
           'argv' => ['snapshot.sh', 'list']]);
-    $add(['id' => 'snapshot_diff', 'group' => 'Rápido', 'label' => 'Comparar com o último snapshot',
+    $add(['id' => 'snapshot_diff', 'group' => 'Geral', 'label' => 'Comparar com o último snapshot',
           'desc' => 'Mostra o que mudou desde o snapshot mais recente.',
           'help' => 'Compara as configurações atuais com o último snapshot e lista só o que mudou. Bom para conferir o que o pack alterou.',
           'argv' => ['snapshot.sh', 'diff', 'latest']]);
-    $add(['id' => 'snapshot_restore', 'group' => 'Rápido', 'label' => 'Restaurar último snapshot',
+    $add(['id' => 'snapshot_restore', 'group' => 'Geral', 'label' => 'Restaurar último snapshot',
           'desc' => 'Volta as configurações para o último snapshot salvo.',
           'help' => 'Devolve o aparelho ao estado do último snapshot: desfaz as mudanças feitas depois dele. É o "botão de voltar" mais seguro.',
           'argv' => ['snapshot.sh', 'restore', 'latest'], 'risk' => 'careful', 'confirm' => true]);
 
     // ----- Diagnóstico -----
-    $add(['id' => 'diag.profile', 'group' => 'Diagnóstico', 'label' => 'Perfil do aparelho (SoC/GPU)',
+    $add(['id' => 'diag.profile', 'group' => 'Sistema', 'label' => 'Perfil do aparelho (SoC/GPU)',
           'desc' => 'Detecta o processador, a GPU e o que combina com o seu aparelho.',
           'help' => 'Lê as informações do seu aparelho (família do processador, GPU, kernel) e recomenda quais otimizações profundas tendem a funcionar melhor. Não muda nada — só informa.',
           'argv' => ['device-profile.sh']]);
-    $add(['id' => 'diag.profile_save', 'group' => 'Diagnóstico', 'label' => 'Salvar perfil do aparelho',
+    $add(['id' => 'diag.profile_save', 'group' => 'Sistema', 'label' => 'Salvar perfil do aparelho',
           'desc' => 'Salva o relatório do aparelho num arquivo.',
           'help' => 'Gera um arquivo com o perfil completo do aparelho. Útil para guardar ou compartilhar ao pedir ajuda.',
           'argv' => ['device-profile.sh', 'save']]);
-    $add(['id' => 'diag.deep_detect', 'group' => 'Diagnóstico', 'label' => 'Detectar hardware (root)',
+    $add(['id' => 'diag.deep_detect', 'group' => 'Sistema', 'label' => 'Detectar hardware (root)',
           'desc' => 'Mostra CPU, GPU, kernel e recomendações.',
           'help' => 'Versão aprofundada da detecção, com detalhes de CPU/GPU e sugestões de tuning. Só leitura.',
           'argv' => ['deep-tune.sh', 'detect']]);
-    $add(['id' => 'diag.thermal', 'group' => 'Diagnóstico', 'label' => 'Ver temperatura atual',
+    $add(['id' => 'diag.thermal', 'group' => 'Sistema', 'label' => 'Ver temperatura atual',
           'desc' => 'Lê a temperatura do aparelho agora.',
           'help' => 'Mostra a temperatura atual (quando o aparelho expõe esse sensor). Bom para ver se o ajuste térmico passou do ponto.',
           'argv' => ['deep-tune.sh', 'thermal', 'temp']]);
-    $add(['id' => 'diag.dns', 'group' => 'Diagnóstico', 'label' => 'Ver DNS atual',
+    $add(['id' => 'diag.dns', 'group' => 'Sistema', 'label' => 'Ver DNS atual',
           'desc' => 'Mostra qual perfil de DNS está ativo agora.',
           'help' => 'Confere se o DNS privado está ligado e qual servidor está em uso.',
           'argv' => ['dns.sh', 'status']]);
-    $add(['id' => 'diag.bench_before', 'group' => 'Diagnóstico', 'label' => 'Benchmark: marcar ANTES',
+    $add(['id' => 'diag.bench_before', 'group' => 'Sistema', 'label' => 'Benchmark: marcar ANTES',
           'desc' => 'Guarda o estado atual para comparar depois de otimizar.',
           'help' => 'Tira uma medida de referência antes de aplicar as otimizações. Depois use "marcar DEPOIS" para ver o ganho. Dica: use os nomes "antes" e "depois".',
           'argv' => ['bench.sh', 'save', '{label}'],
           'params' => [['name' => 'label', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'antes']]]);
-    $add(['id' => 'diag.bench_after', 'group' => 'Diagnóstico', 'label' => 'Benchmark: marcar DEPOIS',
+    $add(['id' => 'diag.bench_after', 'group' => 'Sistema', 'label' => 'Benchmark: marcar DEPOIS',
           'desc' => 'Mede de novo e compara com o "antes".',
           'help' => 'Coleta o estado atual e compara com a medida anterior, mostrando a diferença. Rode depois de aplicar o pack.',
           'argv' => ['bench.sh', 'run', '{label}'],
           'params' => [['name' => 'label', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'depois']]]);
 
     // ----- Módulos (plugins do pack) -----
-    $add(['id' => 'module.run', 'group' => 'Módulos', 'label' => 'Executar um módulo',
+    $add(['id' => 'module.run', 'group' => 'Geral', 'label' => 'Executar um módulo',
           'desc' => 'Roda um dos módulos/plugins incluídos no pack.',
-          'help' => 'Os módulos são os complementos (tweaks, touch, GPU, bateria). Digite o nome exato do módulo — veja a lista na aba Módulos. Ação reversível conforme o módulo.',
+          'help' => 'Os módulos são os complementos (tweaks, touch, GPU, bateria). Digite o nome exato do módulo — veja a lista na aba Geral. Ação reversível conforme o módulo.',
           'argv' => ['modules.sh', 'run', '{name}'],
           'params' => [['name' => 'name', 'type' => 'name', 'label' => 'Nome do módulo']],
           'risk' => 'careful', 'confirm' => true, 'timeout' => 180]);
 
     // ----- Touch: abrir o jogo -----
-    $add(['id' => 'ff_open', 'group' => 'Touch / Free Fire', 'label' => 'Abrir o Free Fire',
+    $add(['id' => 'ff_open', 'group' => 'Display & Touch', 'label' => 'Abrir o Free Fire',
           'desc' => 'Abre o jogo (útil depois de aplicar os ajustes).',
           'help' => 'Manda o Free Fire abrir. Use depois de aplicar touch/modo de jogo para já entrar otimizado.',
           'argv' => ['adb-tweaks.sh', 'ff_open']]);
 
     // ----- Configs: como o pack fala com o Android (sem root) -----
-    $add(['id' => 'config.set', 'group' => 'Configs', 'label' => 'Definir conexão do pack',
+    $add(['id' => 'config.set', 'group' => 'Sistema', 'label' => 'Definir conexão do pack',
           'desc' => 'Escolha como o pack acessa o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático.',
           'help' => 'Define por onde o pack manda os comandos. Sem root, use Shizuku (rish) no celular ou a depuração por Wi-Fi (ADB, informe o IP:porta do aparelho). "automático" deixa o pack detectar sozinho. Depois clique em "Testar conexão" para confirmar.',
           'argv' => ['config.sh', 'set', '{mode}', '{target}'],
@@ -651,39 +651,39 @@ function otm_actions(): array {
               ['name' => 'mode', 'type' => 'name', 'label' => 'Modo', 'default' => 'auto'],
               ['name' => 'target', 'type' => 'text', 'label' => 'Endereço (só p/ ADB: host:porta)', 'optional' => true],
           ]]);
-    $add(['id' => 'config.test', 'group' => 'Configs', 'label' => 'Testar conexão',
+    $add(['id' => 'config.test', 'group' => 'Sistema', 'label' => 'Testar conexão',
           'desc' => 'Confere de verdade se o pack consegue mandar comandos ao aparelho.',
           'help' => 'Faz um teste real: lê o modelo do aparelho, a versão do Android e tenta ler/gravar um ajuste. Se falhar, diz o que falta (Shizuku ativo ou depuração por Wi-Fi ligada).',
           'argv' => ['config.sh', 'test']]);
-    $add(['id' => 'config.show', 'group' => 'Configs', 'label' => 'Ver configuração',
+    $add(['id' => 'config.show', 'group' => 'Sistema', 'label' => 'Ver configuração',
           'desc' => 'Mostra o modo atual e o que foi detectado.',
           'help' => 'Mostra o arquivo de configuração, o modo salvo e o que o pack detectou agora (Shizuku/ADB/root/local). Só leitura.',
           'argv' => ['config.sh', 'show']]);
-    $add(['id' => 'config.reset', 'group' => 'Configs', 'label' => 'Voltar ao automático',
+    $add(['id' => 'config.reset', 'group' => 'Sistema', 'label' => 'Voltar ao automático',
           'desc' => 'Apaga a configuração e volta à detecção automática.',
           'help' => 'Remove o arquivo de configuração. O pack volta a detectar sozinho o melhor caminho (Shizuku, ADB, root ou local).',
           'argv' => ['config.sh', 'reset']]);
 
     // ----- Configs: permissões e segundo plano (feitas pelo shell) -----
-    $add(['id' => 'perm.app', 'group' => 'Configs', 'label' => 'Permitir o app do pack',
+    $add(['id' => 'perm.app', 'group' => 'Sistema', 'label' => 'Permitir o app do pack',
           'desc' => 'Libera o app do pack para rodar em segundo plano, sem restrição de bateria e fora do Doze.',
           'help' => 'Sem isso o Android adormece o app do pack: as otimizações param sozinhas, o som não toca e o acesso cai. Aqui o app entra na lista de isenção do Doze, ganha permissão de rodar em segundo plano e de manter a CPU acordada. Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_app'], 'timeout' => 120]);
-    $add(['id' => 'perm.ff', 'group' => 'Configs', 'label' => 'Permitir o Free Fire',
+    $add(['id' => 'perm.ff', 'group' => 'Sistema', 'label' => 'Permitir o Free Fire',
           'desc' => 'Libera o Free Fire para rodar em segundo plano sem ser congelado.',
           'help' => 'Impede o sistema de congelar o Free Fire quando você troca de app ou a tela apaga — evita o jogo fechar no meio da partida. Também tira a restrição de bateria. Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_ff'], 'timeout' => 120]);
-    $add(['id' => 'perm.battery', 'group' => 'Configs', 'label' => 'Bateria sem economia agressiva',
+    $add(['id' => 'perm.battery', 'group' => 'Sistema', 'label' => 'Bateria sem economia agressiva',
           'desc' => 'Desliga o modo de economia, o App Standby e a gestão adaptativa de bateria.',
           'help' => 'Desliga a economia de bateria que corta o desempenho e o App Standby (que suspende apps em segundo plano). É o que deixa o pack e o jogo "acordados". Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_battery'], 'timeout' => 120]);
-    $add(['id' => 'perm.all', 'group' => 'Configs', 'label' => 'Aplicar todas as permissões',
+    $add(['id' => 'perm.all', 'group' => 'Sistema', 'label' => 'Aplicar todas as permissões',
           'desc' => 'App do pack + Free Fire + bateria, de uma vez.',
           'help' => 'Faz tudo o que o pack precisa para funcionar em segundo plano: libera o app do pack, libera o Free Fire e desliga a economia agressiva de bateria. É o "recomendado" para quem não quer mexer um por um.',
           'argv' => ['adb-tweaks.sh', 'perm_all'], 'timeout' => 180]);
 
     // ----- Configs: aparência do painel (feita pelo próprio painel) -----
-    $add(['id' => 'appearance', 'group' => 'Configs', 'label' => 'Aparência e som',
+    $add(['id' => 'appearance', 'group' => 'Sistema', 'label' => 'Aparência e som',
           'desc' => 'Permissões, tema, cor, fonte, DPI e som do app.',
           'help' => 'Abre as configurações do painel: as permissões que o app precisa para funcionar (bateria, segundo plano, Doze), o tema (claro, escuro ou automático), a cor de destaque, a fonte, o DPI do app e ligar/desligar os sons. Fica salvo neste aparelho.',
           'argv' => [], 'ui' => 'appearance']);

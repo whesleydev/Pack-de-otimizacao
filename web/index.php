@@ -35,26 +35,21 @@ if (!otm_auth_logged_in()) {
 
 $actions = array_values(otm_actions());
 
+// Ordem fixa das categorias (visão simplificada, agrupada por assunto).
+$GROUP_ORDER = ['Geral', 'Display & Touch', 'Rede e conexão', 'Desempenho', 'Apps e jogos', 'Sistema'];
+$byGroup = [];
+foreach ($actions as $a) { $byGroup[$a['group']][] = $a; }
 $groups = [];
-foreach ($actions as $a) { $groups[$a['group']][] = $a; }
+foreach ($GROUP_ORDER as $g) { if (!empty($byGroup[$g])) $groups[$g] = $byGroup[$g]; }
+foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $items; }  // fallback
 
 $meta = [
-    'Rápido'            => ['t' => 'Rápido',            's' => 'Aplique o conjunto seguro, reverta tudo ou salve um snapshot.'],
-    'DNS'               => ['t' => 'DNS privado',       's' => 'Perfis de DNS-over-TLS: privacidade, anúncios, família e latência.'],
-    'RAM / Limpeza'     => ['t' => 'RAM e limpeza',     's' => 'Mais memória livre e limpeza de cache.'],
-    'Renderizador'      => ['t' => 'Renderizador',      's' => 'Troque o motor gráfico: OpenGL, SkiaGL ou Skia Vulkan.'],
-    'Por app / jogo'    => ['t' => 'Por app ou jogo',   's' => 'Escolha um app e mude renderizador, modo ou resolução.'],
-    'Touch / Free Fire' => ['t' => 'Touch e Free Fire', 's' => 'Perfis de sensibilidade, mira e ajustes do jogo.'],
-    'Performance'       => ['t' => 'Performance',       's' => 'Animações, tela, bateria e modo não perturbe.'],
-    'Wi-Fi e rede'      => ['t' => 'Wi-Fi e rede',      's' => 'Varredura de Wi-Fi, buffers TCP e reset de rede.'],
-    'Congelar apps'     => ['t' => 'Congelar apps',     's' => 'Congele apps em segundo plano para liberar RAM.'],
-    'Debloat'           => ['t' => 'Debloat',           's' => 'Desativa bloatware por perfil ou por app. Tudo é reversível.'],
-    'Profundas (root)'  => ['t' => 'Profundas (root)',  's' => 'Mexem em kernel e sistema. Só com root, use com cuidado.'],
-    'Extremos (root)'   => ['t' => 'Extremos (root)',   's' => 'Knobs avançados que quase ninguém conhece: VM, escalonador, GPU, núcleos, input, idle, zRAM e mais.'],
-    'Avançado (sem root)'=> ['t' => 'Avançado (sem root)','s' => 'Ajustes pouco conhecidos que não pedem root: standby, rede móvel, notificações e janelas.'],
-    'Diagnóstico'       => ['t' => 'Diagnóstico',       's' => 'Detecta o aparelho, mede e mostra o estado atual. Só leitura.'],
-    'Configs'           => ['t' => 'Configs',           's' => 'Como o pack conversa com o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático. Sem root por padrão.'],
-    'Módulos'           => ['t' => 'Módulos',           's' => 'Complementos do pack (tweaks, touch, GPU, bateria).'],
+    'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
+    'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, resolução e sensibilidade de toque (Free Fire).'],
+    'Rede e conexão'  => ['t' => 'Rede e conexão',   's' => 'DNS privado (DoT), Wi-Fi e buffers TCP.'],
+    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, congelar apps e ajustes profundos (root).'],
+    'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo, Game Mode e debloat (por perfil ou por app).'],
+    'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],
 ];
 
 $riskLabel = ['safe' => 'seguro', 'careful' => 'cuidado', 'root' => 'root'];
@@ -433,7 +428,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
         </div>
         <div class="note">
           <span aria-hidden="true">ⓘ</span>
-          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Rápido para poder voltar.
+          <div><b>Antes de mexer:</b> salve um <b>snapshot</b> na aba Geral para poder voltar.
           Ações <b>cuidado</b> e <b>root</b> pedem confirmação e são reversíveis.</div>
         </div>
         <div class="grid">

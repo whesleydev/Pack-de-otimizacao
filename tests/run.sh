@@ -464,6 +464,14 @@ t_app_fixes() {
     fi
     grep -q 'Log.w("SoundPlayer"' "$src/SoundPlayer.kt" \
         && ok "som: falhas vão para o logcat" || bad "som: erros engolidos em silêncio"
+    # 10b) soundFor usa as categorias novas (não as antigas)
+    grep -q '"Desempenho", "Apps e jogos" ->' "$src/PackBridge.kt" \
+        && ok "som: soundFor mapeia as categorias novas" || bad "som: soundFor com categorias antigas"
+    if grep -q '"RAM / Limpeza"\|"Touch / Free Fire"\|"Congelar apps"' "$src/PackBridge.kt"; then
+        bad "som: soundFor ainda cita categoria antiga"
+    else
+        ok "som: soundFor sem categorias antigas"
+    fi
     # 11) MP3 descomprimidos no APK (openFd exige STORED)
     grep -q 'noCompress += "mp3"' "$ROOT/android/app/build.gradle.kts" \
         && ok "apk: mp3 sem compressão (openFd funciona)" || bad "apk: mp3 sem noCompress"
@@ -815,7 +823,10 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -ge 13 ] && ok "index.php renderiza as categorias ($n_sec)" || bad "categorias: $n_sec"
+        [ "$n_sec" -eq 6 ] && ok "index.php renderiza as 6 categorias" || bad "categorias: $n_sec (esperado 6)"
+        for cat in "Geral" "Display &amp; Touch" "Rede e conexão" "Desempenho" "Apps e jogos" "Sistema"; do
+            assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
+        done
         grep -q '@media' "$TMP/web_html" && ok "index.php tem CSS responsivo" || bad "sem media queries"
         grep -q 'backdrop-filter' "$TMP/web_html" && ok "index.php usa efeito de vidro (glass)" || bad "sem glass"
         n_help=$(grep -c 'help-btn' "$TMP/web_html")
@@ -834,19 +845,23 @@ t_web() {
                  $r=otm_run("ext.turbo",[],false);
                  echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_extconf" 2>&1
         assert_contains "$TMP/web_extconf" "PEDE" "modo extremo exige confirmação"
-        assert_contains "$TMP/web_html" "Extremos (root)" "index.php tem a categoria Extremos (root)"
-        assert_contains "$TMP/web_html" "Avançado (sem root)" "index.php tem a categoria Avançado (sem root)"
+        # as antigas categorias root/avançado foram unificadas em "Desempenho"
+        php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+                 foreach (["ext.turbo","ext.gpu","adv.obscure"] as $id)
+                   echo ($a[$id]["group"]==="Desempenho"?"ok ":"ERRO ");
+                 echo "\n";' > "$TMP/web_cat" 2>&1
+        assert_contains "$TMP/web_cat" "ok ok ok" "root/avançado agrupados em Desempenho"
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
         [ "$n_cards" -ge 110 ] && ok "index.php renderiza os cards novos ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
-        # --- Configs, animações e verificação real ---
-        assert_contains "$TMP/web_html" "Configs" "index.php tem a categoria Configs"
+        # --- Sistema (configs), animações e verificação real ---
+        assert_contains "$TMP/web_html" "Sistema" "index.php tem a categoria Sistema"
         grep -q '@keyframes' "$TMP/web_html" && ok "index.php tem animações (@keyframes)" || bad "sem animações"
         grep -q 'prefers-reduced-motion' "$TMP/web_html" && ok "respeita prefers-reduced-motion" || bad "sem prefers-reduced-motion"
         php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
                  echo isset($a["config.set"])?"set ":"", isset($a["config.test"])?"test\n":"";' \
             > "$TMP/web_cfg" 2>&1
-        assert_contains "$TMP/web_cfg" "set test" "registro tem ações de Configs"
+        assert_contains "$TMP/web_cfg" "set test" "registro tem ações de Sistema (config)"
         # parse do resultado da verificação real
         php -r 'require "'"$ROOT"'/web/lib.php";
                  $v=otm_parse_result("#OTM-RESULT tag=x applies=3 changed=2 failed=1 ok=1");
