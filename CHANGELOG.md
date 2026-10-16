@@ -3,6 +3,31 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.10.0] - 2026-10-05
+
+### Corrigido
+- **Avisos sonoros voltaram a tocar.** O `SoundPlayer` usava o canal de
+  *sonificação* (`USAGE_ASSISTANCE_SONIFICATION`), que fica mudo em muitos
+  aparelhos mesmo com o volume de mídia alto. Agora usa o canal de **mídia**
+  (`USAGE_MEDIA`), então os avisos saem no volume normal do celular.
+- **MP3 descomprimidos no APK.** Adicionado `noCompress += "mp3"` no
+  `build.gradle.kts`; sem isso o `assets.openFd()` falha no APK release e o som
+  some em silêncio.
+- **Falhas de áudio não são mais engolidas.** O `SoundPlayer` agora registra no
+  logcat (`Log.w("SoundPlayer", …)`) quando um som falha ou dá erro de mídia.
+
+### Adicionado
+- **Botão de som do cabeçalho funciona.** O botão (ícone SVG) do topo do app
+  agora liga/desliga o som e mostra o estado (esmaece quando desligado); o
+  estado sobrevive ao reload via `localStorage`.
+- **Mais cores de destaque:** prata, dourado, ciano, grafite e âmbar (além das
+  6 anteriores). A **prata** era o pedido.
+- **Mais fontes:** condensada, arredondada, geométrica e humanista (além de
+  sistema, serifa e mono). O seletor quebra em várias linhas no celular.
+
+### Alterado
+- Versão `2.10.0` (`versionCode` 31).
+
 ## [2.9.0] - 2026-10-05
 
 ### Adicionado

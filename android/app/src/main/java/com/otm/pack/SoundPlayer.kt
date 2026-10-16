@@ -5,12 +5,14 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 
 /**
  * Toca os avisos de voz do pack (MP3 em `assets/audio`).
  *
  * Um som de cada vez: ao tocar um novo, o anterior para. Se o arquivo não
- * existir ou der erro, o app segue em silêncio (o som é só um enfeite).
+ * existir ou der erro, o app segue em silêncio (o som é só um enfeite), mas
+ * registra o motivo no logcat com a tag "SoundPlayer".
  */
 class SoundPlayer(private val context: Context) {
 
@@ -30,15 +32,20 @@ class SoundPlayer(private val context: Context) {
         try {
             val afd = context.assets.openFd("audio/$file")
             val mp = MediaPlayer().apply {
+                // Mídia (e não sonificação): o canal de sonificação some em
+                // muitos aparelhos mesmo com o volume de mídia alto.
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )
                 setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                 setOnCompletionListener { stop() }
-                setOnErrorListener { _, _, _ -> stop(); true }
+                setOnErrorListener { _, what, extra ->
+                    Log.w("SoundPlayer", "erro ao tocar $file (what=$what extra=$extra)")
+                    stop(); true
+                }
                 prepare()
                 start()
             }
@@ -47,6 +54,7 @@ class SoundPlayer(private val context: Context) {
             handler.removeCallbacks(autoStop)
             handler.postDelayed(autoStop, maxMillis)
         } catch (t: Throwable) {
+            Log.w("SoundPlayer", "falha ao tocar $file", t)
             stop()
         }
     }

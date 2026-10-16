@@ -242,6 +242,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .seg{display:flex;gap:6px;background:var(--glass-2);border:1px solid var(--line);border-radius:12px;padding:4px}
 .seg-btn{flex:1;border:0;background:transparent;border-radius:9px;padding:9px 8px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)}
 .seg-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+#setFont{flex-wrap:wrap}
+#setFont .seg-btn{flex:1 1 30%;min-width:30%}
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .sw{width:34px;height:34px;border-radius:10px;border:2px solid var(--line-strong);background:var(--sw);cursor:pointer;transition:.15s}
 .sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--ring)}
@@ -2830,6 +2832,11 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <button class="sw" data-accent="roxo" style="--sw:#8b5cf6" aria-label="Roxo" type="button"></button>
         <button class="sw" data-accent="rosa" style="--sw:#ec4899" aria-label="Rosa" type="button"></button>
         <button class="sw" data-accent="vermelho" style="--sw:#e5484d" aria-label="Vermelho" type="button"></button>
+        <button class="sw" data-accent="prata" style="--sw:#c7ccd6" aria-label="Prata" type="button"></button>
+        <button class="sw" data-accent="dourado" style="--sw:#d4a017" aria-label="Dourado" type="button"></button>
+        <button class="sw" data-accent="ciano" style="--sw:#06b6d4" aria-label="Ciano" type="button"></button>
+        <button class="sw" data-accent="grafite" style="--sw:#6b7280" aria-label="Grafite" type="button"></button>
+        <button class="sw" data-accent="ambar" style="--sw:#f59e0b" aria-label="Âmbar" type="button"></button>
       </div>
     </div>
 
@@ -2839,6 +2846,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <button class="seg-btn" data-font="sistema" type="button">Sistema</button>
         <button class="seg-btn" data-font="serif" type="button">Serifa</button>
         <button class="seg-btn" data-font="mono" type="button">Mono</button>
+        <button class="seg-btn" data-font="condensada" type="button">Condensada</button>
+        <button class="seg-btn" data-font="arredondada" type="button">Arredondada</button>
+        <button class="seg-btn" data-font="geometrica" type="button">Geométrica</button>
+        <button class="seg-btn" data-font="humanista" type="button">Humanista</button>
       </div>
     </div>
 
@@ -2927,6 +2938,22 @@ body.drawer .scrim{opacity:1;visibility:visible}
     };
     const sair = document.getElementById("btnSair");
     if (sair) sair.onclick = () => { try { localStorage.removeItem("otm_session"); } catch(e){} location.replace("login.html"); };
+    const snd = document.getElementById("otmSound");
+    if (snd) {
+      const paint = () => {
+        const on = localStorage.getItem("otm-sound") !== "0";
+        snd.setAttribute("aria-pressed", on ? "true" : "false");
+        snd.title = on ? "Som ligado — toque para desligar" : "Som desligado — toque para ligar";
+        snd.style.opacity = on ? "" : ".45";
+      };
+      snd.onclick = () => {
+        const on = localStorage.getItem("otm-sound") !== "0";
+        if (typeof setSound === "function") setSound(!on);
+        else localStorage.setItem("otm-sound", on ? "0" : "1");
+        paint();
+      };
+      paint();
+    }
   });
 })();
 
@@ -2944,12 +2971,21 @@ const ACCENTS = {
   verde:{accent:"#17a673",ink:"#04160f",ring:"rgba(23,166,115,.35)"},
   roxo:{accent:"#8b5cf6",ink:"#120726",ring:"rgba(139,92,246,.35)"},
   rosa:{accent:"#ec4899",ink:"#2a0616",ring:"rgba(236,72,153,.35)"},
-  vermelho:{accent:"#e5484d",ink:"#2a0506",ring:"rgba(229,72,77,.35)"}
+  vermelho:{accent:"#e5484d",ink:"#2a0506",ring:"rgba(229,72,77,.35)"},
+  prata:{accent:"#c7ccd6",ink:"#14161a",ring:"rgba(199,204,214,.40)"},
+  dourado:{accent:"#d4a017",ink:"#241a02",ring:"rgba(212,160,23,.35)"},
+  ciano:{accent:"#06b6d4",ink:"#041e24",ring:"rgba(6,182,212,.35)"},
+  grafite:{accent:"#6b7280",ink:"#0b0d10",ring:"rgba(107,114,128,.40)"},
+  ambar:{accent:"#f59e0b",ink:"#231603",ring:"rgba(245,158,11,.35)"}
 };
 const FONTS = {
   sistema:'"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif',
   serif:'Georgia,"Times New Roman",serif',
-  mono:'ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace'
+  mono:'ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace',
+  condensada:'"Arial Narrow","Roboto Condensed","Helvetica Neue",system-ui,sans-serif',
+  arredondada:'"Trebuchet MS",Verdana,"Segoe UI",system-ui,sans-serif',
+  geometrica:'"Century Gothic",Futura,"Trebuchet MS",system-ui,sans-serif',
+  humanista:'Candara,Optima,"Segoe UI",system-ui,sans-serif'
 };
 function setAccentQuiet(name){
   const a = ACCENTS[name]; if (!a) return;

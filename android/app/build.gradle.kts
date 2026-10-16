@@ -11,8 +11,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 30
-        versionName = "2.9.0"
+        versionCode = 31
+        versionName = "2.10.0"
     }
 
     signingConfigs {
@@ -41,6 +41,12 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures { buildConfig = true }
+
+    // MP3 guardados sem compressão: assets.openFd() só funciona em arquivos
+    // STORED; se forem comprimidos, o som não toca no APK release.
+    androidResources {
+        noCompress += "mp3"
+    }
 
     packaging {
         resources.excludes += setOf("META-INF/*.kotlin_module")

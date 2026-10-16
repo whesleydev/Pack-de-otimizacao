@@ -454,6 +454,33 @@ t_app_fixes() {
         && ok "update: release assina com a keystore fixa" || bad "update: release sem assinatura fixa"
     grep -q 'if (a.argv.isEmpty())' "$src/PackBridge.kt" \
         && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
+    # 10) áudio audível: stream de mídia (não sonificação) e erro no logcat
+    grep -q 'USAGE_MEDIA' "$src/SoundPlayer.kt" \
+        && ok "som: usa stream de mídia (audível)" || bad "som: ainda usa stream de sonificação"
+    if grep -q 'USAGE_ASSISTANCE_SONIFICATION' "$src/SoundPlayer.kt"; then
+        bad "som: ainda usa USAGE_ASSISTANCE_SONIFICATION"
+    else
+        ok "som: sem stream de sonificação"
+    fi
+    grep -q 'Log.w("SoundPlayer"' "$src/SoundPlayer.kt" \
+        && ok "som: falhas vão para o logcat" || bad "som: erros engolidos em silêncio"
+    # 11) MP3 descomprimidos no APK (openFd exige STORED)
+    grep -q 'noCompress += "mp3"' "$ROOT/android/app/build.gradle.kts" \
+        && ok "apk: mp3 sem compressão (openFd funciona)" || bad "apk: mp3 sem noCompress"
+    # 12) botão de som do cabeçalho tem handler no shim do app
+    grep -q 'getElementById("otmSound")' "$app" \
+        && ok "som: botão do cabeçalho tem handler" || bad "som: botão do cabeçalho sem handler"
+    # 13) novas cores (prata entre elas) e novas fontes na fonte e no painel gerado
+    
+    for c in prata dourado ciano grafite ambar; do
+        grep -q "data-accent=\"$c\"" "$web" && grep -q "data-accent=\"$c\"" "$app" \
+            && ok "cor: '$c' na fonte e no app" || bad "cor: '$c' ausente"
+    done
+    grep -q 'prata:{accent:' "$web" && ok "cor: paleta 'prata' definida" || bad "cor: paleta 'prata' ausente"
+    for f in condensada arredondada geometrica humanista; do
+        grep -q "data-font=\"$f\"" "$web" && grep -q "data-font=\"$f\"" "$app" \
+            && ok "fonte: '$f' na fonte e no app" || bad "fonte: '$f' ausente"
+    done
 }
 
 t_perm_script() {
