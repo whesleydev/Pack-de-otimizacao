@@ -4,18 +4,20 @@
 #
 #  Uso: sh scripts/dns.sh <perfil|status|list|off|custom <host>|menu>
 #
-#  Perfis prontos (só trocam o DNS privado do sistema, sem root):
-#    cloudflare         privacidade + velocidade
-#    quad9              privacidade + bloqueio de malware
-#    adguard            bloqueio de anúncios e rastreadores
-#    adguard-family     anúncios + conteúdo adulto
-#    cloudflare-family  família (conteúdo adulto)
-#    mullvad            privacidade (sem registro)
-#    dnsforge           bloqueio de anúncios (sem log)
-#    google             compatibilidade máxima
-#    gaming             baixa latência p/ jogos (+ buffers TCP + scan off)
-#    custom <host>      use qualquer hostname DoT
-#    off / auto         volta o DNS automático (padrão)
+#  Perfis prontos (só trocam o DNS privado do sistema, sem root). São 30+ dos
+#  melhores provedores DoT do mundo, organizados por finalidade:
+#    velocidade ............ cloudflare, google, dns.sb, digitale-gesellschaft, cz-nic
+#    privacidade ........... quad9, mullvad, dnsforge, restena, applied-privacy, uncensored
+#    anti-anúncios ......... adguard, adguard-unfiltered, controld-ads, controld-oisd, mullvad-adblock
+#    família (adulto) ...... adguard-family, cloudflare-family, opendns-family,
+#                            cleanbrowsing-family, controld-family, mullvad-family, mullvad-all,
+#                            dns4eu-child, dns4eu-child-noads
+#    segurança (malware) ... opendns, cleanbrowsing-security, controld-malware, mullvad-base,
+#                            dns4eu-protective, dns4eu-noads, cz-nic (DNSSEC)
+#    sem filtro ............ adguard-unfiltered, controld-unfiltered, mullvad, dns4eu-unfiltered
+#    gaming ................ gaming (baixa latência + buffers TCP + scan off)
+#    custom <host> ......... use qualquer hostname DoT
+#    off / auto ............ volta o DNS automático (padrão)
 #
 #  Tudo reversível: os valores antigos vão para ~/.packotm/off.sh.
 # =============================================================================
@@ -32,17 +34,40 @@ dns_profiles() {
         quad9             "dns.quad9.net"                    "Privacidade + bloqueio de malware" \
         adguard           "dns.adguard-dns.com"              "Bloqueio de anúncios e rastreadores" \
         adguard-family    "family.adguard-dns.com"           "Anúncios + conteúdo adulto" \
+        adguard-unfiltered "unfiltered.adguard-dns.com"      "AdGuard sem filtro (só privacidade)" \
         cloudflare-family "family.cloudflare-dns.com"        "Família (bloqueia conteúdo adulto)" \
+        cloudflare-security "security.cloudflare-dns.com"    "Bloqueia malware e phishing" \
         mullvad           "dns.mullvad.net"                  "Privacidade (sem registro)" \
+        mullvad-base      "base.dns.mullvad.net"             "Ads + rastreadores + malware" \
+        mullvad-adblock   "adblock.dns.mullvad.net"          "Ads + rastreadores" \
+        mullvad-family    "family.dns.mullvad.net"           "Família (adulto + apostas)" \
+        mullvad-extended  "extended.dns.mullvad.net"         "Ads + malware + redes sociais" \
+        mullvad-all       "all.dns.mullvad.net"              "Bloqueio máximo (tudo junto)" \
         dnsforge          "dnsforge.de"                      "Bloqueio de anúncios (sem log)" \
         google            "dns.google"                       "Compatibilidade máxima" \
-        nextdns           "dns.nextdns.io"                    "Filtragem e privacidade (NextDNS)" \
+        nextdns           "dns.nextdns.io"                   "Filtragem e privacidade (NextDNS)" \
         opendns           "dns.opendns.com"                  "Cisco OpenDNS (confiável)" \
         opendns-family    "dns.familyshield.opendns.com"     "OpenDNS FamilyShield (conteúdo adulto)" \
         cleanbrowsing-family "family-filter-dns.cleanbrowsing.org" "CleanBrowsing Família (adulto + malware)" \
         cleanbrowsing-security "security-filter-dns.cleanbrowsing.org" "CleanBrowsing Segurança (só malware)" \
-        controld          "p2.freedns.controld.com"          "ControlD grátis (malware + anúncios)" \
-        controld-social   "p3.freedns.controld.com"          "ControlD grátis (malware + anúncios + redes)" \
+        cleanbrowsing-adult "adult-filter-dns.cleanbrowsing.org" "CleanBrowsing Adulto (bloqueia só adulto)" \
+        controld-unfiltered "p0.freedns.controld.com"        "ControlD sem filtro" \
+        controld-malware  "p1.freedns.controld.com"          "ControlD: só malware" \
+        controld-ads      "p2.freedns.controld.com"          "ControlD: malware + anúncios" \
+        controld-social   "p3.freedns.controld.com"          "ControlD: + redes sociais" \
+        controld-family   "family.freedns.controld.com"      "ControlD Família (adulto + drogas)" \
+        controld-oisd     "x-oisd.freedns.controld.com"      "ControlD com lista OISD (bloqueio forte)" \
+        dns4eu-protective "protective.joindns4.eu"           "DNS4EU: malware/phishing (UE)" \
+        dns4eu-child      "child.joindns4.eu"                "DNS4EU: proteção infantil (UE)" \
+        dns4eu-noads      "noads.joindns4.eu"                "DNS4EU: proteção + sem anúncios (UE)" \
+        dns4eu-child-noads "child-noads.joindns4.eu"         "DNS4EU: criança + sem anúncios (UE)" \
+        dns4eu-unfiltered "unfiltered.joindns4.eu"           "DNS4EU: sem filtro (UE)" \
+        dns-sb            "dot.sb"                           "DNS.SB (Alemanha, sem logs, DNSSEC)" \
+        cz-nic            "odvr.nic.cz"                      "CZ.NIC ODVR (DNSSEC, Tchéquia)" \
+        digitale-gesellschaft "dns.digitale-gesellschaft.ch" "Suíça: sem logs, DNSSEC, TLS 1.3" \
+        restena           "dnspub.restena.lu"                "RESTENA (Luxemburgo, sem logs)" \
+        applied-privacy   "dot1.applied-privacy.net"         "Foundation for Applied Privacy (Áustria)" \
+        uncensored        "anycast.censurfridns.dk"          "UncensoredDNS (Dinamarca, sem filtro)" \
         gaming            "1dot1dot1dot1.cloudflare-dns.com" "Baixa latência p/ jogos (+ TCP + scan off)"
 }
 
@@ -143,26 +168,30 @@ dns_menu() {
     while :; do
         printf '\n  %s◆%s  %sDNS / REDE%s\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
+        n=$(dns_profiles | wc -l | tr -d ' ')
         i=0
-        dns_profiles | while IFS="$(printf '\t')" read -r n h d; do
+        dns_profiles | while IFS="$(printf '\t')" read -r pn ph pd; do
             i=$((i + 1))
-            printf '   %s%2d%s  %-18s %s\n' "$C_A" "$i" "$C_R" "$n" "$d"
+            printf '   %s%2d%s  %-18s %s\n' "$C_A" "$i" "$C_R" "$pn" "$pd"
         done
-        printf '   %s%2d%s  %-18s %s\n' "$C_A" "10" "$C_R" "custom" "usar um hostname DoT seu"
+        printf '   %s%2d%s  %-18s %s\n' "$C_A" "$((n + 1))" "$C_R" "custom" "usar um hostname DoT seu"
         printf '   %s%2d%s  %-18s %s\n' "$C_A" "0" "$C_R" "off/auto" "voltar ao DNS automático"
         printf '\n   %sstatus%s ver o DNS atual   %svoltar%s sai do submenu\n' "$C_A" "$C_R" "$C_D" "$C_R"
         printf '  %s›%s ' "$C_A" "$C_R"
         read -r op || { printf '\n'; return 0; }
         case "$op" in
             0|off|auto) dns_off ;;
-            10|custom)  printf '  hostname DoT (ex: dns.exemplo.com): '; read -r h
-                        [ -n "$h" ] && dns_apply "$h" || warn "vazio, nada feito" ;;
             status)     dns_status ;;
             voltar|voltar*|q) return 0 ;;
             ''|*[!0-9]*) warn "opção inválida" ;;
             *)
-                nome="$(dns_profiles | sed -n "${op}p" | cut -f1)"
-                [ -n "$nome" ] && dns_apply "$nome" || warn "opção inválida" ;;
+                if [ "$op" -eq "$((n + 1))" ]; then
+                    printf '  hostname DoT (ex: dns.exemplo.com): '; read -r h
+                    [ -n "$h" ] && dns_apply "$h" || warn "vazio, nada feito"
+                else
+                    nome="$(dns_profiles | sed -n "${op}p" | cut -f1)"
+                    [ -n "$nome" ] && dns_apply "$nome" || warn "opção inválida"
+                fi ;;
         esac
     done
 }

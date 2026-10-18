@@ -24,15 +24,24 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   (1–1000) com sliders, junto dos demais parâmetros do toque. A chave é testada
   antes de aplicar — se o aparelho não expõe `touch_responsiveness`, o pack avisa
   em vez de registrar falha à toa.
-- **Novos perfis de DNS**: OpenDNS, OpenDNS Família, CleanBrowsing Família,
-  CleanBrowsing Segurança, ControlD e ControlD + Redes (além dos já existentes).
+- **Novos perfis de DNS**: agora são **39 perfis DoT** de alta qualidade, todos com
+  hostname verificado na fonte oficial. Além dos já existentes, entraram AdGuard sem
+  filtro, Cloudflare Segurança, Mullvad (base/ads/família/estendido/tudo), ControlD
+  (sem filtro/malware/ads/redes/família/OISD), DNS4EU (protetor/infantil/sem-ads/
+  infantil+ads/sem filtro — infraestrutura da UE), CleanBrowsing Adulto, DNS.SB,
+  CZ.NIC ODVR, Digitale Gesellschaft (Suíça), RESTENA (Luxemburgo), Applied Privacy
+  (Áustria) e UncensoredDNS (Dinamarca).
+- **Nova categoria "DNS e rede"**: os perfis de DNS, o benchmark de latência, os
+  ajustes de Wi-Fi, os buffers TCP e a economia de dados saíram de "Rede e conexão"
+  e agora têm uma aba própria, para achar o DNS na hora.
 - **Persistir no boot** (root): reaplica os ajustes aplicados sempre que o aparelho
   reinicia, via `/data/adb/service.d` (Magisk) ou `init.d`. `turbo.sh boot on|off|status`
   e cartões "Persistir no boot" na categoria Sistema.
 
 ### Alterado
-- Menu lateral agora tem **6 categorias** com a nova **Processos**; a Home é a
-  primeira opção e abre as métricas antes de qualquer ajuste.
+- Menu lateral agora tem **7 categorias**, com **DNS e rede** (39 perfis de DNS) e
+  **Processos** próprias; a Home é a primeira opção e abre as métricas antes de
+  qualquer ajuste.
 
 ### Notas
 - Versão `2.14.0` (`versionCode` 35).

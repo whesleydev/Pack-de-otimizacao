@@ -45,24 +45,38 @@ os builds. Cada opção tem um número; `0` sai.
 
 ### 🌐 DNS com perfis (privacidade, anúncios, latência)
 
-A opção **13** abre um submenu de DNS privado (DNS-over-TLS, sem root). Escolha o perfil
-que quiser:
+A opção **13** abre um submenu de DNS privado (DNS-over-TLS, sem root) com **30+ perfis**
+dos melhores provedores do mundo, organizados por finalidade:
 
 | Perfil | Para quê |
 |---|---|
-| `cloudflare` | privacidade + velocidade |
+| `cloudflare` | privacidade + velocidade (sem registro) |
 | `quad9` | privacidade + bloqueio de malware |
+| `google` | compatibilidade máxima |
 | `adguard` | **bloqueio de anúncios** e rastreadores |
 | `adguard-family` | anúncios + conteúdo adulto |
+| `adguard-unfiltered` | AdGuard sem filtro (só privacidade) |
 | `cloudflare-family` | família (conteúdo adulto) |
-| `mullvad` | privacidade (sem registro) |
+| `cloudflare-security` | malware e phishing |
+| `mullvad` / `mullvad-base` / `mullvad-adblock` | privacidade e níveis de bloqueio |
+| `mullvad-family` / `mullvad-extended` / `mullvad-all` | família, redes sociais e bloqueio máximo |
 | `dnsforge` | bloqueio de anúncios (sem log) |
-| `google` | compatibilidade máxima |
+| `nextdns` | filtragem e privacidade configuráveis |
+| `opendns` / `opendns-family` | Cisco OpenDNS e FamilyShield |
+| `cleanbrowsing-family` / `-security` / `-adult` | filtros família, segurança e adulto |
+| `controld-unfiltered` / `-malware` / `-ads` / `-social` / `-family` / `-oisd` | ControlD por nível |
+| `dns4eu-protective` / `-child` / `-noads` / `-child-noads` / `-unfiltered` | DNS4EU (infraestrutura da UE) |
+| `dns-sb` | DNS.SB (Alemanha, sem logs, DNSSEC) |
+| `cz-nic` | CZ.NIC ODVR (valida DNSSEC) |
+| `digitale-gesellschaft` | Suíça, sem logs, DNSSEC, TLS 1.3 |
+| `restena` | RESTENA (Luxemburgo, sem logs) |
+| `applied-privacy` | Foundation for Applied Privacy (Áustria) |
+| `uncensored` | UncensoredDNS (Dinamarca, sem filtro) |
 | `gaming` | **baixa latência** p/ jogos (+ buffers TCP + Wi-Fi scan off) |
 | `custom <host>` | qualquer hostname DoT seu |
 | `off` / `auto` | volta o DNS automático |
 
-Pela linha de comando: `sh pack.sh dns adguard` · `sh pack.sh dns gaming` · `sh pack.sh dns off`.
+Pela linha de comando: `sh pack.sh dns adguard` · `sh pack.sh dns dns4eu-protective` · `sh pack.sh dns off`.
 
 ### 🧩 Executar os módulos e plugins da pasta
 

@@ -132,37 +132,66 @@ function otm_actions(): array {
           'argv' => ['snapshot.sh', 'save']]);
 
     // ----- DNS (perfis) -----
+    // Espelha o catálogo de scripts/dns.sh (hostnames DoT verificados).
     $dns = [
         'cloudflare'        => ['Cloudflare', 'Privacidade e velocidade, sem registro.'],
         'quad9'             => ['Quad9', 'Privacidade e bloqueio de sites maliciosos.'],
         'adguard'           => ['AdGuard', 'Bloqueia anúncios e rastreadores.'],
         'adguard-family'    => ['AdGuard Família', 'Anúncios + bloqueio de conteúdo adulto.'],
+        'adguard-unfiltered' => ['AdGuard sem filtro', 'Só privacidade, sem bloquear nada.'],
         'cloudflare-family' => ['Cloudflare Família', 'Bloqueia conteúdo adulto.'],
+        'cloudflare-security' => ['Cloudflare Segurança', 'Bloqueia malware e phishing.'],
         'mullvad'           => ['Mullvad', 'Privacidade sem registro (anônimo).'],
+        'mullvad-base'      => ['Mullvad Base', 'Ads + rastreadores + malware.'],
+        'mullvad-adblock'   => ['Mullvad Ads', 'Ads + rastreadores.'],
+        'mullvad-family'    => ['Mullvad Família', 'Adulto + apostas.'],
+        'mullvad-extended'  => ['Mullvad Estendido', 'Ads + malware + redes sociais.'],
+        'mullvad-all'       => ['Mullvad Tudo', 'Bloqueio máximo (tudo junto).'],
         'dnsforge'          => ['DNSForge', 'Bloqueia anúncios, sem guardar logs.'],
         'google'            => ['Google', 'Compatibilidade máxima com qualquer rede.'],
+        'nextdns'           => ['NextDNS', 'Filtragem e privacidade configuráveis.'],
         'opendns'           => ['OpenDNS', 'Cisco OpenDNS: estável e confiável.'],
         'opendns-family'    => ['OpenDNS Família', 'FamilyShield: bloqueia conteúdo adulto.'],
         'cleanbrowsing-family'   => ['CleanBrowsing Família', 'Bloqueia conteúdo adulto e malware.'],
         'cleanbrowsing-security' => ['CleanBrowsing Segurança', 'Bloqueia só phishing e malware.'],
-        'controld'          => ['ControlD', 'ControlD grátis: malware + anúncios.'],
-        'controld-social'   => ['ControlD + Redes', 'ControlD grátis: malware + anúncios + redes sociais.'],
+        'cleanbrowsing-adult'    => ['CleanBrowsing Adulto', 'Bloqueia somente conteúdo adulto.'],
+        'controld-unfiltered' => ['ControlD sem filtro', 'ControlD sem bloquear nada.'],
+        'controld-malware'  => ['ControlD Malware', 'Bloqueia só malware.'],
+        'controld-ads'      => ['ControlD Ads', 'Malware + anúncios.'],
+        'controld-social'   => ['ControlD + Redes', 'Malware + anúncios + redes sociais.'],
+        'controld-family'   => ['ControlD Família', 'Adulto + drogas.'],
+        'controld-oisd'     => ['ControlD + OISD', 'Lista OISD (bloqueio forte de ads).'],
+        'dns4eu-protective' => ['DNS4EU Protetor', 'Malware/phishing, infraestrutura da UE.'],
+        'dns4eu-child'      => ['DNS4EU Infantil', 'Proteção + conteúdo impróprio p/ criança.'],
+        'dns4eu-noads'      => ['DNS4EU sem Ads', 'Proteção + sem anúncios.'],
+        'dns4eu-child-noads' => ['DNS4EU Infantil + Ads', 'Criança + sem anúncios.'],
+        'dns4eu-unfiltered' => ['DNS4EU sem filtro', 'Sem filtro, só privacidade/jurisdição.'],
+        'dns-sb'            => ['DNS.SB', 'Alemanha, sem logs, DNSSEC.'],
+        'cz-nic'            => ['CZ.NIC ODVR', 'Tchéquia, valida DNSSEC.'],
+        'digitale-gesellschaft' => ['Digitale Gesellschaft', 'Suíça, sem logs, DNSSEC, TLS 1.3.'],
+        'restena'           => ['RESTENA', 'Luxemburgo, sem logs.'],
+        'applied-privacy'   => ['Applied Privacy', 'Áustria, sem logs.'],
+        'uncensored'        => ['UncensoredDNS', 'Dinamarca, sem filtro nem censura.'],
         'gaming'            => ['Gaming', 'Baixa latência para jogos + rede otimizada.'],
     ];
     foreach ($dns as $k => $v) {
-        $add(['id' => "dns.$k", 'group' => 'Rede e conexão', 'label' => $v[0], 'desc' => $v[1],
+        $add(['id' => "dns.$k", 'group' => 'DNS e rede', 'label' => $v[0], 'desc' => $v[1],
               'help' => 'DNS é o serviço que "traduz" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em "DNS automático".',
               'argv' => ['dns.sh', $k]]);
     }
-    $add(['id' => 'dns.custom', 'group' => 'Rede e conexão', 'label' => 'DNS personalizado (host DoT)',
+    $add(['id' => 'dns.custom', 'group' => 'DNS e rede', 'label' => 'DNS personalizado (host DoT)',
           'desc' => 'Use qualquer hostname de DNS-over-TLS que você quiser.',
           'help' => 'Se você já tem um DNS privado favorito, digite aqui o hostname (ex.: dns.exemplo.com). Ele será usado como DNS do aparelho, com criptografia.',
           'argv' => ['dns.sh', 'custom', '{host}'],
           'params' => [['name' => 'host', 'type' => 'host', 'label' => 'Hostname DoT']]]);
-    $add(['id' => 'dns.off', 'group' => 'Rede e conexão', 'label' => 'DNS automático (desligar)',
+    $add(['id' => 'dns.off', 'group' => 'DNS e rede', 'label' => 'DNS automático (desligar)',
           'desc' => 'Volta o DNS para o padrão da operadora.',
           'help' => 'Desliga o DNS privado e devolve o aparelho para o DNS automático da sua operadora/rede. Use se algum site parar de abrir.',
           'argv' => ['dns.sh', 'off']]);
+    $add(['id' => 'dns.bench', 'group' => 'DNS e rede', 'label' => 'Benchmark de DNS',
+          'desc' => 'Mede a latência de cada perfil de DNS.',
+          'help' => 'Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.',
+          'argv' => ['dns.sh', 'bench'], 'timeout' => 180]);
 
     // ----- RAM / Limpeza -----
     $add(['id' => 'mem.padrao', 'group' => 'Desempenho', 'label' => 'RAM: perfil padrão',
@@ -521,7 +550,7 @@ function otm_actions(): array {
           'desc' => 'Menos kills em 2º plano e o jogo fora do Doze. SEM root.',
           'help' => 'Reúne knobs pouco conhecidos: standby de apps, whitelist do Doze para o Free Fire e ajustes de memória. Resultado: apps não são mortos à toa e o jogo não sofre com o repouso profundo.',
           'argv' => ['adb-tweaks.sh', 'obscure']]);
-    $add(['id' => 'adv.mobile_net', 'group' => 'Rede e conexão', 'label' => 'Rede móvel / economia de dados',
+    $add(['id' => 'adv.mobile_net', 'group' => 'DNS e rede', 'label' => 'Rede móvel / economia de dados',
           'desc' => 'Desliga a economia de dados que estrangula a velocidade.',
           'help' => 'Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.',
           'argv' => ['adb-tweaks.sh', 'mobile_net']]);
@@ -666,26 +695,16 @@ function otm_actions(): array {
           'params' => [['name' => 'profile', 'type' => 'enum', 'label' => 'Perfil',
                         'options' => ['leve', 'medio', 'pesado'], 'default' => 'medio']]]);
 
-    // ----- DNS: NextDNS e benchmark de latência -----
-    $add(['id' => 'dns.nextdns', 'group' => 'Rede e conexão', 'label' => 'NextDNS',
-          'desc' => 'Filtragem e privacidade configuráveis (NextDNS).',
-          'help' => 'Aponta o DNS privado para o NextDNS: filtragem de anúncios/rastreadores e privacidade, configurável no site do NextDNS. Volte ao normal em "DNS automático".',
-          'argv' => ['dns.sh', 'nextdns']]);
-    $add(['id' => 'dns.bench', 'group' => 'Rede e conexão', 'label' => 'Benchmark de DNS',
-          'desc' => 'Mede a latência de cada perfil de DNS.',
-          'help' => 'Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.',
-          'argv' => ['dns.sh', 'bench'], 'timeout' => 180]);
-
     // ----- Wi-Fi e rede -----
-    $add(['id' => 'wifi', 'group' => 'Rede e conexão', 'label' => 'Ajustes de Wi-Fi',
+    $add(['id' => 'wifi', 'group' => 'DNS e rede', 'label' => 'Ajustes de Wi-Fi',
           'desc' => 'Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.',
           'help' => 'O Android fica varrendo redes Wi-Fi o tempo todo, mesmo conectado. Isso gasta bateria e cria picos de uso da CPU. Aqui a varredura em segundo plano é desligada e a economia de energia do Wi-Fi é ligada. Reverte em "Rede: voltar ao automático".',
           'argv' => ['adb-tweaks.sh', 'wifi']]);
-    $add(['id' => 'net', 'group' => 'Rede e conexão', 'label' => 'Rede / TCP (DNS + buffers)',
+    $add(['id' => 'net', 'group' => 'DNS e rede', 'label' => 'Rede / TCP (DNS + buffers)',
           'desc' => 'DNS Cloudflare + buffers TCP maiores para menos travada em jogo.',
           'help' => 'Aumenta os buffers de rede (TCP) e troca o DNS para o Cloudflare. Resultado: menos picos de latência e carregamento mais estável. Não é o mesmo que o perfil de DNS gaming — aqui o foco é o buffer de rede.',
           'argv' => ['adb-tweaks.sh', 'net']]);
-    $add(['id' => 'net_reset', 'group' => 'Rede e conexão', 'label' => 'Rede: voltar ao automático',
+    $add(['id' => 'net_reset', 'group' => 'DNS e rede', 'label' => 'Rede: voltar ao automático',
           'desc' => 'Volta o DNS e a rede para o padrão da operadora.',
           'help' => 'Desfaz os ajustes de rede: DNS volta para automático e os buffers deixam de ser forçados. Use se a internet ficar estranha depois de aplicar.',
           'argv' => ['adb-tweaks.sh', 'net_reset']]);

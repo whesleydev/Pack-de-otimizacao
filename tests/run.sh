@@ -887,11 +887,28 @@ t_dns() {
     OTM_MODE=local sh "$f" custom dns.exemplo.com >/dev/null 2>&1
     [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "dns.exemplo.com" ] \
         && ok "dns custom aceita hostname" || bad "custom nao gravou"
-    # provedores da lista "10 melhores DNS 2026"
+    # provedores da lista ampliada de DoT (hostnames verificados)
+    n_prof=$(OTM_MODE=local OTM_NO_COLOR=1 sh "$f" list 2>/dev/null | grep -c '^ *[a-z]')
+    [ "$n_prof" -ge 30 ] && ok "dns list traz $n_prof perfis" || bad "perfis de DNS: $n_prof (esperado >=30)"
     for pair in "opendns:dns.opendns.com" \
                 "opendns-family:dns.familyshield.opendns.com" \
                 "cleanbrowsing-family:family-filter-dns.cleanbrowsing.org" \
-                "controld:p2.freedns.controld.com"; do
+                "cleanbrowsing-adult:adult-filter-dns.cleanbrowsing.org" \
+                "controld-ads:p2.freedns.controld.com" \
+                "controld-family:family.freedns.controld.com" \
+                "controld-oisd:x-oisd.freedns.controld.com" \
+                "mullvad-all:all.dns.mullvad.net" \
+                "mullvad-adblock:adblock.dns.mullvad.net" \
+                "dns4eu-protective:protective.joindns4.eu" \
+                "dns4eu-child-noads:child-noads.joindns4.eu" \
+                "dns-sb:dot.sb" \
+                "cz-nic:odvr.nic.cz" \
+                "digitale-gesellschaft:dns.digitale-gesellschaft.ch" \
+                "restena:dnspub.restena.lu" \
+                "applied-privacy:dot1.applied-privacy.net" \
+                "uncensored:anycast.censurfridns.dk" \
+                "adguard-unfiltered:unfiltered.adguard-dns.com" \
+                "cloudflare-security:security.cloudflare-dns.com"; do
         id="${pair%%:*}"; host="${pair#*:}"
         rm -f "$st/off.sh" "$st/on"
         OTM_MODE=local sh "$f" "$id" >/dev/null 2>&1
@@ -1031,8 +1048,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 7 ] && ok "index.php renderiza a home + 6 categorias" || bad "seções: $n_sec (esperado 7)"
-        for cat in "Geral" "Display &amp; Touch" "Desempenho" "Processos" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 8 ] && ok "index.php renderiza a home + 7 categorias" || bad "seções: $n_sec (esperado 8)"
+        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # home + área Visual (métricas reais)
@@ -1041,9 +1058,11 @@ t_web() {
         for k in ram cpu bat stor disp up; do
             grep -q "data-stat=\"$k\"" "$TMP/web_html" && ok "Visual tem o medidor $k" || bad "Visual sem o medidor $k"
         done
-        # menu enxuto: Rede e conexão foi unificada em Desempenho (não é seção própria)
+        # categoria própria de DNS com muitos perfis
+        n_dns=$(grep -o 'id="dns\.[a-z0-9-]*"' "$TMP/web_html" | sort -u | wc -l)
+        [ "$n_dns" -ge 30 ] && ok "categoria DNS e rede com $n_dns perfis" || bad "perfis de DNS: $n_dns (esperado >=30)"
         grep -q '<section id="g-Rede' "$TMP/web_html" && bad "Rede ainda é seção separada" \
-            || ok "Rede e conexão unificada em Desempenho"
+            || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
         [ "$n_choice" -eq 2 ] && ok "renderiza 2 grupos de escolha (renderizador, toque)" \

@@ -40,7 +40,7 @@
     },
     {
         "id": "dns.cloudflare",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Cloudflare",
         "desc": "Privacidade e velocidade, sem registro.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -53,7 +53,7 @@
     },
     {
         "id": "dns.quad9",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Quad9",
         "desc": "Privacidade e bloqueio de sites maliciosos.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -66,7 +66,7 @@
     },
     {
         "id": "dns.adguard",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "AdGuard",
         "desc": "Bloqueia anúncios e rastreadores.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -79,7 +79,7 @@
     },
     {
         "id": "dns.adguard-family",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "AdGuard Família",
         "desc": "Anúncios + bloqueio de conteúdo adulto.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -91,8 +91,21 @@
         "risk": "safe"
     },
     {
+        "id": "dns.adguard-unfiltered",
+        "group": "DNS e rede",
+        "label": "AdGuard sem filtro",
+        "desc": "Só privacidade, sem bloquear nada.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "adguard-unfiltered"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "dns.cloudflare-family",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Cloudflare Família",
         "desc": "Bloqueia conteúdo adulto.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -104,8 +117,21 @@
         "risk": "safe"
     },
     {
+        "id": "dns.cloudflare-security",
+        "group": "DNS e rede",
+        "label": "Cloudflare Segurança",
+        "desc": "Bloqueia malware e phishing.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "cloudflare-security"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "dns.mullvad",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Mullvad",
         "desc": "Privacidade sem registro (anônimo).",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -117,8 +143,73 @@
         "risk": "safe"
     },
     {
+        "id": "dns.mullvad-base",
+        "group": "DNS e rede",
+        "label": "Mullvad Base",
+        "desc": "Ads + rastreadores + malware.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "mullvad-base"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.mullvad-adblock",
+        "group": "DNS e rede",
+        "label": "Mullvad Ads",
+        "desc": "Ads + rastreadores.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "mullvad-adblock"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.mullvad-family",
+        "group": "DNS e rede",
+        "label": "Mullvad Família",
+        "desc": "Adulto + apostas.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "mullvad-family"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.mullvad-extended",
+        "group": "DNS e rede",
+        "label": "Mullvad Estendido",
+        "desc": "Ads + malware + redes sociais.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "mullvad-extended"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.mullvad-all",
+        "group": "DNS e rede",
+        "label": "Mullvad Tudo",
+        "desc": "Bloqueio máximo (tudo junto).",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "mullvad-all"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "dns.dnsforge",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "DNSForge",
         "desc": "Bloqueia anúncios, sem guardar logs.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -131,7 +222,7 @@
     },
     {
         "id": "dns.google",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Google",
         "desc": "Compatibilidade máxima com qualquer rede.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -143,8 +234,21 @@
         "risk": "safe"
     },
     {
+        "id": "dns.nextdns",
+        "group": "DNS e rede",
+        "label": "NextDNS",
+        "desc": "Filtragem e privacidade configuráveis.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "nextdns"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "dns.opendns",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "OpenDNS",
         "desc": "Cisco OpenDNS: estável e confiável.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -157,7 +261,7 @@
     },
     {
         "id": "dns.opendns-family",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "OpenDNS Família",
         "desc": "FamilyShield: bloqueia conteúdo adulto.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -170,7 +274,7 @@
     },
     {
         "id": "dns.cleanbrowsing-family",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "CleanBrowsing Família",
         "desc": "Bloqueia conteúdo adulto e malware.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -183,7 +287,7 @@
     },
     {
         "id": "dns.cleanbrowsing-security",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "CleanBrowsing Segurança",
         "desc": "Bloqueia só phishing e malware.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -195,23 +299,62 @@
         "risk": "safe"
     },
     {
-        "id": "dns.controld",
-        "group": "Rede e conexão",
-        "label": "ControlD",
-        "desc": "ControlD grátis: malware + anúncios.",
+        "id": "dns.cleanbrowsing-adult",
+        "group": "DNS e rede",
+        "label": "CleanBrowsing Adulto",
+        "desc": "Bloqueia somente conteúdo adulto.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
-            "controld"
+            "cleanbrowsing-adult"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.controld-unfiltered",
+        "group": "DNS e rede",
+        "label": "ControlD sem filtro",
+        "desc": "ControlD sem bloquear nada.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "controld-unfiltered"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.controld-malware",
+        "group": "DNS e rede",
+        "label": "ControlD Malware",
+        "desc": "Bloqueia só malware.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "controld-malware"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.controld-ads",
+        "group": "DNS e rede",
+        "label": "ControlD Ads",
+        "desc": "Malware + anúncios.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "controld-ads"
         ],
         "confirm": false,
         "risk": "safe"
     },
     {
         "id": "dns.controld-social",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "ControlD + Redes",
-        "desc": "ControlD grátis: malware + anúncios + redes sociais.",
+        "desc": "Malware + anúncios + redes sociais.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
@@ -221,8 +364,177 @@
         "risk": "safe"
     },
     {
+        "id": "dns.controld-family",
+        "group": "DNS e rede",
+        "label": "ControlD Família",
+        "desc": "Adulto + drogas.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "controld-family"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.controld-oisd",
+        "group": "DNS e rede",
+        "label": "ControlD + OISD",
+        "desc": "Lista OISD (bloqueio forte de ads).",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "controld-oisd"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.dns4eu-protective",
+        "group": "DNS e rede",
+        "label": "DNS4EU Protetor",
+        "desc": "Malware/phishing, infraestrutura da UE.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "dns4eu-protective"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.dns4eu-child",
+        "group": "DNS e rede",
+        "label": "DNS4EU Infantil",
+        "desc": "Proteção + conteúdo impróprio p/ criança.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "dns4eu-child"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.dns4eu-noads",
+        "group": "DNS e rede",
+        "label": "DNS4EU sem Ads",
+        "desc": "Proteção + sem anúncios.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "dns4eu-noads"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.dns4eu-child-noads",
+        "group": "DNS e rede",
+        "label": "DNS4EU Infantil + Ads",
+        "desc": "Criança + sem anúncios.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "dns4eu-child-noads"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.dns4eu-unfiltered",
+        "group": "DNS e rede",
+        "label": "DNS4EU sem filtro",
+        "desc": "Sem filtro, só privacidade/jurisdição.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "dns4eu-unfiltered"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.dns-sb",
+        "group": "DNS e rede",
+        "label": "DNS.SB",
+        "desc": "Alemanha, sem logs, DNSSEC.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "dns-sb"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.cz-nic",
+        "group": "DNS e rede",
+        "label": "CZ.NIC ODVR",
+        "desc": "Tchéquia, valida DNSSEC.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "cz-nic"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.digitale-gesellschaft",
+        "group": "DNS e rede",
+        "label": "Digitale Gesellschaft",
+        "desc": "Suíça, sem logs, DNSSEC, TLS 1.3.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "digitale-gesellschaft"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.restena",
+        "group": "DNS e rede",
+        "label": "RESTENA",
+        "desc": "Luxemburgo, sem logs.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "restena"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.applied-privacy",
+        "group": "DNS e rede",
+        "label": "Applied Privacy",
+        "desc": "Áustria, sem logs.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "applied-privacy"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.uncensored",
+        "group": "DNS e rede",
+        "label": "UncensoredDNS",
+        "desc": "Dinamarca, sem filtro nem censura.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "argv": [
+            "dns.sh",
+            "uncensored"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "dns.gaming",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Gaming",
         "desc": "Baixa latência para jogos + rede otimizada.",
         "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
@@ -235,7 +547,7 @@
     },
     {
         "id": "dns.custom",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "DNS personalizado (host DoT)",
         "desc": "Use qualquer hostname de DNS-over-TLS que você quiser.",
         "help": "Se você já tem um DNS privado favorito, digite aqui o hostname (ex.: dns.exemplo.com). Ele será usado como DNS do aparelho, com criptografia.",
@@ -256,13 +568,26 @@
     },
     {
         "id": "dns.off",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "DNS automático (desligar)",
         "desc": "Volta o DNS para o padrão da operadora.",
         "help": "Desliga o DNS privado e devolve o aparelho para o DNS automático da sua operadora/rede. Use se algum site parar de abrir.",
         "argv": [
             "dns.sh",
             "off"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "dns.bench",
+        "group": "DNS e rede",
+        "label": "Benchmark de DNS",
+        "desc": "Mede a latência de cada perfil de DNS.",
+        "help": "Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.",
+        "argv": [
+            "dns.sh",
+            "bench"
         ],
         "confirm": false,
         "risk": "safe"
@@ -1784,7 +2109,7 @@
     },
     {
         "id": "adv.mobile_net",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Rede móvel / economia de dados",
         "desc": "Desliga a economia de dados que estrangula a velocidade.",
         "help": "Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.",
@@ -2275,34 +2600,8 @@
         ]
     },
     {
-        "id": "dns.nextdns",
-        "group": "Rede e conexão",
-        "label": "NextDNS",
-        "desc": "Filtragem e privacidade configuráveis (NextDNS).",
-        "help": "Aponta o DNS privado para o NextDNS: filtragem de anúncios/rastreadores e privacidade, configurável no site do NextDNS. Volte ao normal em \"DNS automático\".",
-        "argv": [
-            "dns.sh",
-            "nextdns"
-        ],
-        "confirm": false,
-        "risk": "safe"
-    },
-    {
-        "id": "dns.bench",
-        "group": "Rede e conexão",
-        "label": "Benchmark de DNS",
-        "desc": "Mede a latência de cada perfil de DNS.",
-        "help": "Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.",
-        "argv": [
-            "dns.sh",
-            "bench"
-        ],
-        "confirm": false,
-        "risk": "safe"
-    },
-    {
         "id": "wifi",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Ajustes de Wi-Fi",
         "desc": "Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.",
         "help": "O Android fica varrendo redes Wi-Fi o tempo todo, mesmo conectado. Isso gasta bateria e cria picos de uso da CPU. Aqui a varredura em segundo plano é desligada e a economia de energia do Wi-Fi é ligada. Reverte em \"Rede: voltar ao automático\".",
@@ -2315,7 +2614,7 @@
     },
     {
         "id": "net",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Rede / TCP (DNS + buffers)",
         "desc": "DNS Cloudflare + buffers TCP maiores para menos travada em jogo.",
         "help": "Aumenta os buffers de rede (TCP) e troca o DNS para o Cloudflare. Resultado: menos picos de latência e carregamento mais estável. Não é o mesmo que o perfil de DNS gaming — aqui o foco é o buffer de rede.",
@@ -2328,7 +2627,7 @@
     },
     {
         "id": "net_reset",
-        "group": "Rede e conexão",
+        "group": "DNS e rede",
         "label": "Rede: voltar ao automático",
         "desc": "Volta o DNS e a rede para o padrão da operadora.",
         "help": "Desfaz os ajustes de rede: DNS volta para automático e os buffers deixam de ser forçados. Use se a internet ficar estranha depois de aplicar.",

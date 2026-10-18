@@ -35,9 +35,9 @@ if (!otm_auth_logged_in()) {
 
 $actions = array_values(otm_actions());
 
-// Ordem fixa das categorias. Menu enxuto: 6 grupos (Rede entra em Desempenho) + a Home.
-$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'Processos', 'Apps e jogos', 'Sistema'];
-$GROUP_ALIAS = ['Rede e conexão' => 'Desempenho'];
+// Ordem fixa das categorias. Menu enxuto: 7 grupos (Rede/DNS separados) + a Home.
+$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'DNS e rede', 'Processos', 'Apps e jogos', 'Sistema'];
+$GROUP_ALIAS = ['Rede e conexão' => 'DNS e rede'];
 $byGroup = [];
 foreach ($actions as $a) {
     $g = $GROUP_ALIAS[$a['group']] ?? $a['group'];
@@ -51,7 +51,8 @@ foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $ite
 $meta = [
     'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
     'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, resolução e sensibilidade de toque (Free Fire).'],
-    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, sono profundo, rede, congelar apps e ajustes profundos (root).'],
+    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, sono profundo, congelar apps e ajustes profundos (root).'],
+    'DNS e rede'      => ['t' => 'DNS e rede',       's' => 'Escolha o DNS privado (30+ perfis), meça a latência e ajuste Wi-Fi e buffers TCP.'],
     'Processos'       => ['t' => 'Processos',        's' => 'Veja o que gasta RAM/CPU de verdade e limite, priorize ou congele um app.'],
     'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo, Game Mode e debloat (por perfil ou por app).'],
     'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],

@@ -326,7 +326,7 @@ class PackBridge(
 
     private fun soundFor(group: String): String = when (group) {
         "Desempenho", "Apps e jogos" -> "liberando-memoria-ram.mp3"
-        "Rede e conexão" -> "configurando-dns.mp3"
+        "DNS e rede", "Rede e conexão" -> "configurando-dns.mp3"
         "Display & Touch", "Sistema" -> "ativando.mp3"
         else -> "otimizando-o-sistema.mp3"
     }

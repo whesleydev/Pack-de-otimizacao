@@ -239,14 +239,24 @@ nativa além do necessário para conectar e rodar os comandos.
   de destaque (inclui **prata**) e fontes; os swatches/segmentos são casados por
   `data-accent`/`data-font` com essas chaves. O seletor de fonte quebra em várias
   linhas (`#setFont{flex-wrap:wrap}`) por ter 7 opções.
-- Categorias do painel: são 7, definidas em `otm_actions()` pelo campo `group`
-  (`Geral`, `Display & Touch`, `Desempenho`, `Processos`, `Apps e jogos`,
-  `Sistema`) mais a **Home** (métricas, não é grupo de ações). `Rede e conexão` foi
-  unificada em `Desempenho` (`$GROUP_ALIAS` em `web/index.php`). A ordem de exibição
+- Categorias do painel: são 7 grupos definidos em `otm_actions()` pelo campo `group`
+  (`Geral`, `Display & Touch`, `Desempenho`, `DNS e rede`, `Processos`,
+  `Apps e jogos`, `Sistema`) mais a **Home** (métricas, não é grupo de ações).
+  A antiga `Rede e conexão` virou `DNS e rede` (`$GROUP_ALIAS` em `web/index.php`
+  mantém o alias para ações legadas). A ordem de exibição
   vem de `$GROUP_ORDER` em `web/index.php` (com
   fallback para grupos fora da lista). `actions.json` do app é gerado a partir de
   `otm_actions()` (mesmo `group`). Ao renomear categoria, ajuste também
   `PackBridge.soundFor` (som por grupo) e os testes em `tests/run.sh`.
+- Catálogo de DNS: são **39 perfis DoT** (todos com hostname verificado na fonte
+  oficial) em `scripts/dns.sh` (`dns_profiles()`) e espelhados em `web/lib.php`
+  (`$dns`). Cobre velocidade, privacidade, anti-anúncios, família, segurança e sem
+  filtro (Cloudflare, Quad9, AdGuard, Mullvad, ControlD, DNS4EU, CleanBrowsing,
+  OpenDNS, DNS.SB, CZ.NIC, Digitale Gesellschaft, RESTENA, Applied Privacy,
+  UncensoredDNS, DNSForge, NextDNS, Google). O submenu (`dns_menu`) numera os
+  perfis e reserva a última posição para `custom`; ao adicionar/remover perfil não
+  há número fixo a ajustar. Os testes em `tests/run.sh` (`t_dns`) conferem cada
+  hostname e o total (>=30).
 
 Build local (sem Android Studio):
 
