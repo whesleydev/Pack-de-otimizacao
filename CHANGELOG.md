@@ -3,6 +3,21 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.15.0] - 2026-10-05
+
+### Adicionado
+- **DPI bem menor no painel**: o controle "Tamanho da interface (DPI)" agora vai
+  de **60% a 160%** (antes só subia, de 100% a 140%). Dá para deixar a interface
+  bem compacta, do jeito que estava faltando — o mínimo de 100% ainda ficava grande.
+  O ajuste continua salvo no aparelho (`otm-scale`) e vale para o painel do app e
+  para o painel web, sem mexer no zoom do sistema.
+
+### Alterado
+- **Frase do topo do painel** reescrita: agora diz que o pack junta DNS, RAM,
+  renderizador, touch do Free Fire, debloat e ajustes profundos "tudo num lugar só"
+  e convida a deixar o celular "liso que nem sabão". Mantém a dica do **?** dos
+  cartões.
+
 ## [2.14.0] - 2026-10-05
 
 ### Adicionado

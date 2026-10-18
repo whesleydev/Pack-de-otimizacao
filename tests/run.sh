@@ -701,6 +701,16 @@ t_personalization() {
     # DPI não pode reintroduzir o arrasto lateral: largura compensada e topo clipado
     grep -q 'calc(100% / ' "$app" && ok "DPI compensa a largura (sem estouro)" || bad "DPI sem compensação de largura"
     grep -q 'overflow-x:clip' "$web" && ok "web: topo clipa o transbordo" || bad "web: transbordo não clipado"
+    # faixa de DPI: precisa permitir bem menor que 100% (até 60%) e maior (160%)
+    grep -q 'id="setScale" min="60" max="160"' "$app" \
+        && ok "app: DPI vai de 60% a 160%" || bad "app: faixa de DPI não cobre 60%"
+    grep -q 'id="setScale" min="60" max="160"' "$web" \
+        && ok "web: DPI vai de 60% a 160%" || bad "web: faixa de DPI não cobre 60%"
+    grep -q 'Math.max(0.6' "$app" && grep -q 'Math.min(1.6' "$app" \
+        && ok "app: clamp de DPI bate com a faixa (0.6x..1.6x)" || bad "app: clamp de DPI fora da faixa"
+    # banner: frase de venda pedida pelo autor
+    grep -q 'liso que nem sabão' "$app" && grep -q 'liso que nem sabão' "$web" \
+        && ok "banner: frase de venda no app e no web" || bad "banner: frase de venda ausente"
 }
 
 

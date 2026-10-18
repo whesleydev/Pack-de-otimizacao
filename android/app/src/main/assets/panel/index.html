@@ -430,7 +430,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
 <div class="banner">
   <div class="in">
     <h1>00deUdia Otimizações</h1>
-    <p>Controle o pack inteiro pelo navegador: DNS, RAM, renderizador, touch do Free Fire, debloat e ajustes profundos. Toque no <b>?</b> de cada cartão para entender o que ele faz.</p>
+    <p>DNS, RAM, renderizador, touch do Free Fire, debloat e ajustes profundos — tudo num lugar só. Deixe seu celular liso que nem sabão. Toque no <b>?</b> de cada cartão para saber o que ele faz.</p>
     <span class="tag"><span class="dot"></span>conectado ao pack local</span>
   </div>
 </div>
@@ -3727,9 +3727,9 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <div class="set-group">
       <div class="set-label">Tamanho da interface (DPI)</div>
       <div class="slider"><span style="font-size:12px;color:var(--muted)">DPI</span>
-        <input type="range" id="setScale" min="100" max="140" step="5" value="100">
+        <input type="range" id="setScale" min="60" max="160" step="5" value="100">
         <span class="val" id="setScaleVal">100%</span></div>
-      <div class="set-hint">Aumenta ou diminui tudo no painel (zoom do app, não do sistema).</div>
+      <div class="set-hint">Diminui ou aumenta tudo no painel (zoom do app, não do sistema). Pode ir até 60% para deixar bem compacto.</div>
     </div>
 
     <div class="set-group" id="setSoundGroup">
@@ -3868,7 +3868,7 @@ function setAccentQuiet(name){
 /* DPI do app: zoom no <html>. A largura vira 100%/escala para o conteúdo não
    ultrapassar a tela (foi o que causava o arrasto lateral). */
 function setScaleQuiet(pct){
-  const z = Math.min(1.4, Math.max(1, (pct || 100) / 100));
+  const z = Math.min(1.6, Math.max(0.6, (pct || 100) / 100));
   const r = document.documentElement.style;
   if (z === 1){ r.removeProperty("zoom"); r.removeProperty("width"); }
   else { r.setProperty("zoom", String(z)); r.setProperty("width", "calc(100% / " + z + ")"); }

@@ -212,6 +212,8 @@ nativa além do necessário para conectar e rodar os comandos.
   `onLogin`. Ligar o som usa `ativando.mp3`. O DPI é
   um `zoom` no `<html>` com `width: calc(100% / escala)` e `html{overflow-x:clip}`
   para não reintroduzir o arrasto lateral (medido com Playwright em 360/412px).
+  A faixa do DPI é **60%–160%** (`setScale` min/max, clamp `0.6x..1.6x` em
+  `setScaleQuiet`); o mínimo baixo é o que permite deixar a interface bem compacta.
 - Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
   que rodam `adb-tweaks.sh perm_app|perm_ff|perm_battery|perm_all` (grupos novos,
   reversíveis: entram na isenção do Doze via `cmd deviceidle whitelist`, ganham
