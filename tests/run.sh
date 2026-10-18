@@ -698,8 +698,15 @@ t_personalization() {
         grep -q "$k" "$web" || bad "web: falta $k (sem paridade com o app)"
     done
     ok "web: personalização em paridade com o app"
-    # DPI não pode reintroduzir o arrasto lateral: largura compensada e topo clipado
-    grep -q 'calc(100% / ' "$app" && ok "DPI compensa a largura (sem estouro)" || bad "DPI sem compensação de largura"
+    # DPI não pode reintroduzir o arrasto lateral.
+    # Acima de 100% a largura é compensada; abaixo o zoom já encolhe tudo, então a
+    # largura fica em 100% (compensar ali é que estourava a tela e trazia o arrasto).
+    grep -q 'z > 1 ? "calc(100% / ' "$app" \
+        && ok "app: DPI compensa a largura só acima de 100% (sem estouro)" \
+        || bad "app: DPI sem compensação condicional de largura"
+    grep -q 'z > 1 ? "calc(100% / ' "$web" \
+        && ok "web: DPI compensa a largura só acima de 100%" \
+        || bad "web: DPI sem compensação condicional de largura"
     grep -q 'overflow-x:clip' "$web" && ok "web: topo clipa o transbordo" || bad "web: transbordo não clipado"
     # faixa de DPI: precisa permitir bem menor que 100% (até 60%) e maior (160%)
     grep -q 'id="setScale" min="60" max="160"' "$app" \
@@ -740,6 +747,16 @@ t_usage_access() {
     grep -q 'id="setPermUsage"' "$app" && grep -q 'id="setPermUsage"' "$web" \
         && ok "app+web: botão de acesso ao uso" || bad "botão de acesso ao uso ausente"
     grep -q 'Acesso a dados de uso' "$web" && ok "web: card de permissão explicado" || bad "web: card de permissão ausente"
+    # Home reorganizada: métricas em grupos, botão de liberar e atualizar no painel
+    [ "$(grep -c 'stat-group' "$app")" -ge 2 ] && ok "app: métricas separadas em grupos" || bad "app: sem grupos de métricas"
+    grep -q 'glabel' "$app" && grep -q 'Uso do aparelho' "$app" \
+        && ok "app: grupo 'Uso do aparelho' rotulado" || bad "app: grupo de uso sem rótulo"
+    grep -q 'id="btnUsagePerm"' "$app" && grep -q 'id="btnUsagePerm"' "$web" \
+        && ok "app+web: botão para liberar o uso" || bad "botão de liberar o uso ausente"
+    grep -q 'id="btnRefreshStats"' "$app" && grep -q 'boxhead' "$app" \
+        && ok "app: atualizar fica no cabeçalho do painel" || bad "app: atualizar fora do cabeçalho"
+    grep -q 'id="usageNeed"' "$app" && grep -q 'precisa do Acesso a dados de uso' "$app" \
+        && ok "app: chip avisa que o grupo precisa da permissão" || bad "app: sem chip de aviso do grupo"
     # o pedido uma vez por versão existe no app
     grep -q 'Ver o uso real do aparelho' "$ROOT/android/app/src/main/java/com/otm/pack/Permissions.kt" \
         && ok "app: pede a permissão na primeira abertura" || bad "app: não pede a permissão"
@@ -1094,9 +1111,11 @@ t_web() {
         for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
-        # home + área Visual (métricas reais)
+        # home + área de métricas reais (consumo do aparelho)
         assert_contains "$TMP/web_html" 'data-g="Home"' "index.php tem a home"
-        assert_contains "$TMP/web_html" "Visual — consumo real" "index.php tem a área Visual"
+        assert_contains "$TMP/web_html" "Consumo real do aparelho" "index.php tem a área de consumo real"
+        assert_contains "$TMP/web_html" "Sistema agora" "index.php separa as métricas em grupos"
+        assert_contains "$TMP/web_html" "Uso do aparelho" "index.php tem o grupo de uso do aparelho"
         for k in ram cpu bat stor disp up; do
             grep -q "data-stat=\"$k\"" "$TMP/web_html" && ok "Visual tem o medidor $k" || bad "Visual sem o medidor $k"
         done

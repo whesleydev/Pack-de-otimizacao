@@ -3,6 +3,26 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.17.0] - 2026-10-05
+
+### Corrigido
+- **Arrasto lateral com DPI baixa.** Ao reduzir o DPI abaixo de 100%, o painel
+  esticava o conteúdo para além da tela (a largura era forçada a `100% / escala`)
+  e a página voltava a arrastar de lado. Agora a compensação de largura só é
+  aplicada quando o zoom **aumenta** (acima de 100%); abaixo disso o próprio zoom
+  já encolhe tudo, então a largura fica em `100%`. Medido com Chromium em
+  320/360/412/480px de largura, de 60% a 160% de DPI: nenhum estouro.
+
+### Alterado
+- **Home reorganizada, mais fácil de entender.** As métricas agora vêm em dois
+  grupos rotulados — **Sistema agora** (RAM, CPU, bateria, armazenamento, tela,
+  tempo ligado) e **Uso do aparelho** (app em primeiro plano e uso nas últimas
+  24 h) — em vez de uma lista única de oito cartões misturados. O grupo de uso
+  mostra um selo **"precisa do Acesso a dados de uso"** enquanto a permissão não
+  é liberada, com um botão **Liberar** que abre a tela do sistema. O botão
+  **Atualizar** foi para o cabeçalho do painel (no lugar de um botão solto no
+  fim), e o indicador **ao vivo** mostra há quanto tempo os números foram lidos.
+
 ## [2.16.0] - 2026-10-05
 
 ### Adicionado

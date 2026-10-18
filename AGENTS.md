@@ -210,10 +210,15 @@ nativa além do necessário para conectar e rodar os comandos.
   "login feito com sucesso" toca só quando a tela de login valida usuário/senha:
   o `login.html` chama `OTM.call("login")` e o `PackBridge` repassa para
   `onLogin`. Ligar o som usa `ativando.mp3`. O DPI é
-  um `zoom` no `<html>` com `width: calc(100% / escala)` e `html{overflow-x:clip}`
-  para não reintroduzir o arrasto lateral (medido com Playwright em 360/412px).
+  um `zoom` no `<html>` com `width: calc(100% / escala)` **só acima de 100%** e
+  `html{overflow-x:clip}` para não reintroduzir o arrasto lateral (medido com
+  Playwright/Chromium em 320/360/412/480px).
   A faixa do DPI é **60%–160%** (`setScale` min/max, clamp `0.6x..1.6x` em
   `setScaleQuiet`); o mínimo baixo é o que permite deixar a interface bem compacta.
+  A compensação de largura (`width: 100%/escala`) só vale quando o zoom **aumenta**
+  (`z > 1`); abaixo de 100% a largura fica em `100%`. Compensar abaixo de 100%
+  deixava o conteúdo mais largo que a tela e reintroduzia o arrasto lateral — o
+  teste `t_personalization` cobra a forma condicional (`z > 1 ? "calc(100% / ...`).
 - Acesso a dados de uso: o app declara `PACKAGE_USAGE_STATS` e pede, uma vez por
   versão, a autorização do sistema (`Usage.openSettings`). `Usage.kt` lê pela API
   do Android (`UsageStatsManager`: `queryEvents` p/ primeiro plano,
@@ -222,6 +227,12 @@ nativa além do necessário para conectar e rodar os comandos.
   `usage_granted`). Funciona **sem shell**. Sem autorização devolve vazio e o painel
   mostra "—" + o aviso `#usageHint`; nada é inventado. O botão fica em Configs →
   Permissões (`setPermUsage` → `OTM.call("usage")`).
+- Home (painel): as métricas ficam em **dois grupos** (`.stat-group` + `.glabel`):
+  *Sistema agora* (RAM/CPU/bateria/armazenamento/tela/tempo ligado) e *Uso do
+  aparelho* (`fg`/`usage`). O grupo de uso traz o selo `#usageNeed` e o botão
+  `#btnUsagePerm` (→ `openUsageSettings`), que somem quando `usage_granted` é true.
+  O botão `#btnRefreshStats` fica no cabeçalho (`.boxhead`) e o `#liveBadge` mostra
+  "ao vivo · há N s". Tudo é escondido/mostrado por `renderStats` (não há `esc()`).
 - Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
   que rodam `adb-tweaks.sh perm_app|perm_ff|perm_battery|perm_all` (grupos novos,
   reversíveis: entram na isenção do Doze via `cmd deviceidle whitelist`, ganham
