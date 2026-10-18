@@ -47,7 +47,7 @@ dns_profiles() {
         google            "dns.google"                       "Compatibilidade máxima" \
         nextdns           "dns.nextdns.io"                   "Filtragem e privacidade (NextDNS)" \
         opendns           "dns.opendns.com"                  "Cisco OpenDNS (confiável)" \
-        opendns-family    "dns.familyshield.opendns.com"     "OpenDNS FamilyShield (conteúdo adulto)" \
+        opendns-family    "familyshield.opendns.com"     "OpenDNS FamilyShield (conteúdo adulto)" \
         cleanbrowsing-family "family-filter-dns.cleanbrowsing.org" "CleanBrowsing Família (adulto + malware)" \
         cleanbrowsing-security "security-filter-dns.cleanbrowsing.org" "CleanBrowsing Segurança (só malware)" \
         cleanbrowsing-adult "adult-filter-dns.cleanbrowsing.org" "CleanBrowsing Adulto (bloqueia só adulto)" \

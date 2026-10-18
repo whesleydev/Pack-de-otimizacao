@@ -891,7 +891,7 @@ t_dns() {
     n_prof=$(OTM_MODE=local OTM_NO_COLOR=1 sh "$f" list 2>/dev/null | grep -c '^ *[a-z]')
     [ "$n_prof" -ge 30 ] && ok "dns list traz $n_prof perfis" || bad "perfis de DNS: $n_prof (esperado >=30)"
     for pair in "opendns:dns.opendns.com" \
-                "opendns-family:dns.familyshield.opendns.com" \
+                "opendns-family:familyshield.opendns.com" \
                 "cleanbrowsing-family:family-filter-dns.cleanbrowsing.org" \
                 "cleanbrowsing-adult:adult-filter-dns.cleanbrowsing.org" \
                 "controld-ads:p2.freedns.controld.com" \
