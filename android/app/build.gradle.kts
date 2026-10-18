@@ -11,8 +11,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 34
-        versionName = "2.13.0"
+        versionCode = 35
+        versionName = "2.14.0"
     }
 
     signingConfigs {
@@ -52,6 +52,24 @@ android {
         resources.excludes += setOf("META-INF/*.kotlin_module")
     }
 }
+
+// Os scripts do pack são a fonte da verdade em <repo>/scripts. O app embarca
+// uma cópia em assets/pack/scripts (é o que PackAssets.ensureShellCopy leva para
+// /data/local/tmp/otm-pack no aparelho). Sem este sync o asset ficava preso numa
+// versão antiga e o app rodava script velho. Sync (não Copy) para remover sobras.
+val packScriptsDir = rootProject.file("../scripts")
+val syncPackAssets by tasks.registering(Sync::class) {
+    onlyIf { packScriptsDir.isDirectory }
+    from(packScriptsDir) { exclude("**/.git/**", "**/*.log") }
+    into(layout.projectDirectory.dir("src/main/assets/pack/scripts"))
+}
+val syncPackVersion by tasks.registering(Copy::class) {
+    val v = rootProject.file("../VERSION")
+    onlyIf { v.isFile }
+    from(v)
+    into(layout.projectDirectory.dir("src/main/assets/pack"))
+}
+tasks.named("preBuild") { dependsOn(syncPackAssets, syncPackVersion) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")

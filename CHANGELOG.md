@@ -3,6 +3,40 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.14.0] - 2026-10-05
+
+### Adicionado
+- **Home com o consumo REAL do aparelho.** A primeira tela do painel agora mostra,
+  ao vivo (atualiza a cada 4 s), RAM em uso, carga da CPU, bateria, armazenamento,
+  tela (Hz) e tempo ligado — lidos do próprio celular (`scripts/panel-stats.sh`).
+  O que o aparelho não informa aparece como **—**, nunca um número inventado.
+  Inclui atalhos para as ações mais usadas (snapshot, limpar RAM, fluidez, abrir FF)
+  e navegação direta para cada categoria.
+- **Gerenciador de processos de verdade** (`scripts/proc-mgr.sh` + categoria
+  **Processos** no painel): lista os apps que mais gastam CPU/RAM agora, mostra
+  PID/RAM/nice/oom de um app e permite **limitar RAM**, **priorizar CPU**
+  (`top-app`/`foreground`/`background`), **mudar o nice**, **congelar/descongelar**
+  e **remover limites**. Tudo com dados reais de `/proc`; sem root, avisa e não
+  finge que aplicou.
+- **Sono profundo (Doze)** com cartões próprios: ligar e desligar as constantes de
+  repouso (`device_idle_constants`) e ver o estado atual (`doze.status`).
+- **Latência fina do toque** (`touch.latency`): ajuste direto da responsividade
+  (1–1000) com sliders, junto dos demais parâmetros do toque. A chave é testada
+  antes de aplicar — se o aparelho não expõe `touch_responsiveness`, o pack avisa
+  em vez de registrar falha à toa.
+- **Novos perfis de DNS**: OpenDNS, OpenDNS Família, CleanBrowsing Família,
+  CleanBrowsing Segurança, ControlD e ControlD + Redes (além dos já existentes).
+- **Persistir no boot** (root): reaplica os ajustes aplicados sempre que o aparelho
+  reinicia, via `/data/adb/service.d` (Magisk) ou `init.d`. `turbo.sh boot on|off|status`
+  e cartões "Persistir no boot" na categoria Sistema.
+
+### Alterado
+- Menu lateral agora tem **6 categorias** com a nova **Processos**; a Home é a
+  primeira opção e abre as métricas antes de qualquer ajuste.
+
+### Notas
+- Versão `2.14.0` (`versionCode` 35).
+
 ## [2.13.0] - 2026-10-05
 
 ### Adicionado

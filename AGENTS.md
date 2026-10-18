@@ -190,6 +190,18 @@ nativa além do necessário para conectar e rodar os comandos.
   (app, `stateImpl()` no `PackBridge`). Nada fictício: campo ilegível volta `""` e
   a UI não mostra número inventado. Parâmetros com `'state' => '<chave>'` abrem o
   slider já no valor do aparelho.
+- **Home com métricas reais** (`scripts/panel-stats.sh`, na whitelist do
+  `lib.php`): lê RAM (`/proc/meminfo`), carga/núcleos/frequência de CPU, bateria
+  (`dumpsys battery`), refresh, armazenamento (`df`) e uptime, devolvendo uma linha
+  JSON. O painel consome via `api.php?action=stats` (web) ou `OTM.call("stats")`
+  (app, `statsImpl()` no `PackBridge`) e faz *polling* a cada 4 s enquanto a Home
+  está visível (`startStats`/`stopStats`). Só leitura; campo indisponível fica `""`
+  e a UI mostra **—**. A Home é a seção `#Home` e é a primeira do menu.
+- **Gerenciador de processos** (`scripts/proc-mgr.sh`, na whitelist do `lib.php`):
+  `top [n]` (mais CPU/RAM via `/proc`), `info <pkg>`, `ram <pkg> <mb>`,
+  `cpu <pkg> <grupo>`, `renice <pkg> <nice>`, `freeze`/`unfreeze`,
+  `status`/`restore`. Sem root avisa e não aplica; a categoria **Processos**
+  agrupa essas ações.
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).
@@ -227,9 +239,11 @@ nativa além do necessário para conectar e rodar os comandos.
   de destaque (inclui **prata**) e fontes; os swatches/segmentos são casados por
   `data-accent`/`data-font` com essas chaves. O seletor de fonte quebra em várias
   linhas (`#setFont{flex-wrap:wrap}`) por ter 7 opções.
-- Categorias do painel: são 6, definidas em `otm_actions()` pelo campo `group`
-  (`Geral`, `Display & Touch`, `Rede e conexão`, `Desempenho`, `Apps e jogos`,
-  `Sistema`). A ordem de exibição vem de `$GROUP_ORDER` em `web/index.php` (com
+- Categorias do painel: são 7, definidas em `otm_actions()` pelo campo `group`
+  (`Geral`, `Display & Touch`, `Desempenho`, `Processos`, `Apps e jogos`,
+  `Sistema`) mais a **Home** (métricas, não é grupo de ações). `Rede e conexão` foi
+  unificada em `Desempenho` (`$GROUP_ALIAS` em `web/index.php`). A ordem de exibição
+  vem de `$GROUP_ORDER` em `web/index.php` (com
   fallback para grupos fora da lista). `actions.json` do app é gerado a partir de
   `otm_actions()` (mesmo `group`). Ao renomear categoria, ajuste também
   `PackBridge.soundFor` (som por grupo) e os testes em `tests/run.sh`.

@@ -887,7 +887,80 @@ t_dns() {
     OTM_MODE=local sh "$f" custom dns.exemplo.com >/dev/null 2>&1
     [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "dns.exemplo.com" ] \
         && ok "dns custom aceita hostname" || bad "custom nao gravou"
+    # provedores da lista "10 melhores DNS 2026"
+    for pair in "opendns:dns.opendns.com" \
+                "opendns-family:dns.familyshield.opendns.com" \
+                "cleanbrowsing-family:family-filter-dns.cleanbrowsing.org" \
+                "controld:p2.freedns.controld.com"; do
+        id="${pair%%:*}"; host="${pair#*:}"
+        rm -f "$st/off.sh" "$st/on"
+        OTM_MODE=local sh "$f" "$id" >/dev/null 2>&1
+        [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "$host" ] \
+            && ok "dns $id grava $host" || bad "dns $id nao gravou ($host)"
+    done
     rm -f "$st/off.sh" "$st/on"
+}
+
+t_new_scripts() {
+    printf '\n  # doze + gerenciador de processos (dados reais)\n'
+    export TMP_CMD_LOG="$TMP/new2.log"; : > "$TMP_CMD_LOG"
+    # --- doze: liga/desliga as constantes de idle ---
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" doze on > "$TMP/doze_on" 2>&1
+    assert_contains "$TMP/doze_on" "doze" "doze on explica o efeito"
+    grep -q 'inactive_to' "$TMP_STORE/global.device_idle_constants" 2>/dev/null \
+        && ok "doze on grava as constantes" || bad "doze on sem constantes"
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" doze off > "$TMP/doze_off" 2>&1
+    test ! -f "$TMP_STORE/global.device_idle_constants" && ok "doze off remove as constantes" || bad "doze off nao removeu"
+    # --- touch_latency: aplica a responsividade e nao falha ---
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" touch_latency 80 300 0 4 > "$TMP/tl_out" 2>&1
+    [ "$(cat "$TMP_STORE/system.touch_responsiveness" 2>/dev/null)" = "80" ] \
+        && ok "touch_latency aplica responsiveness" || bad "touch_latency nao aplicou"
+    [ "$(cat "$TMP_STORE/system.long_press_timeout" 2>/dev/null)" = "300" ] \
+        && ok "touch_latency aplica long press" || bad "touch_latency nao aplicou long press"
+    grep -q 'failed=1' "$TMP/tl_out" && bad "touch_latency reportou falha" || ok "touch_latency sem falha falsa"
+    # --- proc-mgr: lista processos reais e valida entradas ---
+    pf="$ROOT/scripts/proc-mgr.sh"
+    [ -f "$pf" ] && ok "scripts/proc-mgr.sh existe" || { bad "proc-mgr.sh ausente"; return; }
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" > "$TMP/pm_help" 2>&1
+    assert_contains "$TMP/pm_help" "proc-mgr.sh" "proc-mgr mostra a ajuda sem argumento"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" top 5 > "$TMP/pm_top" 2>&1
+    assert_contains "$TMP/pm_top" "processos" "proc-mgr top lista os processos"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" info com.exemplo > "$TMP/pm_info" 2>&1
+    grep -q 'não está rodando\|nao esta rodando\|Processos' "$TMP/pm_info" && ok "proc-mgr info responde por app" || bad "proc-mgr info mudo"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" renice com.exemplo abc > "$TMP/pm_bad" 2>&1
+    assert_contains "$TMP/pm_bad" "uso:" "proc-mgr valida nice invalido"
+    # sem root, limitar RAM/CPU precisa avisar e nao aplicar
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" ram com.exemplo 512 > "$TMP/pm_ram" 2>&1
+    grep -q 'root' "$TMP/pm_ram" && ok "proc-mgr ram pede root" || bad "proc-mgr ram sem aviso de root"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" status > "$TMP/pm_st" 2>&1
+    assert_contains "$TMP/pm_st" "aplicados" "proc-mgr status lista o que ha"
+    # --- registro no painel + app ---
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["doze.on","doze.off","doze.status","proc.top","proc.info","proc.ram",
+                       "proc.cpu","proc.renice","proc.freeze","proc.unfreeze","proc.status",
+                       "proc.restore","touch.latency"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/pm_reg" 2>&1
+    test ! -s "$TMP/pm_reg" && ok "novas acoes no registro do painel" || bad "registro: $(cat "$TMP/pm_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("proc-mgr.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/pm_lib" 2>&1
+    assert_contains "$TMP/pm_lib" "ok" "proc-mgr.sh na whitelist"
+    grep -q '"proc-mgr.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o gerenciador de processos" || bad "app: actions.json sem proc-mgr"
+    grep -q '"doze.on"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o sono profundo" || bad "app: actions.json sem doze"
+    # --- painel: home + Visual + leitura de stats ---
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo function_exists("otm_stats_read") ? "reader" : "";' > "$TMP/pm_stats" 2>&1
+    assert_contains "$TMP/pm_stats" "reader" "lib: leitor de stats presente"
+    grep -q "case 'stats'" "$ROOT/web/api.php" && ok "api.php: endpoint de stats" || bad "api.php: sem stats"
+    grep -q 'fun statsImpl' "$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "app: statsImpl presente" || bad "app: sem statsImpl"
+    grep -q 'startStats' "$ROOT/web/index.php" && ok "painel: liga o polling das metricas" || bad "painel: sem startStats"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG
 }
 
 t_modules() {
@@ -958,9 +1031,15 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 5 ] && ok "index.php renderiza as 5 categorias" || bad "categorias: $n_sec (esperado 5)"
-        for cat in "Geral" "Display &amp; Touch" "Desempenho" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 7 ] && ok "index.php renderiza a home + 6 categorias" || bad "seções: $n_sec (esperado 7)"
+        for cat in "Geral" "Display &amp; Touch" "Desempenho" "Processos" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
+        done
+        # home + área Visual (métricas reais)
+        assert_contains "$TMP/web_html" 'data-g="Home"' "index.php tem a home"
+        assert_contains "$TMP/web_html" "Visual — consumo real" "index.php tem a área Visual"
+        for k in ram cpu bat stor disp up; do
+            grep -q "data-stat=\"$k\"" "$TMP/web_html" && ok "Visual tem o medidor $k" || bad "Visual sem o medidor $k"
         done
         # menu enxuto: Rede e conexão foi unificada em Desempenho (não é seção própria)
         grep -q '<section id="g-Rede' "$TMP/web_html" && bad "Rede ainda é seção separada" \
@@ -1089,6 +1168,7 @@ t_build_modules
 t_build_pack
 t_debloat
 t_dns
+t_new_scripts
 t_modules
 t_web
 t_pack

@@ -70,6 +70,7 @@ class PackBridge(
                     "status" -> textResult(scriptCommand("pack.sh", listOf("status")))
                     "dns" -> textResult(scriptCommand("dns.sh", listOf("status")))
                     "state" -> stateImpl()
+                    "stats" -> statsImpl()
                     "mode" -> modeImpl()
                     "apps" -> appsImpl()
                     "modules" -> modulesImpl()
@@ -175,6 +176,23 @@ class PackBridge(
         }
         return JSONObject().put("ok", true)
             .put("state", state ?: JSONObject())
+            .toString()
+    }
+
+    /**
+     * Consumo REAL do aparelho para a home do painel (RAM, CPU, bateria,
+     * refresh). Reusa `panel-stats.sh`, que devolve uma linha JSON; campo que
+     * o aparelho não expõe volta vazio e o painel mostra "—".
+     */
+    private fun statsImpl(): String {
+        val out = output(scriptCommand("panel-stats.sh", emptyList()))
+        var stats: JSONObject? = null
+        for (line in out.split("\n")) {
+            val l = line.trim()
+            if (l.startsWith("{")) { stats = try { JSONObject(l) } catch (e: Exception) { null }; if (stats != null) break }
+        }
+        return JSONObject().put("ok", true)
+            .put("stats", stats ?: JSONObject())
             .toString()
     }
 

@@ -123,6 +123,48 @@ battery_off() {
     say "pronto"
 }
 
+# --- sono profundo (doze / idle) ----------------------------------------------
+# O Doze normal só entra depois de ~30min parado. Aqui os tempos são encurtados
+# para o aparelho "dormir de verdade" logo que a tela apaga, sem esperar meia
+# hora. Tudo reversível; o app em uso pode ser isentado à parte.
+doze() {
+    acao="${1:-status}"
+    case "$acao" in
+        on)
+            bkp_begin
+            say "Sono profundo (doze rápido)"
+            # constantes que controlam o tempo até entrar em idle (ms)
+            bkp_set global device_idle_constants \
+                "light_after_inactive_to=60000,light_pre_idle_to=60000,inactive_to=120000,sensing_to=0,locating_to=0,idle_after_idle_to_ms=60000,idle_to=300000,min_time_to_alarm=60000"
+            sh_run "dumpsys deviceidle enable light" >/dev/null 2>&1
+            sh_run "dumpsys deviceidle enable deep" >/dev/null 2>&1
+            # sem "truques" de rede que impedem o rádio de dormir
+            sh_run "settings put global wifi_scan_always_enabled 0" >/dev/null 2>&1
+            say "doze afinado: dorme em ~2min após a tela apagar (era ~30min)"
+            ;;
+        off)
+            bkp_begin
+            say "Sono profundo - desligar"
+            sh_run "settings delete global device_idle_constants" >/dev/null 2>&1
+            sh_run "dumpsys deviceidle unforce" >/dev/null 2>&1
+            say "tempos de doze restaurados ao padrão"
+            ;;
+        force)
+            sh_run "dumpsys deviceidle force-idle" >/dev/null 2>&1
+            say "forçado a dormir agora (teste)"
+            ;;
+        status)
+            st="$(sh_get 'dumpsys deviceidle | grep -m1 mState=')"
+            [ -z "$st" ] && st="(sem permissão de leitura)"
+            cst="$(sh_get 'settings get global device_idle_constants')"
+            [ -z "$cst" ] || [ "$cst" = "null" ] && cst="(padrão de fábrica)"
+            printf '  %sestado:%s %s\n' "$C_A" "$C_R" "$(echo "$st" | sed 's/^ *//')"
+            printf '  %sconstantes:%s %s\n' "$C_A" "$C_R" "$cst"
+            ;;
+        *)  say "Uso: doze on|off|force|status" ;;
+    esac
+}
+
 # --- jogos / Game Mode --------------------------------------------------------
 game() {
     bkp_begin
@@ -425,6 +467,90 @@ notif() {
     say "heads-up e bolhas desligados"
 }
 
+# --- modo foco de jogo (DND extremo) ------------------------------------------
+# Silencia tudo durante a partida (heads-up, bolhas, som de notificação) e
+# ativa o Não Perturbe. Não bloqueia chamadas de contatos de emergência.
+game_focus() {
+    bkp_begin
+    say "Modo foco de jogo (DND extremo)"
+    sh_run "cmd notification set_dnd on" >/dev/null 2>&1
+    bkp_raw "cmd notification set_dnd off"
+    bkp_set global heads_up_notifications_enabled 0
+    bkp_set global notification_bubbles 0
+    sh_run "settings put secure zen_mode 3" >/dev/null 2>&1
+    sh_run "settings put secure zen_mode_config_etag -1" >/dev/null 2>&1
+    bkp_raw "settings put secure zen_mode 0"
+    boot_add "cmd notification set_dnd on; settings put global heads_up_notifications_enabled 0"
+    say "notificações silenciadas. Reverta em 'Foco de jogo: desligar'."
+}
+
+game_focus_off() {
+    bkp_begin
+    say "Foco de jogo desligado"
+    sh_run "cmd notification set_dnd off" >/dev/null 2>&1
+    bkp_set global heads_up_notifications_enabled 1
+    bkp_set global notification_bubbles 1
+    sh_run "settings put secure zen_mode 0" >/dev/null 2>&1
+    say "notificações normais"
+}
+
+# --- toque multitouch (janela de resposta) ------------------------------------
+# multi <ms>  -> ajusta a janela de multitouch (100..800ms). Menor = resposta
+# mais imediata com vários dedos na tela (evita "atraso" no toque).
+touch_multi() {
+    ms="${1:-}"
+    case "$ms" in
+        ''|*[!0-9]*) err "uso: touch_multi <100..800>"; return 1 ;;
+    esac
+    [ "$ms" -lt 100 ] && ms=100
+    [ "$ms" -gt 800 ] && ms=800
+    bkp_begin
+    bkp_set system multi_press_timeout "$ms"
+    say "janela multitouch = ${ms}ms (reinicie o jogo)"
+}
+
+# --- latência de toque (ajuste fino) ------------------------------------------
+# touch_latency <responsiveness> [long_press] [pointer_speed] [slop]
+# Mexe nos quatro parâmetros que controlam o atraso do toque. Diferente dos
+# perfis do ff-touch.sh, aqui é para calibrar na mão e o valor é validado.
+# Tudo reversível: os valores antigos vão para ~/.packotm/off.sh.
+touch_latency() {
+    tr="${1:-}"; lp="${2:-}"; ps="${3:-}"; slop="${4:-}"
+    case "$tr" in ''|*[!0-9]*) err "uso: touch_latency <responsiveness 1..1000> [long_press] [pointer_speed] [slop]"; return 1 ;; esac
+    [ "$tr" -lt 1 ] && tr=1
+    [ "$tr" -gt 1000 ] && tr=1000
+    bkp_begin
+    say "Latência de toque (tr=$tr${lp:+ lp=$lp}${ps:+ ps=$ps}${slop:+ slop=$slop})"
+    # Nem todo aparelho aceita a chave direta. Testa antes de aplicar para não
+    # registrar "falhou" à toa; se nenhuma existir, avisa e segue.
+    tr_key=""
+    for k in touch_responsiveness touch_sensitivity; do
+        sh_run "settings put system $k $tr" >/dev/null
+        [ "$(sh_get "settings get system $k")" = "$tr" ] && { tr_key="$k"; break; }
+    done
+    if [ -n "$tr_key" ]; then
+        bkp_set system "$tr_key" "$tr"
+    else
+        warn "este aparelho não expõe responsividade do toque por settings (pulando)"
+    fi
+    if [ -n "$lp" ]; then
+        case "$lp" in *[!0-9]*) err "long_press inválido: $lp"; return 1 ;; esac
+        [ "$lp" -lt 50 ] && lp=50; [ "$lp" -gt 1500 ] && lp=1500
+        bkp_set system long_press_timeout "$lp"
+    fi
+    if [ -n "$ps" ]; then
+        case "$ps" in *[!0-9-]*|''|-|--) err "pointer_speed inválido: $ps"; return 1 ;; esac
+        [ "$ps" -lt -10 ] && ps=-10; [ "$ps" -gt 10 ] && ps=10
+        bkp_set system pointer_speed "$ps"
+    fi
+    if [ -n "$slop" ]; then
+        case "$slop" in *[!0-9]*) err "slop inválido: $slop"; return 1 ;; esac
+        [ "$slop" -lt 0 ] && slop=0; [ "$slop" -gt 50 ] && slop=50
+        bkp_set system touch_slop "$slop"
+    fi
+    say "aplicado (reinicie o jogo para valer)"
+}
+
 # --- janela / transições (sem root) -------------------------------------------
 # Além das animações: desliga "rotação lenta" e transições de tema escuro.
 window_tweaks() {
@@ -513,7 +639,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off screen touch fluidez game_tune clean aot obscure mobile_net notif window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean aot obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

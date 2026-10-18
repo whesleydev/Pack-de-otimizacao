@@ -35,8 +35,8 @@ if (!otm_auth_logged_in()) {
 
 $actions = array_values(otm_actions());
 
-// Ordem fixa das categorias. Menu enxuto: 5 categorias (Rede entra em Desempenho).
-$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'Apps e jogos', 'Sistema'];
+// Ordem fixa das categorias. Menu enxuto: 6 grupos (Rede entra em Desempenho) + a Home.
+$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'Processos', 'Apps e jogos', 'Sistema'];
 $GROUP_ALIAS = ['Rede e conexão' => 'Desempenho'];
 $byGroup = [];
 foreach ($actions as $a) {
@@ -51,7 +51,8 @@ foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $ite
 $meta = [
     'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
     'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, resolução e sensibilidade de toque (Free Fire).'],
-    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, rede, congelar apps e ajustes profundos (root).'],
+    'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, sono profundo, rede, congelar apps e ajustes profundos (root).'],
+    'Processos'       => ['t' => 'Processos',        's' => 'Veja o que gasta RAM/CPU de verdade e limite, priorize ou congele um app.'],
     'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo, Game Mode e debloat (por perfil ou por app).'],
     'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],
 ];
@@ -423,6 +424,67 @@ body.drawer .scrim{opacity:1;visibility:visible}
   .side .panel{padding-top:48px}
   .console{max-height:80dvh}
 }
+
+/* ---- HOME + VISUAL (métricas reais do aparelho) ---------------------------- */
+.home{max-width:1180px;margin:0 auto;padding:20px clamp(12px,3vw,22px) 40px}
+.home .hero{
+  border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  background:
+    radial-gradient(120% 140% at 100% 0,color-mix(in srgb,var(--accent) 22%,transparent),transparent 60%),
+    var(--glass-card);
+  padding:clamp(18px,4vw,28px);margin-bottom:16px;animation:otmUp .4s both}
+.home .hero h2{margin:0;font-size:clamp(20px,4.4vw,30px);font-weight:800;letter-spacing:-.03em}
+.home .hero p{margin:6px 0 0;color:var(--muted);max-width:64ch}
+.home .hero .hi{color:var(--accent)}
+.home .cols{display:grid;grid-template-columns:1.25fr .9fr;gap:16px;align-items:start}
+@media (max-width:860px){.home .cols{grid-template-columns:1fr}}
+.panelbox{border:1px solid var(--line);border-radius:var(--r);background:var(--glass-card);
+  box-shadow:var(--shadow);padding:16px;animation:otmUp .45s both}
+.panelbox h3{margin:0 0 2px;font-size:15px;font-weight:800;letter-spacing:-.01em}
+.panelbox .sub{margin:0 0 14px;color:var(--muted);font-size:12.5px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px;background:var(--glass-2)}
+.stat .k{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em}
+.stat .k .ic{width:15px;height:15px;flex:none;color:var(--accent)}
+.stat .v{font-size:clamp(20px,5vw,27px);font-weight:800;letter-spacing:-.03em;margin-top:6px;line-height:1.1;
+  font-variant-numeric:tabular-nums}
+.stat .v small{font-size:12px;font-weight:600;color:var(--muted);margin-left:3px}
+.stat .m{margin-top:9px;height:7px;border-radius:999px;background:var(--line);overflow:hidden}
+.stat .m > i{display:block;height:100%;width:0;border-radius:999px;background:var(--accent);
+  transition:width .5s cubic-bezier(.22,1,.36,1)}
+.stat .m.g > i{background:linear-gradient(90deg,var(--teal),#7ad9c3)}
+.stat .m.w > i{background:linear-gradient(90deg,var(--warn),#f0c25e)}
+.stat .m.b > i{background:linear-gradient(90deg,var(--danger),#ff9d92)}
+.stat .foot{margin-top:7px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--teal)}
+.live .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 0 color-mix(in srgb,var(--teal) 55%,transparent);
+  animation:otmPulse 2s infinite}
+@keyframes otmPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--teal) 50%,transparent)}
+  70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes otmUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.qa{grid-template-columns:1fr}}
+.qa button,.qa a{
+  display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);cursor:pointer;
+  border:1px solid var(--line);background:var(--glass-2);border-radius:var(--r-sm);padding:12px 13px;
+  font:inherit;font-weight:700;font-size:13.5px;text-align:left;transition:transform .14s,border-color .14s,background .14s}
+.qa button:hover,.qa a:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--glass)}
+.qa .ic{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.qa .ic svg{width:17px;height:17px}
+.qa .tx{display:flex;flex-direction:column;line-height:1.25}
+.qa .tx small{color:var(--muted);font-weight:500;font-size:11.5px}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.jump button{border:1px solid var(--line);background:var(--glass-2);color:var(--ink);border-radius:999px;
+  padding:7px 13px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s}
+.jump button:hover{border-color:var(--accent);transform:translateY(-1px)}
+.stale{color:var(--muted);font-size:11.5px}
+@media (prefers-reduced-motion:reduce){
+  .home .hero,.panelbox{animation:none}
+  .stat .m > i{transition:none}
+  .live .dot{animation:none}
+}
 </style>
 </head>
 <body>
@@ -456,9 +518,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
       <button class="iconbtn side-close" id="sideClose" aria-label="Fechar"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2>Categorias</h2>
       <nav class="nav" id="nav">
+        <a href="#Home" data-g="Home" aria-current="true"><span class="c"></span>Home<span class="count" id="navHomeCount" hidden></span></a>
         <?php foreach ($groups as $g => $items): ?>
           <a href="#<?= htmlspecialchars(rawurlencode($g), ENT_QUOTES) ?>" data-g="<?= htmlspecialchars($g, ENT_QUOTES) ?>"
-             aria-current="<?= $g === $first ? 'true' : 'false' ?>">
+             aria-current="false">
             <span class="c"></span><?= htmlspecialchars($meta[$g]['t'] ?? $g) ?>
             <span class="count"><?= count($items) ?></span>
           </a>
@@ -468,9 +531,80 @@ body.drawer .scrim{opacity:1;visibility:visible}
   </aside>
 
   <main class="content">
+    <section id="g-Home" data-g="Home" class="home">
+      <div class="hero">
+        <h2>Olá! Este é o <span class="hi">00deUdia Otimizações</span>.</h2>
+        <p>Aqui você vê o <b>consumo real</b> do aparelho e aplica as otimizações com um toque. Os números vêm do próprio celular — o que ele não informa aparece como <b>—</b>. Comece salvando um <b>snapshot</b> e depois explore as categorias.</p>
+      </div>
+      <div class="cols">
+        <div class="panelbox" id="visual">
+          <h3>Visual — consumo real do aparelho</h3>
+          <p class="sub">Atualiza sozinho a cada 4 s enquanto você está aqui. <span class="live" id="liveBadge" hidden><span class="dot"></span>ao vivo</span></p>
+          <div class="stats">
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="10" rx="2"/><path d="M8 7V5m4 2V5m4 2V5M8 17v2m4-2v2m4-2v2"/></svg>Memória RAM</div>
+              <div class="v" data-stat="ram">—</div>
+              <div class="m" data-m="ram"><i></i></div>
+              <div class="foot" data-stat="ramf">—</div>
+            </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l5-3"/></svg>Carga da CPU</div>
+              <div class="v" data-stat="cpu">—</div>
+              <div class="m" data-m="cpu"><i></i></div>
+              <div class="foot" data-stat="cpuf">—</div>
+            </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="17" height="8" rx="2"/><path d="M22 11v2"/><path d="M6 11v2m4-2v2m4-2v2"/></svg>Bateria</div>
+              <div class="v" data-stat="bat">—</div>
+              <div class="m" data-m="bat"><i></i></div>
+              <div class="foot" data-stat="batf">—</div>
+            </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M7 8l-3 6h6z"/><path d="M17 8l-3 6h6z"/></svg>Armazenamento</div>
+              <div class="v" data-stat="stor">—</div>
+              <div class="m" data-m="stor"><i></i></div>
+              <div class="foot" data-stat="storf">—</div>
+            </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>Tela</div>
+              <div class="v" data-stat="disp">—</div>
+              <div class="foot" data-stat="dispf">—</div>
+            </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tempo ligado</div>
+              <div class="v" data-stat="up">—</div>
+              <div class="foot" data-stat="upf">—</div>
+            </div>
+          </div>
+          <p class="stale" id="statsHint" hidden>Sem leitura do aparelho agora — os valores aparecem como “—”. Toque em “Atualizar” ou abra o app no celular.</p>
+        </div>
+        <div class="panelbox">
+          <h3>Comece por aqui</h3>
+          <p class="sub">As ações mais usadas, com um toque.</p>
+          <div class="qa">
+            <button type="button" data-qa="snapshot_save">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
+              <span class="tx">Salvar snapshot<small>Ponto de retorno seguro</small></span></button>
+            <button type="button" data-qa="clean">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2m-8 0 1 13h8l1-13"/></svg></span>
+              <span class="tx">Limpar cache e RAM<small>Libera memória agora</small></span></button>
+            <button type="button" data-qa="fluidez">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
+              <span class="tx">Fluidez geral<small>Toque, Hz e animações</small></span></button>
+            <button type="button" data-qa="ff">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s4 4 4 9a4 4 0 0 1-8 0c0-2 1-3 1-3s-1 3 1 5"/><path d="M12 22a7 7 0 0 0 7-7c0-4-3-7-3-7"/></svg></span>
+              <span class="tx">Abrir Free Fire otimizado<small>Prepara e entra no jogo</small></span></button>
+          </div>
+          <p class="sub" style="margin:14px 0 6px">Ir para uma categoria</p>
+          <div class="jump" id="jump"></div>
+          <p class="sub" style="margin:14px 0 0">
+            <button type="button" class="jump" id="btnRefreshStats" style="border-radius:999px;padding:7px 13px;font-weight:700">Atualizar métricas</button>
+          </p>
+        </div>
+      </div>
+    </section>
     <?php foreach ($groups as $g => $items): ?>
-      <section id="g-<?= htmlspecialchars(rawurlencode($g), ENT_QUOTES) ?>" data-g="<?= htmlspecialchars($g, ENT_QUOTES) ?>"
-               <?= $g !== $first ? 'hidden' : '' ?>>
+      <section id="g-<?= htmlspecialchars(rawurlencode($g), ENT_QUOTES) ?>" data-g="<?= htmlspecialchars($g, ENT_QUOTES) ?>" hidden>
         <div class="head">
           <h2><?= htmlspecialchars($meta[$g]['t'] ?? $g) ?></h2>
           <p><?= htmlspecialchars($meta[$g]['s'] ?? '') ?></p>
@@ -837,15 +971,20 @@ if (gearReset) gearReset.onclick = () => {
 
 /* navegação */
 function go(g, push){
-  document.querySelectorAll("section[data-g]").forEach(s => s.hidden = s.dataset.g !== g);
+  if (!g) g = "Home";
+  const secs = document.querySelectorAll("section[data-g]");
+  let ok = false;
+  secs.forEach(s => { const on = s.dataset.g === g; s.hidden = !on; if (on) ok = true; });
+  if (!ok){ g = "Home"; secs.forEach(s => s.hidden = s.dataset.g !== "Home"); }
   document.querySelectorAll("#nav a").forEach(a => a.setAttribute("aria-current", a.dataset.g === g ? "true" : "false"));
   document.body.classList.remove("drawer");
   $("#burger").setAttribute("aria-expanded", "false");
   if (push !== false) history.replaceState(null, "", "#" + encodeURIComponent(g));
   window.scrollTo({top:0, behavior:"instant"});
+  if (g === "Home") startStats(); else stopStats();
 }
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
-const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); if (g) go(g, false); };
+const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Home", false); };
 
 /* gaveta */
 $("#burger").onclick = () => { document.body.classList.add("drawer"); $("#burger").setAttribute("aria-expanded","true"); };
@@ -1029,6 +1168,117 @@ $("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo
 $("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
   const j = await apiGet("log");
   openConsole("Histórico", (j.log || []).map(x => (x.ok ? "[ok]" : "[erro]") + "  " + x.ts + "  " + x.label).join("\n") || "(nada ainda)"); };
+
+/* ---- HOME: métricas reais do aparelho (RAM, CPU, bateria, tela) ------------- */
+let STATS = {}, statsTimer = null, statsBusy = false, statsAt = 0;
+const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s"];
+const has = v => v !== undefined && v !== null && String(v) !== "";
+const num = v => { const n = parseFloat(v); return (v === "" || v === null || v === undefined || isNaN(n)) ? null : n; };
+function setBar(m, pct, cls){ const i = m && m.querySelector("i"); if (i) i.style.width = Math.max(0, Math.min(100, pct)) + "%"; if (m){ m.className = "m" + (cls ? " " + cls : ""); } }
+function fmtUp(s){ s = Math.round(s); const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60);
+  return (d?d+"d ":"") + h + "h " + m + "min"; }
+function fmtGB(mb){ const g = mb/1024; return (g >= 10 ? g.toFixed(0) : g.toFixed(1)) + " GB"; }
+function renderStats(){
+  const S = STATS;
+  // RAM
+  const ramUse = num(S.ram_uso_pct), tot = num(S.ram_total_mb), free = num(S.ram_livre_mb);
+  const ramV = document.querySelector('[data-stat="ram"]');
+  if (ramV) ramV.innerHTML = ramUse === null ? "—" : ramUse + "<small>% em uso</small>";
+  if (ramUse !== null) setBar(document.querySelector('[data-m="ram"]'), ramUse, ramUse >= 90 ? "b" : ramUse >= 75 ? "w" : "g");
+  else setBar(document.querySelector('[data-m="ram"]'), 0, "");
+  const ramF = document.querySelector('[data-stat="ramf"]');
+  if (ramF) ramF.textContent = (free !== null && tot !== null)
+    ? fmtGB(free) + " livres de " + fmtGB(tot)
+    : (tot !== null ? "total " + fmtGB(tot) : "o aparelho não informou");
+  // CPU (carga média / nº de núcleos = uso estimado)
+  const load = num(S.load1), nc = num(S.ncores);
+  const cpuPct = (load !== null && nc) ? Math.round(load / nc * 100) : null;
+  const cpuV = document.querySelector('[data-stat="cpu"]');
+  if (cpuV) cpuV.innerHTML = cpuPct === null ? "—" : cpuPct + "<small>%</small>";
+  setBar(document.querySelector('[data-m="cpu"]'), cpuPct === null ? 0 : cpuPct, cpuPct >= 90 ? "b" : cpuPct >= 70 ? "w" : "g");
+  const cpuF = document.querySelector('[data-stat="cpuf"]');
+  if (cpuF){
+    const parts = [];
+    if (load !== null) parts.push("carga " + load.toFixed(2));
+    if (nc) parts.push(nc + " núcleos");
+    if (has(S.cpu_cur_mhz)) parts.push(S.cpu_cur_mhz + (has(S.cpu_max_mhz) ? "/" + S.cpu_max_mhz : "") + " MHz");
+    else if (has(S.cpu_gov)) parts.push("gov " + S.cpu_gov);
+    cpuF.textContent = parts.length ? parts.join(" · ") : "o aparelho não informou";
+  }
+  // Bateria
+  const bl = num(S.bat_level), bt = num(S.bat_temp_c);
+  const batV = document.querySelector('[data-stat="bat"]');
+  if (batV) batV.innerHTML = bl === null ? "—" : bl + "<small>%</small>";
+  setBar(document.querySelector('[data-m="bat"]'), bl === null ? 0 : bl, bl === null ? "" : (bl <= 15 ? "b" : bl <= 35 ? "w" : "g"));
+  const batF = document.querySelector('[data-stat="batf"]');
+  if (batF){
+    const p = [];
+    if (has(S.bat_status)) p.push(S.bat_status);
+    if (bt !== null) p.push(bt.toFixed(1) + "°C");
+    batF.textContent = p.length ? p.join(" · ") : "o aparelho não informou";
+  }
+  // Armazenamento
+  const st = num(S.stor_total_mb), sf = num(S.stor_livre_mb);
+  const storV = document.querySelector('[data-stat="stor"]');
+  const storPct = (st && sf !== null) ? Math.round((st - sf) / st * 100) : null;
+  if (storV) storV.innerHTML = storPct === null ? "—" : storPct + "<small>% em uso</small>";
+  setBar(document.querySelector('[data-m="stor"]'), storPct === null ? 0 : storPct, storPct >= 90 ? "b" : storPct >= 75 ? "w" : "g");
+  const storF = document.querySelector('[data-stat="storf"]');
+  if (storF) storF.textContent = (st && sf !== null) ? fmtGB(sf) + " livres de " + fmtGB(st) : "o aparelho não informou";
+  // Tela
+  const dispV = document.querySelector('[data-stat="disp"]');
+  if (dispV) dispV.innerHTML = has(S.refresh_hz) ? S.refresh_hz + "<small>Hz</small>" : "—";
+  const dispF = document.querySelector('[data-stat="dispf"]');
+  if (dispF) dispF.textContent = has(S.refresh_hz) ? "taxa de atualização atual" : "o aparelho não informou";
+  // Tempo ligado
+  const upV = document.querySelector('[data-stat="up"]');
+  const up = num(S.uptime_s);
+  if (upV) upV.innerHTML = up === null ? "—" : fmtUp(up);
+  const upF = document.querySelector('[data-stat="upf"]');
+  if (upF) upF.textContent = up === null ? "o aparelho não informou" : "desde o último boot";
+  // aviso de ausência de dados
+  const anyData = STAT_KEYS.some(k => has(S[k]));
+  const hint = document.getElementById("statsHint"); if (hint) hint.hidden = anyData;
+  const badge = document.getElementById("liveBadge"); if (badge) badge.hidden = !anyData;
+  if (anyData && statsAt){
+    const sec = Math.round((Date.now() - statsAt) / 1000);
+    const sb = document.querySelector("#visual .sub");
+    const lbl = sec < 5 ? "agora" : "há " + sec + " s";
+    if (sb) sb.innerHTML = 'Atualiza sozinho a cada 4 s enquanto você está aqui. <span class="live"><span class="dot"></span>ao vivo · ' + lbl + '</span>';
+  }
+}
+async function loadStats(){
+  if (statsBusy) return; statsBusy = true;
+  try{ const j = await apiGet("stats"); STATS = (j && j.stats) || {}; statsAt = Date.now(); }
+  catch(e){ /* mantém o último valor real */ }
+  statsBusy = false; renderStats();
+}
+function startStats(){
+  loadStats();
+  if (!statsTimer) statsTimer = setInterval(() => { if (!document.hidden) loadStats(); }, 4000);
+}
+function stopStats(){ if (statsTimer){ clearInterval(statsTimer); statsTimer = null; } }
+const refreshBtn = document.getElementById("btnRefreshStats");
+if (refreshBtn) refreshBtn.onclick = () => { loadStats(); toast("Métricas atualizadas", "ok"); };
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !document.querySelector('section[data-g="Home"]').hidden) loadStats(); });
+
+/* atalhos da Home */
+function runActionById(id){
+  const a = ACTIONS[id]; if (!a) return;
+  const card = document.querySelector('.card[data-id="' + id + '"]');
+  if (a.confirm){ pending = card || { dataset:{id:id}, querySelector:()=>null, classList:{contains:()=>false} }; run(card); }
+  else doRun(a, {}, false, null);
+}
+document.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => runActionById(b.dataset.qa));
+(function buildJump(){
+  const j = document.getElementById("jump"); if (!j) return;
+  document.querySelectorAll("#nav a").forEach(a => {
+    if (a.dataset.g === "Home") return;
+    const b = document.createElement("button"); b.type = "button"; b.textContent = a.textContent.replace(/\s*\d+$/, "").trim();
+    b.onclick = () => go(a.dataset.g);
+    j.appendChild(b);
+  });
+})();
 
 window.addEventListener("hashchange", fromHash);
 addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); $("#gearMask").classList.remove("open"); document.body.classList.remove("drawer"); } });

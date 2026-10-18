@@ -37,6 +37,12 @@ dns_profiles() {
         dnsforge          "dnsforge.de"                      "Bloqueio de anúncios (sem log)" \
         google            "dns.google"                       "Compatibilidade máxima" \
         nextdns           "dns.nextdns.io"                    "Filtragem e privacidade (NextDNS)" \
+        opendns           "dns.opendns.com"                  "Cisco OpenDNS (confiável)" \
+        opendns-family    "dns.familyshield.opendns.com"     "OpenDNS FamilyShield (conteúdo adulto)" \
+        cleanbrowsing-family "family-filter-dns.cleanbrowsing.org" "CleanBrowsing Família (adulto + malware)" \
+        cleanbrowsing-security "security-filter-dns.cleanbrowsing.org" "CleanBrowsing Segurança (só malware)" \
+        controld          "p2.freedns.controld.com"          "ControlD grátis (malware + anúncios)" \
+        controld-social   "p3.freedns.controld.com"          "ControlD grátis (malware + anúncios + redes)" \
         gaming            "1dot1dot1dot1.cloudflare-dns.com" "Baixa latência p/ jogos (+ TCP + scan off)"
 }
 

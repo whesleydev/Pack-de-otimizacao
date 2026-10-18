@@ -68,7 +68,7 @@ function otm_allowed_scripts(): array {
     return [
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
-        'turbo.sh', 'panel-state.sh',
+        'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
@@ -141,6 +141,12 @@ function otm_actions(): array {
         'mullvad'           => ['Mullvad', 'Privacidade sem registro (anônimo).'],
         'dnsforge'          => ['DNSForge', 'Bloqueia anúncios, sem guardar logs.'],
         'google'            => ['Google', 'Compatibilidade máxima com qualquer rede.'],
+        'opendns'           => ['OpenDNS', 'Cisco OpenDNS: estável e confiável.'],
+        'opendns-family'    => ['OpenDNS Família', 'FamilyShield: bloqueia conteúdo adulto.'],
+        'cleanbrowsing-family'   => ['CleanBrowsing Família', 'Bloqueia conteúdo adulto e malware.'],
+        'cleanbrowsing-security' => ['CleanBrowsing Segurança', 'Bloqueia só phishing e malware.'],
+        'controld'          => ['ControlD', 'ControlD grátis: malware + anúncios.'],
+        'controld-social'   => ['ControlD + Redes', 'ControlD grátis: malware + anúncios + redes sociais.'],
         'gaming'            => ['Gaming', 'Baixa latência para jogos + rede otimizada.'],
     ];
     foreach ($dns as $k => $v) {
@@ -272,6 +278,16 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'touch_multi', '{ms}'],
           'params' => [['name' => 'ms', 'type' => 'int', 'label' => 'Milissegundos', 'min' => 100, 'max' => 800, 'default' => 300]],
           'risk' => 'careful']);
+    $add(['id' => 'touch.latency', 'group' => 'Display & Touch', 'label' => 'Toque: latência fina',
+          'desc' => 'Ajuste direto da responsividade do toque (1–1000, menor = mais rápido).',
+          'help' => 'Ajusta direto a "responsividade" do toque: quanto menor o número, mais rápido o sistema responde ao seu dedo (e mais sensível fica). Deixe os outros campos em branco para mudar só a responsividade. Reverta em "Restaurar touch". Reinicie o jogo depois.',
+          'argv' => ['adb-tweaks.sh', 'touch_latency', '{tr}', '{lp}', '{ps}', '{slop}'],
+          'params' => [
+              ['name' => 'tr', 'type' => 'int', 'label' => 'responsividade', 'min' => 1, 'max' => 1000, 'default' => 90],
+              ['name' => 'lp', 'type' => 'int', 'label' => 'long press (ms)', 'min' => 50, 'max' => 1500, 'default' => 350],
+              ['name' => 'ps', 'type' => 'int', 'label' => 'pointer speed', 'min' => -10, 'max' => 10, 'default' => 0],
+              ['name' => 'slop', 'type' => 'int', 'label' => 'touch slop', 'min' => 0, 'max' => 50, 'default' => 4],
+          ], 'risk' => 'careful']);
     $add(['id' => 'ff', 'group' => 'Display & Touch', 'label' => 'Preparar e abrir o Free Fire',
           'desc' => 'Fecha apps de fundo, aplica o preset do FF e abre o jogo.',
           'help' => 'Prepara o aparelho para o Free Fire: fecha apps pesados que estavam abertos, aplica o modo de jogo e abre o FF. É o "entrar em modo partida" com um clique.',
@@ -322,6 +338,73 @@ function otm_actions(): array {
           'desc' => 'Volta ao consumo normal (recomendado para jogar).',
           'help' => 'Desliga a economia de bateria e o repouso profundo. Use antes de jogar para o desempenho não ser limitado.',
           'argv' => ['adb-tweaks.sh', 'battery_off']]);
+
+    // ----- Sono profundo (doze / idle) -----
+    $add(['id' => 'doze.on', 'group' => 'Desempenho', 'label' => 'Sono profundo: ligar',
+          'desc' => 'Faz o aparelho dormir de verdade logo após a tela apagar.',
+          'help' => 'O Android só "dorme fundo" (Doze) depois de uns 30 minutos parado. Aqui esse tempo é encurtado para cerca de 2 minutos: a tela apagou, o aparelho dorme e a bateria dura muito mais. Reverta em "Sono profundo: desligar" antes de precisar de notificações em tempo real.',
+          'argv' => ['adb-tweaks.sh', 'doze', 'on'], 'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'doze.off', 'group' => 'Desempenho', 'label' => 'Sono profundo: desligar',
+          'desc' => 'Volta os tempos de repouso ao padrão de fábrica.',
+          'help' => 'Restaura os tempos normais do Doze. Use se estiver perdendo notificações de apps em segundo plano.',
+          'argv' => ['adb-tweaks.sh', 'doze', 'off']]);
+    $add(['id' => 'doze.status', 'group' => 'Sistema', 'label' => 'Ver estado do sono profundo',
+          'desc' => 'Mostra o estado atual do Doze e as constantes em uso.',
+          'help' => 'Mostra em que estado o repouso está agora (ativo/inativo) e quais tempos estão configurados. Só leitura.',
+          'argv' => ['adb-tweaks.sh', 'doze', 'status']]);
+
+    // ----- Gerenciador de processos (RAM e CPU) -----
+    $add(['id' => 'proc.top', 'group' => 'Processos', 'label' => 'Processos que mais gastam',
+          'desc' => 'Lista os apps que mais consomem CPU e RAM agora (dados reais).',
+          'help' => 'Mostra os processos que mais estão usando a CPU e a memória neste momento, com os números lidos do próprio aparelho. Serve para você ver quem está pesando antes de congelar ou limitar. Nada é alterado.',
+          'argv' => ['proc-mgr.sh', 'top', '{n}'],
+          'params' => [['name' => 'n', 'type' => 'int', 'label' => 'Quantos', 'min' => 5, 'max' => 40, 'default' => 12]]]);
+    $add(['id' => 'proc.info', 'group' => 'Processos', 'label' => 'Ver um app (PID/RAM/nice)',
+          'desc' => 'Mostra PID, RAM, prioridade e oom do app escolhido.',
+          'help' => 'Detalha o app escolhido: quantos processos tem, quanto de RAM está usando, a prioridade (nice) e o oom_score. Tudo lido do aparelho. Só leitura.',
+          'argv' => ['proc-mgr.sh', 'info', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.ram', 'group' => 'Processos', 'label' => 'Limitar RAM do app',
+          'desc' => 'Impõe um teto de memória ao app (root; 0 = sem limite).',
+          'help' => 'Define um limite máximo de RAM para o app escolhido. Quando ele passa do teto, o sistema libera memória em vez de deixar o aparelho travar. Use 0 para tirar o limite. Só funciona com root.',
+          'argv' => ['proc-mgr.sh', 'ram', '{pkg}', '{mb}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
+                       ['name' => 'mb', 'type' => 'int', 'label' => 'Limite (MB, 0 = sem)', 'min' => 0, 'max' => 8192, 'default' => 0]],
+          'risk' => 'root', 'confirm' => true]);
+    $add(['id' => 'proc.cpu', 'group' => 'Processos', 'label' => 'Priorizar CPU do app',
+          'desc' => 'Coloca o app num grupo de CPU (topo/visível/fundo).',
+          'help' => 'Coloca o app num grupo de CPU: "top-app" recebe mais tempo de processador (bom para o jogo em foco), "background" fica com menos (bom para o que pode esperar). Só funciona com root.',
+          'argv' => ['proc-mgr.sh', 'cpu', '{pkg}', '{group}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
+                       ['name' => 'group', 'type' => 'enum', 'label' => 'Grupo',
+                        'options' => ['top-app', 'foreground', 'background'], 'default' => 'top-app']],
+          'risk' => 'root', 'confirm' => true]);
+    $add(['id' => 'proc.renice', 'group' => 'Processos', 'label' => 'Mudar prioridade (nice)',
+          'desc' => 'Ajusta a prioridade do app (-20 forte .. 19 fraco).',
+          'help' => 'Muda a prioridade do app em relação aos outros. Número menor = mais forte (recebe CPU antes); número maior = mais fraco. Use -5 a -10 para dar força a um jogo. Só funciona com root.',
+          'argv' => ['proc-mgr.sh', 'renice', '{pkg}', '{nice}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
+                       ['name' => 'nice', 'type' => 'int', 'label' => 'nice', 'min' => -20, 'max' => 19, 'default' => -5]],
+          'risk' => 'root', 'confirm' => true]);
+    $add(['id' => 'proc.freeze', 'group' => 'Processos', 'label' => 'Congelar um app agora',
+          'desc' => 'Pausa o app na hora (SIGSTOP), sem desinstalar.',
+          'help' => 'Congela o app imediatamente: ele para de usar CPU e RAM, mas continua instalado e volta ao normal quando você descongelar. Bom para tirar algo pesado do caminho. Só funciona com root.',
+          'argv' => ['proc-mgr.sh', 'freeze', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']],
+          'risk' => 'root', 'confirm' => true]);
+    $add(['id' => 'proc.unfreeze', 'group' => 'Processos', 'label' => 'Descongelar um app',
+          'desc' => 'Volta o app congelado a rodar normalmente.',
+          'help' => 'Descongela o app que você pausou antes, devolvendo ele ao funcionamento normal.',
+          'argv' => ['proc-mgr.sh', 'unfreeze', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.status', 'group' => 'Processos', 'label' => 'Ver limites aplicados',
+          'desc' => 'Lista os limites/prioridades/congelamentos ativos.',
+          'help' => 'Mostra tudo o que está aplicado agora: limites de RAM, grupos de CPU, prioridades e apps congelados. Só leitura.',
+          'argv' => ['proc-mgr.sh', 'status']]);
+    $add(['id' => 'proc.restore', 'group' => 'Processos', 'label' => 'Remover limites (voltar ao normal)',
+          'desc' => 'Descongela tudo e zera prioridades e limites.',
+          'help' => 'Remove todos os limites de RAM, grupos de CPU, prioridades e congela tudo de volta. Deixa o aparelho no padrão. Só funciona com root.',
+          'argv' => ['proc-mgr.sh', 'restore'], 'risk' => 'root', 'confirm' => true]);
 
     // ----- Congelar apps -----
     $add(['id' => 'freeze', 'group' => 'Desempenho', 'label' => 'Congelar apps (cache freezer)',
@@ -920,6 +1003,20 @@ function otm_dns_status(): array {
 // o que não foi possível ler volta como string vazia.
 function otm_state_read(): array {
     $r = otm_script('panel-state.sh', [], 20);
+    $line = '';
+    foreach (explode("\n", (string)($r['out'] ?? '')) as $l) {
+        $l = trim($l);
+        if ($l !== '' && $l[0] === '{') { $line = $l; break; }
+    }
+    $j = $line !== '' ? json_decode($line, true) : null;
+    return is_array($j) ? $j : [];
+}
+
+// Consumo REAL do aparelho para a home (RAM, CPU, bateria, refresh...).
+// Lê via panel-stats.sh; campo que o aparelho não expõe volta "" (o painel
+// mostra "—" em vez de inventar número).
+function otm_stats_read(): array {
+    $r = otm_script('panel-stats.sh', [], 20);
     $line = '';
     foreach (explode("\n", (string)($r['out'] ?? '')) as $l) {
         $l = trim($l);

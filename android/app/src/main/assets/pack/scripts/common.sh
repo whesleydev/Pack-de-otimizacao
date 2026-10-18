@@ -216,3 +216,53 @@ prop_set() {
 
 # bkp_raw "comando de reversão" -> só registra para o restore
 bkp_raw() { echo "$1" >> "$OFF_SH"; }
+
+# --- persistência no boot -----------------------------------------------------
+# Alguns `settings`/`setprop` se perdem no reboot. Com root dá para reaplicar no
+# boot: os scripts registram a linha de aplicação em $BOOT_SH e instalamos um
+# wrapper em /data/adb/service.d (Magisk) ou /system/etc/init.d.
+BOOT_SH="$ST/boot.sh"
+
+# boot_add "comando de aplicação"  -> guarda (sem duplicar) para reaplicar no boot
+boot_add() {
+    mkdir -p "$ST" 2>/dev/null
+    touch "$BOOT_SH" 2>/dev/null
+    grep -qxF "$1" "$BOOT_SH" 2>/dev/null || echo "$1" >> "$BOOT_SH"
+}
+
+# boot_install -> instala o wrapper de boot (só com root). Reaplica $BOOT_SH.
+boot_install() {
+    require_root "persistência no boot" || return 1
+    [ -s "$BOOT_SH" ] || { warn "nada para persistir (aplique algo primeiro)"; return 1; }
+    wrapper="#!/system/bin/sh
+# gerado pelo Pack de Otimização — reaplica os ajustes no boot
+sleep 20
+[ -f '$BOOT_SH' ] && sh '$BOOT_SH' >/dev/null 2>&1"
+    svc="${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh"
+    initd="${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack"
+    if [ -d "${OTM_BOOT_DIR:-/data/adb/service.d}" ]; then
+        printf '%s\n' "$wrapper" > "$svc" 2>/dev/null && chmod 755 "$svc" 2>/dev/null
+        say "persistência no boot instalada ($svc)"
+    elif [ -d "${OTM_BOOT_INITD:-/system/etc/init.d}" ]; then
+        printf '%s\n' "$wrapper" > "$initd" 2>/dev/null && chmod 755 "$initd" 2>/dev/null
+        say "persistência no boot instalada ($initd)"
+    else
+        warn "sem /data/adb/service.d nem init.d — persistência indisponível nesta ROM"
+        return 1
+    fi
+    say "no boot, ${BOOT_SH} é reaplicado. Remova em: turbo.sh boot off"
+}
+
+boot_uninstall() {
+    rm -f "${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh" "${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack" 2>/dev/null
+    say "persistência no boot removida"
+}
+
+boot_status() {
+    if [ -f "${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh" ] || [ -f "${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack" ]; then
+        printf '  %sboot:%s ATIVO\n' "$C_A" "$C_R"
+    else
+        printf '  %sboot:%s inativo\n' "$C_A" "$C_R"
+    fi
+    printf '  %slinhas no perfil de boot:%s %s\n' "$C_A" "$C_R" "$(grep -c . "$BOOT_SH" 2>/dev/null || echo 0)"
+}
