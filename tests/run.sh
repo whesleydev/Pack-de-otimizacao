@@ -714,6 +714,38 @@ t_personalization() {
 }
 
 
+t_usage_access() {
+    printf '\n  # acesso a dados de uso (PACKAGE_USAGE_STATS) e métricas de uso\n'
+    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local kt="$ROOT/android/app/src/main/java/com/otm/pack/Usage.kt"
+    local br="$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt"
+    local man="$ROOT/android/app/src/main/AndroidManifest.xml"
+    # manifesto declara a permissão (com o ignore do lint, é permissão de sistema)
+    grep -q 'PACKAGE_USAGE_STATS' "$man" && ok "manifesto: permissão de uso declarada" || bad "manifesto: sem PACKAGE_USAGE_STATS"
+    grep -q 'tools:ignore="ProtectedPermissions"' "$man" && ok "manifesto: lint ignorado p/ permissão de sistema" || bad "manifesto: sem tools:ignore"
+    # leitor real usa a API do Android, não número inventado
+    [ -f "$kt" ] && grep -q 'OPSTR_GET_USAGE_STATS' "$kt" && ok "Usage.kt: checa a autorização via AppOps" || bad "Usage.kt: sem checagem AppOps"
+    grep -q 'queryEvents' "$kt" && grep -q 'queryAndAggregateUsageStats' "$kt" \
+        && ok "Usage.kt: lê primeiro plano e tempo de uso" || bad "Usage.kt: leitura incompleta"
+    grep -q 'ACTION_USAGE_ACCESS_SETTINGS' "$kt" && ok "Usage.kt: abre a tela do sistema" || bad "Usage.kt: não abre a tela"
+    # sem autorização devolve vazio (não inventa)
+    grep -q 'if (!granted(context)) return o' "$kt" && ok "Usage.kt: sem permissão devolve vazio (—)" || bad "Usage.kt: pode inventar dado"
+    # a ponte junta o uso ao stats e expõe o comando
+    grep -q 'Usage.snapshot(context)' "$br" && ok "ponte: uso real junto das métricas" || bad "ponte: uso não integrado"
+    grep -q '"usage" ->' "$br" && ok "ponte: comando usage existe" || bad "ponte: comando usage ausente"
+    # painel (app e web) mostra os cards e o botão
+    grep -q 'data-stat="fg"' "$app" && grep -q 'data-stat="usage"' "$app" \
+        && ok "app: cards de uso na Home" || bad "app: sem cards de uso"
+    grep -q 'id="setPermUsage"' "$app" && grep -q 'id="setPermUsage"' "$web" \
+        && ok "app+web: botão de acesso ao uso" || bad "botão de acesso ao uso ausente"
+    grep -q 'Acesso a dados de uso' "$web" && ok "web: card de permissão explicado" || bad "web: card de permissão ausente"
+    # o pedido uma vez por versão existe no app
+    grep -q 'Ver o uso real do aparelho' "$ROOT/android/app/src/main/java/com/otm/pack/Permissions.kt" \
+        && ok "app: pede a permissão na primeira abertura" || bad "app: não pede a permissão"
+}
+
+
 t_plugin_mark_once() {
     printf '\n  # plugin 02: loop não duplica/toca o backup após o 1o apply (deep_mark)\n'
     p="$TMP/p02"; rm -rf "$p"; cp -r "$ROOT/00 Otimizações/Plugins AxManager/Nossos/02-webui-control" "$p"
@@ -1185,6 +1217,7 @@ t_panel_state
 t_perm_script
 t_perm_actions
 t_personalization
+t_usage_access
 t_side_fixed
 t_plugin_mark_once
 t_plugin_restore

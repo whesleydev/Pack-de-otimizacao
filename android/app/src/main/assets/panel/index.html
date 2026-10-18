@@ -521,7 +521,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <div class="v" data-stat="up">—</div>
               <div class="foot" data-stat="upf">—</div>
             </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><circle cx="6.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg>App em primeiro plano</div>
+              <div class="v" data-stat="fg">—</div>
+              <div class="foot" data-stat="fgf">—</div>
+            </div>
+            <div class="stat">
+              <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="12" width="3" height="7"/><rect x="12" y="8" width="3" height="11"/><rect x="17" y="10" width="3" height="9"/></svg>Uso nas últimas 24 h</div>
+              <div class="v" data-stat="usage">—</div>
+              <div class="foot" data-stat="usagef">—</div>
+            </div>
           </div>
+          <p class="stale" id="usageHint" hidden>Para ver o app em primeiro plano e o uso por app, libere o <b>Acesso a dados de uso</b> — no app, em Configurações → Permissões.</p>
           <p class="stale" id="statsHint" hidden>Sem leitura do aparelho agora — os valores aparecem como “—”. Toque em “Atualizar” ou abra o app no celular.</p>
         </div>
         <div class="panelbox">
@@ -3676,11 +3687,14 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <b>Isento do Doze</b><span>Impede o sistema de congelar o pack e o jogo em modo de espera.</span></div></div>
         <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor" stroke="none"/></svg></span><div>
           <b>Acesso por Shizuku ou ADB</b><span>É o que dá poder de shell ao pack. Configure em Configs.</span></div></div>
+        <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="12" width="3" height="7"/><rect x="12" y="8" width="3" height="11"/><rect x="17" y="10" width="3" height="9"/></svg></span><div>
+          <b>Acesso a dados de uso</b><span>Mostra o app em primeiro plano e o tempo de uso real na Home.</span></div></div>
       </div>
       <div class="set-actions">
         <button class="btn primary" id="setPermApp" type="button">Conceder ao app do pack</button>
         <button class="btn" id="setPermFF" type="button">Ao Free Fire</button>
         <button class="btn" id="setPermBattery" type="button">Bateria sem economia</button>
+        <button class="btn" id="setPermUsage" type="button">Acesso a dados de uso</button>
       </div>
       <div class="set-hint" id="setPermHint">Precisa de Shizuku, ADB por Wi-Fi ou root. Dá para desfazer em "Reverter TUDO".</div>
     </div>
@@ -3794,6 +3808,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
     if (action === "log")        return otm("log");
     if (action === "actions")    return otm("actions");
     if (action === "info")       return otm("info");
+    if (action === "usage")      return otm("usage");
     return otm("unknown");
   };
   // file:// não deixa mexer no hash em algumas WebViews
@@ -3946,6 +3961,14 @@ const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b
 permBtn("setPermApp", "Permissões do app do pack");
 permBtn("setPermFF", "Permissões do Free Fire");
 permBtn("setPermBattery", "Bateria sem economia");
+/* Acesso a dados de uso: não é um script, é uma tela do sistema. No app vira
+   OTM.call("usage"); no site, avisa que só funciona no celular. */
+const permUsageBtn = document.getElementById("setPermUsage");
+if (permUsageBtn) permUsageBtn.onclick = () => {
+  if (!window.OTM){ toast("Acesso a dados de uso: use o app no celular.", "bad"); return; }
+  toast("Abrindo a tela de acesso a dados de uso…", "ok");
+  try { window.OTM.call("usage", "", "usage"); } catch(e){}
+};
 const gearReset = document.getElementById("gearReset");
 if (gearReset) gearReset.onclick = () => {
   ["otm-theme","otm-accent","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
@@ -4156,7 +4179,7 @@ $("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
 
 /* ---- HOME: métricas reais do aparelho (RAM, CPU, bateria, tela) ------------- */
 let STATS = {}, statsTimer = null, statsBusy = false, statsAt = 0;
-const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s"];
+const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
 const has = v => v !== undefined && v !== null && String(v) !== "";
 const num = v => { const n = parseFloat(v); return (v === "" || v === null || v === undefined || isNaN(n)) ? null : n; };
 function setBar(m, pct, cls){ const i = m && m.querySelector("i"); if (i) i.style.width = Math.max(0, Math.min(100, pct)) + "%"; if (m){ m.className = "m" + (cls ? " " + cls : ""); } }
@@ -4221,9 +4244,26 @@ function renderStats(){
   if (upV) upV.innerHTML = up === null ? "—" : fmtUp(up);
   const upF = document.querySelector('[data-stat="upf"]');
   if (upF) upF.textContent = up === null ? "o aparelho não informou" : "desde o último boot";
+  // App em primeiro plano (precisa do Acesso a dados de uso)
+  const fgV = document.querySelector('[data-stat="fg"]');
+  if (fgV) fgV.textContent = has(S.fg_label) ? S.fg_label : "—";
+  const fgF = document.querySelector('[data-stat="fgf"]');
+  if (fgF) fgF.textContent = has(S.fg_label) ? (S.fg_pkg || "") : "libere o acesso a dados de uso";
+  // Uso nas últimas 24 h (tempo total de tela)
+  const usV = document.querySelector('[data-stat="usage"]');
+  if (usV) usV.textContent = has(S.screen_time) ? S.screen_time : "—";
+  const usF = document.querySelector('[data-stat="usagef"]');
+  if (usF){
+    const tops = Array.isArray(S.top_apps) ? S.top_apps : [];
+    usF.textContent = tops.length
+      ? "top: " + tops.slice(0,2).map(a => (a.label || a.pkg) + " " + (a.time || "")).join(" · ")
+      : (has(S.screen_time) ? "tempo de tela nas últimas 24 h" : "libere o acesso a dados de uso");
+  }
   // aviso de ausência de dados
   const anyData = STAT_KEYS.some(k => has(S[k]));
   const hint = document.getElementById("statsHint"); if (hint) hint.hidden = anyData;
+  const uhint = document.getElementById("usageHint");
+  if (uhint) uhint.hidden = has(S.fg_label) || has(S.screen_time) || S.usage_granted === true;
   const badge = document.getElementById("liveBadge"); if (badge) badge.hidden = !anyData;
   if (anyData && statsAt){
     const sec = Math.round((Date.now() - statsAt) / 1000);

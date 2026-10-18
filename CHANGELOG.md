@@ -3,6 +3,21 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.16.0] - 2026-10-05
+
+### Adicionado
+- **Acesso a dados de uso (`PACKAGE_USAGE_STATS`)**: o app agora pede, uma vez por
+  versão, a autorização de "Acesso a dados de uso" (a tela do próprio Android) e
+  passa a ler dados que só o sistema entrega por essa permissão. Com isso a Home
+  ganhou dois cartões novos:
+  - **App em primeiro plano** — qual app está na frente agora (nome + pacote).
+  - **Uso nas últimas 24 h** — tempo de tela total e os apps que mais usaram.
+  A leitura é feita direto pela API do Android (`UsageStatsManager`), então funciona
+  **sem Shizuku/ADB/root**. Sem a autorização, os cartões mostram **—** e aparece
+  um aviso explicando como liberar — o pack nunca inventa número.
+- **Botão "Acesso a dados de uso"** em Configurações → Permissões, que abre a tela
+  de autorização do sistema. Também entra no pedido automático da primeira abertura.
+
 ## [2.15.0] - 2026-10-05
 
 ### Adicionado

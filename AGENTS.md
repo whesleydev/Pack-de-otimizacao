@@ -214,6 +214,14 @@ nativa além do necessário para conectar e rodar os comandos.
   para não reintroduzir o arrasto lateral (medido com Playwright em 360/412px).
   A faixa do DPI é **60%–160%** (`setScale` min/max, clamp `0.6x..1.6x` em
   `setScaleQuiet`); o mínimo baixo é o que permite deixar a interface bem compacta.
+- Acesso a dados de uso: o app declara `PACKAGE_USAGE_STATS` e pede, uma vez por
+  versão, a autorização do sistema (`Usage.openSettings`). `Usage.kt` lê pela API
+  do Android (`UsageStatsManager`: `queryEvents` p/ primeiro plano,
+  `queryAndAggregateUsageStats` p/ tempo de tela) e `PackBridge.statsImpl` funde
+  isso no JSON de `panel-stats.sh` (`fg_label`, `fg_pkg`, `top_apps`, `screen_time`,
+  `usage_granted`). Funciona **sem shell**. Sem autorização devolve vazio e o painel
+  mostra "—" + o aviso `#usageHint`; nada é inventado. O botão fica em Configs →
+  Permissões (`setPermUsage` → `OTM.call("usage")`).
 - Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
   que rodam `adb-tweaks.sh perm_app|perm_ff|perm_battery|perm_all` (grupos novos,
   reversíveis: entram na isenção do Doze via `cmd deviceidle whitelist`, ganham

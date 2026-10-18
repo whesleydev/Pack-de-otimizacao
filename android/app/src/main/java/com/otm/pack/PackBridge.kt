@@ -77,6 +77,10 @@ class PackBridge(
                     "log" -> logImpl()
                     "actions" -> actionsImpl()
                     "info" -> infoImpl()
+                    "usage" -> {
+                        withContext(Dispatchers.Main) { Usage.openSettings(context) }
+                        okJson()
+                    }
                     "connect" -> { withContext(Dispatchers.Main) { onConnect() }; okJson() }
                     "login" -> { withContext(Dispatchers.Main) { onLogin() }; okJson() }
                     "login_fail" -> { withContext(Dispatchers.Main) { onLoginFail() }; okJson() }
@@ -183,6 +187,10 @@ class PackBridge(
      * Consumo REAL do aparelho para a home do painel (RAM, CPU, bateria,
      * refresh). Reusa `panel-stats.sh`, que devolve uma linha JSON; campo que
      * o aparelho não expõe volta vazio e o painel mostra "—".
+     *
+     * Quando o acesso ao uso está liberado, junta os dados que só o sistema
+     * entrega por essa permissão: app em primeiro plano, apps mais usados e
+     * tempo de tela (24 h). Sem shell, esses campos continuam vindo daqui.
      */
     private fun statsImpl(): String {
         val out = output(scriptCommand("panel-stats.sh", emptyList()))
@@ -191,9 +199,15 @@ class PackBridge(
             val l = line.trim()
             if (l.startsWith("{")) { stats = try { JSONObject(l) } catch (e: Exception) { null }; if (stats != null) break }
         }
-        return JSONObject().put("ok", true)
-            .put("stats", stats ?: JSONObject())
-            .toString()
+        val s = stats ?: JSONObject()
+        val usage = Usage.snapshot(context)
+        val keys = usage.keys()
+        while (keys.hasNext()) {
+            val k = keys.next()
+            if (!s.has(k)) s.put(k, usage.get(k))
+        }
+        s.put("usage_granted", Usage.granted(context))
+        return JSONObject().put("ok", true).put("stats", s).toString()
     }
 
     private fun appsImpl(): String {

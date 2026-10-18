@@ -123,6 +123,21 @@ object Permissions {
                 .setNegativeButton("Agora não", null)
                 .show()
         }
+        // Acesso ao uso: é o que dá as métricas reais da Home (app em primeiro
+        // plano e tempo de uso). Sem isso a Home ainda funciona pelo shell, só
+        // fica sem esses dois números. O sistema exige que o usuário libere.
+        if (!Usage.granted(activity)) {
+            AlertDialog.Builder(activity)
+                .setTitle("Ver o uso real do aparelho")
+                .setMessage(
+                    "Autorize o Acesso a dados de uso para o painel mostrar qual app está " +
+                        "em primeiro plano e quanto você usou nas últimas 24 h — lido do " +
+                        "próprio sistema. É opcional e pode ser desligado quando quiser."
+                )
+                .setPositiveButton("Autorizar") { _, _ -> Usage.openSettings(activity) }
+                .setNegativeButton("Agora não", null)
+                .show()
+        }
         prefs.edit().putBoolean("asked-${BuildConfig.VERSION_NAME}", true).apply()
     }
 }
