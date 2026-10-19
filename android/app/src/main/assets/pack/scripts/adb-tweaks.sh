@@ -70,12 +70,58 @@ gpu() {
     say "renderização otimizada"
 }
 
+# --- renderizador do sistema (motor gráfico) ----------------------------------
+# Cada modo grava o valor antigo dos props, então dá para reverter (Reverter TUDO).
+renderer() {
+    mode="${1:-}"
+    # só guarda a 1ª vez: reaplicar não pode empilhar backups obsoletos
+    if [ ! -f "$MARK" ]; then
+        bkp_begin
+        for prop in debug.hwui.renderer debug.renderengine.backend; do
+            old=$(sh_get "getprop $prop")
+            if [ -n "$old" ]; then
+                bkp_raw "setprop $prop '$old'"
+            else
+                bkp_raw "setprop $prop ''"
+            fi
+        done
+    fi
+    case "$mode" in
+        opengl)
+            sh_run "setprop debug.hwui.renderer opengl" >/dev/null
+            say "renderizador: OpenGL (padrão, mais compatível)" ;;
+        skiagl)
+            sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
+            sh_run "setprop debug.renderengine.backend skiagl" >/dev/null
+            say "renderizador: SkiaGL (equilíbrio)" ;;
+        skiavk)
+            sh_run "setprop debug.hwui.renderer skiavk" >/dev/null
+            sh_run "setprop debug.renderengine.backend skiavk" >/dev/null
+            say "renderizador: Skia Vulkan (fluidez)" ;;
+        skiagl-threaded)
+            sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
+            sh_run "setprop debug.renderengine.backend skiaglthreaded" >/dev/null
+            say "renderizador: SkiaGL multithread" ;;
+        skiavk-threaded)
+            sh_run "setprop debug.hwui.renderer skiavk" >/dev/null
+            sh_run "setprop debug.renderengine.backend skiavkthreaded" >/dev/null
+            say "renderizador: Skia Vulkan multithread" ;;
+        *)
+            err "uso: renderer opengl|skiagl|skiavk|skiagl-threaded|skiavk-threaded"
+            return 1 ;;
+    esac
+    printf '  %sreverter:%s sh scripts/pack.sh restore\n' "$C_A" "$C_R"
+}
+
 # --- rede / TCP ---------------------------------------------------------------
 net() {
     bkp_begin
     say "Rede / TCP"
     bkp_set global private_dns_mode hostname
-    bkp_set global private_dns_specifier dns.cloudflare.com
+    # 1.1.1.1: o hostname estável do DoT é one.one.one.one (o
+    # 1dot1dot1dot1.cloudflare-dns.com saiu do ar e, sem resolver, o aparelho
+    # fica sem internet). Quem quiser trocar usa a categoria "DNS e rede".
+    bkp_set global private_dns_specifier one.one.one.one
     bkp_set global wifi_scan_always_enabled 0
     if [ "$RUN_MODE" = "adb" ] || [ "$RUN_MODE" = "su" ] || [ "$RUN_MODE" = "rish" ]; then
         sh_run "setprop net.tcp.buffersize.default 4096,87380,524288,4096,16384,110208" >/dev/null
@@ -639,7 +685,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean aot obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean aot obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

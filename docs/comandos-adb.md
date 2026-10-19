@@ -29,7 +29,7 @@ settings put global animator_duration_scale 0
 
 ```sh
 settings put global private_dns_mode hostname
-settings put global private_dns_specifier dns.cloudflare.com
+settings put global private_dns_specifier one.one.one.one
 settings put global wifi_scan_always_enabled 0
 setprop net.tcp.buffersize.default 4096,87380,524288,4096,16384,110208
 setprop net.tcp.buffersize.wifi 524288,1048576,2097152,262144,524288,1048576

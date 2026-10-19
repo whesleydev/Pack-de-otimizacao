@@ -210,9 +210,40 @@ m_angle() {
         say "ANGLE resetado (volta ao driver nativo)"
     }
 
+    # angle_set <pkg> <angle|native|default> — escolhe o driver gráfico do app.
+    #   angle   = usa ANGLE (OpenGL ES sobre Vulkan)
+    #   native  = força o driver OpenGL ES do fabricante
+    #   default = deixa o sistema decidir (remove o app da lista)
+    angle_set() {
+        pkg="$1"; drv="$2"
+        [ -z "$pkg" ] && { err "uso: angle set <pkg> angle|native|default"; return 1; }
+        case "$drv" in angle|native) ;; default) angle_remove "$pkg"; return $? ;; *) err "driver inválido: $drv"; return 1 ;; esac
+        old_p=$(sh_get "settings get global $key_pkgs")
+        old_v=$(sh_get "settings get global $key_vals")
+        [ -z "$old_p" ] || [ "$old_p" = "null" ] && old_p=""
+        [ -z "$old_v" ] || [ "$old_v" = "null" ] && old_v=""
+        new_p=""; new_v=""; found=0; i=0
+        # substitui o valor do pacote, se já estiver na lista
+        for p in $(echo "$old_p" | tr ',' ' '); do
+            i=$((i+1))
+            v=$(echo "$old_v" | tr ',' ' ' | awk -v n="$i" '{print $n}')
+            if [ "$p" = "$pkg" ]; then v="$drv"; found=1; fi
+            if [ -z "$new_p" ]; then new_p="$p"; new_v="$v"; else new_p="$new_p,$p"; new_v="$new_v,$v"; fi
+        done
+        if [ "$found" = 0 ]; then
+            if [ -z "$new_p" ]; then new_p="$pkg"; new_v="$drv"; else new_p="$new_p,$pkg"; new_v="$new_v,$drv"; fi
+        fi
+        DEEP_TAG=angle; deep_begin
+        _angle_save_revert "$old_p" "$old_v"
+        sh_run "settings put global $key_pkgs $new_p" >/dev/null
+        sh_run "settings put global $key_vals $new_v" >/dev/null
+        say "driver do app $pkg: $drv — reabra o app"
+    }
+
     case "$acao" in
         add)    angle_add "$2" ;;
         remove) angle_remove "$2" ;;
+        set)    angle_set "$2" "$3" ;;
         reset)  angle_reset ;;
         *)      angle_list ;;
     esac

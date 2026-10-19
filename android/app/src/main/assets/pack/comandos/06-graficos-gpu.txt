@@ -15,3 +15,17 @@ settings put global accessibility_reduce_transparency 1
 
 # --- renderizador de UI SkiaGL (mais rápido) ---
 setprop debug.hwui.renderer skiagl
+setprop debug.renderengine.backend skiagl
+
+# --- renderizador Skia Vulkan (mais fluido em jogos) ---
+# setprop debug.hwui.renderer skiavk
+# setprop debug.renderengine.backend skiavk
+
+# --- modos multithread (composição em thread separada) ---
+# setprop debug.hwui.renderer skiagl
+# setprop debug.renderengine.backend skiaglthreaded
+# setprop debug.hwui.renderer skiavk
+# setprop debug.renderengine.backend skiavkthreaded
+
+# --- voltar para o padrão (OpenGL) ---
+# setprop debug.hwui.renderer opengl

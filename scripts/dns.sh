@@ -30,7 +30,7 @@ otm_v_reset
 # imprime: nome<TAB>host<TAB>descrição
 dns_profiles() {
     printf '%s\t%s\t%s\n' \
-        cloudflare        "1dot1dot1dot1.cloudflare-dns.com" "Privacidade + velocidade (sem registro)" \
+        cloudflare        "one.one.one.one"                 "Privacidade + velocidade (sem registro)" \
         quad9             "dns.quad9.net"                    "Privacidade + bloqueio de malware" \
         adguard           "dns.adguard-dns.com"              "Bloqueio de anúncios e rastreadores" \
         adguard-family    "family.adguard-dns.com"           "Anúncios + conteúdo adulto" \
@@ -68,7 +68,7 @@ dns_profiles() {
         restena           "dnspub.restena.lu"                "RESTENA (Luxemburgo, sem logs)" \
         applied-privacy   "dot1.applied-privacy.net"         "Foundation for Applied Privacy (Áustria)" \
         uncensored        "anycast.censurfridns.dk"          "UncensoredDNS (Dinamarca, sem filtro)" \
-        gaming            "1dot1dot1dot1.cloudflare-dns.com" "Baixa latência p/ jogos (+ TCP + scan off)"
+        gaming            "one.one.one.one" "Baixa latência p/ jogos (+ TCP + scan off)"
 }
 
 dns_host() {  # dns_host <perfil> -> hostname DoT (ou nada)
@@ -124,6 +124,7 @@ dns_status() {
     [ -z "$host" ] || [ "$host" = "null" ] && host="(nenhum)"
     printf '  %smodo:%s %s\n' "$C_A" "$C_R" "$mode"
     printf '  %shost:%s %s\n' "$C_A" "$C_R" "$host"
+    [ -n "$host" ] && [ "$host" != "(nenhum)" ] && printf 'DNSHOST=%s\n' "$host"
     for p in $(dns_profiles | cut -f1); do
         [ "$host" = "$(dns_host "$p")" ] && { printf '  %sperfil:%s %s (%s)\n' "$C_G" "$C_R" "$p" "$(dns_desc "$p")"; return 0; }
     done

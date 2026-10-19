@@ -136,6 +136,50 @@ t_angle_tag() {
     assert_not_contains "$(deep_off)" '^angle' "angle reset limpa as linhas do módulo angle"
 }
 
+t_renderer_app() {
+    printf '\n  # renderizador do sistema + driver gráfico por app\n'
+    rm -rf "$HOME/.packotm"
+    rm -f "$TMP_STORE/prop.debug.hwui.renderer" "$TMP_STORE/prop.debug.renderengine.backend"
+    # renderizador base grava o prop e o backend
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer skiagl >/dev/null 2>&1
+    assert_eq "skiagl" "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" "renderer skiagl grava o prop"
+    assert_eq "skiagl" "$(cat "$TMP_STORE/prop.debug.renderengine.backend" 2>/dev/null)" "renderer skiagl grava o backend"
+    # multithread muda só o backend
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer skiavk-threaded >/dev/null 2>&1
+    assert_eq "skiavk" "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" "renderer multithread usa skiavk"
+    assert_eq "skiavkthreaded" "$(cat "$TMP_STORE/prop.debug.renderengine.backend" 2>/dev/null)" "renderer multithread grava o backend"
+    grep -q 'debug.renderengine.backend' "$HOME/.packotm/off.sh" && ok "renderer é reversível" || bad "renderer sem reversão"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
+    [ -z "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" ] && ok "renderer volta ao original no restore" || bad "restore não limpou o renderer"
+    # driver gráfico por app (ANGLE/nativo/padrão) — sem root
+    rm -rf "$HOME/.packotm/deep"
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" angle set com.dts.freefireth angle >/dev/null 2>&1
+    assert_eq "com.dts.freefireth" "$(cat "$TMP_STORE/global.angle_gl_driver_selection_pkgs" 2>/dev/null)" "angle set adiciona o app"
+    assert_eq "angle" "$(cat "$TMP_STORE/global.angle_gl_driver_selection_values" 2>/dev/null)" "angle set grava o driver"
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" angle set com.dts.freefireth native >/dev/null 2>&1
+    assert_eq "native" "$(cat "$TMP_STORE/global.angle_gl_driver_selection_values" 2>/dev/null)" "angle set troca o driver do app"
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" angle set com.dts.freefireth default >/dev/null 2>&1
+    [ -z "$(cat "$TMP_STORE/global.angle_gl_driver_selection_pkgs" 2>/dev/null)" ] && ok "angle set default remove o app" || bad "default não removeu o app"
+    # painel: renderizador por app e escolha de DNS registrados
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             echo isset($a["app.render"]) && $a["app.render"]["choice"]==="renderapp" ? "app " : "";
+             echo isset($a["gpu.skiavk_threaded"]["state_backend_value"]) ? "mt " : "";
+             echo isset($a["dns.cloudflare"]["choice"]) && $a["dns.cloudflare"]["state_value"]==="one.one.one.one" ? "dns" : "";' \
+        > "$TMP/ra_reg" 2>&1
+    assert_contains "$TMP/ra_reg" "app mt dns" "registro: app.render, multithread e DNS por escolha"
+    # estado real do aparelho expõe o backend do renderizador e o host DNS
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/ra_state"
+    grep -q '"renderengine_backend"' "$TMP/ra_state" && ok "state: expõe o backend do renderizador" || bad "state: sem backend"
+    grep -q '"dns_host"' "$TMP/ra_state" && ok "state: expõe o host DNS em uso" || bad "state: sem dns_host"
+    # DNS recomendado (gaming/net) não usa o host quebrado que deixa sem internet
+    ! grep -q '1dot1dot1dot1' "$ROOT/scripts/dns.sh" && ok "DNS: host quebrado removido" || bad "DNS: host quebrado ainda presente"
+    grep -q 'private_dns_specifier one.one.one.one' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "rede (pack) usa o host DoT válido" || bad "rede ainda usa host quebrado"
+    rm -rf "$HOME/.packotm"
+}
+
+
 t_per_module() {
     printf '\n  # deep-tune: reverter um módulo não afeta os outros\n'
     rm -rf "$HOME/.packotm/deep"
@@ -1126,12 +1170,21 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 2 ] && ok "renderiza 2 grupos de escolha (renderizador, toque)" \
-            || bad "grupos de escolha: $n_choice (esperado 2)"
+        [ "$n_choice" -eq 4 ] && ok "renderiza 4 grupos de escolha (renderizador, app, DNS, toque)" \
+            || bad "grupos de escolha: $n_choice (esperado 4)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        [ "$n_opts" -eq 8 ] && ok "opções lado a lado: 3 renderizadores + 5 toques ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 8)"
+        [ "$n_opts" -eq 18 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 7 DNS + 5 toques ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 18)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
+        # motor gráfico por app: seletor de pacote + driver, e "multithread" desempata pelo backend
+        assert_contains "$TMP/web_html" 'data-choice="renderapp"' "há o cartão de driver por app"
+        assert_contains "$TMP/web_html" 'data-p="pkg"' "driver por app escolhe o app"
+        assert_contains "$TMP/web_html" 'data-state-backend-value="skiaglthreaded"' \
+            "renderizador multithread desempata pelo backend"
+        # DNS vira escolha (como o renderizador) na categoria "DNS e rede"
+        assert_contains "$TMP/web_html" 'data-choice="dns_fast"' "DNS é um grupo de escolha"
+        assert_contains "$TMP/web_html" 'data-state-value="one.one.one.one"' \
+            "escolha de DNS casa pelo host DoT (host quebrado corrigido)"
         # ajuste fino com slider (arrastar) + campo numérico
         n_slider=$(grep -c 'class="slider"' "$TMP/web_html")
         [ "$n_slider" -ge 4 ] && ok "parâmetros numéricos viram sliders ($n_slider)" \
@@ -1220,6 +1273,7 @@ printf '  ==================================================\n'
 setup_stubs
 t_syntax
 t_angle_tag
+t_renderer_app
 t_per_module
 t_extreme
 t_adv_noroot

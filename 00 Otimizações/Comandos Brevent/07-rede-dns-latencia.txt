@@ -6,7 +6,7 @@
 
 # --- DNS privado (Cloudflare) ---
 settings put global private_dns_mode hostname
-settings put global private_dns_specifier dns.cloudflare.com
+settings put global private_dns_specifier one.one.one.one
 
 # --- desativa a checagem de portal de rede (travava o Wi-Fi) ---
 settings put global captive_portal_mode 0

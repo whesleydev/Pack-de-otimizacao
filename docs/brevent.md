@@ -28,7 +28,7 @@ settings put global cached_apps_freezer enabled
 
 # DNS
 settings put global private_dns_mode hostname
-settings put global private_dns_specifier dns.cloudflare.com
+settings put global private_dns_specifier one.one.one.one
 ```
 
 ## 3. Congelar e descongelar no Brevent

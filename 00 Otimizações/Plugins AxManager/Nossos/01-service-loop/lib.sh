@@ -49,7 +49,7 @@ apply_core() {
 
     [ "$ENABLE_DNS" = "1" ] && {
         settings put global private_dns_mode hostname
-        settings put global private_dns_specifier dns.cloudflare.com
+        settings put global private_dns_specifier one.one.one.one
     }
 
     [ "$ENABLE_TOUCH" = "1" ] && {

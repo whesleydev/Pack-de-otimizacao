@@ -180,13 +180,20 @@ nativa além do necessário para conectar e rodar os comandos.
   `index.php`/`lib.php`, os dois painéis (`web/index.php` e
   `assets/panel/index.html`) precisam ficar em sincronia (o CSS/JS é o mesmo).
 - **Opções lado a lado** (`otm_choices()` em `lib.php`): ações com `'choice' =>
-  'renderer'` (renderizador) ou `'touchprofile'` (perfis de toque) são fundidas
-  num único cartão com botões; cada ação traz `option` (rótulo) e
-  `state_value`/`state_match` para o painel marcar a opção **em uso**. Ali o
-  botão diz **"Selecionar"** (não "Executar"), porque é escolha de configuração.
+  'renderer'` (renderizador), `'renderapp'` (driver gráfico por app) ou
+  `'touchprofile'` (perfis de toque) são fundidas num único cartão com botões;
+  cada ação traz `option` (rótulo) e `state_value`/`state_backend_value`/
+  `state_match` para o painel marcar a opção **em uso**. Ali o botão diz
+  **"Selecionar"** (não "Executar"), porque é escolha de configuração. Um grupo
+  com `'app' => true` mostra um campo de pacote (`type => 'pkg'`, usa o
+  `datalist` `#applist`) antes dos botões; o `selectOption` do JS envia esses
+  `data-p` como `params` da ação (ex.: `app.render` = `deep-tune.sh angle set
+  <pkg> <driver>`). Os modos "multithread" compartilham o `hwui.renderer` e
+  desempatam pelo backend (`state_backend`/`state_backend_value`).
 - **Estado real do aparelho** (`scripts/panel-state.sh`, na whitelist do
-  `lib.php`): devolve uma linha JSON com renderizador em uso, toque atual, refresh
-  e ANGLE. O painel consome via `api.php?action=state` (web) ou `OTM.call("state")`
+  `lib.php`): devolve uma linha JSON com renderizador em uso (e o backend
+  `renderengine_backend`), toque atual, refresh, ANGLE e o host de DNS privado
+  (`dns_host`). O painel consome via `api.php?action=state` (web) ou `OTM.call("state")`
   (app, `stateImpl()` no `PackBridge`). Nada fictício: campo ilegível volta `""` e
   a UI não mostra número inventado. Parâmetros com `'state' => '<chave>'` abrem o
   slider já no valor do aparelho.

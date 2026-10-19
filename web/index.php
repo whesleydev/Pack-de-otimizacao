@@ -73,10 +73,14 @@ foreach ($CHOICE as $k => $c) {
             'id' => $a['id'], 'label' => $a['option'] ?? $a['label'],
             'desc' => $a['desc'] ?? '', 'risk' => $a['risk'] ?? 'safe',
             'state_value' => $a['state_value'] ?? null, 'state_match' => $a['state_match'] ?? null,
+            'state_backend_value' => $a['state_backend_value'] ?? null,
         ];
     }
+    // parâmetros extras do grupo (ex.: escolher o app no motor por app)
+    $params = $choiceMembers[$k][0]['params'] ?? [];
     $choiceMeta[$k] = ['title' => $c['title'], 'desc' => $c['desc'], 'risk' => $c['risk'] ?? 'safe',
-                       'state' => $c['state'] ?? null, 'opts' => $opts];
+                       'state' => $c['state'] ?? null, 'state_backend' => $c['state_backend'] ?? null,
+                       'app' => !empty($c['app']), 'params' => $params, 'opts' => $opts];
 }
 
 $token = is_file(__DIR__ . '/.token') ? trim((string) file_get_contents(__DIR__ . '/.token')) : '';
@@ -666,18 +670,42 @@ body.drawer .scrim{opacity:1;visibility:visible}
               $crisk = $c['risk']; ?>
               <article class="card card-choice" data-choice="<?= htmlspecialchars($ck, ENT_QUOTES) ?>"
                        data-state-key="<?= htmlspecialchars((string)($c['state'] ?? ''), ENT_QUOTES) ?>"
+                       data-state-backend="<?= htmlspecialchars((string)($c['state_backend'] ?? ''), ENT_QUOTES) ?>"
                        style="--i:<?= (int)($ci % 12) ?>">
                 <div class="row">
                   <h3><?= htmlspecialchars($c['title']) ?></h3>
                   <span class="chip <?= htmlspecialchars($crisk, ENT_QUOTES) ?>"><?= htmlspecialchars($riskLabel[$crisk] ?? $crisk) ?></span>
                 </div>
                 <p><?= htmlspecialchars($c['desc']) ?></p>
+                <?php if (!empty($c['app'])): ?>
+                  <div class="fields">
+                    <?php foreach ($c['params'] as $p):
+                      $pid = htmlspecialchars($ck . '-' . $p['name'], ENT_QUOTES); ?>
+                      <div class="field wide">
+                        <label for="<?= $pid ?>"><?= htmlspecialchars($p['label']) ?></label>
+                        <?php if (($p['type'] ?? '') === 'enum'): ?>
+                          <select id="<?= $pid ?>" data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>">
+                            <?php foreach (($p['options'] ?? []) as $opt): ?>
+                              <option value="<?= htmlspecialchars((string) $opt, ENT_QUOTES) ?>"
+                                <?= ((string) $opt === (string) ($p['default'] ?? '')) ? ' selected' : '' ?>><?= htmlspecialchars((string) $opt) ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        <?php else: ?>
+                          <input id="<?= $pid ?>" data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
+                                 type="text" value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>"
+                                 <?= ($p['type'] ?? '') === 'pkg' ? 'list="applist" placeholder="com.exemplo.app"' : '' ?>>
+                        <?php endif; ?>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
                 <div class="opts" role="group" aria-label="<?= htmlspecialchars($c['title'], ENT_QUOTES) ?>">
                   <?php foreach ($c['opts'] as $o): ?>
                     <button class="opt" type="button" data-opt="<?= htmlspecialchars($o['id'], ENT_QUOTES) ?>"
                             data-optlabel="<?= htmlspecialchars($o['label'], ENT_QUOTES) ?>"
                             data-state-value="<?= htmlspecialchars((string)($o['state_value'] ?? ''), ENT_QUOTES) ?>"
                             data-state-match="<?= htmlspecialchars((string)($o['state_match'] ?? ''), ENT_QUOTES) ?>"
+                            data-state-backend-value="<?= htmlspecialchars((string)($o['state_backend_value'] ?? ''), ENT_QUOTES) ?>"
                             aria-pressed="false">
                       <span class="opt-t"><?= htmlspecialchars($o['label']) ?></span>
                       <span class="opt-s">Selecionar</span>
@@ -1093,10 +1121,21 @@ function run(card, confirmed){
   }
   doRun(a, collect(card), confirmed, card.querySelector("[data-run]"));
 }
-/* opção de um grupo de escolha (renderizador, perfis de toque): "Selecionar" */
+/* opção de um grupo de escolha (renderizador, driver por app, DNS, toque) */
+function collectChoice(card){
+  const out = {};
+  if (card) card.querySelectorAll("[data-p]").forEach(i => { out[i.dataset.p] = i.value.trim(); });
+  return out;
+}
 function selectOption(btn, confirmed){
   const a = ACTIONS[btn.dataset.opt];
   if (!a) return;
+  const card = btn.closest(".card-choice");
+  const params = collectChoice(card);
+  // grupos que pedem o app: não dá para escolher sem o pacote
+  if (card && card.querySelector('[data-p="pkg"]') && !params.pkg){
+    toast("Escolha o app primeiro", "bad"); return;
+  }
   if (a.confirm && !confirmed){
     pending = btn;
     $("#mTitle").textContent = a.label;
@@ -1111,12 +1150,12 @@ function selectOption(btn, confirmed){
     $("#mask").classList.add("open");
     return;
   }
-  doRun(a, {}, confirmed, btn);
+  doRun(a, params, confirmed, btn);
 }
 /* reexecuta o que está pendente (cartão comum ou opção) depois do "ok" */
 function runPending(){
   const p = pending; if (!p) return;
-  if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], {}, true, p);
+  if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
   else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
 }
 async function doRun(a, params, confirmed, btn){
@@ -1151,12 +1190,17 @@ function stateNum(v){ const n = parseFloat(v); return (v === undefined || v === 
 function applyState(){
   document.querySelectorAll(".card-choice").forEach(card => {
     const key = card.dataset.stateKey || "";
+    const bkey = card.dataset.stateBackend || "";
     const isTouch = card.dataset.choice === "touchprofile";
     let active = null;
     card.querySelectorAll(".opt").forEach(o => {
       let on = false;
       if (o.dataset.stateValue && key && STATE[key] !== undefined && STATE[key] !== ""){
         on = String(STATE[key]).toLowerCase() === o.dataset.stateValue.toLowerCase();
+        // "multithread" compartilha o mesmo hwui.renderer; o backend desempata
+        if (on && o.dataset.stateBackendValue){
+          on = String(STATE[bkey] || "").toLowerCase() === o.dataset.stateBackendValue.toLowerCase();
+        }
       } else if (o.dataset.stateMatch){
         const want = o.dataset.stateMatch.split(":")[1].split(",");
         on = TOUCH_KEYS.every((k,i) => stateNum(STATE[k]) !== null && String(stateNum(STATE[k])) === want[i]);
@@ -1173,7 +1217,11 @@ function applyState(){
       if (cur.some(v => v !== null))
         txt = "No aparelho: responsiveness " + (cur[0] ?? "?") + " · long press " + (cur[1] ?? "?") + " ms · pointer " + (cur[2] ?? "?") + " · slop " + (cur[3] ?? "?");
     } else if (key === "renderer" && STATE.renderer){
-      txt = "Em uso agora: " + (active || STATE.renderer) + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
+      txt = "Em uso agora: " + (active || STATE.renderer)
+        + (STATE.renderengine_backend ? " (" + STATE.renderengine_backend + ")" : "")
+        + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
+    } else if (key === "dns_host" && STATE.dns_host){
+      txt = "Em uso agora: " + (active || STATE.dns_host);
     }
     now.textContent = txt;
     now.hidden = !txt;

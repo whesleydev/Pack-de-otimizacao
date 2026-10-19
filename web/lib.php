@@ -95,9 +95,22 @@ function otm_choices(): array {
     return [
         'renderer' => [
             'title' => 'Motor gráfico (renderizador)',
-            'desc'  => 'Escolha como a interface é desenhada. OpenGL é o padrão do Android (mais compatível); SkiaGL fica no meio; Skia Vulkan costuma dar mais fluidez. Se um app ficar com tela estranha, volte para OpenGL.',
+            'desc'  => 'Escolha como a interface é desenhada. OpenGL é o padrão do Android (mais compatível); SkiaGL fica no meio; Skia Vulkan costuma dar mais fluidez. Os modos "multithread" desenham numa thread separada (mais suave, porém mais exigentes). Se um app ficar com tela estranha, volte para OpenGL.',
             'state' => 'renderer',
+            'state_backend' => 'renderengine_backend',
             'risk'  => 'careful',
+        ],
+        'renderapp' => [
+            'title' => 'Motor gráfico por app',
+            'desc'  => 'Escolha o app e qual driver gráfico ele deve usar. ANGLE costuma dar mais desempenho em jogos; Nativo força o driver do fabricante (bom se o ANGLE der problema); Padrão devolve a decisão ao sistema. Vale por app — o resto do aparelho não muda.',
+            'risk'  => 'careful',
+            'app'   => true,
+        ],
+        'dns_fast' => [
+            'title' => 'DNS privado (escolha rápida)',
+            'desc'  => 'Um DNS privado (DoT) deixa a navegação mais rápida e privada e pode bloquear anúncios. Escolha um perfil aqui, ou use a lista completa em "DNS e rede". Todos são reversíveis com "DNS automático".',
+            'state' => 'dns_host',
+            'risk'  => 'safe',
         ],
         'touchprofile' => [
             'title' => 'Sensibilidade do toque (perfis)',
@@ -174,10 +187,28 @@ function otm_actions(): array {
         'uncensored'        => ['UncensoredDNS', 'Dinamarca, sem filtro nem censura.'],
         'gaming'            => ['Gaming', 'Baixa latência para jogos + rede otimizada.'],
     ];
+    // Perfis da escolha rápida de DNS (os "conhecidos" de cada finalidade).
+    // O 3º campo é o host DoT (igual ao de dns.sh) — o painel compara com o
+    // host atual para marcar "Em uso".
+    $dns_quick = [
+        'cloudflare' => ['Cloudflare', 'Privacidade + velocidade. O mais equilibrado.', 'one.one.one.one'],
+        'google'     => ['Google', 'Compatibilidade máxima com qualquer rede.', 'dns.google'],
+        'quad9'      => ['Quad9', 'Privacidade + bloqueio de malware.', 'dns.quad9.net'],
+        'adguard'    => ['AdGuard', 'Bloqueia anúncios e rastreadores.', 'dns.adguard-dns.com'],
+        'mullvad-all' => ['Mullvad Tudo', 'Bloqueio máximo (ads + malware + família).', 'all.dns.mullvad.net'],
+        'opendns-family' => ['OpenDNS Família', 'Bloqueia conteúdo adulto.', 'familyshield.opendns.com'],
+        'gaming'     => ['Gaming', 'Baixa latência para jogos + rede otimizada.', 'one.one.one.one'],
+    ];
     foreach ($dns as $k => $v) {
-        $add(['id' => "dns.$k", 'group' => 'DNS e rede', 'label' => $v[0], 'desc' => $v[1],
+        $row = ['id' => "dns.$k", 'group' => 'DNS e rede', 'label' => $v[0], 'desc' => $v[1],
               'help' => 'DNS é o serviço que "traduz" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em "DNS automático".',
-              'argv' => ['dns.sh', $k]]);
+              'argv' => ['dns.sh', $k]];
+        if (isset($dns_quick[$k])) {
+            $row['choice'] = 'dns_fast';
+            $row['option'] = $v[0];
+            $row['state_value'] = $dns_quick[$k][2];   // host DoT (marca "Em uso")
+        }
+        $add($row);
     }
     $add(['id' => 'dns.custom', 'group' => 'DNS e rede', 'label' => 'DNS personalizado (host DoT)',
           'desc' => 'Use qualquer hostname de DNS-over-TLS que você quiser.',
@@ -220,21 +251,42 @@ function otm_actions(): array {
           'desc' => 'Motor gráfico de fábrica. Mais compatível.',
           'help' => 'Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.',
           'choice' => 'renderer', 'option' => 'OpenGL', 'state_value' => 'opengl',
-          'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer opengl']]);
+          'argv' => ['adb-tweaks.sh', 'renderer', 'opengl']]);
     $add(['id' => 'gpu.skiagl', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL',
           'desc' => 'Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.',
           'help' => 'Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.',
           'choice' => 'renderer', 'option' => 'SkiaGL', 'state_value' => 'skiagl',
-          'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer skiagl']]);
+          'argv' => ['adb-tweaks.sh', 'renderer', 'skiagl']]);
     $add(['id' => 'gpu.skiavk', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan',
           'desc' => 'Skia sobre Vulkan. Costuma dar mais fluidez.',
           'help' => 'Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.',
           'choice' => 'renderer', 'option' => 'Skia Vulkan', 'state_value' => 'skiavk',
-          'argv' => ['adb-tweaks.sh', 'raw', 'setprop debug.hwui.renderer skiavk']]);
+          'argv' => ['adb-tweaks.sh', 'renderer', 'skiavk']]);
+    $add(['id' => 'gpu.skiagl_threaded', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL multithread',
+          'desc' => 'SkiaGL desenhando numa thread separada. Mais suave.',
+          'help' => 'Usa SkiaGL e move a composição para uma thread separada (backend "skiaglthreaded"). Costuma deixar a rolagem mais suave em telas de alta taxa. É mais exigente: se esquentar ou instabilizar, volte para SkiaGL.',
+          'choice' => 'renderer', 'option' => 'SkiaGL multithread', 'state_value' => 'skiagl', 'state_backend_value' => 'skiaglthreaded',
+          'argv' => ['adb-tweaks.sh', 'renderer', 'skiagl-threaded']]);
+    $add(['id' => 'gpu.skiavk_threaded', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan multithread',
+          'desc' => 'Skia Vulkan em thread separada. Máxima fluidez.',
+          'help' => 'Usa Skia Vulkan com a composição numa thread separada (backend "skiavkthreaded"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou OpenGL.',
+          'choice' => 'renderer', 'option' => 'Skia Vulkan multithread', 'state_value' => 'skiavk', 'state_backend_value' => 'skiavkthreaded',
+          'argv' => ['adb-tweaks.sh', 'renderer', 'skiavk-threaded']]);
     $add(['id' => 'gpu.force', 'group' => 'Display & Touch', 'label' => 'Forçar renderização por GPU',
           'desc' => 'Usa a GPU para desenhar a interface (não a CPU).',
           'help' => 'Faz a interface ser desenhada pela GPU em vez da CPU. Isso libera a CPU para outras tarefas e deixa a rolagem mais suave.',
           'argv' => ['adb-tweaks.sh', 'raw', 'settings put global force_gpu_rendering 1']]);
+
+    // ----- Motor gráfico por app (escolha o app e o driver) -----
+    $add(['id' => 'app.render', 'group' => 'Display & Touch', 'label' => 'Escolher driver do app',
+          'desc' => 'Escolha o app e o driver gráfico que ele deve usar.',
+          'help' => 'Escolhe o driver gráfico de um app específico: ANGLE (OpenGL ES sobre Vulkan, costuma render mais FPS), Nativo (força o driver OpenGL ES do fabricante) ou Padrão (o sistema decide). É a mesma opção de "Driver gráfico" das Opções de desenvolvedor, mas aqui por app e sem root. Reabra o app depois.',
+          'choice' => 'renderapp', 'option' => 'Driver do app',
+          'argv' => ['deep-tune.sh', 'angle', 'set', '{pkg}', '{driver}'],
+          'params' => [
+              ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
+              ['name' => 'driver', 'type' => 'enum', 'label' => 'Driver', 'options' => ['angle', 'native', 'default'], 'default' => 'angle'],
+          ]]);
 
     // ----- Renderizador por app (Vulkan/OpenGL/ANGLE) -----
     $add(['id' => 'app.angle', 'group' => 'Apps e jogos', 'label' => 'Usar ANGLE (OpenGL para Vulkan) no app',

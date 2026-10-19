@@ -3,6 +3,31 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.18.0] - 2026-10-05
+
+### Corrigido
+- **DNS recomendado deixava o aparelho sem internet.** O pack (e o perfil
+  "Gaming") apontava o DNS privado para `1dot1dot1dot1.cloudflare-dns.com`, um
+  host que saiu do ar: sem resolver, o Android não conectava a nada. Agora o host
+  é o `one.one.one.one` (o endereço DoT estável do Cloudflare). Quem já tinha
+  ficado sem internet volta ao normal com "DNS automático" ou escolhendo outro
+  perfil na categoria **DNS e rede**.
+
+### Adicionado
+- **Mais motores gráficos (renderizadores).** Além de OpenGL, SkiaGL e Skia
+  Vulkan, entram **SkiaGL multithread** e **Skia Vulkan multithread** (composição
+  numa thread separada). Cada opção grava o valor anterior do prop, então dá para
+  voltar com "Reverter TUDO"; o painel marca qual está em uso (o backend
+  desempata os modos multithread).
+- **Mudança por app (renderizador).** Novo cartão **"Motor gráfico por app"**:
+  escolha o app/jogo e o driver — **ANGLE**, **Nativo** ou **Padrão**. Usa as
+  mesmas opções de "Driver gráfico" do desenvolvedor, por app e sem root
+  (`deep-tune.sh angle set <pkg> angle|native|default`), com reversão.
+- **DNS como escolha.** A categoria **DNS e rede** ganhou um cartão de escolha
+  rápida (Cloudflare, Google, Quad9, AdGuard, Mullvad, OpenDNS Família, Gaming)
+  no mesmo estilo do renderizador, com "Em uso" marcado pelo host real do
+  aparelho. A lista completa de perfis continua logo abaixo.
+
 ## [2.17.0] - 2026-10-05
 
 ### Corrigido

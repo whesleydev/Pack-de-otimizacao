@@ -83,7 +83,7 @@ m_gfx() {
 }
 m_net() {
     settings put global private_dns_mode hostname
-    settings put global private_dns_specifier dns.cloudflare.com
+    settings put global private_dns_specifier one.one.one.one
     settings put global wifi_scan_always_enabled 0
 }
 m_game() {
