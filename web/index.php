@@ -60,6 +60,55 @@ $meta = [
 
 $riskLabel = ['safe' => 'seguro', 'careful' => 'cuidado', 'root' => 'root'];
 
+// --- Terminal (aba própria): executa comandos crus via api.php do=term ---------
+// O Terminal é renderizado no servidor como uma seção a mais do menu. Ele não é
+// um "card de ação" (o comando é livre), por isso fica fora do registro.
+$TERMINAL_HTML = <<<'HTML'
+    <section id="g-Terminal" data-g="Terminal" hidden>
+      <div class="head">
+        <h2>Terminal</h2>
+        <p>Rode comandos no aparelho pelo mesmo acesso do pack (Shizuku, ADB por Wi-Fi ou root).</p>
+      </div>
+      <div class="note">
+        <span aria-hidden="true">ⓘ</span>
+        <div><b>Cuidado:</b> aqui o comando vai direto para o shell do Android. Use com calma — um comando errado pode desconfigurar o aparelho. O histórico fica salvo e aparece em <b>Logs</b>.</div>
+      </div>
+      <article class="card" style="gap:0">
+        <div class="row"><h3>Executar comando</h3></div>
+        <p class="sub">Exemplos: <code>getprop ro.product.model</code> · <code>settings get system peak_refresh_rate</code> · <code>pm list packages -3</code></p>
+        <div class="termwrap">
+          <pre class="termout" id="termOut" aria-live="polite"></pre>
+          <div class="termrow">
+            <span class="pfx">$</span>
+            <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                   placeholder="digite um comando e toque em Executar" aria-label="Comando">
+            <button class="btn primary" id="termRun" type="button" style="width:auto">Executar</button>
+          </div>
+          <p class="termhint">Histórico: use as setas ↑/↓ no campo. <button class="jump" id="termClear" type="button" style="border-radius:999px;padding:4px 10px">limpar tela</button></p>
+        </div>
+      </article>
+    </section>
+HTML;
+
+// --- seletor de apps (nome + ícone): substitui o input de pacote ------------
+// O usuário NÃO digita o pacote: o botão abre a lista de apps instalados (com
+// nome e ícone). O pacote escolhido vai num input escondido, que o `collect()`
+// lê como qualquer outro parâmetro.
+function otm_pkg_picker(string $pid, string $name, string $default = ''): string {
+    $pidh = htmlspecialchars($pid, ENT_QUOTES);
+    $nameh = htmlspecialchars($name, ENT_QUOTES);
+    $defh = htmlspecialchars($default, ENT_QUOTES);
+    $cur = $default !== '' ? $defh : 'Nenhum app escolhido';
+    ob_start(); ?>
+      <div class="apppick" role="button" tabindex="0" data-apppick
+           aria-label="Escolher app (<?= $nameh ?>)">
+        <input type="hidden" id="<?= $pidh ?>" data-p="<?= $nameh ?>" value="<?= $defh ?>">
+        <span class="appslot"><span class="noico">?</span><span class="nm"><b><?= $cur ?></b><small>toque para escolher</small></span></span>
+        <span class="chev"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+      </div>
+    <?php return (string) ob_get_clean();
+}
+
 // --- grupos de escolha: opções lado a lado num único cartão -------------------
 $CHOICE = otm_choices();
 $choiceMembers = [];               // choiceKey => [ações]
@@ -410,12 +459,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
 /* ---- rodapé / créditos ---------------------------------------------------- */
 .credits{border-top:1px solid var(--line); background:var(--glass); backdrop-filter:var(--blur);
   -webkit-backdrop-filter:var(--blur); padding:22px clamp(12px,3vw,22px)}
-.credits .in{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
-.credits .who{font-size:13px; color:var(--muted)}
+.credits .in{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+.credits .cwho{display:flex; flex-direction:column; gap:3px; min-width:0}
+.credits .ctitle{margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700}
+.credits .who{font-size:13px; color:var(--muted); margin:0}
 .credits .who b{color:var(--ink)}
 .credits .who code{color:var(--accent); background:var(--glass-2); border:1px solid var(--line);
   border-radius:6px; padding:1px 6px}
 .credits .sp{flex:1}
+.credits .clinks{display:flex; gap:10px; flex-wrap:wrap}
 .dcb{display:inline-flex; align-items:center; gap:7px; text-decoration:none; color:var(--ink);
   border:1px solid var(--line); background:var(--glass-2); border-radius:10px; padding:8px 12px;
   font-size:12.5px; font-weight:700; transition:.15s; white-space:nowrap}
@@ -425,6 +477,68 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .dcb .arw{display:inline-flex; color:var(--muted)}
 .dcb .arw svg{width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
 @media (max-width:520px){ .credits .who{font-size:12px} .credits .in{gap:9px} }
+
+/* ---- logs (histórico completo) -------------------------------------------- */
+.logspanel{position:fixed;left:0;right:0;bottom:0;z-index:62;transform:translateY(102%);
+  transition:transform .26s cubic-bezier(.2,.8,.3,1);background:var(--paper);
+  border-top:1px solid var(--line);max-height:82dvh;display:flex;flex-direction:column;
+  box-shadow:0 -18px 44px -24px rgba(0,0,0,.5)}
+.logspanel.open{transform:none}
+.logspanel .bar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.logspanel .bar b{font-size:13px}
+.logspanel .body{margin:0;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.5px}
+.logsrow{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+.logsrow .st{flex:none;font-weight:800}
+.logsrow .st.ok{color:var(--teal)} .logsrow .st.no{color:var(--danger)}
+.logsrow .ts{flex:none;color:var(--muted)}
+.logsrow .lb{flex:1;min-width:0;word-break:break-word}
+.logsrow .cmd{color:var(--muted);font-size:11.5px;display:block;word-break:break-all}
+.logs-empty{color:var(--muted);padding:8px 0}
+
+/* ---- terminal real -------------------------------------------------------- */
+.termwrap{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.termout{background:#0b0b0c;color:#e8e8e6;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:14px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word;
+  min-height:220px;max-height:52dvh;overflow:auto;margin:0}
+.termout .c{color:#8fd3ff}
+.termrow{display:flex;gap:8px;align-items:center}
+.termrow .pfx{font-family:var(--mono);color:var(--accent);font-weight:800}
+.termrow input{flex:1;font-family:var(--mono)}
+.termhint{color:var(--muted);font-size:12px;margin:6px 0 0}
+.termhint code{background:var(--glass-2);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+
+/* ---- seletor de apps (nome + ícone) --------------------------------------- */
+.apppick{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);
+  padding:8px 10px;color:var(--ink);font:inherit}
+.apppick:hover{border-color:var(--accent)}
+.apppick img{width:34px;height:34px;border-radius:9px;flex:none;object-fit:cover;background:var(--glass-2)}
+.apppick .noico{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;
+  background:var(--glass-2);border:1px solid var(--line);font-weight:800;color:var(--muted);font-size:14px}
+.apppick .nm{min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.apppick .nm b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apppick .nm small{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apppick .chev{margin-left:auto;color:var(--muted);flex:none}
+.appmodal{position:fixed;inset:0;z-index:70;background:rgba(10,8,6,.5);backdrop-filter:blur(3px);
+  display:none;align-items:flex-end;justify-content:center;padding:0}
+.appmodal.open{display:flex}
+.appsheet{width:100%;max-width:560px;background:var(--paper);border:1px solid var(--line);
+  border-radius:18px 18px 0 0;max-height:86dvh;display:flex;flex-direction:column;box-shadow:var(--shadow);
+  animation:otmRise .22s cubic-bezier(.2,.7,.3,1) both}
+@media (min-width:600px){ .appmodal{align-items:center;padding:20px} .appsheet{border-radius:18px;max-height:80dvh} }
+.appsheet .hd{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.appsheet .hd b{font-size:15px}
+.appsheet .srch{margin:12px 16px 0;padding:11px 13px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  background:var(--glass-2);color:var(--ink);font:inherit;width:calc(100% - 32px)}
+.applist{overflow:auto;padding:10px 12px 16px;margin:0;list-style:none}
+.appitem{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:11px;cursor:pointer}
+.appitem:hover,.appitem:focus-visible{background:var(--glass-2);outline:none}
+.appitem img,.appitem .noico{width:38px;height:38px;border-radius:10px;flex:none;object-fit:cover}
+.appitem .noico{display:grid;place-items:center;background:var(--glass-2);border:1px solid var(--line);font-weight:800;color:var(--muted)}
+.appitem .nm{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.appitem .nm b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.appitem .nm small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.appitem .pk{font-size:11px;color:var(--muted);margin-top:1px}
 @media (max-height:520px){
   .side .panel{padding-top:48px}
   .console{max-height:80dvh}
@@ -513,8 +627,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
   <button class="iconbtn hide-sm" id="btnStatus">Status</button>
-  <button class="iconbtn hide-sm" id="btnLog">Histórico</button>
-  <button class="iconbtn" id="btnConsole">Console</button>
+  <button class="iconbtn hide-sm" id="btnLogs">Logs</button>
+  <button class="iconbtn" id="btnTerm">Terminal</button>
   <a class="iconbtn hide-sm" href="index.php?sair=1" id="btnSair" title="Sair do painel">Sair</a>
 </header>
 
@@ -542,6 +656,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <span class="count"><?= count($items) ?></span>
           </a>
         <?php endforeach; ?>
+        <a href="#Terminal" data-g="Terminal" aria-current="false"><span class="c"></span>Terminal</a>
       </nav>
     </div>
   </aside>
@@ -590,7 +705,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <div class="foot" data-stat="storf">—</div>
               </div>
               <div class="stat">
-                <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>Tela</div>
+                <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>Taxa de tela</div>
                 <div class="v" data-stat="disp">—</div>
                 <div class="foot" data-stat="dispf">—</div>
               </div>
@@ -691,9 +806,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
                             <?php endforeach; ?>
                           </select>
                         <?php else: ?>
+                          <?php if (($p['type'] ?? '') === 'pkg'): ?>
+                            <?= otm_pkg_picker($ck . '-' . $p['name'], $p['name'], (string) ($p['default'] ?? '')) ?>
+                          <?php else: ?>
                           <input id="<?= $pid ?>" data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
-                                 type="text" value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>"
-                                 <?= ($p['type'] ?? '') === 'pkg' ? 'list="applist" placeholder="com.exemplo.app"' : '' ?>>
+                                 type="text" value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>">
+                          <?php endif; ?>
                         <?php endif; ?>
                       </div>
                     <?php endforeach; ?>
@@ -761,15 +879,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
                                  inputmode="numeric" aria-label="<?= htmlspecialchars($p['label'], ENT_QUOTES) ?>">
                         </div>
                       <?php else: ?>
+                      <?php if ($t === 'pkg'): ?>
+                        <?= otm_pkg_picker($pid, $p['name'], (string) ($p['default'] ?? '')) ?>
+                      <?php else: ?>
                       <input id="<?= $pid ?>"
                              data-p="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
                              type="<?= in_array($t, ['int', 'float'], true) ? 'number' : 'text' ?>"
                              value="<?= htmlspecialchars((string) ($p['default'] ?? ''), ENT_QUOTES) ?>"
-                             <?= $t === 'pkg' ? 'list="applist" placeholder="com.exemplo.app"' : '' ?>
                              <?= $t === 'host' ? 'placeholder="dns.exemplo.com"' : '' ?>
                              <?= isset($p['min']) ? 'min="' . htmlspecialchars((string) $p['min'], ENT_QUOTES) . '"' : '' ?>
                              <?= isset($p['max']) ? 'max="' . htmlspecialchars((string) $p['max'], ENT_QUOTES) . '"' : '' ?>
                              <?= isset($p['step']) ? 'step="' . htmlspecialchars((string) $p['step'], ENT_QUOTES) . '"' : '' ?>>
+                      <?php endif; ?>
                       <?php endif; ?>
                     </div>
                   <?php endforeach; ?>
@@ -783,23 +904,29 @@ body.drawer .scrim{opacity:1;visibility:visible}
         </div>
       </section>
     <?php endforeach; ?>
+<?= $TERMINAL_HTML ?>
   </main>
 </div>
 
 <footer class="credits">
   <div class="in">
-    <p class="who">Criado por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
+    <div class="cwho">
+      <p class="ctitle">Créditos</p>
+      <p class="who">Feito por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
+    </div>
     <span class="sp"></span>
-    <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
-       title="Abrir meu perfil no Discord">
-      <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-      Meu Discord <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
-    </a>
-    <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
-       title="Entrar no meu servidor do Discord">
-      <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-      Servidor <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
-    </a>
+    <div class="clinks">
+      <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
+         title="Abrir meu perfil no Discord">
+        <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+        Meu Discord <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+      </a>
+      <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
+         title="Entrar no meu servidor do Discord">
+        <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+        Servidor <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+      </a>
+    </div>
   </div>
 </footer>
 
@@ -807,6 +934,22 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="bar"><b id="consoleTitle">Saída</b><span class="grow"></span>
     <button class="close-x" id="consoleClose">fechar <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <pre id="consoleOut"></pre>
+</div>
+
+<div class="logspanel" id="logspanel" role="region" aria-label="Logs">
+  <div class="bar"><b>Logs</b><span class="grow"></span>
+    <button class="jump" id="logsRefresh" type="button" style="border-radius:999px;padding:6px 12px">Atualizar</button>
+    <button class="close-x" id="logsClose">fechar <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="body" id="logsBody"></div>
+</div>
+
+<div class="appmodal" id="appModal" role="dialog" aria-modal="true" aria-label="Escolher app">
+  <div class="appsheet">
+    <div class="hd"><b>Escolher app</b><span class="grow"></span>
+      <button class="close-x" id="appModalClose">fechar <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <input class="srch" id="appSearch" type="text" placeholder="Buscar por nome ou pacote…" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <ul class="applist" id="appList"></ul>
+  </div>
 </div>
 
 <div class="mask" id="mask" role="dialog" aria-modal="true" aria-labelledby="mTitle">
@@ -1222,6 +1365,10 @@ function applyState(){
         + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
     } else if (key === "dns_host" && STATE.dns_host){
       txt = "Em uso agora: " + (active || STATE.dns_host);
+    } else if (key === "refresh_peak"){
+      const rp = stateNum(STATE.refresh_peak), rc = stateNum(STATE.refresh_hz);
+      if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz";
+      else if (rc !== null) txt = "Em uso agora: " + rc + "Hz (o sistema decide)";
     }
     now.textContent = txt;
     now.hidden = !txt;
@@ -1262,7 +1409,6 @@ function toast(m, k){ const t = $("#toast"); t.textContent = m; t.className = "t
 const apiGet = async a => (await fetch("api.php?action=" + a, {headers:{"X-OTM-Token":TOKEN}})).json();
 
 $("#consoleClose").onclick = () => $("#console").classList.remove("open");
-$("#btnConsole").onclick = () => $("#console").classList.toggle("open");
 $("#mCancel").onclick = () => { $("#mask").classList.remove("open"); pending = null; };
 $("#mCheck").onchange = e => $("#mGo").disabled = !e.target.checked;
 $("#mGo").onclick = () => { $("#mask").classList.remove("open");
@@ -1270,9 +1416,160 @@ $("#mGo").onclick = () => { $("#mask").classList.remove("open");
 $("#mask").onclick = e => { if (e.target.id === "mask"){ $("#mask").classList.remove("open"); pending = null; } };
 $("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo…");
   const j = await apiGet("status"); openConsole("Status do aparelho", j.text || "(sem saída)"); };
-$("#btnLog").onclick = async () => { openConsole("Histórico", "lendo…");
-  const j = await apiGet("log");
-  openConsole("Histórico", (j.log || []).map(x => (x.ok ? "[ok]" : "[erro]") + "  " + x.ts + "  " + x.label).join("\n") || "(nada ainda)"); };
+
+/* ---- LOGS: histórico completo (sem truncar) -------------------------------- */
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function renderLogs(list){
+  const body = document.getElementById("logsBody"); if (!body) return;
+  if (!list || !list.length){ body.innerHTML = '<div class="logs-empty">(nada registrado ainda)</div>'; return; }
+  body.innerHTML = list.map(x => {
+    const st = x.ok ? '<span class="st ok">[ok]</span>' : '<span class="st no">[erro]</span>';
+    const ts = x.ts ? String(x.ts).replace("T"," ").replace(/\..*$/,"") : "";
+    const cmd = x.cmd ? '<span class="cmd">$ ' + esc(x.cmd) + '</span>' : '';
+    return '<div class="logsrow">' + st + '<span class="ts">' + esc(ts) + '</span>'
+      + '<span class="lb">' + esc(x.label || x.id || "?") + cmd + '</span></div>';
+  }).join("");
+}
+async function openLogs(){
+  const p = document.getElementById("logspanel"); if (!p) return;
+  p.classList.add("open");
+  const body = document.getElementById("logsBody");
+  if (body) body.innerHTML = "lendo…";
+  try{ const j = await apiGet("log_all"); renderLogs(j.log || []); }
+  catch(e){ if (body) body.innerHTML = '<div class="logs-empty">erro: ' + esc(e) + '</div>'; }
+}
+const btnLogs = document.getElementById("btnLogs"); if (btnLogs) btnLogs.onclick = openLogs;
+const logsClose = document.getElementById("logsClose"); if (logsClose) logsClose.onclick = () => document.getElementById("logspanel").classList.remove("open");
+const logsRefresh = document.getElementById("logsRefresh"); if (logsRefresh) logsRefresh.onclick = openLogs;
+
+/* ---- TERMINAL: executa comandos de verdade --------------------------------- */
+let termHist = [], termIdx = -1, termText = "";
+function termPaint(t){ const o = document.getElementById("termOut"); if (o) o.textContent = t; }
+async function termRunCmd(cmd){
+  cmd = (cmd || "").trim(); if (!cmd) return;
+  termHist.push(cmd); termIdx = termHist.length;
+  const o = document.getElementById("termOut");
+  if (o){ o.textContent += (o.textContent ? "\n" : "") + "$ " + cmd + "\n"; o.scrollTop = o.scrollHeight; }
+  const inp = document.getElementById("termInput"); if (inp) inp.disabled = true;
+  try{
+    const r = await fetch("api.php?do=term", {
+      method:"POST", headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
+      body: JSON.stringify({cmd})
+    });
+    const j = await r.json();
+    if (o){ o.textContent += (j.out || "(sem saída)") + "\n"; o.scrollTop = o.scrollHeight; }
+  }catch(e){ if (o){ o.textContent += "erro: " + e + "\n"; } }
+  if (inp){ inp.disabled = false; inp.focus(); }
+}
+(function initTerm(){
+  const inp = document.getElementById("termInput");
+  const run = document.getElementById("termRun");
+  if (!inp || !run) return;
+  run.onclick = () => { const c = inp.value; inp.value = ""; termRunCmd(c); };
+  inp.addEventListener("keydown", e => {
+    if (e.key === "Enter"){ e.preventDefault(); const c = inp.value; inp.value = ""; termRunCmd(c); return; }
+    if (e.key === "ArrowUp"){
+      if (!termHist.length) return; e.preventDefault();
+      if (termIdx === termHist.length) termText = inp.value;
+      termIdx = Math.max(0, termIdx - 1); inp.value = termHist[termIdx];
+    }
+    if (e.key === "ArrowDown"){
+      if (!termHist.length) return; e.preventDefault();
+      termIdx = Math.min(termHist.length, termIdx + 1);
+      inp.value = termIdx === termHist.length ? termText : termHist[termIdx];
+    }
+  });
+  const clr = document.getElementById("termClear"); if (clr) clr.onclick = () => termPaint("");
+  // histórico salvo no aparelho (app) — no site fica vazio
+  apiGet("term_hist").then(j => { (j.history || []).forEach(h => { if (h.cmd) termHist.push(h.cmd); }); termIdx = termHist.length; }).catch(()=>{});
+})();
+const btnTerm = document.getElementById("btnTerm");
+if (btnTerm) btnTerm.onclick = () => { go("Terminal"); const i = document.getElementById("termInput"); if (i) i.focus(); };
+
+/* ---- SELETOR DE APPS (nome + ícone), sem digitar pacote -------------------- */
+let APPS = [];           // [{pkg,label,icon}]
+let appsLoading = false;
+let appTarget = null;    // input [data-p="pkg"] que recebe o pacote escolhido
+function appInitial(label, pkg){
+  const s = (label || pkg || "?").trim();
+  return esc(s.charAt(0).toUpperCase() || "?");
+}
+function appRowHtml(a){
+  const nm = esc(a.label || a.pkg);
+  const ico = a.icon ? '<img src="data:image/png;base64,' + a.icon + '" alt="" loading="lazy">'
+                     : '<span class="noico">' + appInitial(a.label, a.pkg) + '</span>';
+  return ico + '<span class="nm"><b>' + nm + '</b>'
+       + (a.label ? '<small>' + esc(a.pkg) + '</small>' : '') + '</span>';
+}
+function renderAppList(filter){
+  const ul = document.getElementById("appList"); if (!ul) return;
+  const f = (filter || "").trim().toLowerCase();
+  const list = !f ? APPS : APPS.filter(a =>
+    (a.label || "").toLowerCase().includes(f) || (a.pkg || "").toLowerCase().includes(f));
+  if (!list.length){ ul.innerHTML = '<li class="logs-empty">nenhum app encontrado</li>'; return; }
+  ul.innerHTML = list.slice(0, 400).map((a, i) =>
+    '<li class="appitem" role="button" tabindex="0" data-i="' + APPS.indexOf(a) + '">' + appRowHtml(a) + '</li>').join("");
+  ul.querySelectorAll(".appitem").forEach(li => {
+    const pick = () => {
+      const a = APPS[parseInt(li.dataset.i, 10)];
+      if (!a || !appTarget) return;
+      appTarget.value = a.pkg;
+      const btn = appTarget.closest(".apppick");
+      if (btn) paintAppPick(btn, a);
+      closeAppPicker();
+    };
+    li.onclick = pick;
+    li.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); pick(); } };
+  });
+}
+function paintAppPick(btn, a){
+  const inp = btn.querySelector('input[data-p="pkg"]'); if (inp && a) inp.value = a.pkg;
+  const slot = btn.querySelector(".appslot"); if (!slot) return;
+  if (a) slot.innerHTML = appRowHtml(a);
+  else {
+    const cur = inp ? inp.value.trim() : "";
+    slot.innerHTML = '<span class="noico">?</span><span class="nm"><b>' +
+      (cur ? esc(cur) : "Nenhum app escolhido") + '</b><small>toque para escolher</small></span>';
+  }
+}
+async function loadApps(){
+  if (appsLoading || APPS.length) return;
+  appsLoading = true;
+  try{
+    const j = await apiGet("apps_meta");
+    APPS = (j.apps || []).filter(a => a && a.pkg).map(a => ({pkg:a.pkg, label:a.label || "", icon:a.icon || ""}));
+  }catch(e){ APPS = []; }
+  if (!APPS.length){
+    try{ const j = await apiGet("apps"); APPS = (j.apps || []).map(p => ({pkg:p, label:"", icon:""})); }catch(e){}
+  }
+  appsLoading = false;
+}
+function openAppPicker(btn){
+  appTarget = btn.querySelector('input[data-p="pkg"]');
+  const m = document.getElementById("appModal"); if (!m) return;
+  m.classList.add("open");
+  const s = document.getElementById("appSearch"); if (s) s.value = "";
+  const ul = document.getElementById("appList"); if (ul) ul.innerHTML = "carregando…";
+  loadApps().then(() => {
+    if (appTarget && appTarget.value){
+      const cur = APPS.find(a => a.pkg === appTarget.value);
+      if (cur) paintAppPick(btn, cur);
+    }
+    renderAppList("");
+    if (s) s.focus();
+  });
+}
+function closeAppPicker(){ const m = document.getElementById("appModal"); if (m) m.classList.remove("open"); }
+(function initAppPicker(){
+  const s = document.getElementById("appSearch");
+  if (s) s.addEventListener("input", () => renderAppList(s.value));
+  const c = document.getElementById("appModalClose"); if (c) c.onclick = closeAppPicker;
+  const m = document.getElementById("appModal"); if (m) m.onclick = e => { if (e.target.id === "appModal") closeAppPicker(); };
+  document.querySelectorAll("[data-apppick]").forEach(btn => {
+    btn.onclick = () => openAppPicker(btn);
+    btn.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openAppPicker(btn); } };
+  });
+})();
 
 /* ---- HOME: métricas reais do aparelho (RAM, CPU, bateria, tela) ------------- */
 let STATS = {}, statsTimer = null, statsBusy = false, statsAt = 0;
@@ -1330,11 +1627,14 @@ function renderStats(){
   setBar(document.querySelector('[data-m="stor"]'), storPct === null ? 0 : storPct, storPct >= 90 ? "b" : storPct >= 75 ? "w" : "g");
   const storF = document.querySelector('[data-stat="storf"]');
   if (storF) storF.textContent = (st && sf !== null) ? fmtGB(sf) + " livres de " + fmtGB(st) : "o aparelho não informou";
-  // Tela
+  // Taxa de tela (refresh): mostra a taxa travada se houver, senão a atual
   const dispV = document.querySelector('[data-stat="disp"]');
-  if (dispV) dispV.innerHTML = has(S.refresh_hz) ? S.refresh_hz + "<small>Hz</small>" : "—";
+  const rPeak = num(S.refresh_peak);
+  const rCur = num(S.refresh_hz);
+  const rShow = rPeak !== null ? rPeak : rCur;
+  if (dispV) dispV.innerHTML = rShow !== null ? rShow + "<small>Hz</small>" : "—";
   const dispF = document.querySelector('[data-stat="dispf"]');
-  if (dispF) dispF.textContent = has(S.refresh_hz) ? "taxa de atualização atual" : "o aparelho não informou";
+  if (dispF) dispF.textContent = rPeak !== null ? "taxa travada (fixa)" : (rCur !== null ? "taxa atual da tela" : "o aparelho não informou");
   // Tempo ligado
   const upV = document.querySelector('[data-stat="up"]');
   const up = num(S.uptime_s);
@@ -1423,11 +1723,8 @@ addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList
     if (!document.getElementById("modeTxt").textContent || document.getElementById("modeTxt").textContent === "verificando…")
       $("#modeTxt").textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
   }catch(e){}
-  try{ const j = await apiGet("apps");
-    const dl = document.createElement("datalist"); dl.id = "applist";
-    (j.apps || []).forEach(p => { const o = document.createElement("option"); o.value = p; dl.appendChild(o); });
-    document.body.appendChild(dl);
-  }catch(e){}
+  // pré-carrega a lista de apps (nome + ícone) para o seletor abrir rápido
+  loadApps();
   loadState();
 })();
 

@@ -106,6 +106,12 @@ function otm_choices(): array {
             'risk'  => 'careful',
             'app'   => true,
         ],
+        'refresh' => [
+            'title' => 'Taxa de atualização (Hz)',
+            'desc'  => 'Trava a tela numa taxa fixa. Se você prefere 60Hz no dia a dia (economiza bateria), selecione 60. Uma taxa fixa também evita a tela oscilar (60↔90Hz) no meio da partida, o que causa micro-travada. "Automático" devolve a decisão ao sistema.',
+            'state' => 'refresh_peak',
+            'risk'  => 'careful',
+        ],
         'dns_fast' => [
             'title' => 'DNS privado (escolha rápida)',
             'desc'  => 'Um DNS privado (DoT) deixa a navegação mais rápida e privada e pode bloquear anúncios. Escolha um perfil aqui, ou use a lista completa em "DNS e rede". Todos são reversíveis com "DNS automático".',
@@ -287,6 +293,28 @@ function otm_actions(): array {
               ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
               ['name' => 'driver', 'type' => 'enum', 'label' => 'Driver', 'options' => ['angle', 'native', 'default'], 'default' => 'angle'],
           ]]);
+
+    // ----- Taxa de atualização (Hz) — escolha rápida -----
+    $add(['id' => 'refresh.60', 'group' => 'Display & Touch', 'label' => '60Hz (economia)',
+          'desc' => 'Trava a tela em 60Hz. Menos bateria, frametime estável.',
+          'help' => 'Trava a tela em 60Hz. É a taxa do dia a dia para quem não precisa de mais: gasta menos bateria e esquenta menos. Em jogo, uma taxa fixa evita a tela oscilar (60↔90Hz), o que causa micro-travada. Reverte em "Automático".',
+          'choice' => 'refresh', 'option' => '60Hz', 'state_value' => '60.0',
+          'argv' => ['turbo.sh', 'refresh_fixed', '60'], 'risk' => 'careful']);
+    $add(['id' => 'refresh.90', 'group' => 'Display & Touch', 'label' => '90Hz',
+          'desc' => 'Trava a tela em 90Hz. Um meio-termo.',
+          'help' => 'Trava a tela em 90Hz: mais fluido que 60Hz, gastando um pouco mais de bateria que o normal. Só funciona se a tela do aparelho suportar 90Hz. Reverte em "Automático".',
+          'choice' => 'refresh', 'option' => '90Hz', 'state_value' => '90.0',
+          'argv' => ['turbo.sh', 'refresh_fixed', '90'], 'risk' => 'careful']);
+    $add(['id' => 'refresh.120', 'group' => 'Display & Touch', 'label' => '120Hz (máximo)',
+          'desc' => 'Trava a tela na taxa mais alta. Mais fluidez.',
+          'help' => 'Trava a tela em 120Hz, a maior taxa da maioria dos aparelhos: rolagem e jogo mais lisos. Gasta mais bateria. Só funciona se a tela suportar 120Hz. Reverte em "Automático".',
+          'choice' => 'refresh', 'option' => '120Hz', 'state_value' => '120.0',
+          'argv' => ['turbo.sh', 'refresh_fixed', '120'], 'risk' => 'careful']);
+    $add(['id' => 'refresh.auto', 'group' => 'Display & Touch', 'label' => 'Automático',
+          'desc' => 'O sistema decide a taxa conforme a tela e a bateria.',
+          'help' => 'Remove a trava e devolve a decisão da taxa de atualização ao Android: ele escolhe conforme a tela e a bateria. Use se quiser voltar ao comportamento de fábrica.',
+          'choice' => 'refresh', 'option' => 'Automático',
+          'argv' => ['turbo.sh', 'refresh', 'auto'], 'risk' => 'safe']);
 
     // ----- Renderizador por app (Vulkan/OpenGL/ANGLE) -----
     $add(['id' => 'app.angle', 'group' => 'Apps e jogos', 'label' => 'Usar ANGLE (OpenGL para Vulkan) no app',
@@ -621,9 +649,9 @@ function otm_actions(): array {
           'desc' => 'Mostra phantom killer, refresh, logs e scans em uma tela.',
           'help' => 'Resume o estado dos recursos turbo: Phantom Process Killer, taxa de atualização travada, logs persistentes e scans de Wi-Fi/Bluetooth "sempre disponível". Bom para conferir antes e depois de aplicar.',
           'argv' => ['turbo.sh', 'status']]);
-    $add(['id' => 'turbo.art', 'group' => 'Desempenho', 'label' => 'Recompilar um app (ART)',
-          'desc' => 'Compila um app em speed-profile/speed para abrir mais rápido.',
-          'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com "Verificar/limpar".',
+    $add(['id' => 'turbo.art', 'group' => 'Desempenho', 'label' => 'Abrir apps mais rápido (compilar)',
+          'desc' => 'Compila o app escolhido para ele abrir mais rápido.',
+          'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com "Limpar dexopt (AOT)".',
           'argv' => ['turbo.sh', 'art', '{pkg}', '{mode}'],
           'params' => [
               ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
@@ -1043,6 +1071,27 @@ function otm_apps(): array {
     return $apps;
 }
 
+// Metadados dos apps (nome + ícone) para o seletor com nome/ícone no painel web.
+// No PC (site) não há API do Android; o nome/ícone saem do `aapt dump badging`
+// quando o aapt existe. Sem aapt, devolve só o pacote (o seletor mostra o pacote).
+function otm_apps_meta(): array {
+    $pkgs = otm_apps();
+    $haveAapt = otm_have('aapt');
+    $out = [];
+    foreach ($pkgs as $p) {
+        $row = ['pkg' => $p, 'label' => '', 'icon' => ''];
+        if ($haveAapt) {
+            $r = otm_exec(['sh', '-c',
+                "aapt dump badging '$p' 2>/dev/null | grep -m1 -E \"application-label:|application-label-pt:\" | head -1"], 8);
+            if (preg_match("/application-label(?:-pt)?:\\s*'([^']*)'/", $r['out'], $m)) {
+                $row['label'] = $m[1];
+            }
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+
 function otm_modules(): array {
     $r = otm_script('modules.sh', ['list'], 30);
     $out = [];
@@ -1121,17 +1170,34 @@ function otm_log(string $id, string $label, array $argv, array $res): void {
     @file_put_contents(otm_state() . '/log.jsonl', json_encode($rec, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
 }
 
-function otm_log_read(int $n = 40): array {
+function otm_log_read(int $n = 40, bool $full = false): array {
     $f = otm_state() . '/log.jsonl';
     if (!is_file($f)) return [];
     $lines = file($f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-    $lines = array_slice($lines, -$n);
+    if (!$full) $lines = array_slice($lines, -$n);
     $out = [];
     foreach (array_reverse($lines) as $l) {
         $j = json_decode($l, true);
         if (is_array($j)) $out[] = $j;
     }
     return $out;
+}
+
+// Histórico COMPLETO (o painel mostra em "Logs", sem truncar).
+function otm_log_all(): array {
+    return otm_log_read(0, true);
+}
+
+// Terminal: executa um comando cru digitado pelo dono do painel. Diferente das
+// ações (argv montado por whitelist), aqui o comando é livre — é o "terminal
+// real". Só o dono do painel (login/token) alcança este endpoint.
+function otm_run_command(string $cmd): array {
+    $cmd = trim($cmd);
+    if ($cmd === '') return ['ok' => false, 'code' => -1, 'out' => 'comando vazio'];
+    if (strlen($cmd) > 2000) return ['ok' => false, 'code' => -1, 'out' => 'comando muito longo (máx. 2000)'];
+    $r = otm_exec(['sh', '-c', $cmd], 120);
+    otm_log('terminal', 'Terminal: ' . substr($cmd, 0, 80), ['sh', '-c', $cmd], $r);
+    return $r + ['cmd' => $cmd];
 }
 
 // --- JSON ---------------------------------------------------------------------

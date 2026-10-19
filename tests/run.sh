@@ -1151,10 +1151,26 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 8 ] && ok "index.php renderiza a home + 7 categorias" || bad "seções: $n_sec (esperado 8)"
+        [ "$n_sec" -eq 9 ] && ok "index.php renderiza a home + 7 categorias + Terminal" || bad "seções: $n_sec (esperado 9)"
         for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
+        # Terminal: seção própria + campo de comando
+        assert_contains "$TMP/web_html" 'id="g-Terminal"' "index.php tem a aba Terminal"
+        assert_contains "$TMP/web_html" 'id="termInput"' "Terminal tem campo de comando"
+        assert_contains "$TMP/web_html" 'id="termOut"' "Terminal tem área de saída"
+        assert_contains "$TMP/web_html" 'do=term' "Terminal envia para api.php do=term"
+        # Logs: painel próprio, histórico completo (log_all)
+        assert_contains "$TMP/web_html" 'id="logspanel"' "index.php tem o painel de Logs"
+        assert_contains "$TMP/web_html" 'id="btnLogs"' "cabeçalho tem o botão Logs"
+        assert_contains "$TMP/web_html" 'log_all' "Logs usa o histórico completo (log_all)"
+        grep -q 'id="btnConsole"' "$TMP/web_html" && bad "ainda existe o botão Console" \
+            || ok "Console renomeado para Logs/Terminal"
+        # seletor de apps com nome + ícone (sem digitar pacote)
+        assert_contains "$TMP/web_html" 'data-apppick' "há o seletor de apps por nome/ícone"
+        assert_contains "$TMP/web_html" 'id="appModal"' "seletor de apps tem a lista (modal)"
+        grep -q 'list="applist"' "$TMP/web_html" && bad "ainda pede o pacote digitado (datalist)" \
+            || ok "pacote não é mais digitado (sem datalist)"
         # home + área de métricas reais (consumo do aparelho)
         assert_contains "$TMP/web_html" 'data-g="Home"' "index.php tem a home"
         assert_contains "$TMP/web_html" "Consumo real do aparelho" "index.php tem a área de consumo real"
@@ -1170,12 +1186,20 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 4 ] && ok "renderiza 4 grupos de escolha (renderizador, app, DNS, toque)" \
-            || bad "grupos de escolha: $n_choice (esperado 4)"
+        [ "$n_choice" -eq 5 ] && ok "renderiza 5 grupos de escolha (renderizador, app, refresh, DNS, toque)" \
+            || bad "grupos de escolha: $n_choice (esperado 5)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        [ "$n_opts" -eq 18 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 7 DNS + 5 toques ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 18)"
+        [ "$n_opts" -eq 22 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 22)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
+        # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
+        assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
+        for hz in 'refresh.60' 'refresh.90' 'refresh.120' 'refresh.auto'; do
+            grep -q "data-opt=\"$hz\"" "$TMP/web_html" && ok "taxa de atualização tem $hz" || bad "sem $hz"
+        done
+        assert_contains "$TMP/web_html" 'data-state-value="60.0"' "60Hz casa com a taxa travada lida do aparelho"
+        # a home mostra a TAXA de tela (refresh), não um número fixo errado
+        assert_contains "$TMP/web_html" "Taxa de tela" "home mostra a taxa de tela (refresh)"
         # motor gráfico por app: seletor de pacote + driver, e "multithread" desempata pelo backend
         assert_contains "$TMP/web_html" 'data-choice="renderapp"' "há o cartão de driver por app"
         assert_contains "$TMP/web_html" 'data-p="pkg"' "driver por app escolhe o app"
@@ -1241,9 +1265,75 @@ t_web() {
                  echo (!empty($r["applied"]) && empty($r["real"])) ? "FALHA_REAL":"MASCARADO";' \
             > "$TMP/web_real" 2>&1
         assert_contains "$TMP/web_real" "FALHA_REAL" "sem acesso real, ação aplicadora vira erro (não mascara)"
+        # Logs: histórico completo (log_all) devolve tudo, sem truncar
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $all = otm_log_all(); $recent = otm_log_read(1);
+                 echo (count($all) >= count($recent)) ? "ALL_OK" : "ALL_BAD";' \
+            > "$TMP/web_logall" 2>&1
+        assert_contains "$TMP/web_logall" "ALL_OK" "otm_log_all devolve o histórico completo"
+        # Terminal: comando cru roda e entra no log (comando seguro e inofensivo)
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $r = otm_run_command("echo otm-term-ok");
+                 echo (strpos($r["out"], "otm-term-ok") !== false) ? "TERM_OK" : "TERM_BAD";' \
+            > "$TMP/web_term" 2>&1
+        assert_contains "$TMP/web_term" "TERM_OK" "otm_run_command executa o comando digitado"
+        # Terminal recusa comando vazio
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $r = otm_run_command("   ");
+                 echo ($r["ok"] === false) ? "VAZIO_OK" : "VAZIO_BAD";' \
+            > "$TMP/web_termempty" 2>&1
+        assert_contains "$TMP/web_termempty" "VAZIO_OK" "otm_run_command recusa comando vazio"
+        # Terminal aparece no histórico (Logs) depois de rodar
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 otm_run_command("echo registra-no-log");
+                 $hit = false;
+                 foreach (otm_log_all() as $l) if (($l["id"] ?? "") === "terminal") $hit = true;
+                 echo $hit ? "LOG_TERM" : "SEM_LOG";' \
+            > "$TMP/web_termllog" 2>&1
+        assert_contains "$TMP/web_termllog" "LOG_TERM" "Terminal registra a execução em Logs"
+        # apps_meta: devolve uma lista (mesmo vazia) sem quebrar
+        php -r 'require "'"$ROOT"'/web/lib.php";
+                 $m = otm_apps_meta();
+                 echo is_array($m) ? "META_OK" : "META_BAD";' \
+            > "$TMP/web_appsmeta" 2>&1
+        assert_contains "$TMP/web_appsmeta" "META_OK" "otm_apps_meta devolve a lista de apps (nome/ícone)"
     else
         printf '  [skip] php ausente: pulei testes do painel web\n'
     fi
+}
+
+t_panel_v219() {
+    printf '\n  # painel v2.19: refresh 60Hz, logs completos, terminal, seletor de apps\n'
+    local src="$ROOT/android/app/src/main/java/com/otm/pack"
+    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local lib="$ROOT/web/lib.php"
+    local api="$ROOT/web/api.php"
+    # taxa de atualização: escolha 60/90/120/auto e a home mostra a taxa de tela
+    grep -q "'id' => 'refresh.60'" "$lib" && ok "registro tem 60Hz" || bad "registro sem 60Hz"
+    grep -q "'id' => 'refresh.auto'" "$lib" && ok "registro tem refresh automático" || bad "registro sem automático"
+    grep -q "state' => 'refresh_peak'" "$lib" && ok "escolha de refresh casa pela taxa travada" || bad "sem state refresh_peak"
+    grep -q 'Taxa de tela' "$app" && ok "app: home mostra a taxa de tela" || bad "app: home sem taxa de tela"
+    # Logs completos: ponte + api + painel
+    grep -q '"log_all" -> logAllImpl()' "$src/PackBridge.kt" && ok "bridge: log_all (histórico completo)" || bad "bridge sem log_all"
+    grep -q 'log_all' "$api" && ok "api.php: log_all" || bad "api.php sem log_all"
+    grep -q 'id="logspanel"' "$app" && ok "app: painel de Logs" || bad "app sem painel de Logs"
+    grep -q 'id="btnLogs"' "$app" && ok "app: botão Logs" || bad "app sem botão Logs"
+    # Terminal real: ponte + api + painel
+    grep -q '"term" -> termImpl(payload)' "$src/PackBridge.kt" && ok "bridge: terminal (term)" || bad "bridge sem term"
+    grep -q 'private fun termImpl' "$src/PackBridge.kt" && ok "bridge: termImpl executa comando" || bad "bridge sem termImpl"
+    grep -q "=== 'term'" "$api" && grep -q 'otm_run_command' "$api" && ok "api.php: endpoint do terminal" || bad "api.php sem terminal"
+    grep -q 'function otm_run_command' "$lib" && ok "lib.php: otm_run_command" || bad "lib.php sem otm_run_command"
+    grep -q 'id="termInput"' "$app" && ok "app: campo do terminal" || bad "app sem campo do terminal"
+    # seletor de apps com nome + ícone (sem digitar pacote)
+    grep -q '"apps_meta" -> appsMetaImpl()' "$src/PackBridge.kt" && ok "bridge: apps_meta (nome/ícone)" || bad "bridge sem apps_meta"
+    grep -q 'getApplicationIcon' "$src/PackBridge.kt" && ok "bridge: pega o ícone do app (PackageManager)" || bad "bridge sem ícone"
+    grep -q 'Base64' "$src/PackBridge.kt" && ok "bridge: ícone em base64 para o WebView" || bad "bridge sem base64"
+    grep -q 'function otm_apps_meta' "$lib" && ok "lib.php: otm_apps_meta" || bad "lib.php sem otm_apps_meta"
+    grep -q 'apps_meta' "$api" && ok "api.php: apps_meta" || bad "api.php sem apps_meta"
+    grep -q 'data-apppick' "$app" && ok "app: seletor de apps (nome/ícone)" || bad "app sem seletor de apps"
+    grep -q 'list="applist"' "$app" && bad "app: ainda pede pacote digitado" || ok "app: pacote não é digitado"
+    # terminal do app executa via shell privilegiado (não por api.php)
+    grep -q 'otm("term"' "$app" && ok "app: terminal usa a ponte nativa" || bad "app: terminal sem ponte"
 }
 
 t_pack() {
@@ -1306,6 +1396,7 @@ t_dns
 t_new_scripts
 t_modules
 t_web
+t_panel_v219
 t_pack
 
 printf '\n  --------------------------------------------------\n'

@@ -818,6 +818,73 @@
         "option": "Driver do app"
     },
     {
+        "id": "refresh.60",
+        "group": "Display & Touch",
+        "label": "60Hz (economia)",
+        "desc": "Trava a tela em 60Hz. Menos bateria, frametime estável.",
+        "help": "Trava a tela em 60Hz. É a taxa do dia a dia para quem não precisa de mais: gasta menos bateria e esquenta menos. Em jogo, uma taxa fixa evita a tela oscilar (60↔90Hz), o que causa micro-travada. Reverte em \"Automático\".",
+        "argv": [
+            "turbo.sh",
+            "refresh_fixed",
+            "60"
+        ],
+        "confirm": false,
+        "risk": "careful",
+        "choice": "refresh",
+        "option": "60Hz",
+        "state_value": "60.0"
+    },
+    {
+        "id": "refresh.90",
+        "group": "Display & Touch",
+        "label": "90Hz",
+        "desc": "Trava a tela em 90Hz. Um meio-termo.",
+        "help": "Trava a tela em 90Hz: mais fluido que 60Hz, gastando um pouco mais de bateria que o normal. Só funciona se a tela do aparelho suportar 90Hz. Reverte em \"Automático\".",
+        "argv": [
+            "turbo.sh",
+            "refresh_fixed",
+            "90"
+        ],
+        "confirm": false,
+        "risk": "careful",
+        "choice": "refresh",
+        "option": "90Hz",
+        "state_value": "90.0"
+    },
+    {
+        "id": "refresh.120",
+        "group": "Display & Touch",
+        "label": "120Hz (máximo)",
+        "desc": "Trava a tela na taxa mais alta. Mais fluidez.",
+        "help": "Trava a tela em 120Hz, a maior taxa da maioria dos aparelhos: rolagem e jogo mais lisos. Gasta mais bateria. Só funciona se a tela suportar 120Hz. Reverte em \"Automático\".",
+        "argv": [
+            "turbo.sh",
+            "refresh_fixed",
+            "120"
+        ],
+        "confirm": false,
+        "risk": "careful",
+        "choice": "refresh",
+        "option": "120Hz",
+        "state_value": "120.0"
+    },
+    {
+        "id": "refresh.auto",
+        "group": "Display & Touch",
+        "label": "Automático",
+        "desc": "O sistema decide a taxa conforme a tela e a bateria.",
+        "help": "Remove a trava e devolve a decisão da taxa de atualização ao Android: ele escolhe conforme a tela e a bateria. Use se quiser voltar ao comportamento de fábrica.",
+        "argv": [
+            "turbo.sh",
+            "refresh",
+            "auto"
+        ],
+        "confirm": false,
+        "risk": "safe",
+        "choice": "refresh",
+        "option": "Automático"
+    },
+    {
         "id": "app.angle",
         "group": "Apps e jogos",
         "label": "Usar ANGLE (OpenGL para Vulkan) no app",
@@ -2255,9 +2322,9 @@
     {
         "id": "turbo.art",
         "group": "Desempenho",
-        "label": "Recompilar um app (ART)",
-        "desc": "Compila um app em speed-profile/speed para abrir mais rápido.",
-        "help": "Força o Android a pré-compilar (ART/AOT) o app escolhido. \"speed-profile\" é o equilíbrio (abre rápido sem inflar o armazenamento); \"speed\" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com \"Verificar/limpar\".",
+        "label": "Abrir apps mais rápido (compilar)",
+        "desc": "Compila o app escolhido para ele abrir mais rápido.",
+        "help": "Força o Android a pré-compilar (ART/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. \"speed-profile\" é o equilíbrio (abre rápido sem inflar o armazenamento); \"speed\" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com \"Limpar dexopt (AOT)\".",
         "argv": [
             "turbo.sh",
             "art",

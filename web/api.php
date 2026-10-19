@@ -61,6 +61,16 @@ if ($method === 'POST' && ($_GET['do'] ?? '') === 'run') {
     exit;
 }
 
+// Terminal: executa um comando cru (só o dono do painel, já autenticado acima).
+if ($method === 'POST' && ($_GET['do'] ?? '') === 'term') {
+    $raw = file_get_contents('php://input') ?: '';
+    $body = json_decode($raw, true);
+    $cmd = is_array($body) ? (string)($body['cmd'] ?? '') : '';
+    $res = otm_run_command($cmd);
+    otm_json($res);
+    exit;
+}
+
 switch ($action) {
     case 'status':     otm_json(otm_status()); break;
     case 'dns_status': otm_json(otm_dns_status()); break;
@@ -68,8 +78,10 @@ switch ($action) {
     case 'stats':      otm_json(['ok' => true, 'stats' => otm_stats_read()]); break;
     case 'mode':       otm_json(['ok' => true] + otm_mode()); break;
     case 'apps':       otm_json(['ok' => true, 'apps' => otm_apps()]); break;
+    case 'apps_meta':  otm_json(['ok' => true, 'apps' => otm_apps_meta()]); break;
     case 'modules':    otm_json(['ok' => true, 'modules' => otm_modules()]); break;
     case 'log':        otm_json(['ok' => true, 'log' => otm_log_read()]); break;
+    case 'log_all':    otm_json(['ok' => true, 'log' => otm_log_all()]); break;
     case 'actions':    otm_json(['ok' => true, 'actions' => array_values(otm_actions())]); break;
     case 'info':
         otm_json(['ok' => true, 'root' => otm_root(),

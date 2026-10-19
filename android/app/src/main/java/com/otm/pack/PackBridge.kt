@@ -73,8 +73,12 @@ class PackBridge(
                     "stats" -> statsImpl()
                     "mode" -> modeImpl()
                     "apps" -> appsImpl()
+                    "apps_meta" -> appsMetaImpl()
                     "modules" -> modulesImpl()
                     "log" -> logImpl()
+                    "log_all" -> logAllImpl()
+                    "term" -> termImpl(payload)
+                    "term_hist" -> termHistImpl()
                     "actions" -> actionsImpl()
                     "info" -> infoImpl()
                     "usage" -> {
@@ -150,6 +154,7 @@ class PackBridge(
         }
 
         onRunDone(a.group, ok)
+        logAppend(id, a.label, argv.joinToString(" "), ok, res.code)
 
         return JSONObject()
             .put("ok", ok).put("code", res.code).put("out", text)
@@ -242,6 +247,114 @@ class PackBridge(
             for (l in lines) try { arr.put(JSONObject(l)) } catch (_: Exception) {}
         }
         return JSONObject().put("ok", true).put("log", arr).toString()
+    }
+
+    /** Histórico COMPLETO (o painel mostra em "Logs", sem truncar). */
+    private fun logAllImpl(): String {
+        val f = File(packDir(), "state/log.jsonl")
+        val arr = JSONArray()
+        if (f.isFile) {
+            val lines = f.readLines().filter { it.isNotBlank() }.reversed()
+            for (l in lines) try { arr.put(JSONObject(l)) } catch (_: Exception) {}
+        }
+        return JSONObject().put("ok", true).put("log", arr).toString()
+    }
+
+    /**
+     * Metadados dos apps (nome + ícone) para o seletor do painel mostrar o nome
+     * e o ícone de cada app, em vez de pedir o pacote digitado. O ícone vem do
+     * próprio Android (PackageManager), em PNG base64, para o WebView exibir.
+     */
+    private fun appsMetaImpl(): String {
+        val arr = JSONArray()
+        try {
+            val pm = context.packageManager
+            val seen = HashSet<String>()
+            val pkgs = ArrayList<String>()
+            // apps de usuário (a maioria dos jogos/apps que o usuário quer mexer)
+            for (ai in pm.getInstalledApplications(0)) {
+                val pkg = ai.packageName
+                if (pkg == context.packageName) continue
+                if (pkg in seen) continue
+                seen.add(pkg); pkgs.add(pkg)
+            }
+            // completa com a lista lida por shell (pega apps instalados via ADB)
+            for (l in output(scriptCommand("adb-tweaks.sh", listOf("raw", "pm list packages -3"))).split("\n")) {
+                val p = l.trim().removePrefix("package:")
+                if (PKG.matches(p) && seen.add(p)) pkgs.add(p)
+            }
+            pkgs.sort()
+            for (pkg in pkgs) {
+                val o = JSONObject().put("pkg", pkg)
+                try {
+                    val ai = pm.getApplicationInfo(pkg, 0)
+                    o.put("label", pm.getApplicationLabel(ai).toString())
+                    val d = pm.getApplicationIcon(ai)
+                    val w = d.intrinsicWidth.coerceAtLeast(1)
+                    val h = d.intrinsicHeight.coerceAtLeast(1)
+                    val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+                    d.setBounds(0, 0, w, h)
+                    d.draw(android.graphics.Canvas(bmp))
+                    val baos = java.io.ByteArrayOutputStream()
+                    bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, baos)
+                    o.put("icon", android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP))
+                } catch (_: Throwable) {
+                    o.put("label", "").put("icon", "")
+                }
+                arr.put(o)
+            }
+        } catch (_: Throwable) {}
+        return JSONObject().put("ok", true).put("apps", arr).toString()
+    }
+
+    /** Terminal real: executa o comando digitado no painel (via shell privilegiado). */
+    private fun termImpl(bodyJson: String): String {
+        val body = try { JSONObject(bodyJson) } catch (e: Exception) { JSONObject() }
+        val cmd = body.optString("cmd", "").trim()
+        if (cmd.isEmpty()) return err("comando vazio")
+        val res = shell(cmd)
+        val out = joinOutput(res.stdout, res.stderr)
+        termAppend(cmd, out)
+        logAppend("terminal", "Terminal: " + cmd.take(80), "sh -c " + cmd, res.ok, res.code)
+        return JSONObject().put("ok", res.ok).put("code", res.code).put("out", out).toString()
+    }
+
+    private fun termHistImpl(): String {
+        val f = File(packDir(), "state/term.jsonl")
+        val arr = JSONArray()
+        if (f.isFile) {
+            for (l in f.readLines().filter { it.isNotBlank() }.takeLast(200)) {
+                try { arr.put(JSONObject(l)) } catch (_: Exception) {}
+            }
+        }
+        return JSONObject().put("ok", true).put("history", arr).toString()
+    }
+
+    private fun termAppend(cmd: String, out: String) {
+        try {
+            val f = File(packDir(), "state/term.jsonl")
+            f.parentFile?.mkdirs()
+            val rec = JSONObject().put("cmd", cmd).put("out", out.take(20000)).toString()
+            f.appendText(rec + "\n")
+        } catch (_: Throwable) {}
+    }
+
+    /**
+     * Registra a execução no histórico (`state/log.jsonl`) — é o que o painel
+     * mostra em "Logs". Mesmo formato do lado PHP (`otm_log`), para os dois
+     * painéis lerem igual.
+     */
+    private fun logAppend(id: String, label: String, cmd: String, ok: Boolean, code: Int) {
+        try {
+            val f = File(packDir(), "state/log.jsonl")
+            f.parentFile?.mkdirs()
+            val rec = JSONObject()
+                .put("ts", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date()))
+                .put("id", id).put("label", label).put("cmd", cmd)
+                .put("ok", ok).put("code", code)
+                .toString()
+            f.appendText(rec + "\n")
+        } catch (_: Throwable) {}
     }
 
     private fun actionsImpl(): String {

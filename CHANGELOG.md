@@ -3,6 +3,40 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.19.0] - 2026-10-05
+
+### Corrigido
+- **Taxa de atualização aparecia errada.** A home mostrava a maior taxa que a
+  tela suporta (ex.: 90Hz) mesmo com o aparelho usando 60Hz. Agora ela mostra a
+  taxa **em uso**: se você travou uma taxa, aparece a taxa travada; senão, a taxa
+  atual lida do sistema. A métrica virou **"Taxa de tela"**, com a legenda dizendo
+  se está "travada (fixa)" ou é a "taxa atual".
+
+### Adicionado
+- **Escolha da taxa de atualização (Hz).** Novo cartão com **60Hz, 90Hz, 120Hz e
+  Automático**. Quem prefere 60Hz no dia a dia (economiza bateria) escolhe 60 com
+  um toque; o painel marca qual está em uso. Uma taxa fixa também evita a tela
+  oscilar (60↔90Hz) no meio da partida.
+- **Seletor de apps com nome e ícone.** Onde antes era preciso digitar o pacote
+  (`com.exemplo.app`), agora abre uma lista com o **nome e o ícone** de cada app
+  instalado, com busca por nome ou pacote. Vale para o **driver gráfico por app**
+  e para **"Abrir apps mais rápido"** (compilação ART). O ícone vem do próprio
+  Android (PackageManager) e é exibido no painel.
+- **Terminal de verdade.** Nova aba **Terminal** para rodar comandos no aparelho
+  pelo mesmo acesso do pack (Shizuku, ADB por Wi-Fi ou root), com histórico pelas
+  setas ↑/↓ e saída na tela. O histórico também entra em **Logs**.
+- **Logs completos.** O antigo botão "Console" virou **Logs**, com painel próprio
+  que mostra o **histórico completo** (sem truncar), com data/hora, resultado e o
+  comando de cada entrada. O botão "Histórico" foi unificado nele.
+- **"Abrir apps mais rápido".** O cartão de compilação por app (ART/AOT) ficou
+  mais claro: escolha o app pelo nome/ícone e o modo (speed-profile, speed,
+  everything).
+
+### Alterado
+- **Rodapé de créditos organizado.** O Discord deixou de ser uma linha solta com
+  botões repetidos: agora tem o bloco **Créditos** (criador + usuário) e os botões
+  **Meu Discord** e **Servidor** agrupados e alinhados.
+
 ## [2.18.0] - 2026-10-05
 
 ### Corrigido

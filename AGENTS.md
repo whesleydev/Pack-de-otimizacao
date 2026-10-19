@@ -180,23 +180,49 @@ nativa além do necessário para conectar e rodar os comandos.
   `index.php`/`lib.php`, os dois painéis (`web/index.php` e
   `assets/panel/index.html`) precisam ficar em sincronia (o CSS/JS é o mesmo).
 - **Opções lado a lado** (`otm_choices()` em `lib.php`): ações com `'choice' =>
-  'renderer'` (renderizador), `'renderapp'` (driver gráfico por app) ou
-  `'touchprofile'` (perfis de toque) são fundidas num único cartão com botões;
-  cada ação traz `option` (rótulo) e `state_value`/`state_backend_value`/
-  `state_match` para o painel marcar a opção **em uso**. Ali o botão diz
-  **"Selecionar"** (não "Executar"), porque é escolha de configuração. Um grupo
-  com `'app' => true` mostra um campo de pacote (`type => 'pkg'`, usa o
-  `datalist` `#applist`) antes dos botões; o `selectOption` do JS envia esses
-  `data-p` como `params` da ação (ex.: `app.render` = `deep-tune.sh angle set
-  <pkg> <driver>`). Os modos "multithread" compartilham o `hwui.renderer` e
-  desempatam pelo backend (`state_backend`/`state_backend_value`).
+  'renderer'` (renderizador), `'renderapp'` (driver gráfico por app), `'refresh'`
+  (taxa de atualização), `'dns_fast'` (DNS rápido) ou `'touchprofile'` (perfis de
+  toque) são fundidas num único cartão com botões; cada ação traz `option` (rótulo)
+  e `state_value`/`state_backend_value`/`state_match` para o painel marcar a opção
+  **em uso**. Ali o botão diz **"Selecionar"** (não "Executar"), porque é escolha
+  de configuração. Um grupo com `'app' => true` mostra um **seletor de apps**
+  (`type => 'pkg'`, o helper `otm_pkg_picker()`) antes dos botões; o `selectOption`
+  do JS envia esses `data-p` como `params` da ação (ex.: `app.render` =
+  `deep-tune.sh angle set <pkg> <driver>`). Os modos "multithread" compartilham o
+  `hwui.renderer` e desempatam pelo backend (`state_backend`/`state_backend_value`).
+  A escolha `refresh` casa pela chave `refresh_peak` de `panel-state.sh`.
+- **Seletor de apps (nome + ícone), sem digitar pacote.** O input de `type => 'pkg'`
+  virou um botão `.apppick` (`otm_pkg_picker()`), que abre o modal `#appModal` com
+  a lista de apps instalados mostrando **nome e ícone** e busca por nome/pacote. No
+  app, a ponte `apps_meta` (`appsMetaImpl()` no `PackBridge`) lê os apps com o
+  `PackageManager` e devolve `{pkg,label,icon}` (ícone PNG em base64) — é o que
+  permite mostrar o ícone sem digitar nada. No site (PC) o `otm_apps_meta()` usa
+  `aapt` quando existe e devolve só o pacote quando não. O pacote escolhido vai num
+  `input` escondido `data-p="pkg"`, lido pelo `collect()`/`collectChoice()` como
+  qualquer outro parâmetro.
+- **Terminal de verdade.** Nova aba **Terminal** (seção `#g-Terminal` + item no
+  menu, renderizada no PHP) que executa o comando digitado pelo mesmo acesso do
+  pack. No site, `api.php?do=term` → `otm_run_command()` (`sh -c`); no app, a
+  ponte `term` (`termImpl()`) roda no shell privilegiado. Cada execução entra no
+  log (`id => 'terminal'`), então aparece em **Logs**. Histórico local em
+  `state/term.jsonl` (app) para as setas ↑/↓.
+- **Logs completos.** O antigo botão "Console" virou **Logs** (`#btnLogs`), que
+  abre o painel `#logspanel` e busca `log_all` (histórico **completo**, sem
+  truncar) em vez de `log` (últimas 40). No app, `logAllImpl()`; no site,
+  `otm_log_all()`. O botão "Histórico" foi unificado em Logs.
+- **Taxa de atualização (Hz).** Cartão de escolha com 60/90/120/Automático
+  (`refresh.60`/`refresh.90`/`refresh.120`/`refresh.auto` → `turbo.sh refresh_fixed
+  <hz>` / `turbo.sh refresh auto`). A home mostra **"Taxa de tela"**: a taxa travada
+  (`refresh_peak`) quando existe, senão a atual (`refresh_hz`) — antes mostrava a
+  maior taxa suportada e parecia errado para quem usa 60Hz.
 - **Estado real do aparelho** (`scripts/panel-state.sh`, na whitelist do
   `lib.php`): devolve uma linha JSON com renderizador em uso (e o backend
-  `renderengine_backend`), toque atual, refresh, ANGLE e o host de DNS privado
-  (`dns_host`). O painel consome via `api.php?action=state` (web) ou `OTM.call("state")`
-  (app, `stateImpl()` no `PackBridge`). Nada fictício: campo ilegível volta `""` e
-  a UI não mostra número inventado. Parâmetros com `'state' => '<chave>'` abrem o
-  slider já no valor do aparelho.
+  `renderengine_backend`), toque atual, refresh (`refresh_hz`/`refresh_peak`),
+  ANGLE e o host de DNS privado (`dns_host`). O painel consome via
+  `api.php?action=state` (web) ou `OTM.call("state")` (app, `stateImpl()` no
+  `PackBridge`). Nada fictício: campo ilegível volta `""` e a UI não mostra número
+  inventado. Parâmetros com `'state' => '<chave>'` abrem o slider já no valor do
+  aparelho.
 - **Home com métricas reais** (`scripts/panel-stats.sh`, na whitelist do
   `lib.php`): lê RAM (`/proc/meminfo`), carga/núcleos/frequência de CPU, bateria
   (`dumpsys battery`), refresh, armazenamento (`df`) e uptime, devolvendo uma linha
