@@ -1336,6 +1336,60 @@ t_panel_v219() {
     grep -q 'otm("term"' "$app" && ok "app: terminal usa a ponte nativa" || bad "app: terminal sem ponte"
 }
 
+t_keepalive() {
+    printf '\n  # anti-relog: manter o app vivo (não relogar ao reabrir)\n'
+    local f="$ROOT/scripts/keep-alive.sh"
+    local app="$ROOT/android/app/src/main/assets/panel/actions.json"
+    [ -f "$f" ] && ok "scripts/keep-alive.sh existe" || { bad "keep-alive.sh ausente"; return; }
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/ka_help" 2>&1
+    assert_contains "$TMP/ka_help" "relogar" "keep-alive explica o anti-relog sem argumento"
+    # pacote inválido é recusado
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on "pkg inválido" > "$TMP/ka_bad" 2>&1
+    assert_contains "$TMP/ka_bad" "inválido" "keep-alive recusa pacote inválido"
+    # sem privilégio de shell: avisa e NÃO aplica
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/ka_cmd.log"; : > "$TMP_CMD_LOG"
+    export TMP_AM_LOG="$TMP/ka_cmd.log"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on com.exemplo > "$TMP/ka_local" 2>&1
+    grep -q 'permissão de shell' "$TMP/ka_local" && ok "keep-alive avisa sem shell" || bad "keep-alive sem aviso de shell"
+    grep -q 'deviceidle whitelist' "$TMP_CMD_LOG" && bad "keep-alive aplicou sem shell" || ok "keep-alive não aplica sem shell"
+    # com privilégio (root): aplica Doze, 2º plano, wake lock e standby
+    rm -rf "$HOME/.packotm"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" on com.exemplo > "$TMP/ka_on" 2>&1
+    grep -q 'deviceidle whitelist +com.exemplo' "$TMP_CMD_LOG" && ok "keep-alive isenta do Doze" || bad "keep-alive sem isenção do Doze"
+    grep -q 'RUN_IN_BACKGROUND allow' "$TMP_CMD_LOG" && ok "keep-alive libera 2º plano" || bad "keep-alive sem 2º plano"
+    grep -q 'RUN_ANY_IN_BACKGROUND allow' "$TMP_CMD_LOG" && ok "keep-alive libera 2º plano sempre" || bad "keep-alive sem RUN_ANY"
+    grep -q 'WAKE_LOCK allow' "$TMP_CMD_LOG" && ok "keep-alive libera wake lock" || bad "keep-alive sem wake lock"
+    grep -q 'set-standby-bucket com.exemplo active' "$TMP_CMD_LOG" && ok "keep-alive põe no balde ativo" || bad "keep-alive sem balde ativo"
+    grep -q 'failed=' "$TMP/ka_on" && ok "keep-alive emite o resultado (#OTM-RESULT)" || bad "keep-alive sem #OTM-RESULT"
+    # lista de protegidos + status
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" list > "$TMP/ka_list" 2>&1
+    assert_contains "$TMP/ka_list" "com.exemplo" "keep-alive lista o app protegido"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status com.exemplo > "$TMP/ka_status" 2>&1
+    assert_contains "$TMP/ka_status" "ANTI-RELOG" "keep-alive status mostra o resumo"
+    # off remove da lista
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" off com.exemplo > "$TMP/ka_off" 2>&1
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" list > "$TMP/ka_list2" 2>&1
+    grep -q 'com.exemplo' "$TMP/ka_list2" && bad "keep-alive off não removeu" || ok "keep-alive off remove da lista"
+    # restore limpa tudo
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" on com.exemplo >/dev/null 2>&1
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore > "$TMP/ka_restore" 2>&1
+    grep -q 'deviceidle whitelist -com.exemplo' "$TMP_CMD_LOG" && ok "keep-alive restore desfaz o Doze" || bad "keep-alive restore não desfez"
+    # registro no painel + whitelist + catálogo do app
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["keep.on","keep.game","keep.off","keep.status","keep.list","keep.restore"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/ka_reg" 2>&1
+    test ! -s "$TMP/ka_reg" && ok "ações anti-relog no registro do painel" || bad "registro: $(cat "$TMP/ka_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("keep-alive.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/ka_lib" 2>&1
+    assert_contains "$TMP/ka_lib" "ok" "keep-alive.sh na whitelist"
+    grep -q '"keep-alive.sh"' "$app" && ok "app: actions.json tem o anti-relog" || bad "app: actions.json sem anti-relog"
+    grep -q '"keep.on"' "$app" && ok "app: catálogo tem a ação keep.on" || bad "app: catálogo sem keep.on"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG
+}
+
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
     f="$ROOT/scripts/pack.sh"
@@ -1397,6 +1451,7 @@ t_new_scripts
 t_modules
 t_web
 t_panel_v219
+t_keepalive
 t_pack
 
 printf '\n  --------------------------------------------------\n'

@@ -69,6 +69,7 @@ function otm_allowed_scripts(): array {
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
+        'keep-alive.sh',
         'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
@@ -514,6 +515,39 @@ function otm_actions(): array {
           'desc' => 'Descongela tudo e zera prioridades e limites.',
           'help' => 'Remove todos os limites de RAM, grupos de CPU, prioridades e congela tudo de volta. Deixa o aparelho no padrão. Só funciona com root.',
           'argv' => ['proc-mgr.sh', 'restore'], 'risk' => 'root', 'confirm' => true]);
+
+    // ----- Manter vivo (anti-relog) -----
+    $add(['id' => 'keep.on', 'group' => 'Processos', 'label' => 'Manter app vivo (não relogar)',
+          'desc' => 'Impede o app de fechar e pedir login de novo ao reabrir.',
+          'help' => 'Quando você sai de um app, o Android pode matá-lo para liberar memória — ao voltar, ele abre do zero e pede login outra vez. Aqui o app escolhido fica protegido: isento do modo espera (Doze), liberado em segundo plano e wake lock, no balde ativo de standby e fora do congelador. Requer Shizuku/ADB ou root. Reverta em "Deixar de manter o app".',
+          'argv' => ['keep-alive.sh', 'on', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']],
+          'risk' => 'careful']);
+    $add(['id' => 'keep.game', 'group' => 'Processos', 'label' => 'Manter jogo vivo (não relogar)',
+          'desc' => 'Igual ao anterior, e ainda libera o Game Mode do jogo.',
+          'help' => 'Protege o jogo para ele não ser morto em segundo plano (o que causa relog e sair da partida) e ainda pede ao sistema para tratá-lo como jogo (Game Mode em performance). Escolha o pacote do jogo. Reverta em "Deixar de manter o app".',
+          'argv' => ['keep-alive.sh', 'on', '{pkg}', 'jogo'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']],
+          'risk' => 'careful']);
+    $add(['id' => 'keep.off', 'group' => 'Processos', 'label' => 'Deixar de manter o app',
+          'desc' => 'Devolve o app ao comportamento normal do sistema.',
+          'help' => 'Remove a proteção anti-relog do app escolhido: ele volta a poder ser colocado em espera e encerrado em segundo plano como os outros. Use se o app estava consumindo bateria demais.',
+          'argv' => ['keep-alive.sh', 'off', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']],
+          'risk' => 'careful']);
+    $add(['id' => 'keep.status', 'group' => 'Processos', 'label' => 'Ver estado anti-relog',
+          'desc' => 'Mostra o que está aplicado para o app escolhido.',
+          'help' => 'Mostra, lido do aparelho, se o app está isento do Doze, o que está liberado em segundo plano, o balde de standby, os processos (PIDs) e se o pack o guarda como protegido. Só leitura.',
+          'argv' => ['keep-alive.sh', 'status', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+    $add(['id' => 'keep.list', 'group' => 'Processos', 'label' => 'Apps protegidos (anti-relog)',
+          'desc' => 'Lista os apps que você marcou para não relogar.',
+          'help' => 'Lista os apps que você protegeu contra relog. Só leitura.',
+          'argv' => ['keep-alive.sh', 'list']]);
+    $add(['id' => 'keep.restore', 'group' => 'Processos', 'label' => 'Devolver todos ao normal',
+          'desc' => 'Tira a proteção anti-relog de todos os apps.',
+          'help' => 'Remove a proteção anti-relog de TODOS os apps de uma vez, devolvendo o controle ao sistema. Use para recomeçar do zero.',
+          'argv' => ['keep-alive.sh', 'restore'], 'risk' => 'careful', 'confirm' => true]);
 
     // ----- Congelar apps -----
     $add(['id' => 'freeze', 'group' => 'Desempenho', 'label' => 'Congelar apps (cache freezer)',

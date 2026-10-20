@@ -1644,6 +1644,117 @@
         "risk": "root"
     },
     {
+        "id": "keep.on",
+        "group": "Processos",
+        "label": "Manter app vivo (não relogar)",
+        "desc": "Impede o app de fechar e pedir login de novo ao reabrir.",
+        "help": "Quando você sai de um app, o Android pode matá-lo para liberar memória — ao voltar, ele abre do zero e pede login outra vez. Aqui o app escolhido fica protegido: isento do modo espera (Doze), liberado em segundo plano e wake lock, no balde ativo de standby e fora do congelador. Requer Shizuku/ADB ou root. Reverta em \"Deixar de manter o app\".",
+        "argv": [
+            "keep-alive.sh",
+            "on",
+            "{pkg}"
+        ],
+        "confirm": false,
+        "risk": "careful",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
+    },
+    {
+        "id": "keep.game",
+        "group": "Processos",
+        "label": "Manter jogo vivo (não relogar)",
+        "desc": "Igual ao anterior, e ainda libera o Game Mode do jogo.",
+        "help": "Protege o jogo para ele não ser morto em segundo plano (o que causa relog e sair da partida) e ainda pede ao sistema para tratá-lo como jogo (Game Mode em performance). Escolha o pacote do jogo. Reverta em \"Deixar de manter o app\".",
+        "argv": [
+            "keep-alive.sh",
+            "on",
+            "{pkg}",
+            "jogo"
+        ],
+        "confirm": false,
+        "risk": "careful",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
+    },
+    {
+        "id": "keep.off",
+        "group": "Processos",
+        "label": "Deixar de manter o app",
+        "desc": "Devolve o app ao comportamento normal do sistema.",
+        "help": "Remove a proteção anti-relog do app escolhido: ele volta a poder ser colocado em espera e encerrado em segundo plano como os outros. Use se o app estava consumindo bateria demais.",
+        "argv": [
+            "keep-alive.sh",
+            "off",
+            "{pkg}"
+        ],
+        "confirm": false,
+        "risk": "careful",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
+    },
+    {
+        "id": "keep.status",
+        "group": "Processos",
+        "label": "Ver estado anti-relog",
+        "desc": "Mostra o que está aplicado para o app escolhido.",
+        "help": "Mostra, lido do aparelho, se o app está isento do Doze, o que está liberado em segundo plano, o balde de standby, os processos (PIDs) e se o pack o guarda como protegido. Só leitura.",
+        "argv": [
+            "keep-alive.sh",
+            "status",
+            "{pkg}"
+        ],
+        "confirm": false,
+        "risk": "safe",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
+    },
+    {
+        "id": "keep.list",
+        "group": "Processos",
+        "label": "Apps protegidos (anti-relog)",
+        "desc": "Lista os apps que você marcou para não relogar.",
+        "help": "Lista os apps que você protegeu contra relog. Só leitura.",
+        "argv": [
+            "keep-alive.sh",
+            "list"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "keep.restore",
+        "group": "Processos",
+        "label": "Devolver todos ao normal",
+        "desc": "Tira a proteção anti-relog de todos os apps.",
+        "help": "Remove a proteção anti-relog de TODOS os apps de uma vez, devolvendo o controle ao sistema. Use para recomeçar do zero.",
+        "argv": [
+            "keep-alive.sh",
+            "restore"
+        ],
+        "confirm": true,
+        "risk": "careful"
+    },
+    {
         "id": "freeze",
         "group": "Desempenho",
         "label": "Congelar apps (cache freezer)",

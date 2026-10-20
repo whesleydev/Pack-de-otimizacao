@@ -3,6 +3,24 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.20.0] - 2026-10-05
+
+### Adicionado
+- **Anti-relog (manter o app vivo).** Novo módulo `scripts/keep-alive.sh` que impede
+  o app/jogo de ser morto ao sair para a tela inicial — o que fazia ele **abrir do
+  zero e pedir login de novo** (ou sair da partida) ao voltar. Para o app escolhido,
+  ele isenta do Doze, libera segundo plano e wake lock, coloca no balde ativo de
+  standby, tira do congelador/cache freezer e, com root, baixa o `oom_score_adj`.
+  Nada de valor inventado: cada item é aplicado e lido de volta. Reversível com
+  "Deixar de manter o app" ou "Devolver todos ao normal". Categoria **Processos**:
+  `Manter app vivo (não relogar)`, `Manter jogo vivo (não relogar)` (também libera o
+  Game Mode), `Deixar de manter o app`, `Ver estado anti-relog`, `Apps protegidos
+  (anti-relog)` e `Devolver todos ao normal`.
+
+### Notas
+- `keep-alive.sh` foi adicionado à whitelist de scripts do painel (`lib.php`) e ao
+  catálogo do app (`actions.json`), com testes próprios em `tests/run.sh` (`t_keepalive`).
+
 ## [2.19.0] - 2026-10-05
 
 ### Corrigido

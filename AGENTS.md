@@ -235,6 +235,14 @@ nativa além do necessário para conectar e rodar os comandos.
   `cpu <pkg> <grupo>`, `renice <pkg> <nice>`, `freeze`/`unfreeze`,
   `status`/`restore`. Sem root avisa e não aplica; a categoria **Processos**
   agrupa essas ações.
+- **Anti-relog** (`scripts/keep-alive.sh`, na whitelist do `lib.php`): impede o
+  app/jogo de "relogar" (abrir do zero e pedir login) ao ser morto em segundo
+  plano. `on <pkg> [jogo]` isenta do Doze, libera `RUN_IN_BACKGROUND`/
+  `RUN_ANY_IN_BACKGROUND`/`START_FOREGROUND`/`WAKE_LOCK`, põe no balde `active`,
+  tira do congelador/cache freezer e (com root) baixa o `oom_score_adj`; `off
+  <pkg>` desfaz; `status <pkg>` lê tudo de volta; `list` e `restore` gerenciam a
+  lista guardada em `$ST/keepalive/apps`. Usa `ka_run`/`bkp_raw` (reversível) e
+  `require_shell` (sem Shizuku/ADB/root avisa e não aplica). Categoria **Processos**.
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).
