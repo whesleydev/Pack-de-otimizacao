@@ -69,7 +69,7 @@ function otm_allowed_scripts(): array {
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
-        'keep-alive.sh',
+        'keep-alive.sh', 'game-clean.sh',
         'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
@@ -123,6 +123,12 @@ function otm_choices(): array {
             'title' => 'Sensibilidade do toque (perfis)',
             'desc'  => 'Perfis prontos de toque do sistema para o jogo. Teste um no treino, jogue e veja qual combina com você. Para calibrar na mão, use "Touch: personalizado". Reverta em "Restaurar touch".',
             'risk'  => 'careful',
+        ],
+        'gameclean' => [
+            'title' => 'Game Clean (deixar o jogo limpo)',
+            'desc'  => 'Um clique para entrar em "modo partida": encerra os apps de fundo (sem tocar no jogo nem nos protegidos), poda cache/dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. Escolha o app e o modo. Reverta em "Desligar".',
+            'risk'  => 'careful',
+            'app'   => true,
         ],
     ];
 }
@@ -349,6 +355,32 @@ function otm_actions(): array {
           'desc' => 'Remove overlay, ANGLE e modo do app escolhido.',
           'help' => 'Desfaz tudo o que foi aplicado só nesse app (ANGLE, resolução, modo de jogo), voltando ao normal.',
           'argv' => ['game-per-app.sh', 'reset', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+
+    // ----- Game Clean (deixa o jogo limpo e otimizado) -----
+    $add(['id' => 'clean.normal', 'group' => 'Apps e jogos', 'label' => 'Game Clean: limpeza normal',
+          'desc' => 'Fecha o fundo, limpa cache/RAM e otimiza o jogo escolhido.',
+          'help' => 'Deixa o jogo "clean": encerra os apps que estavam rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), poda o cache e o dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. É o "entrar em modo partida" completo. Reverta em "Game Clean: desligar".',
+          'choice' => 'gameclean', 'option' => 'Normal',
+          'argv' => ['game-clean.sh', 'on', '{pkg}'], 'risk' => 'careful', 'confirm' => true,
+          'timeout' => 300,
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+    $add(['id' => 'clean.max', 'group' => 'Apps e jogos', 'label' => 'Game Clean: máximo',
+          'desc' => 'Igual ao normal, e ainda encerra apps de mídia/chat conhecidos.',
+          'help' => 'A versão mais agressiva: além de tudo do modo normal, encerra também os apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch) para sobrar o máximo de RAM e CPU. Use só quando quiser o aparelho 100% para o jogo.',
+          'choice' => 'gameclean', 'option' => 'Máximo',
+          'argv' => ['game-clean.sh', 'on', '{pkg}', 'max'], 'risk' => 'careful', 'confirm' => true,
+          'timeout' => 300,
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+    $add(['id' => 'clean.off', 'group' => 'Apps e jogos', 'label' => 'Game Clean: desligar',
+          'desc' => 'Desfaz o Game Clean e devolve o jogo ao normal.',
+          'help' => 'Desfaz tudo o que o Game Clean aplicou: religa as notificações, volta a RAM ao normal, tira o jogo do Game Mode e do anti-relog. Use quando terminar de jogar.',
+          'argv' => ['game-clean.sh', 'off', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+    $add(['id' => 'clean.status', 'group' => 'Apps e jogos', 'label' => 'Game Clean: ver estado',
+          'desc' => 'Mostra o que o Game Clean aplicou no jogo escolhido.',
+          'help' => 'Mostra, lido do aparelho, se o jogo está isento do Doze, o balde de standby, se as notificações estão silenciadas, o limite de RAM em cache e se o anti-relog está ativo. Só leitura.',
+          'argv' => ['game-clean.sh', 'status', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
 
     // ----- Touch / Free Fire -----

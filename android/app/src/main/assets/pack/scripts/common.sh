@@ -182,10 +182,13 @@ bkp_set() {
     t="$1"; k="$2"; v="$3"
     otm_v_inc apply
     old=$(sh_get "settings get $t $k")
-    if [ -z "$old" ] || [ "$old" = "null" ]; then
-        echo "settings delete $t $k" >> "$OFF_SH"
-    else
-        printf "settings put %s %s %s\n" "$t" "$k" "$old" >> "$OFF_SH"
+    # guarda só a 1ª vez: reaplicar não pode empilhar backups obsoletos
+    if ! grep -qE "^settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -z "$old" ] || [ "$old" = "null" ]; then
+            echo "settings delete $t $k" >> "$OFF_SH"
+        else
+            printf "settings put %s %s %s\n" "$t" "$k" "$old" >> "$OFF_SH"
+        fi
     fi
     sh_run "settings put $t $k $v" >/dev/null
     now=$(sh_get "settings get $t $k")

@@ -1017,6 +1017,95 @@
         ]
     },
     {
+        "id": "clean.normal",
+        "group": "Apps e jogos",
+        "label": "Game Clean: limpeza normal",
+        "desc": "Fecha o fundo, limpa cache/RAM e otimiza o jogo escolhido.",
+        "help": "Deixa o jogo \"clean\": encerra os apps que estavam rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), poda o cache e o dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. É o \"entrar em modo partida\" completo. Reverta em \"Game Clean: desligar\".",
+        "argv": [
+            "game-clean.sh",
+            "on",
+            "{pkg}"
+        ],
+        "confirm": true,
+        "risk": "careful",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ],
+        "choice": "gameclean",
+        "option": "Normal"
+    },
+    {
+        "id": "clean.max",
+        "group": "Apps e jogos",
+        "label": "Game Clean: máximo",
+        "desc": "Igual ao normal, e ainda encerra apps de mídia/chat conhecidos.",
+        "help": "A versão mais agressiva: além de tudo do modo normal, encerra também os apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch) para sobrar o máximo de RAM e CPU. Use só quando quiser o aparelho 100% para o jogo.",
+        "argv": [
+            "game-clean.sh",
+            "on",
+            "{pkg}",
+            "max"
+        ],
+        "confirm": true,
+        "risk": "careful",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ],
+        "choice": "gameclean",
+        "option": "Máximo"
+    },
+    {
+        "id": "clean.off",
+        "group": "Apps e jogos",
+        "label": "Game Clean: desligar",
+        "desc": "Desfaz o Game Clean e devolve o jogo ao normal.",
+        "help": "Desfaz tudo o que o Game Clean aplicou: religa as notificações, volta a RAM ao normal, tira o jogo do Game Mode e do anti-relog. Use quando terminar de jogar.",
+        "argv": [
+            "game-clean.sh",
+            "off",
+            "{pkg}"
+        ],
+        "confirm": false,
+        "risk": "safe",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
+    },
+    {
+        "id": "clean.status",
+        "group": "Apps e jogos",
+        "label": "Game Clean: ver estado",
+        "desc": "Mostra o que o Game Clean aplicou no jogo escolhido.",
+        "help": "Mostra, lido do aparelho, se o jogo está isento do Doze, o balde de standby, se as notificações estão silenciadas, o limite de RAM em cache e se o anti-relog está ativo. Só leitura.",
+        "argv": [
+            "game-clean.sh",
+            "status",
+            "{pkg}"
+        ],
+        "confirm": false,
+        "risk": "safe",
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
+    },
+    {
         "id": "touch.balanced",
         "group": "Display & Touch",
         "label": "Touch: Equilibrado",

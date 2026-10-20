@@ -243,6 +243,15 @@ nativa além do necessário para conectar e rodar os comandos.
   <pkg>` desfaz; `status <pkg>` lê tudo de volta; `list` e `restore` gerenciam a
   lista guardada em `$ST/keepalive/apps`. Usa `ka_run`/`bkp_raw` (reversível) e
   `require_shell` (sem Shizuku/ADB/root avisa e não aplica). Categoria **Processos**.
+- **Game Clean** (`scripts/game-clean.sh`, na whitelist do `lib.php`): junta o
+  "modo partida" num clique. `on [pkg] [max]` encerra apps de fundo (poupando o
+  jogo e os protegidos no anti-relog), poda cache/dexopt, põe a RAM no perfil
+  gaming (`max_cached_processes=8`), chama `keep-alive.sh on <pkg> jogo`, isenta
+  do Doze, liga Game Mode performance + driver, silencia heads-up/bolhas + Não
+  Perturbe e corta telemetria/scans. O modo `max` também encerra apps de mídia/chat
+  conhecidos (`GC_EXTRA`). `off [pkg]` desfaz (usa o `off.sh` de `bkp_set`/`bkp_raw`
+  e o `keep-alive.sh off`) e `status [pkg]` lê tudo de volta. Estado em
+  `$ST/gameclean/applied`. Categoria **Apps e jogos** (grupo de escolha `gameclean`).
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).

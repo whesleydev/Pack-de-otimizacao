@@ -12,7 +12,8 @@
 #  Ações: status | apply | restore | snapshot <...> | debloat <...> |
 #         deep <modulo> <on|off> | touch <perfil> | game <...> | bench <...> |
 #         dns <perfil|menu> | modules <run|list|info|menu> <nome> |
-#         device | freeze | unfreeze | <grupo do adb-tweaks> | test | build
+#         device | freeze | unfreeze | gameclean <on|off|status> |
+#         keep <on|off|status|list|restore> | <grupo do adb-tweaks> | test | build
 #
 #  Tudo que aplica é reversível. Estado em ~/.packotm/ (nunca versionado).
 # =============================================================================
@@ -103,6 +104,8 @@ dispatch() {
         touch)    sh "$DIR/ff-touch.sh" "$@" ;;
         headshot|spray|sniper|speed|balanced) sh "$DIR/ff-touch.sh" "$acao" ;;
         game)     sh "$DIR/game-per-app.sh" "$@" ;;
+        gameclean|gclean) sh "$DIR/game-clean.sh" "$@" ;;
+        keep)     sh "$DIR/keep-alive.sh" "$@" ;;
         bench)    sh "$DIR/bench.sh" "$@" ;;
         device)   sh "$DIR/device-profile.sh" "$@" ;;
         dns)      sh "$DIR/dns.sh" "$@" ;;
@@ -153,6 +156,7 @@ menu() {
         printf '   %s18%s Limpeza (cache/dexopt)   %s19%s RAM (padrão/gaming)\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s20%s Tela / refresh           %s21%s Notificações / DND\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s22%s Congelar apps            %s23%s Descongelar apps\n' "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s24%s %sGame Clean%s (jogo limpo)   %s25%s Anti-relog (manter vivo)\n' "$C_A" "$C_R" "$C_G" "$C_R" "$C_A" "$C_R"
 
         printf '\n  %sDEBLOAT / PROFUNDAS (root opcional)%s\n' "$C_A" "$C_R"
         printf '   %s30%s Debloat (perfis)         %s31%s Debloat - reverter\n' "$C_A" "$C_R" "$C_A" "$C_R"
@@ -209,6 +213,11 @@ menu() {
             22) printf '  modo (suspend/soft) [suspend]: '; read -r fm
                 OTM_FREEZE_MODE="${fm:-suspend}" sh "$DIR/adb-tweaks.sh" freeze_apps ;;
             23) sh "$DIR/adb-tweaks.sh" unfreeze_apps ;;
+            24) printf '  pacote do jogo [com.dts.freefireth]: '; read -r gp
+                printf '  modo (normal/max) [normal]: '; read -r gm
+                sh "$DIR/game-clean.sh" on "${gp:-com.dts.freefireth}" "${gm:-normal}" ;;
+            25) printf '  pacote do app/jogo [com.dts.freefireth]: '; read -r kp
+                sh "$DIR/keep-alive.sh" on "${kp:-com.dts.freefireth}" ;;
             30) printf '  perfil (leve/medio/pesado) [medio]: '; read -r dp
                 sh "$DIR/debloat.sh" on "${dp:-medio}" ;;
             31) sh "$DIR/debloat.sh" off ;;

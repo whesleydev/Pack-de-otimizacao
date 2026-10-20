@@ -3,6 +3,30 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.21.0] - 2026-10-05
+
+### Adicionado
+- **Game Clean (deixar o jogo limpo e otimizado).** Novo módulo `scripts/game-clean.sh`
+  que junta num só clique o "modo partida": encerra os apps de fundo (sem tocar no
+  jogo nem nos que você protegeu no anti-relog), poda o cache e o dexopt, libera RAM
+  no perfil gaming, protege o jogo contra relog (usa o anti-relog), isenta do Doze,
+  liga o Game Mode em performance + driver de jogo, silencia heads-up/bolhas e liga
+  o Não Perturbe, e corta telemetria/scans em segundo plano. Dois níveis: **Normal**
+  e **Máximo** (este também encerra apps de mídia/chat conhecidos). Categoria
+  **Apps e jogos** com um cartão de escolha: `Normal`, `Máximo`, além de
+  `Game Clean: desligar` e `Game Clean: ver estado`. Tudo reversível.
+
+### Corrigido
+- **Reversão não guardava o valor original ao reaplicar um ajuste.** `bkp_set` (em
+  `common.sh`) empilhava um novo backup a cada aplicação, então reaplicar um perfil
+  (ex.: aplicar o Game Clean duas vezes) fazia o "Reverter TUDO" restaurar um valor
+  intermediário em vez do original. Agora ele guarda só o primeiro valor de cada
+  chave, mantendo a reversão fiel ao estado de fábrica.
+
+### Notas
+- `game-clean.sh` foi adicionado à whitelist do painel (`lib.php`), ao catálogo do
+  app (`actions.json`) e tem testes próprios em `tests/run.sh` (`t_gameclean`).
+
 ## [2.20.0] - 2026-10-05
 
 ### Adicionado

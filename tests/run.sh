@@ -696,7 +696,7 @@ t_perm_script() {
     OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_battery >/dev/null 2>&1
     assert_eq "0" "$(cat "$TMP_STORE/global.low_power" 2>/dev/null)" "economia de bateria desligada"
     assert_eq "0" "$(cat "$TMP_STORE/global.app_standby_enabled" 2>/dev/null)" "App Standby desligado"
-    grep -q 'settings put global low_power' "$HOME/.packotm/off.sh" \
+    grep -qE 'settings (put|delete) global low_power' "$HOME/.packotm/off.sh" \
         && ok "reversão da bateria guardada" || bad "sem reversão da bateria"
     rm -rf "$HOME/.packotm"
 }
@@ -1186,11 +1186,11 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 5 ] && ok "renderiza 5 grupos de escolha (renderizador, app, refresh, DNS, toque)" \
-            || bad "grupos de escolha: $n_choice (esperado 5)"
+        [ "$n_choice" -eq 6 ] && ok "renderiza 6 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean)" \
+            || bad "grupos de escolha: $n_choice (esperado 6)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        [ "$n_opts" -eq 22 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 22)"
+        [ "$n_opts" -eq 24 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 24)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -1390,6 +1390,68 @@ t_keepalive() {
     unset TMP_CMD_LOG
 }
 
+t_gameclean() {
+    printf '\n  # game clean: deixa o jogo limpo e otimizado\n'
+    local f="$ROOT/scripts/game-clean.sh"
+    local app="$ROOT/android/app/src/main/assets/panel/actions.json"
+    [ -f "$f" ] && ok "scripts/game-clean.sh existe" || { bad "game-clean.sh ausente"; return; }
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/gc_help" 2>&1
+    assert_contains "$TMP/gc_help" "GAME CLEAN\|Game Clean" "game-clean explica o que faz sem argumento"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on "pkg inválido" > "$TMP/gc_bad" 2>&1
+    assert_contains "$TMP/gc_bad" "inválido" "game-clean recusa pacote inválido"
+    # sem shell: avisa e não aplica
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/gc_cmd.log"; : > "$TMP_CMD_LOG"
+    export TMP_AM_LOG="$TMP/gc_cmd.log"
+    export TMP_PM_LOG="$TMP/gc_cmd.log"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on com.exemplo > "$TMP/gc_local" 2>&1
+    grep -q 'sem shell' "$TMP/gc_local" && ok "game-clean avisa sem shell" || bad "game-clean sem aviso de shell"
+    # com privilégio (root): aplica limpeza, RAM, Game Mode, silêncio e telemetria
+    rm -rf "$HOME/.packotm"; : > "$TMP_CMD_LOG"
+    # estado inicial: notificações ligadas (o off deve restaurar isto)
+    printf '1' > "$TMP_STORE/global.heads_up_notifications_enabled"
+    printf '1' > "$TMP_STORE/global.notification_bubbles"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" on com.exemplo > "$TMP/gc_on" 2>&1
+    assert_contains "$TMP_STORE/global.activity_manager_constants" "max_cached_processes=8" "game-clean põe a RAM no perfil gaming"
+    grep -q 'deviceidle whitelist +com.exemplo' "$TMP_CMD_LOG" && ok "game-clean isenta o jogo do Doze" || bad "game-clean sem Doze"
+    grep -q 'game set --mode performance com.exemplo' "$TMP_CMD_LOG" && ok "game-clean liga Game Mode performance" || bad "game-clean sem Game Mode"
+    assert_contains "$TMP_STORE/global.game_driver_all_apps" "1" "game-clean liga o driver de jogo"
+    assert_contains "$TMP_STORE/global.heads_up_notifications_enabled" "0" "game-clean silencia heads-up"
+    assert_contains "$TMP_STORE/global.notification_bubbles" "0" "game-clean desliga bolhas"
+    grep -q 'trim-caches' "$TMP_CMD_LOG" && ok "game-clean poda cache" || bad "game-clean sem trim"
+    grep -q 'force-stop com.spotify.music' "$TMP_CMD_LOG" && bad "modo normal não devia matar mídia" || ok "modo normal poupa apps de mídia"
+    assert_contains "$TMP/gc_on" "Game Clean pronto" "game-clean conclui com o resumo"
+    # anti-relog entrou junto
+    grep -qxF "com.exemplo" "$HOME/.packotm/keepalive/apps" && ok "game-clean protege o jogo (anti-relog)" || bad "game-clean não protegeu"
+    # status lê de volta
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status com.exemplo > "$TMP/gc_status" 2>&1
+    assert_contains "$TMP/gc_status" "GAME CLEAN" "game-clean status mostra o resumo"
+    assert_contains "$TMP/gc_status" "com.exemplo" "game-clean status mostra o jogo"
+    # modo máximo encerra mídia/chat conhecidos
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" on com.exemplo max > "$TMP/gc_max" 2>&1
+    grep -q 'force-stop com.spotify.music' "$TMP_CMD_LOG" && ok "game-clean máximo encerra apps de mídia" || bad "game-clean máximo não encerrou mídia"
+    # off desfaz (notificações voltam, anti-relog sai)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" off com.exemplo > "$TMP/gc_off" 2>&1
+    assert_contains "$TMP_STORE/global.heads_up_notifications_enabled" "1" "game-clean off religa notificações"
+    grep -q 'game set --mode standard com.exemplo' "$TMP_CMD_LOG" && ok "game-clean off tira o Game Mode" || bad "game-clean off manteve Game Mode"
+    grep -qxF "com.exemplo" "$HOME/.packotm/keepalive/apps" && bad "game-clean off não removeu o anti-relog" || ok "game-clean off remove o anti-relog"
+    # registro no painel + whitelist + catálogo do app
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["clean.normal","clean.max","clean.off","clean.status"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/gc_reg" 2>&1
+    test ! -s "$TMP/gc_reg" && ok "ações do Game Clean no registro do painel" || bad "registro: $(cat "$TMP/gc_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("game-clean.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/gc_lib" 2>&1
+    assert_contains "$TMP/gc_lib" "ok" "game-clean.sh na whitelist"
+    php -r 'require "'"$ROOT"'/web/lib.php"; echo isset(otm_choices()["gameclean"]) ? "ok":"falta";' > "$TMP/gc_ch" 2>&1
+    assert_contains "$TMP/gc_ch" "ok" "grupo de escolha gameclean declarado"
+    grep -q '"game-clean.sh"' "$app" && ok "app: actions.json tem o Game Clean" || bad "app: actions.json sem Game Clean"
+    grep -q '"clean.normal"' "$app" && ok "app: catálogo tem a ação clean.normal" || bad "app: catálogo sem clean.normal"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
     f="$ROOT/scripts/pack.sh"
@@ -1452,6 +1514,7 @@ t_modules
 t_web
 t_panel_v219
 t_keepalive
+t_gameclean
 t_pack
 
 printf '\n  --------------------------------------------------\n'
