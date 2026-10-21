@@ -146,13 +146,19 @@ class PanelActivity : AppCompatActivity() {
     // ---- conexão (Shizuku / ADB) ---------------------------------------------
 
     private fun askConnect() {
-        val options = arrayOf("Shizuku (recomendado)", "ADB por Wi-Fi", "Cancelar")
+        val options = arrayOf(
+            "Shizuku (recomendado)",
+            "Depuração USB (só autorizar)",
+            "ADB por Wi-Fi (parear)",
+            "Cancelar",
+        )
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Conectar")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> useShizuku()
-                    1 -> WifiDialog.show(this, applicationContext) { r, msg ->
+                    1 -> useAdbLocal()
+                    2 -> WifiDialog.show(this, applicationContext) { r, msg ->
                         runner = r
                         toast(msg)
                         sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
@@ -162,6 +168,28 @@ class PanelActivity : AppCompatActivity() {
                 }
             }
             .show()
+    }
+
+    /**
+     * Conecta pelo `adbd` do próprio aparelho sem parear (depuração USB clássica):
+     * acha o adbd no loopback (127.0.0.1:5555, de um `adb tcpip 5555`) ou pela rede
+     * (mDNS). No celular aparece só o "Permitir depuração USB".
+     */
+    private fun useAdbLocal() {
+        toast("Procurando o adbd… ligue a depuração USB e aceite o aviso no celular.")
+        lifecycleScope.launch {
+            val adb = AdbRunner(applicationContext)
+            val r = adb.connectLocal()
+            if (r.ok) {
+                runner = adb
+                toast(r.stdout.ifBlank { "Conectado." })
+                sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
+                pendingAfterConnect?.invoke(); pendingAfterConnect = null
+                web.reload()
+            } else {
+                toast(r.stderr.ifBlank { "Não conectou." })
+            }
+        }
     }
 
     private fun useShizuku() {
@@ -201,7 +229,8 @@ class PanelActivity : AppCompatActivity() {
         }
         overlayText = android.widget.TextView(this).apply {
             text = "Para o pack funcionar, o app precisa de um acesso privilegiado de shell.\n\n" +
-                "Recomendado: Shizuku (sem root)."
+                "Recomendado: Shizuku (sem root). No PC, use a depuração USB (cabo) — " +
+                "basta aceitar \"Permitir depuração USB\" no celular."
             setTextColor(Color.parseColor("#F3EFE7"))
             textSize = 14f
             gravity = android.view.Gravity.CENTER

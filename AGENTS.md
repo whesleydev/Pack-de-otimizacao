@@ -126,7 +126,8 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 ## Convenções
 
 - Shell POSIX (`#!/system/bin/sh`); roda em Android, então evite bashisms.
-- Transporte por `scripts/common.sh`: `OTM_MODE=adb|rish|su|local` (auto-detectado).
+- Transporte por `scripts/common.sh`: `OTM_MODE=adb|usb|rish|su|local` (auto-detectado).
+  `usb` = `adb shell` no 1º aparelho do cabo (sem parear); `adb` = endereço fixo `OTM_ADB_SERIAL`.
 - Reversão das otimizações profundas em `~/.packotm/deep/off.sh` (formato `<tag>\t<comando>`).
 - Estado local nunca versionado (`~/.packotm`, `00 Otimizações/Plugins AxManager/**/state/`, `releases/*.zip`).
 - CI em `.github/workflows/build.yml`: sintaxe + shellcheck + testes + segredos; release
@@ -146,7 +147,8 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 ## App Android (`android/`)
 
 App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
-ou por ADB Wi-Fi (pareamento), com os assets do pack embutidos.
+ou por ADB Wi-Fi (pareamento) / depuração USB (só autorizar, sem parear), com os
+assets do pack embutidos.
 
 O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.

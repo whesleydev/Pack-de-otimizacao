@@ -19,8 +19,13 @@ import java.util.concurrent.TimeUnit
  * Conecta ao `adbd` do próprio aparelho por Wi-Fi (depuração sem fio) e executa
  * comandos com privilégio de shell.
  *
- * Primeiro é preciso parear (Android 11+): `pair(host, porta, código)`. Depois a
- * conexão normal em `host:porta` reaproveita a chave já autorizada.
+ * Há dois caminhos:
+ *  - Depuração sem fio (Android 11+): é preciso parear antes. `pair(host, porta,
+ *    código)`; depois a conexão normal em `host:porta` reaproveita a chave já
+ *    autorizada.
+ *  - Depuração USB clássica (adbd ouvindo em TCP, ex.: `adb tcpip 5555`): não
+ *    pede pareamento, só o "Permitir depuração USB". [connectLocal] acha o `adbd`
+ *    no próprio aparelho (loopback ou mDNS `_adb._tcp`) e conecta.
  */
 class AdbRunner(private val context: Context) : ShellRunner {
 
@@ -41,12 +46,48 @@ class AdbRunner(private val context: Context) : ShellRunner {
     }
 
     /** Conecta em `host:porta` (a porta da tela "Depuração sem fio"). */
-    suspend fun connect(host: String, port: Int): ExecResult = try {
+    suspend fun connect(host: String, port: Int): ExecResult =
+        connectTo(host, port, "Não conectou. Confira a porta e se o Wi-Fi está na mesma rede.")
+
+    /**
+     * Conecta sem parear, no `adbd` do próprio aparelho: tenta o loopback
+     * (127.0.0.1:5555, típico de `adb tcpip 5555`) e, se não houver, descobre a
+     * porta pela rede (mDNS `_adb._tcp` / `_adb-tls-connect._tcp`). Só exige que a
+     * depuração esteja ligada e o "Permitir depuração USB" aceito.
+     */
+    suspend fun connectLocal(): ExecResult {
+        val m = mgr("127.0.0.1")
+        // timeout curto por tentativa: são 3 portas + a descoberta mDNS
+        m.setTimeout(5, TimeUnit.SECONDS)
+        // 1) loopback (adbd em TCP no próprio aparelho)
+        for (port in intArrayOf(5555, 5554, 5037)) {
+            try {
+                if (m.connect("127.0.0.1", port)) {
+                    connection = m.adbConnection
+                    return ExecResult(0, "Conectado (127.0.0.1:$port).", "")
+                }
+            } catch (_: Throwable) {
+                // tenta o próximo
+            }
+        }
+        // 2) descoberta pela rede (mDNS), ignorando o host fixo
+        return try {
+            val ok = m.autoConnect(context, 6000)
+            connection = m.adbConnection
+            if (ok) ExecResult(0, "Conectado (descoberto na rede).", "")
+            else ExecResult(1, "", "Não achei o adbd. Ligue a depuração USB e aceite o aviso no celular.")
+        } catch (t: Throwable) {
+            ExecResult(1, "", "Não achei o adbd. Ligue a depuração USB e aceite o \"Permitir depuração USB\".")
+        }
+    }
+
+    private suspend fun connectTo(host: String, port: Int, failMsg: String): ExecResult = try {
         val mgr = mgr(host)
+        // timeout explícito: sem isso a lib espera para sempre e a UI parece travada
+        mgr.setTimeout(15, TimeUnit.SECONDS)
         val ok = mgr.connect(host, port)
         connection = mgr.adbConnection
-        if (ok) ExecResult(0, "Conectado a $host:$port.", "")
-        else ExecResult(1, "", "Não conectou. Confira a porta e se o Wi-Fi está na mesma rede.")
+        if (ok) ExecResult(0, "Conectado a $host:$port.", "") else ExecResult(1, "", failMsg)
     } catch (t: Throwable) {
         ExecResult(1, "", "Falha ao conectar: ${t.message}")
     }

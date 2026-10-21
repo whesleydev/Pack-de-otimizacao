@@ -5,6 +5,7 @@
 #  Define COMO o pack conversa com o Android, sem precisar de root:
 #    rish   Shizuku (rodando no celular)          <- recomendado no celular
 #    adb    ADB pela rede/Wi-Fi (host:porta)      <- recomendado no PC/rede
+#    usb    Depuração USB (ADB no 1º aparelho)    <- PC/cabo, sem parear
 #    su     root (Magisk/KernelSU/APatch)
 #    local  shell sem privilégio (só leitura/informativo)
 #
@@ -12,6 +13,7 @@
 #    sh scripts/config.sh show            # mostra a config atual + modo detectado
 #    sh scripts/config.sh set rish [caminho-do-rish]
 #    sh scripts/config.sh set adb 192.168.0.10:5555
+#    sh scripts/config.sh set usb         # depuração USB (só autorizar na tela)
 #    sh scripts/config.sh set su
 #    sh scripts/config.sh set auto
 #    sh scripts/config.sh test            # testa a conexão de verdade
@@ -56,7 +58,8 @@ do_show() {
     printf '   adb no PATH     : %s\n' "$(have adb && echo sim || echo não)"
     printf '   rish no PATH    : %s\n' "$(have rish && echo sim || echo não)"
     echo
-    printf '   dica: %sShizuku%s no celular (rish) ou %sdepuração por Wi-Fi%s no PC (adb).\n' "$C_A" "$C_R" "$C_A" "$C_R"
+    printf '   dica: %sShizuku%s no celular (rish) ou %sdepuração USB%s no PC (cabo, só autorizar)\n' "$C_A" "$C_R" "$C_A" "$C_R"
+    printf '         ou %sdepuração por Wi-Fi%s (adb, informe IP:porta).\n' "$C_A" "$C_R"
 }
 
 do_set() {
@@ -65,10 +68,11 @@ do_set() {
         rish)  cfg_write rish "" "${arg2:-}" ;;
         adb)   [ -z "$arg2" ] && { err "informe o endereço host:porta (ex.: 192.168.0.10:5555)"; return 1; }
                cfg_write adb "$arg2" "" ;;
+        usb)   cfg_write usb "" "" ;;
         su)    cfg_write su "" "" ;;
         local) cfg_write local "" "" ;;
         auto|"") cfg_clear ;;
-        *)     err "modo inválido: use rish|adb|su|local|auto"; return 1 ;;
+        *)     err "modo inválido: use rish|adb|usb|su|local|auto"; return 1 ;;
     esac
     say "config salva: modo=${modo:-auto} ${arg2:+($arg2)}"
     do_show
@@ -112,6 +116,7 @@ do_test() {
         ok=0
         printf '   %s✗%s sem privilégio de shell: o pack vai rodar em modo local\n' "$C_RD" "$C_R"
         printf '     → no celular: instale/ative o %sShizuku%s e rode o rish\n' "$C_A" "$C_R"
+        printf '     → no PC (cabo): ative a %sdepuração USB%s e aceite "Permitir depuração USB"\n' "$C_A" "$C_R"
         printf '     → no PC/rede: ative a %sdepuração por Wi-Fi%s e informe o IP:porta\n' "$C_A" "$C_R"
     fi
     echo

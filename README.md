@@ -190,7 +190,7 @@ Não redistribuímos módulo de terceiro sem licença.
 
 - Android 11+ (a maioria dos tweaks)
 - **Um** dos métodos de acesso:
-  - PC com **ADB** (depuração sem fio ou USB)
+  - PC com **ADB** (cabo/USB — só aceitar "Permitir depuração USB" — ou depuração sem fio)
   - **Brevent** (app, sem PC)
   - **Termux** + **Shizuku** (sem PC, com shell privilegiado)
   - **root** (Magisk/KernelSU/APatch)
@@ -209,8 +209,18 @@ cd Pack-de-otimizacao
 
 ### 1. ADB (PC)
 
+**Por cabo (USB) — mais simples, sem parear:** ligue a *Depuração USB* e, quando o
+celular pedir, aceite **"Permitir depuração USB"**. O pack acha o aparelho sozinho.
+
 ```sh
-# pareamento sem fio (Android 11+)
+adb devices                 # confirme que o aparelho aparece
+sh scripts/menu.sh
+sh scripts/adb-tweaks.sh all
+```
+
+**Sem fio (Android 11+):** aí sim precisa parear uma vez.
+
+```sh
 adb pair <ip>:<porta-pareamento>
 adb connect <ip>:<porta-conexao>
 
@@ -408,7 +418,8 @@ sh scripts/ff-touch.sh restore
 Se a detecção automática errar o transporte:
 
 ```sh
-OTM_MODE=adb sh scripts/menu.sh     # adb | rish | su | local
+OTM_MODE=adb sh scripts/menu.sh     # adb | usb | rish | su | local
+OTM_MODE=usb sh scripts/menu.sh     # depuração USB (1º aparelho do cabo)
 OTM_NO_COLOR=1 sh scripts/menu.sh   # sem cores
 ```
 

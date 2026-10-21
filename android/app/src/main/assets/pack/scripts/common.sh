@@ -2,16 +2,17 @@
 # =============================================================================
 #  common.sh - Biblioteca compartilhada do Pack de Otimização
 #  Detecta automaticamente como executar comandos privilegiados:
-#    1) adb shell   (PC -> celular, depuração sem fio/USB)
+#    1) adb shell   (PC -> celular, depuração USB ou sem fio)
 #    2) rish        (Shizuku, roda direto no celular)
 #    3) su -c       (root / Magisk / KernelSU / APatch)
 #    4) sh -c       (shell local, sem privilégio)
 #  Todos os scripts fazem ". ./common.sh" e usam sh_run / sh_get.
-#  Variável de override: OTM_MODE=adb|rish|su|local
+#  Variável de override: OTM_MODE=adb|usb|rish|su|local
+#  (usb = adb no 1º aparelho do cabo; adb = endereço fixo OTM_ADB_SERIAL)
 # =============================================================================
 
 # --- configuração (persistida pelo painel > Configs) --------------------------
-# Carrega ~/.packotm/config, se existir. Chaves: OTM_MODE (adb|rish|su|local),
+# Carrega ~/.packotm/config, se existir. Chaves: OTM_MODE (adb|usb|rish|su|local),
 # OTM_ADB_SERIAL (serial ou host:porta), OTM_RISH (caminho do rish do Shizuku).
 OTM_ST="${HOME:-/data/data/com.termux/files/home}/.packotm"
 OTM_CFG="$OTM_ST/config"
@@ -88,6 +89,7 @@ _otm_shell() {
     case "$RUN_MODE" in
         adb)   if [ -n "$OTM_ADB_SERIAL" ]; then _with_timeout 20 adb -s "$OTM_ADB_SERIAL" shell "$1"
                else _with_timeout 20 adb shell "$1"; fi ;;
+        usb)   _with_timeout 20 adb shell "$1" ;;
         rish)  r="$(_otm_rish)"
                if [ -x "$r" ]; then _with_timeout 20 "$r" -c "$1"
                else _with_timeout 20 rish -c "$1"; fi ;;

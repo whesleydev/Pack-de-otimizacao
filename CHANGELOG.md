@@ -3,6 +3,24 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.24.0] - 2026-10-05
+
+### Adicionado
+- **Conexão por Depuração USB (só autorizar, sem parear).** No app, o botão
+  **Conectar** ganhou a opção *Depuração USB (só autorizar)*: ele acha o `adbd` no
+  próprio aparelho (loopback `127.0.0.1:5555` ou pela rede via mDNS `_adb._tcp`) e
+  conecta. No celular aparece **só** o aviso *"Permitir depuração USB"* — sem o
+  código de pareamento da depuração sem fio. (`AdbRunner.connectLocal`, `PanelActivity`.)
+- Novo modo de transporte `usb` em `scripts/config.sh` (`set usb`) e em
+  `scripts/common.sh`: usa `adb shell` no 1º aparelho do cabo, sem exigir endereço.
+  Para quem roda o pack pelo PC (`OTM_MODE=usb sh scripts/menu.sh`).
+
+### Notas
+- **Limite honesto:** conectar ao `adbd` por USB *dentro do próprio celular* (sem
+  PC) não é possível sem root — a pilha USB do Android não expõe o `adbd` ao app.
+  O modo USB vale para o **PC** (cabo) e para o app via ADB local/TCP ou Shizuku.
+  No celular, o caminho sem root continua sendo o **Shizuku** (recomendado).
+
 ## [2.23.0] - 2026-10-05
 
 ### Adicionado

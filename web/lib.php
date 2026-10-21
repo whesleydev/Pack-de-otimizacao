@@ -1015,12 +1015,12 @@ function otm_actions(): array {
 
     // ----- Configs: como o pack fala com o Android (sem root) -----
     $add(['id' => 'config.set', 'group' => 'Sistema', 'label' => 'Definir conexão do pack',
-          'desc' => 'Escolha como o pack acessa o Android: Shizuku (rish), ADB por Wi-Fi, root ou automático.',
-          'help' => 'Define por onde o pack manda os comandos. Sem root, use Shizuku (rish) no celular ou a depuração por Wi-Fi (ADB, informe o IP:porta do aparelho). "automático" deixa o pack detectar sozinho. Depois clique em "Testar conexão" para confirmar.',
+          'desc' => 'Escolha como o pack acessa o Android: Shizuku (rish), depuração USB, ADB por Wi-Fi, root ou automático.',
+          'help' => 'Define por onde o pack manda os comandos. Sem root, use o Shizuku (rish) no celular, a depuração USB no PC (cabo — no celular só aparece o aviso "Permitir depuração USB", sem parear) ou a depuração por Wi-Fi (ADB, informe o IP:porta do aparelho). "automático" deixa o pack detectar sozinho. Depois clique em "Testar conexão" para confirmar.',
           'argv' => ['config.sh', 'set', '{mode}', '{target}'],
           'params' => [
               ['name' => 'mode', 'type' => 'name', 'label' => 'Modo', 'default' => 'auto'],
-              ['name' => 'target', 'type' => 'text', 'label' => 'Endereço (só p/ ADB: host:porta)', 'optional' => true],
+              ['name' => 'target', 'type' => 'text', 'label' => 'Endereço (só p/ ADB Wi-Fi: host:porta)', 'optional' => true],
           ]]);
     $add(['id' => 'config.test', 'group' => 'Sistema', 'label' => 'Testar conexão',
           'desc' => 'Confere de verdade se o pack consegue mandar comandos ao aparelho.',

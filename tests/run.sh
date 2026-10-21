@@ -304,6 +304,19 @@ t_config() {
     assert_contains "$HOME/.packotm/config" 'OTM_ADB_SERIAL=192.168.0.10:5555' "config salva o endereço ADB Wi-Fi"
     sh "$ROOT/scripts/config.sh" set rish /data/local/tmp/rish >/dev/null 2>&1
     assert_contains "$HOME/.packotm/config" 'OTM_MODE=rish' "config salva o modo rish"
+    # depuração USB (só autorizar, sem parear): modo 'usb' e roteamento pelo adb
+    sh "$ROOT/scripts/config.sh" set usb >/dev/null 2>&1
+    assert_contains "$HOME/.packotm/config" 'OTM_MODE=usb' "config salva o modo usb (depuração USB)"
+    cat > "$TMP/bin/adb" <<'EOF'
+#!/bin/sh
+# stub: finge o adb do PC e marca a chamada de shell
+[ "$1" = "shell" ] && { shift; echo "usb:$*"; exit 0; }
+exit 0
+EOF
+    chmod +x "$TMP/bin/adb"
+    usbout=$(OTM_MODE=usb sh -c '. "'"$ROOT"'/scripts/common.sh"; sh_get "echo oi"' 2>&1)
+    assert_eq "usb:echo oi" "$usbout" "modo usb manda o comando pelo adb shell"
+    sh "$ROOT/scripts/config.sh" set rish /data/local/tmp/rish >/dev/null 2>&1
     # test roda e reporta (mesmo sem conexão) — não pode travar
     tout=$(OTM_NO_COLOR=1 timeout 20 sh "$ROOT/scripts/config.sh" test 2>&1)
     printf '%s\n' "$tout" > "$TMP/cfgtest"
@@ -499,6 +512,17 @@ t_app_fixes() {
         && ok "update: release assina com a keystore fixa" || bad "update: release sem assinatura fixa"
     grep -q 'if (a.argv.isEmpty())' "$src/PackBridge.kt" \
         && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
+    # 9b) conexão por depuração USB (só autorizar, sem parear)
+    grep -q 'Depuração USB (só autorizar)' "$src/PanelActivity.kt" \
+        && ok "conexão: opção de depuração USB no diálogo" || bad "conexão: sem opção de depuração USB"
+    grep -q 'fun useAdbLocal()' "$src/PanelActivity.kt" \
+        && ok "conexão: useAdbLocal liga o ADB local" || bad "conexão: sem useAdbLocal"
+    grep -q 'fun connectLocal()' "$src/AdbRunner.kt" \
+        && ok "conexão: AdbRunner.connectLocal (loopback + mDNS)" || bad "conexão: sem connectLocal"
+    grep -q 'autoConnect(context' "$src/AdbRunner.kt" \
+        && ok "conexão: descobre o adbd pela rede (mDNS)" || bad "conexão: sem descoberta mDNS"
+    grep -q 'set usb' "$ROOT/scripts/config.sh" && grep -q 'usb)   cfg_write usb' "$ROOT/scripts/config.sh" \
+        && ok "conexão: config.sh aceita o modo usb" || bad "conexão: config.sh sem modo usb"
     # 10) áudio audível: stream de mídia (não sonificação) e erro no logcat
     grep -q 'USAGE_MEDIA' "$src/SoundPlayer.kt" \
         && ok "som: usa stream de mídia (audível)" || bad "som: ainda usa stream de sonificação"
