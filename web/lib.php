@@ -70,7 +70,7 @@ function otm_allowed_scripts(): array {
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'cool-down.sh',
-        'bench.sh', 'device-profile.sh', 'config.sh',
+        'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
 
@@ -257,13 +257,21 @@ function otm_actions(): array {
           'help' => 'Deixa o sistema manter menos apps na memória para sobrar mais RAM para o jogo. Resultado: menos engasgo em partidas. Trade-off: alternar entre apps fica um pouco mais lento.',
           'argv' => ['adb-tweaks.sh', 'mem', 'gaming']]);
     $add(['id' => 'clean', 'group' => 'Desempenho', 'label' => 'Limpar cache e RAM',
-          'desc' => 'Apaga o cache de todos os apps e libera a memória em uso.',
-          'help' => 'Remove arquivos temporários (cache) e limpa processos parados na memória. Libera espaço e RAM na hora. Não apaga seus dados nem conversas — só cache.',
+          'desc' => 'Libera RAM de verdade (fundo + cache) e suaviza a interface.',
+          'help' => 'Motor único de limpeza: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps e libera a memória na hora. Depois aplica uma suavização leve e reversível (animações mais curtas, blur off, doze mais rápido). Nada de seus dados é apagado — só cache. Para reverter a suavização, use "Clean: desfazer suavização".',
           'argv' => ['adb-tweaks.sh', 'clean']]);
-    $add(['id' => 'clean.aot', 'group' => 'Desempenho', 'label' => 'Limpar dexopt (AOT)',
-          'desc' => 'Recupera espaço e evita o compilador travar o aparelho.',
-          'help' => 'O Android compila os apps em segundo plano e isso ocupa espaço e às vezes trava. Aqui essa compilação é limpa: recupera armazenamento. Os apps recompilam sozinhos quando você abre.',
-          'argv' => ['adb-tweaks.sh', 'aot']]);
+    $add(['id' => 'clean.scan', 'group' => 'Desempenho', 'label' => 'Clean: ver o que dá para limpar',
+          'desc' => 'Mostra RAM, espaço e cache por app — sem alterar nada.',
+          'help' => 'Só lê o aparelho: quanto de RAM está livre, quanto espaço sobra no armazenamento e (com root) quais apps estão ocupando mais cache. Serve para você ver o que a limpeza vai liberar antes de rodar. Não altera nada.',
+          'argv' => ['adb-tweaks.sh', 'clean_scan']]);
+    $add(['id' => 'clean.deep', 'group' => 'Desempenho', 'label' => 'Clean profundo (CPU/GPU/I/O)',
+          'desc' => 'Limpeza + suavização de CPU/GPU/I-O/VM. Precisa de root.',
+          'help' => 'Faz a limpeza e vai além: coloca CPU e GPU no topo da frequência, liga o input boost no toque, afina I/O (scheduler none + read_ahead + fstrim), VM (dirty suave) e rede (BBR + fq_codel). É o que deixa o sistema liso de verdade. Precisa de root e esquenta/consome mais bateria — use com o aparelho ventilado. Reversível por completo.',
+          'argv' => ['adb-tweaks.sh', 'clean_deep'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
+    $add(['id' => 'clean.undo', 'group' => 'Desempenho', 'label' => 'Clean: desfazer suavização',
+          'desc' => 'Desfaz os ajustes de suavização do Clean (a limpeza é pontual).',
+          'help' => 'Restaura animações, blur, doze, Wi-Fi e — se o Clean profundo foi usado — frequência de CPU/GPU, I/O, VM e rede, voltando cada valor ao original. A liberação de RAM em si não precisa ser desfeita (é pontual).',
+          'argv' => ['clean.sh', 'off']]);
 
     // ----- Liberar RAM de verdade + Resfriamento -----
     $add(['id' => 'ram.normal', 'group' => 'Desempenho', 'label' => 'Liberar RAM: normal',
@@ -761,7 +769,7 @@ function otm_actions(): array {
           'argv' => ['turbo.sh', 'status']]);
     $add(['id' => 'turbo.art', 'group' => 'Desempenho', 'label' => 'Abrir apps mais rápido (compilar)',
           'desc' => 'Compila o app escolhido para ele abrir mais rápido.',
-          'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Reversível com "Limpar dexopt (AOT)".',
+          'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Para desfazer, use "Recompilar todos os apps (ART)".',
           'argv' => ['turbo.sh', 'art', '{pkg}', '{mode}'],
           'params' => [
               ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],

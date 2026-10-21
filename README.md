@@ -120,7 +120,7 @@ No painel você tem, com botões (e visual):
 |---|---|
 | **Rápido** | aplicar o recomendado, reverter tudo, salvar/ver/comparar/restaurar snapshot |
 | **DNS** | perfis (privacidade, **bloqueio de anúncios**, família, **latência/gaming**) ou um host seu |
-| **RAM / Limpeza** | perfil padrão/gaming, limpar cache e RAM, limpar dexopt |
+| **RAM / Limpeza** | perfil padrão/gaming, limpar cache e RAM, **clean profundo (CPU/GPU/I/O)** |
 | **Renderizador** | trocar o motor: **OpenGL, SkiaGL, Skia Vulkan**, forçar GPU |
 | **Por app / jogo** | escolher um app/jogo e usar **ANGLE (Vulkan)**, modo performance, **reduzir resolução (FPS)** ou resetar |
 | **Touch / Free Fire** | perfis balanced/headshot/spray/sniper/speed, ajuste fino, abrir o jogo |
@@ -283,7 +283,7 @@ sh scripts/adb-tweaks.sh restore_all          # reverte tudo
 
 Grupos: `perf perf_max gpu net net_reset wifi battery battery_off game ff ff_open
 freezer freezer_off freeze_apps unfreeze_apps dnd dnd_off screen touch fluidez
-game_tune clean aot restore_all`
+game_tune clean clean_scan clean_deep restore_all`
 
 ### `scripts/game-per-app.sh` (tuning por jogo)
 

@@ -459,37 +459,15 @@ mem() {
 }
 
 # --- dexopt / limpeza ---------------------------------------------------------
-# clean -> apaga cache de todos os apps, encerra apps de fundo e solta pagecache
-clean() {
-    say "Limpeza (cache / dexopt / RAM)"
-    before="$(otm_ram_livre_mb)"
-    if have_shell; then
-        k="$(otm_bg_kill com.dts.freefireth com.dts.freefiremax)"
-        say "$k app(s) de fundo encerrado(s)"
-        f="$(otm_cache_trim)"
-        [ -n "$f" ] && say "cache podado: $((f / 1048576))MB liberados"
-    fi
-    if sh_ok; then
-        sh_run "killall -9 dex2oat" >/dev/null 2>&1
-        sh_run "logcat -c" >/dev/null 2>&1
-        otm_drop_caches
-        sh_run "sm fstrim" >/dev/null 2>&1
-        sh_run "sync" >/dev/null 2>&1
-    fi
-    after="$(otm_ram_livre_mb)"
-    if [ -n "$before" ] && [ -n "$after" ]; then
-        say "RAM livre: ${before}MB → ${after}MB (+$((after - before))MB)"
-    fi
-    say "caches trimados"
-}
+# clean -> motor único de limpeza (scripts/clean.sh). A limpeza é pontual; a
+# suavização (animações/CPU/GPU/IO/VM) é reversível por `clean.sh off`.
+clean() { sh "$DIR/clean.sh" now "${1:-suave}"; }
 
-aot() {
-    require_root || return 1
-    say "Compilando apps em AOT (speed)"
-    for a in com.dts.freefireth com.dts.freefiremax; do
-        sh_run "cmd package compile -m speed -f $a" >/dev/null && say "AOT: $a"
-    done
-}
+# clean_scan -> só lê o que dá para liberar, sem mexer em nada.
+clean_scan() { sh "$DIR/clean.sh" scan; }
+
+# clean_deep -> limpeza + suavização profunda (CPU/GPU/IO/VM) quando há root.
+clean_deep() { sh "$DIR/clean.sh" now normal; }
 
 # --- ajustes obscuros (sem root) ----------------------------------------------
 # Junta knobs que quase ninguém conhece: animações do launcher, aviso de
@@ -708,7 +686,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean aot obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan clean_deep obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

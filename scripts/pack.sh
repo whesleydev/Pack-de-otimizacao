@@ -125,7 +125,7 @@ dispatch() {
 
         # grupos do adb-tweaks (nível 2)
         perf|perf_max|gpu|net|net_reset|wifi|battery|battery_off|game|ff|ff_open|\
-        clean|aot|mem|dnd|dnd_off|screen|fluidez|game_tune|\
+        clean|clean_scan|clean_deep|mem|dnd|dnd_off|screen|fluidez|game_tune|\
         obscure|mobile_net|notif|window_tweaks)
             sh "$DIR/adb-tweaks.sh" "$acao" "$@" ;;
 
@@ -303,7 +303,7 @@ case "$1" in
         printf '   game ...       apply|custom|list|show|mode|reset\n'
         printf '   dns ...        menu|list|status|<perfil>|custom <host>|off\n'
         printf '   modules ...    list|info <nome>|run <nome>|actions <nome>|menu\n'
-        printf '   perf|perf_max|gpu|net|wifi|battery|game|ff|clean|mem|dnd|screen|fluidez\n'
+        printf '   perf|perf_max|gpu|net|wifi|battery|game|ff|clean|clean_scan|clean_deep|mem|dnd|screen|fluidez\n'
         printf '   freeze|unfreeze|device|bench|test|build\n' ;;
     *)
         if ! dispatch "$@"; then

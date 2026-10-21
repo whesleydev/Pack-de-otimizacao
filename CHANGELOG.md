@@ -3,6 +3,39 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.23.0] - 2026-10-05
+
+### Adicionado
+- **Clean 2.0 — motor único de limpeza (`scripts/clean.sh`).** Substitui o antigo
+  `clean` do `adb-tweaks.sh` (que só fazia limpeza) por um motor em **fases**, com
+  verificação real de cada passo (`#OTM-RESULT`):
+  - `clean.sh scan` — só lê o que dá para liberar (RAM, espaço em `/data`, cache por
+    app com root). Não altera nada.
+  - `clean.sh now fundo` — libera RAM: encerra o 2º plano (poupando jogo e
+    protegidos no anti-relog), poda o cache e solta o pagecache (root).
+  - `clean.sh now suave` (padrão) — o de cima **+ suavização sem root**: animações
+    0x, blur/transparência off, doze mais rápido, sem scan Wi-Fi em 2º plano.
+  - `clean.sh now normal` — tudo **+ suavização profunda de CPU/GPU/I-O/VM** via
+    `deep-tune.sh` (freq, gpu, mem, sched, input, io, vm, net2), quando há root.
+  - `clean.sh status` / `clean.sh off` — estado e reversão da suavização.
+- Novas ações no painel (categoria **Desempenho**): `Clean: ver o que dá para limpar`
+  (`clean.scan`), `Clean profundo (CPU/GPU/I/O)` (`clean.deep`) e `Clean: desfazer
+  suavização` (`clean.undo`).
+- `scripts/clean.sh` entra na whitelist de scripts executáveis do painel.
+
+### Corrigido
+- **"Limpar cache e RAM" agora suaviza de verdade.** O `clean` deixa de ser só
+  limpeza e passa a afinar CPU/GPU/I-O/VM (com root) — era o que faltava para o
+  sistema ficar liso, não só com RAM livre.
+- **`clean` passou a verificar.** Antes o `clean` não emitia `#OTM-RESULT`
+  (`applies=0 changed=0`); agora cada passo é lido de volta e contado.
+- **Removido o `clean.aot` / grupo `aot`.** Recompilar apps em AOT com
+  `cmd package compile -m speed` era root + praticamente placebo (o Android 12+ já
+  recompila em idle) e podia travar o aparelho. Saiu do catálogo e dos grupos.
+- **Placebos fora do caminho principal da limpeza.** `logcat -c` (não libera RAM) e
+  `sync` (só flush de buffer) saíram do `clean`; `sync` fica só como flush explícito
+  no fim do `ram-boost.sh`.
+
 ## [2.22.0] - 2026-10-05
 
 ### Adicionado

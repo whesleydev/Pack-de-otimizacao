@@ -269,9 +269,19 @@ nativa além do necessário para conectar e rodar os comandos.
   (`co_write`/`co_set` guardam o valor original); `off` desfaz e `status` mostra
   temperatura + estado. Requer root. Categoria **Desempenho** (grupo de escolha
   `cooldown`).
-- **Limpeza de RAM** (`clean`/`mem` do `adb-tweaks.sh`): além de ajustar o perfil de
-  cache, agora encerram os apps de 3º plano, podam o cache e (com root) soltam o
-  pagecache, reportando os MB liberados. O encerramento só roda com shell.
+- **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
+  limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
+  por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`
+  poupando o jogo/protegidos, poda cache com `otm_cache_trim`, `am kill-all` e
+  `otm_drop_caches`); `now suave` (padrão) soma a suavização **sem root** (animações
+  0x, `disable_window_blurs`, `accessibility_reduce_transparency`, doze mais rápido,
+  sem scan Wi-Fi); `now normal` soma a suavização profunda de CPU/GPU/I-O/VM delegando
+  ao `deep-tune.sh` (`freq`/`gpu`/`mem`/`sched`/`input`/`io`/`vm`/`net2`), só com root.
+  `status` mostra o estado; `off` desfaz a suavização (settings do `off.sh` + os
+  módulos do deep-tune). Estado em `$ST/clean/applied`. O `clean`/`clean_scan`/
+  `clean_deep` do `adb-tweaks.sh` delegam para cá (o antigo `clean` inline e o grupo
+  `aot` foram removidos). Categoria **Desempenho** (`clean`, `clean.scan`,
+  `clean.deep`, `clean.undo`).
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).

@@ -1548,6 +1548,77 @@ t_cooldown() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_clean() {
+    printf '\n  # clean: motor único de limpeza (fundo/suave/normal) + scan + off\n'
+    local f="$ROOT/scripts/clean.sh"
+    [ -f "$f" ] && ok "scripts/clean.sh existe" || { bad "clean.sh ausente"; return; }
+    # ajuda e fase inválida
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/cl_help" 2>&1
+    assert_contains "$TMP/cl_help" "CLEAN\|Clean\|Limpeza" "clean explica o que faz sem argumento"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" now bogus > "$TMP/cl_bad" 2>&1
+    assert_contains "$TMP/cl_bad" "inválida" "clean recusa fase inválida"
+    # sem shell: recusa
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" now suave >/dev/null 2>&1
+    assert_eq "1" "$?" "clean sem shell é recusado"
+    # scan: só lê, não mexe em settings
+    rm -rf "$HOME/.packotm"; : > "$TMP_STORE/global.window_animation_scale"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" scan > "$TMP/cl_scan" 2>&1
+    assert_contains "$TMP/cl_scan" "RAM" "clean scan mostra a RAM"
+    [ -s "$TMP_STORE/global.window_animation_scale" ] && bad "scan não deveria mexer em settings" \
+        || ok "scan não altera nada"
+    # fase fundo: libera RAM (encerra fundo + poda cache) e NÃO suaviza
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/cl.log" TMP_AM_LOG="$TMP/cl.log" TMP_PM_LOG="$TMP/cl.log"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now fundo > "$TMP/cl_fundo" 2>&1
+    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" && ok "clean fundo encerra apps de fundo" || bad "clean fundo não encerrou o fundo"
+    grep -q 'trim-caches' "$TMP_CMD_LOG" && ok "clean fundo poda o cache" || bad "clean fundo sem trim-caches"
+    [ -s "$TMP_STORE/global.window_animation_scale" ] && bad "fase fundo não devia suavizar" \
+        || ok "fase fundo não mexe em animações"
+    # fase suave: libera RAM + suaviza sem root (animações 0, blur off, doze)
+    rm -rf "$HOME/.packotm"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now suave > "$TMP/cl_suave" 2>&1
+    assert_contains "$TMP_STORE/global.window_animation_scale" "0" "clean suave zera as animações"
+    assert_contains "$TMP_STORE/global.disable_window_blurs" "1" "clean suave desliga o blur"
+    assert_contains "$TMP_STORE/global.device_idle_constants" "light_after_inactive_to" "clean suave afina o doze"
+    assert_contains "$HOME/.packotm/clean/applied" "suave" "clean grava a fase aplicada"
+    assert_contains "$TMP/cl_suave" "Clean pronto" "clean conclui com o resumo"
+    # normal com root: também delega a suavização profunda (freq/gpu/...) ao deep-tune
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now normal > "$TMP/cl_normal" 2>&1
+    [ -f "$HOME/.packotm/deep/on" ] && ok "clean normal aciona a suavização profunda (deep-tune)" \
+        || bad "clean normal não acionou o deep-tune"
+    # status + off (desfaz a suavização)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/cl_st" 2>&1
+    assert_contains "$TMP/cl_st" "CLEAN" "clean status mostra o resumo"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" off > "$TMP/cl_off" 2>&1
+    [ -f "$HOME/.packotm/clean/applied" ] && bad "clean off deixou o marcador" || ok "clean off limpa o marcador"
+    # integração: adb-tweaks delega ao clean e expõe os grupos novos
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" list > "$TMP/cl_list" 2>&1
+    assert_contains "$TMP/cl_list" "clean_scan" "adb-tweaks lista o grupo clean_scan"
+    assert_contains "$TMP/cl_list" "clean_deep" "adb-tweaks lista o grupo clean_deep"
+    grep -q 'aot' "$TMP/cl_list" && bad "grupo aot (root/placebo) ainda existe" || ok "grupo aot removido"
+    # registro no painel + whitelist + catálogo
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["clean","clean.scan","clean.deep","clean.undo"] as $id) echo isset($a[$id]) ? "" : "FALTA:$id ";' \
+        > "$TMP/cl_reg" 2>&1
+    test ! -s "$TMP/cl_reg" && ok "ações do Clean no registro do painel" || bad "registro: $(cat "$TMP/cl_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("clean.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/cl_lib" 2>&1
+    assert_contains "$TMP/cl_lib" "ok" "clean.sh na whitelist"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             echo isset($a["clean.aot"]) ? "AINDA" : "removido";' > "$TMP/cl_aot" 2>&1
+    assert_contains "$TMP/cl_aot" "removido" "ação clean.aot removida do registro"
+    grep -q '"clean.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o Clean" || bad "app: actions.json sem clean.sh"
+    grep -q '"clean.deep"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o Clean profundo" || bad "app: actions.json sem clean.deep"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
     f="$ROOT/scripts/pack.sh"
@@ -1613,6 +1684,7 @@ t_keepalive
 t_gameclean
 t_ramboost
 t_cooldown
+t_clean
 t_pack
 
 printf '\n  --------------------------------------------------\n'

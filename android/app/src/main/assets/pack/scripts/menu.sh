@@ -34,8 +34,8 @@ while :; do
     printf '  %s33%s Debloat - reverter tudo'                "$C_A" "$C_R"; echo
     printf '  %s13%s Notificações / DND'                    "$C_A" "$C_R"; echo
     printf '  %s14%s Tela / refresh'                        "$C_A" "$C_R"; echo
-    printf '  %s15%s Limpeza (caches/dexopt)'               "$C_A" "$C_R"; echo
-    printf '  %s16%s AOT nos jogos (root)'                  "$C_A" "$C_R"; echo
+    printf '  %s15%s Clean (limpa RAM + suaviza)'          "$C_A" "$C_R"; echo
+    printf '  %s16%s Clean profundo (CPU/GPU/I-O, root)'    "$C_A" "$C_R"; echo
     printf '  %s17%s Salvar snapshot do estado atual'        "$C_A" "$C_R"; echo
     printf '  %s18%s Listar snapshots'                       "$C_A" "$C_R"; echo
     printf '  %s19%s Restaurar último snapshot'              "$C_A" "$C_R"; echo
@@ -110,7 +110,7 @@ while :; do
         13) "$DIR/adb-tweaks.sh" dnd ;;
         14) "$DIR/adb-tweaks.sh" screen ;;
         15) "$DIR/adb-tweaks.sh" clean ;;
-        16) "$DIR/adb-tweaks.sh" aot ;;
+        16) "$DIR/adb-tweaks.sh" clean_deep ;;
         17) "$DIR/snapshot.sh" save ;;
         18) "$DIR/snapshot.sh" list ;;
         19) "$DIR/snapshot.sh" restore latest ;;

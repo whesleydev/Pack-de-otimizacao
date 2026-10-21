@@ -748,7 +748,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <span class="tx">Salvar snapshot<small>Ponto de retorno seguro</small></span></button>
             <button type="button" data-qa="clean">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2m-8 0 1 13h8l1-13"/></svg></span>
-              <span class="tx">Limpar cache e RAM<small>Libera memória agora</small></span></button>
+              <span class="tx">Limpar cache e RAM<small>Libera memória e suaviza</small></span></button>
             <button type="button" data-qa="fluidez">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
               <span class="tx">Fluidez geral<small>Toque, Hz e animações</small></span></button>
