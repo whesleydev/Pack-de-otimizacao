@@ -1,6 +1,0 @@
-# Android/Gradle
-.gradle/
-build/
-local.properties
-*.iml
-.idea/
