@@ -69,7 +69,7 @@ function otm_allowed_scripts(): array {
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
-        'keep-alive.sh', 'game-clean.sh',
+        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'cool-down.sh',
         'bench.sh', 'device-profile.sh', 'config.sh',
     ];
 }
@@ -129,6 +129,16 @@ function otm_choices(): array {
             'desc'  => 'Um clique para entrar em "modo partida": encerra os apps de fundo (sem tocar no jogo nem nos protegidos), poda cache/dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. Escolha o app e o modo. Reverta em "Desligar".',
             'risk'  => 'careful',
             'app'   => true,
+        ],
+        'ramboost' => [
+            'title' => 'Liberar RAM agora',
+            'desc'  => 'Libera a memória de verdade: encerra os apps de fundo (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps e, com root, manda o kernel soltar o pagecache. Diferente de "RAM: perfil gaming", que só muda quantos apps o sistema deixa em cache — aqui a memória é liberada na hora. O painel mostra quanto foi liberado.',
+            'risk'  => 'careful',
+        ],
+        'cooldown' => [
+            'title' => 'Resfriar o aparelho',
+            'desc'  => 'Use quando o celular estiver quente. Reduz o que esquenta: limita a CPU e a GPU ao clock mínimo, baixa o brilho e encerra os apps de fundo. No modo "Máximo" também desliga os núcleos extras. Desliga sozinho ao esfriar (38°C) ou em 30 min. Requer root. Reverta em "Parar resfriamento".',
+            'risk'  => 'root',
         ],
     ];
 }
@@ -254,6 +264,40 @@ function otm_actions(): array {
           'desc' => 'Recupera espaço e evita o compilador travar o aparelho.',
           'help' => 'O Android compila os apps em segundo plano e isso ocupa espaço e às vezes trava. Aqui essa compilação é limpa: recupera armazenamento. Os apps recompilam sozinhos quando você abre.',
           'argv' => ['adb-tweaks.sh', 'aot']]);
+
+    // ----- Liberar RAM de verdade + Resfriamento -----
+    $add(['id' => 'ram.normal', 'group' => 'Desempenho', 'label' => 'Liberar RAM: normal',
+          'desc' => 'Encerra o fundo, poda cache e solta pagecache. Mostra o ganho.',
+          'help' => 'Libera memória na hora: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), apaga o cache de todos os apps e, com root, manda o kernel soltar o pagecache. Diferente de "RAM: perfil gaming" — aqui a RAM é liberada de verdade. O resultado mostra quantos MB sobraram.',
+          'choice' => 'ramboost', 'option' => 'Normal',
+          'argv' => ['ram-boost.sh', 'boost', 'normal'], 'risk' => 'careful', 'confirm' => true, 'timeout' => 120]);
+    $add(['id' => 'ram.max', 'group' => 'Desempenho', 'label' => 'Liberar RAM: máximo',
+          'desc' => 'Igual ao normal e ainda encerra apps de mídia/chat conhecidos.',
+          'help' => 'A versão mais agressiva: além de tudo do normal, encerra também apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch). Sobra o máximo de RAM. Use só quando quiser o aparelho 100% livre.',
+          'choice' => 'ramboost', 'option' => 'Máximo',
+          'argv' => ['ram-boost.sh', 'boost', 'max'], 'risk' => 'careful', 'confirm' => true, 'timeout' => 120]);
+    $add(['id' => 'ram.status', 'group' => 'Desempenho', 'label' => 'Ver RAM livre',
+          'desc' => 'Mostra a RAM em uso e quem está protegido. Só leitura.',
+          'help' => 'Mostra quanta RAM está livre e em uso, o perfil de RAM em cache e quais apps estão protegidos no anti-relog. Tudo lido do aparelho.',
+          'argv' => ['ram-boost.sh', 'status']]);
+    $add(['id' => 'cool.normal', 'group' => 'Desempenho', 'label' => 'Resfriar aparelho: normal',
+          'desc' => 'Limita CPU/GPU e baixa o brilho para esfriar. Desliga sozinho.',
+          'help' => 'Use quando o celular estiver quente. Reduz o que esquenta: prende a CPU e a GPU no clock mínimo, baixa o brilho da tela e encerra os apps de fundo. Desliga automaticamente ao esfriar (38°C) ou após 30 minutos. Requer root. Reverta em "Parar resfriamento".',
+          'choice' => 'cooldown', 'option' => 'Normal',
+          'argv' => ['cool-down.sh', 'on', 'normal'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
+    $add(['id' => 'cool.max', 'group' => 'Desempenho', 'label' => 'Resfriar aparelho: máximo',
+          'desc' => 'Igual ao normal e ainda desliga os núcleos extras.',
+          'help' => 'A versão mais forte: além de tudo do normal, desliga os núcleos de CPU extras para reduzir ainda mais o calor. O aparelho fica mais lento enquanto está ligado — é o preço de esfriar rápido. Desliga sozinho ao esfriar. Requer root.',
+          'choice' => 'cooldown', 'option' => 'Máximo',
+          'argv' => ['cool-down.sh', 'on', 'max'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
+    $add(['id' => 'cool.off', 'group' => 'Desempenho', 'label' => 'Parar resfriamento',
+          'desc' => 'Desliga o modo resfriamento e volta tudo ao normal.',
+          'help' => 'Desfaz o modo resfriamento: devolve os limites de CPU/GPU, os núcleos e o brilho ao que eram antes. Use quando o aparelho já esfriou.',
+          'argv' => ['cool-down.sh', 'off'], 'risk' => 'root']);
+    $add(['id' => 'cool.status', 'group' => 'Desempenho', 'label' => 'Ver temperatura',
+          'desc' => 'Mostra a temperatura e se o resfriamento está ligado. Só leitura.',
+          'help' => 'Mostra a temperatura atual do aparelho (lida das zonas térmicas), se o modo resfriamento está ligado e os limites de clock atuais. Só leitura.',
+          'argv' => ['cool-down.sh', 'status']]);
 
     // ----- Renderizador -----
     $add(['id' => 'gpu', 'group' => 'Display & Touch', 'label' => 'Aplicar conjunto GPU',

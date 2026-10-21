@@ -252,6 +252,26 @@ nativa além do necessário para conectar e rodar os comandos.
   conhecidos (`GC_EXTRA`). `off [pkg]` desfaz (usa o `off.sh` de `bkp_set`/`bkp_raw`
   e o `keep-alive.sh off`) e `status [pkg]` lê tudo de volta. Estado em
   `$ST/gameclean/applied`. Categoria **Apps e jogos** (grupo de escolha `gameclean`).
+- **Liberar RAM** (`scripts/ram-boost.sh`, na whitelist do `lib.php`): libera memória
+  de verdade (ação pontual, nada a reverter). `boost [normal|max]` encerra os apps de
+  3º plano via `otm_bg_kill` (poupa o jogo e os protegidos no anti-relog), poda o cache
+  (`otm_cache_trim`), roda `am kill-all` e, com root, solta o pagecache
+  (`otm_drop_caches`). Mostra a RAM livre antes/depois (`otm_ram_livre_mb`, de
+  `/proc/meminfo`). O modo `max` também encerra apps de mídia/chat (`RB_EXTRA`).
+  `status` mostra RAM livre/total, o perfil de cache e quem está protegido. Exige
+  shell (`require_shell`). Categoria **Desempenho** (grupo de escolha `ramboost`).
+- **Modo resfriamento** (`scripts/cool-down.sh`, na whitelist do `lib.php`): baixa a
+  temperatura. `on [normal|max]` prende a CPU e a GPU no clock mínimo (`co_cpu_cool`/
+  `co_gpu_cool`), baixa o brilho e encerra o fundo; `max` também desliga os núcleos
+  extras (`co_cores_off`). Um vigia em segundo plano desliga sozinho ao esfriar
+  (`CO_TARGET`, padrão 38°C) ou após `CO_MAXMIN` minutos (padrão 30) — nos testes,
+  `OTM_COOL_NOWATCH=1` pula o vigia. Reversão própria em `$ST/cooldown/off.sh`
+  (`co_write`/`co_set` guardam o valor original); `off` desfaz e `status` mostra
+  temperatura + estado. Requer root. Categoria **Desempenho** (grupo de escolha
+  `cooldown`).
+- **Limpeza de RAM** (`clean`/`mem` do `adb-tweaks.sh`): além de ajustar o perfil de
+  cache, agora encerram os apps de 3º plano, podam o cache e (com root) soltam o
+  pagecache, reportando os MB liberados. O encerramento só roda com shell.
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).

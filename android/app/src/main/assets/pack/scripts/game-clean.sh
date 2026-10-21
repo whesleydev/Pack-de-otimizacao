@@ -67,14 +67,7 @@ gc_killbg() {
     keep="$pkg com.dts.freefireth com.dts.freefiremax"
     # não mata quem você protegeu no anti-relog
     [ -s "$ST/keepalive/apps" ] && keep="$keep $(tr '\n' ' ' < "$ST/keepalive/apps")"
-    n=0
-    for p in $(sh_get "pm list packages -3" | sed 's/package://'); do
-        case " $keep " in *" $p "*) continue ;; esac
-        case "$p" in
-            com.android.*|com.google.android.gms|com.google.android.gsf|android) continue ;;
-        esac
-        sh_run "am force-stop $p" >/dev/null 2>&1 && n=$((n+1))
-    done
+    n="$(otm_bg_kill $keep)"
     # "max" também encerra os apps de mídia/chat conhecidos
     if [ "$extra" = "max" ]; then
         for p in $GC_EXTRA; do
@@ -101,18 +94,25 @@ cmd_on() {
     # 2) limpeza real de cache/dexopt + RAM
     say "2/6  Limpando cache, dexopt e RAM"
     bkp_begin
+    rb="$(otm_ram_livre_mb)"
     sh_run "pm trim-caches 999999999999" >/dev/null 2>&1
     sh_run "am kill-all" >/dev/null 2>&1
     sh_run "sync" >/dev/null 2>&1
     if sh_ok; then
         sh_run "killall -9 dex2oat" >/dev/null 2>&1
         sh_run "logcat -c" >/dev/null 2>&1
+        otm_drop_caches
         [ -w /sys/kernel/mm/lru_gen/enabled ] && sh_run "echo 1 > /sys/kernel/mm/lru_gen/enabled" >/dev/null 2>&1
         sh_run "sm fstrim" >/dev/null 2>&1
     fi
     # perfil de RAM de jogo: menos apps em cache, mais RAM para o jogo
     bkp_set global activity_manager_constants max_cached_processes=8,max_phantom_processes=1024
-    say "cache/dexopt podados · RAM no perfil gaming"
+    ra="$(otm_ram_livre_mb)"
+    if [ -n "$rb" ] && [ -n "$ra" ]; then
+        say "cache/dexopt podados · RAM livre: ${rb}MB → ${ra}MB (+$((ra - rb))MB)"
+    else
+        say "cache/dexopt podados · RAM no perfil gaming"
+    fi
 
     # 3) protege o jogo: anti-relog (keep-alive) — mantém o jogo vivo, sem relog
     say "3/6  Protegendo o jogo (anti-relog)"

@@ -421,10 +421,11 @@ game_tune() {
 }
 
 # --- memória / RAM ------------------------------------------------------------
-# mem [padrao|gaming] -> ajusta quantos apps ficam em cache e libera RAM
+# mem [padrao|gaming] -> ajusta quantos apps ficam em cache e libera RAM de verdade
 mem() {
     perfil="${1:-padrao}"
     bkp_begin
+    before="$(otm_ram_livre_mb)"
     case "$perfil" in
         gaming)
             say "RAM - perfil GAMING (mais RAM livre)"
@@ -435,27 +436,49 @@ mem() {
             bkp_set global activity_manager_constants max_cached_processes=32,max_phantom_processes=2147483647
             ;;
     esac
-    sh_run "am kill-all" >/dev/null
-    sh_run "pm trim-caches 999999999999" >/dev/null
-    sh_run "sync" >/dev/null
+    # libera de verdade: encerra apps de fundo, poda cache e solta pagecache (root)
+    if have_shell; then
+        k="$(otm_bg_kill com.dts.freefireth com.dts.freefiremax)"
+        say "$k app(s) de fundo encerrado(s)"
+        otm_cache_trim >/dev/null 2>&1
+        sh_run "am kill-all" >/dev/null 2>&1
+        otm_drop_caches
+        sh_run "sync" >/dev/null 2>&1
+    fi
     # zram/MGLRU/KSM só com root e se o kernel aceitar
     if sh_ok; then
-        [ -w /sys/kernel/mm/lru_gen/enabled ] && sh_run "echo 1 > /sys/kernel/mm/lru_gen/enabled" >/dev/null
-        [ -w /sys/kernel/mm/ksm/run ] && sh_run "echo 1 > /sys/kernel/mm/ksm/run" >/dev/null
+        [ -w /sys/kernel/mm/lru_gen/enabled ] && sh_run "echo 1 > /sys/kernel/mm/lru_gen/enabled" >/dev/null 2>&1
+        [ -w /sys/kernel/mm/ksm/run ] && sh_run "echo 1 > /sys/kernel/mm/ksm/run" >/dev/null 2>&1
         sh_run "sysctl -w vm.swappiness=100" >/dev/null 2>&1
+    fi
+    after="$(otm_ram_livre_mb)"
+    if [ -n "$before" ] && [ -n "$after" ]; then
+        say "RAM livre: ${before}MB → ${after}MB (+$((after - before))MB)"
     fi
     say "RAM ajustada (perfil $perfil)"
 }
 
 # --- dexopt / limpeza ---------------------------------------------------------
+# clean -> apaga cache de todos os apps, encerra apps de fundo e solta pagecache
 clean() {
-    say "Limpeza (dexopt / logs)"
+    say "Limpeza (cache / dexopt / RAM)"
+    before="$(otm_ram_livre_mb)"
+    if have_shell; then
+        k="$(otm_bg_kill com.dts.freefireth com.dts.freefiremax)"
+        say "$k app(s) de fundo encerrado(s)"
+        f="$(otm_cache_trim)"
+        [ -n "$f" ] && say "cache podado: $((f / 1048576))MB liberados"
+    fi
     if sh_ok; then
-        sh_run "pm trim-caches 999999999999" >/dev/null
-        sh_run "killall -9 dex2oat" >/dev/null
-        sh_run "logcat -c" >/dev/null
+        sh_run "killall -9 dex2oat" >/dev/null 2>&1
+        sh_run "logcat -c" >/dev/null 2>&1
+        otm_drop_caches
         sh_run "sm fstrim" >/dev/null 2>&1
-        sh_run "sync" >/dev/null
+        sh_run "sync" >/dev/null 2>&1
+    fi
+    after="$(otm_ram_livre_mb)"
+    if [ -n "$before" ] && [ -n "$after" ]; then
+        say "RAM livre: ${before}MB → ${after}MB (+$((after - before))MB)"
     fi
     say "caches trimados"
 }

@@ -13,7 +13,8 @@
 #         deep <modulo> <on|off> | touch <perfil> | game <...> | bench <...> |
 #         dns <perfil|menu> | modules <run|list|info|menu> <nome> |
 #         device | freeze | unfreeze | gameclean <on|off|status> |
-#         keep <on|off|status|list|restore> | <grupo do adb-tweaks> | test | build
+#         keep <on|off|status|list|restore> | ram <boost|status> |
+#         cool <on|off|status> | <grupo do adb-tweaks> | test | build
 #
 #  Tudo que aplica é reversível. Estado em ~/.packotm/ (nunca versionado).
 # =============================================================================
@@ -106,6 +107,8 @@ dispatch() {
         game)     sh "$DIR/game-per-app.sh" "$@" ;;
         gameclean|gclean) sh "$DIR/game-clean.sh" "$@" ;;
         keep)     sh "$DIR/keep-alive.sh" "$@" ;;
+        ram|ramboost) sh "$DIR/ram-boost.sh" "$@" ;;
+        cool|cooldown) sh "$DIR/cool-down.sh" "$@" ;;
         bench)    sh "$DIR/bench.sh" "$@" ;;
         device)   sh "$DIR/device-profile.sh" "$@" ;;
         dns)      sh "$DIR/dns.sh" "$@" ;;
@@ -157,6 +160,7 @@ menu() {
         printf '   %s20%s Tela / refresh           %s21%s Notificações / DND\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s22%s Congelar apps            %s23%s Descongelar apps\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s24%s %sGame Clean%s (jogo limpo)   %s25%s Anti-relog (manter vivo)\n' "$C_A" "$C_R" "$C_G" "$C_R" "$C_A" "$C_R"
+        printf '   %s26%s %sLiberar RAM agora%s         %s27%s %sResfriar aparelho%s\n' "$C_A" "$C_R" "$C_G" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
 
         printf '\n  %sDEBLOAT / PROFUNDAS (root opcional)%s\n' "$C_A" "$C_R"
         printf '   %s30%s Debloat (perfis)         %s31%s Debloat - reverter\n' "$C_A" "$C_R" "$C_A" "$C_R"
@@ -218,6 +222,10 @@ menu() {
                 sh "$DIR/game-clean.sh" on "${gp:-com.dts.freefireth}" "${gm:-normal}" ;;
             25) printf '  pacote do app/jogo [com.dts.freefireth]: '; read -r kp
                 sh "$DIR/keep-alive.sh" on "${kp:-com.dts.freefireth}" ;;
+            26) printf '  modo (normal/max) [normal]: '; read -r rm
+                sh "$DIR/ram-boost.sh" boost "${rm:-normal}" ;;
+            27) printf '  modo (normal/max) [normal]: '; read -r cm
+                sh "$DIR/cool-down.sh" on "${cm:-normal}" ;;
             30) printf '  perfil (leve/medio/pesado) [medio]: '; read -r dp
                 sh "$DIR/debloat.sh" on "${dp:-medio}" ;;
             31) sh "$DIR/debloat.sh" off ;;

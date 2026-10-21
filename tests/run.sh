@@ -44,6 +44,7 @@ EOF
 [ -n "$TMP_PM_LOG" ] && echo "$*" >> "$TMP_PM_LOG"
 if [ "$1" = "list" ]; then
     shift
+    [ "$1" = "packages" ] && shift
     has=0
     for a in "$@"; do
         case "$a" in -*) continue ;; *) has=1; echo "package:$a" ;; esac
@@ -1186,11 +1187,11 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 6 ] && ok "renderiza 6 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean)" \
-            || bad "grupos de escolha: $n_choice (esperado 6)"
+        [ "$n_choice" -eq 8 ] && ok "renderiza 8 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, resfriar)" \
+            || bad "grupos de escolha: $n_choice (esperado 8)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        [ "$n_opts" -eq 24 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 24)"
+        [ "$n_opts" -eq 28 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 2 resfriar ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 28)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -1452,6 +1453,101 @@ t_gameclean() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_ramboost() {
+    printf '\n  # liberar RAM: encerra o fundo, poda cache e reporta o ganho\n'
+    local f="$ROOT/scripts/ram-boost.sh"
+    [ -f "$f" ] && ok "scripts/ram-boost.sh existe" || { bad "ram-boost.sh ausente"; return; }
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/rb_help" 2>&1
+    assert_contains "$TMP/rb_help" "LIBERAR RAM\|ram-boost" "ram-boost explica o que faz sem argumento"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" boost bogus > "$TMP/rb_bad" 2>&1
+    assert_contains "$TMP/rb_bad" "inválido" "ram-boost recusa modo inválido"
+    # sem shell: recusa
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" boost >/dev/null 2>&1
+    assert_eq "1" "$?" "ram-boost sem shell é recusado"
+    # com root: encerra apps de 3º plano, poda cache e mostra o ganho
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/rb.log" TMP_AM_LOG="$TMP/rb.log" TMP_PM_LOG="$TMP/rb.log"
+    : > "$TMP_CMD_LOG"
+    # protege um app no anti-relog: ele NÃO pode ser encerrado
+    mkdir -p "$HOME/.packotm/keepalive"; echo "com.instagram.android" > "$HOME/.packotm/keepalive/apps"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" boost normal > "$TMP/rb_on" 2>&1
+    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" && ok "ram-boost encerra apps de fundo" || bad "ram-boost não encerrou o fundo"
+    grep -q 'force-stop com.instagram.android' "$TMP_CMD_LOG" && bad "ram-boost matou um protegido" || ok "ram-boost poupa os protegidos no anti-relog"
+    grep -q 'trim-caches' "$TMP_CMD_LOG" && ok "ram-boost poda o cache" || bad "ram-boost sem trim-caches"
+    grep -q 'force-stop com.spotify.music' "$TMP_CMD_LOG" && bad "modo normal não devia matar mídia" || ok "modo normal poupa apps de mídia"
+    assert_contains "$TMP/rb_on" "RAM livre" "ram-boost mostra a RAM livre"
+    # modo máximo encerra mídia conhecida
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" boost max > "$TMP/rb_max" 2>&1
+    grep -q 'force-stop com.spotify.music' "$TMP_CMD_LOG" && ok "ram-boost máximo encerra mídia" || bad "ram-boost máximo não encerrou mídia"
+    # status mostra o protegido
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/rb_st" 2>&1
+    assert_contains "$TMP/rb_st" "RAM" "ram-boost status mostra a RAM"
+    assert_contains "$TMP/rb_st" "com.instagram.android" "ram-boost status lista os protegidos"
+    # registro no painel + whitelist + catálogo
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["ram.normal","ram.max","ram.status"] as $id) echo isset($a[$id]) ? "" : "FALTA:$id ";' \
+        > "$TMP/rb_reg" 2>&1
+    test ! -s "$TMP/rb_reg" && ok "ações de RAM no registro do painel" || bad "registro: $(cat "$TMP/rb_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("ram-boost.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/rb_lib" 2>&1
+    assert_contains "$TMP/rb_lib" "ok" "ram-boost.sh na whitelist"
+    php -r 'require "'"$ROOT"'/web/lib.php"; echo isset(otm_choices()["ramboost"]) ? "ok":"falta";' > "$TMP/rb_ch" 2>&1
+    assert_contains "$TMP/rb_ch" "ok" "grupo de escolha ramboost declarado"
+    grep -q '"ram-boost.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o Liberar RAM" || bad "app: actions.json sem ram-boost"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_cooldown() {
+    printf '\n  # resfriamento: limita CPU/GPU, baixa brilho e é reversível\n'
+    local f="$ROOT/scripts/cool-down.sh"
+    [ -f "$f" ] && ok "scripts/cool-down.sh existe" || { bad "cool-down.sh ausente"; return; }
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/co_help" 2>&1
+    assert_contains "$TMP/co_help" "RESFRIAMENTO\|resfriamento" "cool-down explica o que faz sem argumento"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on bogus > "$TMP/co_bad" 2>&1
+    assert_contains "$TMP/co_bad" "inválido" "cool-down recusa modo inválido"
+    # sem root: recusa (é um modo que mexe no kernel)
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on >/dev/null 2>&1
+    assert_eq "1" "$?" "cool-down sem root é recusado"
+    # com root: aplica brilho, grava a reversão e desliga sozinho (sem vigia nos testes)
+    rm -rf "$HOME/.packotm"
+    printf '200' > "$TMP_STORE/system.screen_brightness"
+    printf '1' > "$TMP_STORE/system.screen_brightness_mode"
+    export TMP_CMD_LOG="$TMP/co.log" TMP_AM_LOG="$TMP/co.log" TMP_PM_LOG="$TMP/co.log"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su OTM_COOL_NOWATCH=1 sh "$f" on normal > "$TMP/co_on" 2>&1
+    assert_contains "$TMP_STORE/system.screen_brightness" "40" "cool-down baixa o brilho"
+    assert_contains "$TMP_STORE/system.screen_brightness_mode" "0" "cool-down tira o brilho automático"
+    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" && ok "cool-down encerra o fundo" || bad "cool-down não encerrou o fundo"
+    assert_contains "$TMP/co_on" "resfriamento ligado" "cool-down confirma que ligou"
+    [ -s "$HOME/.packotm/cooldown/off.sh" ] && ok "cool-down guarda a reversão" || bad "cool-down sem reversão"
+    # status mostra ligado
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/co_st" 2>&1
+    assert_contains "$TMP/co_st" "LIGADO" "cool-down status mostra ligado"
+    # off devolve o brilho original
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" off > "$TMP/co_off" 2>&1
+    assert_contains "$TMP_STORE/system.screen_brightness" "200" "cool-down off devolve o brilho"
+    [ -f "$HOME/.packotm/cooldown/on" ] && bad "cool-down off deixou o marcador" || ok "cool-down off limpa o marcador"
+    # registro no painel + whitelist + catálogo
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["cool.normal","cool.max","cool.off","cool.status"] as $id) echo isset($a[$id]) ? "" : "FALTA:$id ";' \
+        > "$TMP/co_reg" 2>&1
+    test ! -s "$TMP/co_reg" && ok "ações de resfriamento no registro do painel" || bad "registro: $(cat "$TMP/co_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("cool-down.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/co_lib" 2>&1
+    assert_contains "$TMP/co_lib" "ok" "cool-down.sh na whitelist"
+    php -r 'require "'"$ROOT"'/web/lib.php"; echo isset(otm_choices()["cooldown"]) ? "ok":"falta";' > "$TMP/co_ch" 2>&1
+    assert_contains "$TMP/co_ch" "ok" "grupo de escolha cooldown declarado"
+    grep -q '"cool-down.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o Resfriar" || bad "app: actions.json sem cool-down"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
     f="$ROOT/scripts/pack.sh"
@@ -1515,6 +1611,8 @@ t_web
 t_panel_v219
 t_keepalive
 t_gameclean
+t_ramboost
+t_cooldown
 t_pack
 
 printf '\n  --------------------------------------------------\n'

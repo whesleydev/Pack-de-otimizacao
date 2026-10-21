@@ -668,6 +668,109 @@
         "risk": "safe"
     },
     {
+        "id": "ram.normal",
+        "group": "Desempenho",
+        "label": "Liberar RAM: normal",
+        "desc": "Encerra o fundo, poda cache e solta pagecache. Mostra o ganho.",
+        "help": "Libera memória na hora: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), apaga o cache de todos os apps e, com root, manda o kernel soltar o pagecache. Diferente de \"RAM: perfil gaming\" — aqui a RAM é liberada de verdade. O resultado mostra quantos MB sobraram.",
+        "argv": [
+            "ram-boost.sh",
+            "boost",
+            "normal"
+        ],
+        "confirm": true,
+        "risk": "careful",
+        "choice": "ramboost",
+        "option": "Normal"
+    },
+    {
+        "id": "ram.max",
+        "group": "Desempenho",
+        "label": "Liberar RAM: máximo",
+        "desc": "Igual ao normal e ainda encerra apps de mídia/chat conhecidos.",
+        "help": "A versão mais agressiva: além de tudo do normal, encerra também apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch). Sobra o máximo de RAM. Use só quando quiser o aparelho 100% livre.",
+        "argv": [
+            "ram-boost.sh",
+            "boost",
+            "max"
+        ],
+        "confirm": true,
+        "risk": "careful",
+        "choice": "ramboost",
+        "option": "Máximo"
+    },
+    {
+        "id": "ram.status",
+        "group": "Desempenho",
+        "label": "Ver RAM livre",
+        "desc": "Mostra a RAM em uso e quem está protegido. Só leitura.",
+        "help": "Mostra quanta RAM está livre e em uso, o perfil de RAM em cache e quais apps estão protegidos no anti-relog. Tudo lido do aparelho.",
+        "argv": [
+            "ram-boost.sh",
+            "status"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "cool.normal",
+        "group": "Desempenho",
+        "label": "Resfriar aparelho: normal",
+        "desc": "Limita CPU/GPU e baixa o brilho para esfriar. Desliga sozinho.",
+        "help": "Use quando o celular estiver quente. Reduz o que esquenta: prende a CPU e a GPU no clock mínimo, baixa o brilho da tela e encerra os apps de fundo. Desliga automaticamente ao esfriar (38°C) ou após 30 minutos. Requer root. Reverta em \"Parar resfriamento\".",
+        "argv": [
+            "cool-down.sh",
+            "on",
+            "normal"
+        ],
+        "confirm": true,
+        "risk": "root",
+        "choice": "cooldown",
+        "option": "Normal"
+    },
+    {
+        "id": "cool.max",
+        "group": "Desempenho",
+        "label": "Resfriar aparelho: máximo",
+        "desc": "Igual ao normal e ainda desliga os núcleos extras.",
+        "help": "A versão mais forte: além de tudo do normal, desliga os núcleos de CPU extras para reduzir ainda mais o calor. O aparelho fica mais lento enquanto está ligado — é o preço de esfriar rápido. Desliga sozinho ao esfriar. Requer root.",
+        "argv": [
+            "cool-down.sh",
+            "on",
+            "max"
+        ],
+        "confirm": true,
+        "risk": "root",
+        "choice": "cooldown",
+        "option": "Máximo"
+    },
+    {
+        "id": "cool.off",
+        "group": "Desempenho",
+        "label": "Parar resfriamento",
+        "desc": "Desliga o modo resfriamento e volta tudo ao normal.",
+        "help": "Desfaz o modo resfriamento: devolve os limites de CPU/GPU, os núcleos e o brilho ao que eram antes. Use quando o aparelho já esfriou.",
+        "argv": [
+            "cool-down.sh",
+            "off"
+        ],
+        "confirm": false,
+        "risk": "root"
+    },
+    {
+        "id": "cool.status",
+        "group": "Desempenho",
+        "label": "Ver temperatura",
+        "desc": "Mostra a temperatura e se o resfriamento está ligado. Só leitura.",
+        "help": "Mostra a temperatura atual do aparelho (lida das zonas térmicas), se o modo resfriamento está ligado e os limites de clock atuais. Só leitura.",
+        "argv": [
+            "cool-down.sh",
+            "status"
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "gpu",
         "group": "Display & Touch",
         "label": "Aplicar conjunto GPU",

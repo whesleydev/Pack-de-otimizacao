@@ -3,6 +3,35 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.22.0] - 2026-10-05
+
+### Adicionado
+- **Liberar RAM agora.** Novo módulo `scripts/ram-boost.sh` (`boost [normal|max]`,
+  `status`) que libera memória de verdade: encerra os apps de fundo (poupa o jogo e
+  quem você protegeu no anti-relog), poda o cache de todos os apps e, com root,
+  manda o kernel soltar o pagecache/dentries (`/proc/sys/vm/drop_caches`). Mostra
+  quanto de RAM foi liberado (lido de `/proc/meminfo`). Dois níveis: **Normal** e
+  **Máximo** (este também encerra apps de mídia/chat conhecidos).
+- **Modo resfriamento.** Novo módulo `scripts/cool-down.sh` (`on [normal|max]`,
+  `off`, `status`) para usar quando o aparelho estiver quente: prende a CPU e a GPU
+  no clock mínimo, baixa o brilho da tela e encerra os apps de fundo. No modo
+  **Máximo** também desliga os núcleos extras. Tem um vigia que desliga sozinho ao
+  esfriar (padrão 38°C) ou após o tempo máximo (padrão 30 min). Requer root e é
+  totalmente reversível (`cool-down.sh off`).
+- Categoria **Desempenho** ganhou os cartões de escolha `Liberar RAM` (Normal/Máximo)
+  e `Resfriar aparelho` (Normal/Máximo), além de `Ver RAM livre` e `Ver temperatura`.
+- Helpers reutilizáveis em `scripts/common.sh`: `otm_bg_kill`, `otm_cache_trim`,
+  `otm_drop_caches`, `otm_ram_livre_mb` e `otm_temp`.
+
+### Corrigido
+- **"Limpar cache e RAM" não liberava RAM de verdade.** O `clean` e o `mem` do
+  `adb-tweaks.sh` agora encerram os apps de 3º plano (`am force-stop`), podam o cache
+  e, com root, soltam o pagecache — em vez de apenas ajustar o limite de apps em
+  cache. Os dois passaram a reportar quantos MB de RAM foram liberados.
+- **`pm list packages -3` era tratado como se não precisasse de privilégio.** O
+  encerramento de apps de fundo agora só roda com shell (Shizuku/ADB/root), evitando
+  tentativas inúteis em modo local.
+
 ## [2.21.0] - 2026-10-05
 
 ### Adicionado

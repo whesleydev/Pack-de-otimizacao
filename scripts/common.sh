@@ -269,3 +269,66 @@ boot_status() {
     fi
     printf '  %slinhas no perfil de boot:%s %s\n' "$C_A" "$C_R" "$(grep -c . "$BOOT_SH" 2>/dev/null || echo 0)"
 }
+
+# --- RAM: leitura e liberação real --------------------------------------------
+# apps que nunca devem ser encerrados por engano (a UI do sistema, o próprio pack)
+OTM_SYS_KEEP="android com.android.systemui com.android.launcher3 com.google.android.apps.nexuslauncher com.android.settings com.otm.pack com.termux"
+
+# otm_meminfo <campo MemTotal|MemAvailable> -> kB
+otm_meminfo() {
+    sh_get 'cat /proc/meminfo' | awk -v k="$1" '$1==k":"{print $2; exit}'
+}
+
+# otm_ram_livre_mb -> RAM disponível em MB (vazio se não der para ler)
+otm_ram_livre_mb() {
+    v="$(otm_meminfo MemAvailable)"
+    [ -n "$v" ] && echo $((v / 1024))
+}
+
+# otm_bg_kill <poupados...> -> encerra apps de 3º plano, poupando os citados.
+# Só mexe em apps instalados pelo usuário (pm list packages -3): não toca em
+# serviços do sistema. Ecoa a quantidade de apps encerrados.
+otm_bg_kill() {
+    keep=" $OTM_SYS_KEEP $* "
+    n=0
+    for p in $(sh_get 'pm list packages -3' | sed 's/^package://'); do
+        [ -n "$p" ] || continue
+        case "$keep" in *" $p "*) continue ;; esac
+        sh_run "am force-stop $p" >/dev/null 2>&1 && n=$((n + 1))
+    done
+    echo "$n"
+}
+
+# otm_cache_trim -> apaga o cache de todos os apps e devolve o espaço liberado (B)
+otm_cache_trim() {
+    out="$(sh_get 'pm trim-caches 999999999999')"
+    printf '%s' "$out" | awk '/space free/{print $1; exit}'
+}
+
+# otm_drop_caches -> manda o kernel soltar pagecache/dentries/inodes (root)
+otm_drop_caches() {
+    sh_ok || return 1
+    if [ -w /proc/sys/vm/drop_caches ]; then
+        sh_run 'echo 3 > /proc/sys/vm/drop_caches' >/dev/null 2>&1
+        return 0
+    fi
+    sh_run 'sync' >/dev/null 2>&1
+    return 1
+}
+
+# otm_temp -> temperatura em °C da melhor zona disponível (vazio se não der)
+otm_temp() {
+    for z in /sys/class/thermal/thermal_zone*; do
+        [ -d "$z" ] || continue
+        t="$(sh_get "cat $z/type" 2>/dev/null)"
+        case "$t" in soc | *skin* | cpu* | gpu* | *battery* | tsens*) ;; *) continue ;; esac
+        v="$(sh_get "cat $z/temp" 2>/dev/null)"
+        case "$v" in '' | *[!0-9-]*) continue ;; esac
+        [ "$v" -gt 1000 ] && v=$((v / 1000))
+        echo "$v"
+        return 0
+    done
+    v="$(sh_get 'dumpsys battery' | awk -F': ' '/ temperature:/{print $2}')"
+    case "$v" in '' | *[!0-9]*) return 0 ;; esac
+    echo "$((v / 10))"
+}
