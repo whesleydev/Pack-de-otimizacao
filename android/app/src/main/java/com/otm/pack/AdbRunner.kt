@@ -4,6 +4,9 @@ import android.content.Context
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import io.github.muntashirakon.adb.AdbStream
 import io.github.muntashirakon.adb.LocalServices
+import io.github.muntashirakon.adb.android.AdbMdns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.KeyFactory
 import java.security.KeyPair
@@ -13,7 +16,9 @@ import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
 import java.security.spec.PKCS8EncodedKeySpec
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Conecta ao `adbd` do próprio aparelho por Wi-Fi (depuração sem fio) e executa
@@ -39,11 +44,69 @@ class AdbRunner(private val context: Context) : ShellRunner {
     /** Faz o pareamento por código (a porta é a que aparece em "Parear por código"). */
     suspend fun pair(host: String, port: Int, code: String): ExecResult = try {
         val mgr = mgr(host)
+        mgr.setTimeout(20, TimeUnit.SECONDS)
         val ok = mgr.pair(host, port, code)
         if (ok) ExecResult(0, "Pareado com $host:$port.", "") else ExecResult(1, "", "Pareamento recusado.")
     } catch (t: Throwable) {
         ExecResult(1, "", "Falha ao parear: ${t.message}")
     }
+
+    /**
+     * Pareia só com o código de 6 números: descobre sozinho o serviço de
+     * pareamento (`_adb-tls-pairing._tcp`) pela rede, como os apps que mostram
+     * "só digite o código". Devolve o endereço descoberto para a conexão seguinte.
+     */
+    suspend fun pairWithCode(code: String, timeoutMs: Long = 15000): ExecResult {
+        val info = discover(AdbMdns.SERVICE_TYPE_TLS_PAIRING, timeoutMs)
+            ?: return ExecResult(1, "", "Não achei o serviço de pareamento. Abra \"Depuração sem fio\" e toque em \"Parear com código\".")
+        return try {
+            val mgr = mgr(info.host)
+            mgr.setTimeout(20, TimeUnit.SECONDS)
+            val ok = mgr.pair(info.host, info.port, code)
+            if (ok) ExecResult(0, "Pareado com ${info.host}:${info.port}.", "")
+            else ExecResult(1, "", "Pareamento recusado. Confira o código.")
+        } catch (t: Throwable) {
+            ExecResult(1, "", "Falha ao parear: ${t.message}")
+        }
+    }
+
+    /**
+     * Conecta à depuração sem fio sem digitar porta: descobre o serviço
+     * `_adb-tls-connect._tcp` (ou `_adb._tcp`) e conecta. Se não achar, tenta o
+     * loopback (ADB em TCP no próprio aparelho).
+     */
+    suspend fun connectWireless(timeoutMs: Long = 15000): ExecResult {
+        val info = discover(AdbMdns.SERVICE_TYPE_TLS_CONNECT, timeoutMs)
+            ?: discover(AdbMdns.SERVICE_TYPE_ADB, 4000)
+        if (info != null) {
+            val r = connectTo(info.host, info.port, "Não conectou em ${info.host}:${info.port}.")
+            if (r.ok) return r
+        }
+        return connectLocal()
+    }
+
+    /** Descobre um serviço mDNS e devolve host:porta (null se não achar). */
+    private suspend fun discover(serviceType: String, timeoutMs: Long): HostPort? =
+        withContext(Dispatchers.IO) {
+            val ref = AtomicReference<HostPort?>(null)
+            val latch = CountDownLatch(1)
+            val mdns = AdbMdns(context, serviceType) { addr, port ->
+                if (addr != null && port > 0) {
+                    ref.set(HostPort(addr.hostAddress ?: "127.0.0.1", port))
+                    latch.countDown()
+                }
+            }
+            try {
+                mdns.start()
+                latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+            } catch (_: Throwable) {
+            } finally {
+                try { mdns.stop() } catch (_: Throwable) {}
+            }
+            ref.get()
+        }
+
+    private data class HostPort(val host: String, val port: Int)
 
     /** Conecta em `host:porta` (a porta da tela "Depuração sem fio"). */
     suspend fun connect(host: String, port: Int): ExecResult =

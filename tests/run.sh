@@ -523,6 +523,19 @@ t_app_fixes() {
         && ok "conexão: descobre o adbd pela rede (mDNS)" || bad "conexão: sem descoberta mDNS"
     grep -q 'set usb' "$ROOT/scripts/config.sh" && grep -q 'usb)   cfg_write usb' "$ROOT/scripts/config.sh" \
         && ok "conexão: config.sh aceita o modo usb" || bad "conexão: config.sh sem modo usb"
+    # 9c) ADB por Wi-Fi simplificado: só o código de 6 números (mDNS acha as portas)
+    grep -q 'fun pairWithCode(' "$src/AdbRunner.kt" \
+        && ok "wifi: pareia só com o código (pairWithCode)" || bad "wifi: sem pareamento por código"
+    grep -q 'SERVICE_TYPE_TLS_PAIRING' "$src/AdbRunner.kt" \
+        && ok "wifi: descobre o serviço de pareamento (mDNS)" || bad "wifi: sem descoberta do pareamento"
+    grep -q 'SERVICE_TYPE_TLS_CONNECT' "$src/AdbRunner.kt" && grep -q 'fun connectWireless(' "$src/AdbRunner.kt" \
+        && ok "wifi: conecta sem digitar porta (connectWireless)" || bad "wifi: conexão sem porta ausente"
+    grep -q 'Código de pareamento (6 números)' "$src/WifiDialog.kt" \
+        && ok "wifi: diálogo pede só o código" || bad "wifi: diálogo não simplificado"
+    grep -q 'Avançado (informar IP e portas)' "$src/WifiDialog.kt" \
+        && ok "wifi: campos manuais só no Avançado" || bad "wifi: sem bloco Avançado"
+    grep -q 'ADB por Wi-Fi (só o código)' "$src/PanelActivity.kt" \
+        && ok "wifi: opção do menu de conexão simplificada" || bad "wifi: opção do menu não atualizada"
     # 10) áudio audível: stream de mídia (não sonificação) e erro no logcat
     grep -q 'USAGE_MEDIA' "$src/SoundPlayer.kt" \
         && ok "som: usa stream de mídia (audível)" || bad "som: ainda usa stream de sonificação"

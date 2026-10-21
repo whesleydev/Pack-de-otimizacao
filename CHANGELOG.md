@@ -3,6 +3,21 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.25.0] - 2026-10-05
+
+### Corrigido
+- **ADB por Wi-Fi agora pede só o código de 6 números.** Antes o diálogo exigia
+  endereço IP, porta de conexão, porta de pareamento e o código — confuso e
+  desnecessário. Agora as portas são descobertas sozinhas pela rede (mDNS:
+  `_adb-tls-pairing._tcp` e `_adb-tls-connect._tcp`), como nos apps que só pedem o
+  código. Basta abrir *Depuração sem fio → Parear com código* e digitar o código.
+- Os campos manuais (IP e portas) foram para um bloco **Avançado** opcional, para
+  redes que bloqueiam mDNS ou para o ADB por TCP clássico.
+
+### Adicionado
+- Botão **Só conectar** no diálogo Wi-Fi: reaproveita a chave já pareada e dispensa
+  digitar o código de novo.
+
 ## [2.24.0] - 2026-10-05
 
 ### Adicionado

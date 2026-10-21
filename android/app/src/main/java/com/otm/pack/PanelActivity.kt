@@ -148,8 +148,8 @@ class PanelActivity : AppCompatActivity() {
     private fun askConnect() {
         val options = arrayOf(
             "Shizuku (recomendado)",
+            "ADB por Wi-Fi (só o código)",
             "Depuração USB (só autorizar)",
-            "ADB por Wi-Fi (parear)",
             "Cancelar",
         )
         androidx.appcompat.app.AlertDialog.Builder(this)
@@ -157,14 +157,14 @@ class PanelActivity : AppCompatActivity() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> useShizuku()
-                    1 -> useAdbLocal()
-                    2 -> WifiDialog.show(this, applicationContext) { r, msg ->
+                    1 -> WifiDialog.show(this, applicationContext) { r, msg ->
                         runner = r
                         toast(msg)
                         sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
                         pendingAfterConnect?.invoke(); pendingAfterConnect = null
                         web.reload()
                     }
+                    2 -> useAdbLocal()
                 }
             }
             .show()
