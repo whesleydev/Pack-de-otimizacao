@@ -4905,7 +4905,8 @@ $("#mCheck").onchange = e => $("#mGo").disabled = !e.target.checked;
 $("#mGo").onclick = () => { $("#mask").classList.remove("open");
   runPending(); pending = null; };
 $("#mask").onclick = e => { if (e.target.id === "mask"){ $("#mask").classList.remove("open"); pending = null; } };
-$("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo…");
+const btnStatus = $("#btnStatus");
+if (btnStatus) btnStatus.onclick = async () => { openConsole("Status do aparelho", "lendo…");
   const j = await apiGet("status"); openConsole("Status do aparelho", j.text || "(sem saída)"); };
 
 /* ---- LOGS: histórico completo (sem truncar) -------------------------------- */
@@ -5202,17 +5203,18 @@ addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList
 
 /* apps instalados (autocomplete) + estado do modo de acesso */
 (async () => {
+  const modeTxt = document.getElementById("modeTxt");
   try{
     const m = await apiGet("mode");
     const names = {rish:"Shizuku", adb:"ADB Wi-Fi", su:"root", local:"local (sem acesso)"};
     const txt = names[m.mode] || m.mode || "auto";
-    $("#modeTxt").textContent = txt;
+    if (modeTxt) modeTxt.textContent = txt;
     const pill = $("#modePill");
     if (pill) pill.title = "Acesso: " + txt + (m.priv ? " — " + m.priv : "") + ". Configure em Configs.";
-  }catch(e){ $("#modeTxt").textContent = "offline"; }
+  }catch(e){ if (modeTxt) modeTxt.textContent = "offline"; }
   try{ const i = await apiGet("info");
-    if (!document.getElementById("modeTxt").textContent || document.getElementById("modeTxt").textContent === "verificando…")
-      $("#modeTxt").textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
+    if (modeTxt && (!modeTxt.textContent || modeTxt.textContent === "verificando…"))
+      modeTxt.textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
   }catch(e){}
   // pré-carrega a lista de apps (nome + ícone) para o seletor abrir rápido
   loadApps();
