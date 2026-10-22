@@ -78,24 +78,17 @@ jobs:
             releases/*.zip
             releases/SHA256SUMS.txt
 
-  # --- build do APK Android --------------------------------------------------
+  # --- build do APK Android (usando container com SDK pré-configurado) -------
   apk:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cirruslabs/android-sdk:34
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
