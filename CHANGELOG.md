@@ -3,6 +3,36 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.25.2] - 2026-10-22
+
+### Corrigido
+- **Botões do topo do painel voltaram a funcionar.** Os atalhos do cabeçalho
+  (Status, Logs, Terminal, Conectar, Som, Acesso, Otimizar e Sair) e o selo de
+  modo de acesso tinham sumido do painel, mas o JavaScript continuava a
+  procurá-los — e a falha em um deles interrompia o script, deixando a
+  navegação das seções do topo e do rodapé sem resposta. O cabeçalho foi
+  restaurado e os seletores agora são tolerantes a ausência.
+- **Home do painel limpa.** Removidos os blocos que não faziam nada de verdade:
+  o botão redondo "foguete", o "Sorteio de Cargo Especial" (que só mostrava "Em
+  breve"), o "Perfil Térmico da GPU" e o "Game Lab & Perfis" (cujos botões só
+  exibiam um aviso, sem executar nada). A Home volta ao resumo original, com o
+  consumo real do aparelho.
+
+### Removido
+- 12 ações que não existiam de verdade no catálogo (`game_lab.*`,
+  `gpu.thermal.*` e `game.*`) e o script `game.sh`, que era só um esboço com
+  `echo`. O catálogo do painel volta a ter as 226 ações reais.
+- Andaimes mortos do repositório: `android/` (cópia parcial e obsoleta do
+  módulo), `public/`, `server.js`, `package.json`, `build.js`, `metadata.json`,
+  checksums órfãos em `releases/` e o diretório de cache `.gradle/` versionado
+  por engano.
+
+### Consertado
+- O empacotamento dos scripts no APK: a tarefa do Gradle lia `../scripts`
+  (caminho de quando o app ficava em `android/`) e, como a pasta não existia, era
+  ignorada em silêncio — o app embarcava uma cópia velha. Agora lê `scripts/` na
+  raiz, como esperado.
+
 ## [2.25.0] - 2026-10-05
 
 ### Corrigido

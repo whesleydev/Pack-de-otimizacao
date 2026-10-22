@@ -372,7 +372,7 @@ t_noroot_only() {
 # --- login do app Android (painel estático) ----------------------------------
 t_app_login() {
     printf '\n  # login do app (painel estático)\n'
-    local p="$ROOT/android/app/src/main/assets/panel"
+    local p="$ROOT/app/src/main/assets/panel"
     [ -f "$p/login.html" ] && ok "tela de login do app existe" || bad "login.html do app ausente"
     [ -f "$p/index.html" ] && ok "painel do app existe" || bad "index.html do app ausente"
     grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessão" \
@@ -394,14 +394,14 @@ t_app_login() {
     else
         printf '  [skip] node ausente: pulei o hash do login\n'
     fi
-    grep -q 'panel/login.html' "$ROOT/android/app/src/main/java/com/otm/pack/PanelActivity.kt" \
+    grep -q 'panel/login.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
         && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre o login"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
 t_app_exec() {
     printf '\n  # scripts rodam em /data/local/tmp (shell lê)\n'
-    local src="$ROOT/android/app/src/main/java/com/otm/pack"
+    local src="$ROOT/app/src/main/java/com/otm/pack"
     grep -q '/data/local/tmp/otm-pack' "$src/PackAssets.kt" \
         && ok "scripts vão para /data/local/tmp/otm-pack" || bad "scripts não vão p/ /data/local/tmp"
     grep -q 'ensureShellCopy' "$src/PackAssets.kt" \
@@ -443,9 +443,9 @@ plugin_state() {
 # --- correções pedidas no aparelho (arrasto, topo, papel de parede, engrenagem, som)
 t_app_fixes() {
     printf '\n  # correções do painel (arrasto, topo, papel de parede, engrenagem, som)\n'
-    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local app="$ROOT/app/src/main/assets/panel/index.html"
     local web="$ROOT/web/index.php"
-    local src="$ROOT/android/app/src/main/java/com/otm/pack"
+    local src="$ROOT/app/src/main/java/com/otm/pack"
     tr '\n' ' ' < "$app" > "$TMP/fx1"
     tr '\n' ' ' < "$web" > "$TMP/fx2"
     # 1) não arrasta para o lado: transbordo clipado e topo sem largura fixa
@@ -466,7 +466,7 @@ t_app_fixes() {
     grep -q 'id="btnGear"' "$web" && ok "web: botão de engrenagem existe" || bad "web: sem engrenagem"
     grep -q 'id="setTheme"\|id="setAccent"\|id="setSound"' "$app" && ok "app: config tem tema/cor/som" || bad "app: config incompleta"
     grep -q "ui' => 'appearance'" "$ROOT/web/lib.php" && ok "registro tem a ação de aparência" || bad "sem ação de aparência"
-    grep -q '"appearance"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"appearance"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem a ação de aparência" || bad "app: actions.json sem aparência"
     grep -q 'a.id === "appearance"' "$app" && ok "app: card de aparência abre a engrenagem" || bad "app: card não abre a engrenagem"
     # 5) som: ligar/desligar e sem corte pelo timer do som anterior
@@ -475,7 +475,7 @@ t_app_fixes() {
         && ok "som: timer antigo é cancelado (não corta o próximo)" || bad "som: timer não cancelado"
     grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
     # 6) "login feito com sucesso" só toca quando o login dá certo
-    local login="$ROOT/android/app/src/main/assets/panel/login.html"
+    local login="$ROOT/app/src/main/assets/panel/login.html"
     grep -q 'OTM.call("login"' "$login" && ok "login: avisa o app só no acerto" || bad "login: sem aviso de sucesso"
     grep -q 'onLogin = { sound.play("login_feito_com_sucesso.mp3") }' "$src/PanelActivity.kt" \
         && ok "som: sucesso ligado ao onLogin" || bad "som: sucesso não está no onLogin"
@@ -489,7 +489,7 @@ t_app_fixes() {
         && ok "som: ligar som usa 'ativando' (não 'login')" || bad "som: ligar som com áudio errado"
     # 7) áudios novos: pareamento (conectar) e credenciais incorretas (login errado)
     for f in pareamento_feito_com_sucesso_faca_login_no_sistema.mp3 credenciais_incorretas.mp3; do
-        test -f "$ROOT/android/app/src/main/assets/audio/$f" \
+        test -f "$ROOT/app/src/main/assets/audio/$f" \
             && ok "áudio: $f presente" || bad "áudio: falta $f"
     done
     grep -q 'sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")' "$src/PanelActivity.kt" \
@@ -506,9 +506,9 @@ t_app_fixes() {
     grep -q 'id="btnGear"' "$app" && ok "ícones: engrenagem preservada" || bad "ícones: engrenagem sumiu"
     grep -q 'class="stroke"' "$app" && ok "ícones: SVGs profissionais presentes" || bad "ícones: sem SVGs"
     # 9) atualizar sem desinstalar: keystore fixa e assinatura de release
-    test -f "$ROOT/android/keystore/otm-release.jks" \
+    test -f "$ROOT/keystore/otm-release.jks" \
         && ok "update: keystore versionada presente" || bad "update: sem keystore versionada"
-    grep -q 'signingConfig = signingConfigs.getByName("release")' "$ROOT/android/app/build.gradle.kts" \
+    grep -q 'signingConfig = signingConfigs.getByName("release")' "$ROOT/app/build.gradle.kts" \
         && ok "update: release assina com a keystore fixa" || bad "update: release sem assinatura fixa"
     grep -q 'if (a.argv.isEmpty())' "$src/PackBridge.kt" \
         && ok "bridge: ação sem comando não tenta executar" || bad "bridge: tenta executar ação de UI"
@@ -555,7 +555,7 @@ t_app_fixes() {
         ok "som: soundFor sem categorias antigas"
     fi
     # 11) MP3 descomprimidos no APK (openFd exige STORED)
-    grep -q 'noCompress += "mp3"' "$ROOT/android/app/build.gradle.kts" \
+    grep -q 'noCompress += "mp3"' "$ROOT/app/build.gradle.kts" \
         && ok "apk: mp3 sem compressão (openFd funciona)" || bad "apk: mp3 sem noCompress"
     # 12) botão de som do cabeçalho tem handler no shim do app
     grep -q 'getElementById("otmSound")' "$app" \
@@ -648,7 +648,7 @@ t_new_features() {
                        "touch.multi","turbo.boot"] as $id)
                echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/nf_reg" 2>&1
     test ! -s "$TMP/nf_reg" && ok "novas ações no registro do painel" || bad "registro: $(cat "$TMP/nf_reg")"
-    grep -q '"turbo.refresh_fixed"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"turbo.refresh_fixed"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o refresh fixo" || bad "app: actions.json sem refresh fixo"
     grep -q 'boot_install' "$ROOT/scripts/common.sh" && ok "common: helper de boot presente" || bad "common: sem helper de boot"
 }
@@ -687,9 +687,9 @@ t_panel_state() {
              echo function_exists("otm_state_read") ? "reader" : "";' > "$TMP/st_lib" 2>&1
     assert_contains "$TMP/st_lib" "whitelist reader" "lib: leitor de estado na whitelist"
     grep -q "case 'state'" "$ROOT/web/api.php" && ok "api.php: endpoint de estado" || bad "api.php: sem endpoint de estado"
-    grep -q '"state" -> stateImpl()' "$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt" \
+    grep -q '"state" -> stateImpl()' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
         && ok "app: ponte responde ao estado real" || bad "app: ponte sem estado"
-    grep -q 'fun stateImpl' "$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt" \
+    grep -q 'fun stateImpl' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
         && ok "app: stateImpl presente" || bad "app: sem stateImpl"
     # o painel marca a opção em uso e mostra os valores reais
     grep -q 'applyState' "$ROOT/web/index.php" && ok "painel: aplica o estado real (applyState)" || bad "painel: sem applyState"
@@ -702,9 +702,9 @@ t_panel_state() {
              foreach ($a["touch.custom"]["params"] as $p) if (($p["name"]??"")==="tr" && !empty($p["state"])) echo "s";' \
         > "$TMP/st_meta" 2>&1
     assert_contains "$TMP/st_meta" "r t s" "lib: metadados de estado por opção/parâmetro"
-    grep -q '"state_value": "skiagl"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"state_value": "skiagl"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem state_value" || bad "app: actions.json sem state_value"
-    grep -q '"state_match": "touch:110,350,0,4"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"state_match": "touch:110,350,0,4"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem state_match do toque" || bad "app: actions.json sem state_match"
 }
 
@@ -756,17 +756,17 @@ t_perm_actions() {
     fi
     grep -q 'perm_all\|perm_app' "$ROOT/scripts/adb-tweaks.sh" \
         && ok "grupos de permissão existem no adb-tweaks" || bad "sem grupos de permissão"
-    grep -q '"perm.app"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"perm.app"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem as permissões" || bad "app: actions.json sem permissões"
-    grep -q 'Permissões e segundo plano' "$ROOT/android/app/src/main/assets/panel/index.html" \
+    grep -q 'Permissões e segundo plano' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "app: engrenagem mostra as permissões exigidas" || bad "app: sem lista de permissões"
-    grep -q 'id="setPermApp"' "$ROOT/android/app/src/main/assets/panel/index.html" \
+    grep -q 'id="setPermApp"' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "app: botões de permissão existem" || bad "app: sem botões de permissão"
 }
 
 t_personalization() {
     printf '\n  # personalização: fonte, tema, cor, DPI e restaurar padrão\n'
-    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local app="$ROOT/app/src/main/assets/panel/index.html"
     local web="$ROOT/web/index.php"
     grep -q 'id="setFont"' "$app" && ok "app: controle de fonte existe" || bad "app: sem fonte"
     grep -q 'id="setScale"' "$app" && ok "app: controle de DPI existe" || bad "app: sem DPI"
@@ -805,11 +805,11 @@ t_personalization() {
 
 t_usage_access() {
     printf '\n  # acesso a dados de uso (PACKAGE_USAGE_STATS) e métricas de uso\n'
-    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local app="$ROOT/app/src/main/assets/panel/index.html"
     local web="$ROOT/web/index.php"
-    local kt="$ROOT/android/app/src/main/java/com/otm/pack/Usage.kt"
-    local br="$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt"
-    local man="$ROOT/android/app/src/main/AndroidManifest.xml"
+    local kt="$ROOT/app/src/main/java/com/otm/pack/Usage.kt"
+    local br="$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt"
+    local man="$ROOT/app/src/main/AndroidManifest.xml"
     # manifesto declara a permissão (com o ignore do lint, é permissão de sistema)
     grep -q 'PACKAGE_USAGE_STATS' "$man" && ok "manifesto: permissão de uso declarada" || bad "manifesto: sem PACKAGE_USAGE_STATS"
     grep -q 'tools:ignore="ProtectedPermissions"' "$man" && ok "manifesto: lint ignorado p/ permissão de sistema" || bad "manifesto: sem tools:ignore"
@@ -840,7 +840,7 @@ t_usage_access() {
     grep -q 'id="usageNeed"' "$app" && grep -q 'precisa do Acesso a dados de uso' "$app" \
         && ok "app: chip avisa que o grupo precisa da permissão" || bad "app: sem chip de aviso do grupo"
     # o pedido uma vez por versão existe no app
-    grep -q 'Ver o uso real do aparelho' "$ROOT/android/app/src/main/java/com/otm/pack/Permissions.kt" \
+    grep -q 'Ver o uso real do aparelho' "$ROOT/app/src/main/java/com/otm/pack/Permissions.kt" \
         && ok "app: pede a permissão na primeira abertura" || bad "app: não pede a permissão"
 }
 
@@ -1105,16 +1105,16 @@ t_new_scripts() {
     php -r 'require "'"$ROOT"'/web/lib.php";
              echo in_array("proc-mgr.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/pm_lib" 2>&1
     assert_contains "$TMP/pm_lib" "ok" "proc-mgr.sh na whitelist"
-    grep -q '"proc-mgr.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"proc-mgr.sh"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o gerenciador de processos" || bad "app: actions.json sem proc-mgr"
-    grep -q '"doze.on"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"doze.on"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o sono profundo" || bad "app: actions.json sem doze"
     # --- painel: home + Visual + leitura de stats ---
     php -r 'require "'"$ROOT"'/web/lib.php";
              echo function_exists("otm_stats_read") ? "reader" : "";' > "$TMP/pm_stats" 2>&1
     assert_contains "$TMP/pm_stats" "reader" "lib: leitor de stats presente"
     grep -q "case 'stats'" "$ROOT/web/api.php" && ok "api.php: endpoint de stats" || bad "api.php: sem stats"
-    grep -q 'fun statsImpl' "$ROOT/android/app/src/main/java/com/otm/pack/PackBridge.kt" \
+    grep -q 'fun statsImpl' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
         && ok "app: statsImpl presente" || bad "app: sem statsImpl"
     grep -q 'startStats' "$ROOT/web/index.php" && ok "painel: liga o polling das metricas" || bad "painel: sem startStats"
     rm -rf "$HOME/.packotm"
@@ -1342,8 +1342,8 @@ t_web() {
 
 t_panel_v219() {
     printf '\n  # painel v2.19: refresh 60Hz, logs completos, terminal, seletor de apps\n'
-    local src="$ROOT/android/app/src/main/java/com/otm/pack"
-    local app="$ROOT/android/app/src/main/assets/panel/index.html"
+    local src="$ROOT/app/src/main/java/com/otm/pack"
+    local app="$ROOT/app/src/main/assets/panel/index.html"
     local lib="$ROOT/web/lib.php"
     local api="$ROOT/web/api.php"
     # taxa de atualização: escolha 60/90/120/auto e a home mostra a taxa de tela
@@ -1377,7 +1377,7 @@ t_panel_v219() {
 t_keepalive() {
     printf '\n  # anti-relog: manter o app vivo (não relogar ao reabrir)\n'
     local f="$ROOT/scripts/keep-alive.sh"
-    local app="$ROOT/android/app/src/main/assets/panel/actions.json"
+    local app="$ROOT/app/src/main/assets/panel/actions.json"
     [ -f "$f" ] && ok "scripts/keep-alive.sh existe" || { bad "keep-alive.sh ausente"; return; }
     OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/ka_help" 2>&1
     assert_contains "$TMP/ka_help" "relogar" "keep-alive explica o anti-relog sem argumento"
@@ -1431,7 +1431,7 @@ t_keepalive() {
 t_gameclean() {
     printf '\n  # game clean: deixa o jogo limpo e otimizado\n'
     local f="$ROOT/scripts/game-clean.sh"
-    local app="$ROOT/android/app/src/main/assets/panel/actions.json"
+    local app="$ROOT/app/src/main/assets/panel/actions.json"
     [ -f "$f" ] && ok "scripts/game-clean.sh existe" || { bad "game-clean.sh ausente"; return; }
     OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/gc_help" 2>&1
     assert_contains "$TMP/gc_help" "GAME CLEAN\|Game Clean" "game-clean explica o que faz sem argumento"
@@ -1532,7 +1532,7 @@ t_ramboost() {
     assert_contains "$TMP/rb_lib" "ok" "ram-boost.sh na whitelist"
     php -r 'require "'"$ROOT"'/web/lib.php"; echo isset(otm_choices()["ramboost"]) ? "ok":"falta";' > "$TMP/rb_ch" 2>&1
     assert_contains "$TMP/rb_ch" "ok" "grupo de escolha ramboost declarado"
-    grep -q '"ram-boost.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"ram-boost.sh"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o Liberar RAM" || bad "app: actions.json sem ram-boost"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
@@ -1579,7 +1579,7 @@ t_cooldown() {
     assert_contains "$TMP/co_lib" "ok" "cool-down.sh na whitelist"
     php -r 'require "'"$ROOT"'/web/lib.php"; echo isset(otm_choices()["cooldown"]) ? "ok":"falta";' > "$TMP/co_ch" 2>&1
     assert_contains "$TMP/co_ch" "ok" "grupo de escolha cooldown declarado"
-    grep -q '"cool-down.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"cool-down.sh"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o Resfriar" || bad "app: actions.json sem cool-down"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
@@ -1648,9 +1648,9 @@ t_clean() {
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
              echo isset($a["clean.aot"]) ? "AINDA" : "removido";' > "$TMP/cl_aot" 2>&1
     assert_contains "$TMP/cl_aot" "removido" "ação clean.aot removida do registro"
-    grep -q '"clean.sh"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"clean.sh"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o Clean" || bad "app: actions.json sem clean.sh"
-    grep -q '"clean.deep"' "$ROOT/android/app/src/main/assets/panel/actions.json" \
+    grep -q '"clean.deep"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o Clean profundo" || bad "app: actions.json sem clean.deep"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG

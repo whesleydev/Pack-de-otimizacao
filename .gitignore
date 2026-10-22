@@ -17,6 +17,12 @@ scratch/
 *.log
 .DS_Store
 
+# build do Android (gerado pelo Gradle)
+.gradle/
+app/build/
+build/
+local.properties
+
 # releases empacotados
 releases/*.zip
 releases/*.zip.sha256

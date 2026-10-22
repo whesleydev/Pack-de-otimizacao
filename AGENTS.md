@@ -144,7 +144,7 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
 
-## App Android (`android/`)
+## App Android (`app/`)
 
 App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
 ou por ADB Wi-Fi (pareamento) / depuração USB (só autorizar, sem parear), com os
@@ -367,19 +367,19 @@ Build local (sem Android Studio):
 # toolchain em /workspace/project/.toolchain (JDK 21 + SDK 34 + Gradle 8.7)
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 export ANDROID_HOME=/workspace/project/.toolchain/sdk
-cd android && GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home \
+GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home \
   ./gradlew :app:assembleRelease
 # saída: app/build/outputs/apk/release/app-release.apk (já assinado)
 ```
 
 Assinatura (atualizar por cima, sem desinstalar): o `release` usa a keystore fixa
-`android/keystore/otm-release.jks` (alias `otm`, senha `00deUdia`), configurada em
-`android/app/build.gradle.kts`. A mesma chave assina toda versão, então o Android
+`keystore/otm-release.jks` (alias `otm`, senha `00deUdia`), configurada em
+`app/build.gradle.kts`. A mesma chave assina toda versão, então o Android
 aceita instalar a nova por cima da anterior. Não troque essa keystore sem avisar:
 trocar a chave quebra a atualização e obriga a desinstalar. O `zipalign`/`apksigner`
 manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
-`android/app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
+`app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
 publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git).
 

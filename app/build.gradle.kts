@@ -57,14 +57,14 @@ android {
 // uma cópia em assets/pack/scripts (é o que PackAssets.ensureShellCopy leva para
 // /data/local/tmp/otm-pack no aparelho). Sem este sync o asset ficava preso numa
 // versão antiga e o app rodava script velho. Sync (não Copy) para remover sobras.
-val packScriptsDir = rootProject.file("../scripts")
+val packScriptsDir = rootProject.file("scripts")
 val syncPackAssets by tasks.registering(Sync::class) {
     onlyIf { packScriptsDir.isDirectory }
     from(packScriptsDir) { exclude("**/.git/**", "**/*.log") }
     into(layout.projectDirectory.dir("src/main/assets/pack/scripts"))
 }
 val syncPackVersion by tasks.registering(Copy::class) {
-    val v = rootProject.file("../VERSION")
+    val v = rootProject.file("VERSION")
     onlyIf { v.isFile }
     from(v)
     into(layout.projectDirectory.dir("src/main/assets/pack"))
