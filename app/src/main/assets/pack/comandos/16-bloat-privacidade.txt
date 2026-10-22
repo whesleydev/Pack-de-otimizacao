@@ -1,0 +1,31 @@
+# ============================================================
+#  16 · BLOAT / PRIVACIDADE
+#  Desativa apps inúteis que consomem RAM/CPU/bateria em segundo plano.
+#
+#  ATENÇÃO: desativar o app ERRADO pode quebrar o sistema.
+#  - Rode "pm list packages -3" e "pm list packages -s" para ver os seus.
+#  - Desative UM por vez e teste. Se algo quebrar, use o 99-restaurar-tudo.txt
+#    ou "pm enable <pacote>".
+#  - Não desative apps de sistema sem saber o que fazem.
+# ============================================================
+
+# --- lista apps de usuário e de sistema (para você escolher) ---
+pm list packages -3
+pm list packages -s
+
+# --- exemplos de apps que costumam ser seguros de desativar ---
+#     (descomente só os que você NÃO usa)
+# pm disable-user --user 0 com.facebook.katana
+# pm disable-user --user 0 com.facebook.orca
+# pm disable-user --user 0 com.instagram.android
+# pm disable-user --user 0 com.ss.android.ugc.trill
+# pm disable-user --user 0 com.google.android.youtube
+# pm disable-user --user 0 com.netflix.mediaclient
+
+# --- gerenciadores de jogo de fabricante (podem atrapalhar) ---
+pm disable-user --user 0 com.samsung.android.game.gos
+pm disable-user --user 0 com.xiaomi.joyose
+pm disable-user --user 0 com.motorola.gamemode
+
+# --- reativar um app desativado por engano ---
+# pm enable --user 0 com.facebook.katana

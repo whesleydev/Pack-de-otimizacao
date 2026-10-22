@@ -1,0 +1,7 @@
+id=packotm_battery_thermal
+name=Pack OTM · Bateria & Térmico
+version=1.0.0
+versionCode=100
+author=whesleydev
+description=Economia de bateria + monitor térmico com trava de segurança (reverte sozinho se passar de 45°C). Reversível. Compativel com AxManager, KernelSU, APatch e Magisk.
+axeronPlugin=>=10000

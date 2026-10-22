@@ -1,0 +1,7 @@
+id=packotm_freezer
+name=Pack OTM · Congelar Apps
+version=1.0.0
+versionCode=100
+author=whesleydev
+description=Congela apps de fundo para liberar RAM, com whitelist (nunca congela) e blacklist. Descongela tudo com um toque. Reversivel. Compativel com AxManager, KernelSU, APatch e Magisk.
+axeronPlugin=>=10000

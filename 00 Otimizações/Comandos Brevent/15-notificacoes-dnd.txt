@@ -1,0 +1,16 @@
+# ============================================================
+#  15 · NOTIFICAÇÕES / DND
+#  Silencia notificações que atrapalham durante o jogo.
+# ============================================================
+
+# --- desliga notificações que "pulam" na tela ---
+settings put global heads_up_notifications_enabled 0
+
+# --- não perturbe (DND) ---
+cmd notification set_dnd on
+
+# --- modo zen (0 = off · 1 = DND) ---
+settings put global zen_mode 1
+
+# --- desliga som de toque/vibração de notificação (opcional) ---
+# settings put system notification_sound ""

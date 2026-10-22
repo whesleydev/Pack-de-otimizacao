@@ -1,0 +1,45 @@
+# ============================================================
+#  04 · RAM / MEMÓRIA
+#  Controla quantos processos ficam em memória e libera RAM.
+#  Mais processos em cache = troca de app rápida.
+#  Menos processos = mais RAM livre pro jogo.
+#
+#  Regra prática: jogo pesado -> perfil GAMING (mais RAM livre).
+#  Uso normal/multitarefa -> perfil PADRÃO (troca de app rápida).
+#  Escolha UM perfil e cole só ele.
+# ============================================================
+
+# ---------- PERFIL PADRÃO (uso normal / multitarefa) ----------
+settings put global activity_manager_constants max_cached_processes=32,max_phantom_processes=2147483647
+
+# ---------- PERFIL GAMING (mais RAM pro jogo) ----------
+# descomente para usar: menos apps em cache = mais RAM livre
+# settings put global activity_manager_constants max_cached_processes=8,max_phantom_processes=1024
+
+# --- encerra todos os apps em segundo plano AGORA ---
+am kill-all
+
+# --- limpa o cache de todos os apps ---
+pm trim-caches 999999999999
+
+# --- libera memória do sistema (grava buffers no disco) ---
+sync
+
+# --- zram / memória virtual (SÓ SE O APARELHO ACEITAR) ---
+# ativar zram comprime RAM e ajuda em aparelhos com pouca memória
+# setprop persist.zram.size 1024
+# setprop persist.zram.enabled 1
+
+# --- MGLRU: gerência de memória mais eficiente (Android 12+, root) ---
+# reduz travadas por falta de RAM em jogos
+# echo 1 > /sys/kernel/mm/lru_gen/enabled
+
+# --- KSM: compartilha páginas iguais entre apps (root, economiza RAM) ---
+# echo 1 > /sys/kernel/mm/ksm/run
+
+# --- swappiness: quanto o sistema usa swap/zram (root) ---
+# 100 = usa bastante zram (bom p/ pouca RAM) · 60 = padrão
+# sysctl -w vm.swappiness=100
+
+# --- watermark: deixa menos RAM "reservada" (root, cuidado) ---
+# echo 1 > /proc/sys/vm/watermark_boost_factor

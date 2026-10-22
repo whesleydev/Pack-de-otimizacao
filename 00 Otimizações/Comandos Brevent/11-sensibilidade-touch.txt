@@ -1,0 +1,49 @@
+# ============================================================
+#  11 · SENSIBILIDADE / TOUCH
+#  Ajustes de toque e mira. Variam por aparelho — teste no treino.
+#  Se trepidar, aumente o touch_slop. Se travar, diminua o timeout.
+#
+#  Escolha UM perfil e cole só ele. Use o "restaurar" (99) para voltar.
+# ============================================================
+
+# --- perfil BALANCED (equilíbrio geral) ---
+settings put system touch_responsiveness 100
+settings put system long_press_timeout 400
+settings put system pointer_speed 0
+settings put system touch_slop 8
+setprop persist.sys.touch.sensitivity 1
+setprop persist.sys.input.touch.boost 1
+
+# --- perfil HEADSHOT (mira rápida) ---
+# settings put system touch_responsiveness 110
+# settings put system long_press_timeout 350
+# settings put system pointer_speed 0
+# settings put system touch_slop 4
+
+# --- perfil SPRAY (controle de recuo) ---
+# settings put system touch_responsiveness 105
+# settings put system long_press_timeout 300
+# settings put system pointer_speed 0
+# settings put system touch_slop 6
+
+# --- perfil SNIPER (mira precisa) ---
+# settings put system touch_responsiveness 95
+# settings put system long_press_timeout 500
+# settings put system pointer_speed -1
+# settings put system touch_slop 10
+
+# --- perfil SPEED (máxima reatividade) ---
+# settings put system touch_responsiveness 120
+# settings put system long_press_timeout 300
+# settings put system pointer_speed 1
+# settings put system touch_slop 2
+
+# --- toque sem atraso (combina com o 18-fluidez) ---
+settings put system multi_press_timeout 0
+
+# --- latência de input extra (root) ---
+# setprop ro.input.resampling.enable 1
+# setprop debug.input.dispatcher.max_events_per_frame 64
+
+# --- AUMENTA a taxa de amostragem do toque (alguns aparelhos) ---
+# setprop persist.sys.input.touch.sampling_rate 240

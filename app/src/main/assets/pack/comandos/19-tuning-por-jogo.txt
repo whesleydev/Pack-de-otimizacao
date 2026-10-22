@@ -1,0 +1,62 @@
+# ============================================================
+#  19 · TUNING POR JOGO (resolução / FPS / engine)
+#  Mexe SÓ no jogo — não altera o telefone.
+#  Usa o Game Mode do Android 12+ (interventions). Reversível.
+#
+#  ⚠️ Requer Android 12+ e funciona melhor no Android 13+.
+#  ⚠️ O jogo precisa REINICIAR depois de aplicar.
+#
+#  Antes de aplicar, veja o valor atual (para não perder o original):
+#      device_config get game_overlay com.dts.freefireth
+#
+#  Reverter: rode o 99-restaurar-tudo.txt (seção 19) ou
+#      device_config delete game_overlay com.dts.freefireth
+# ============================================================
+
+# ------------------------------------------------------------
+#  1) QUAL JOGO (troque pelo seu pacote)
+#     FF normal ....... com.dts.freefireth
+#     FF MAX .......... com.dts.freefiremax
+#     CODM ............ com.activision.callofduty.shooter
+#     Mobile Legends .. com.mobile.legends
+#     PUBG Mobile ..... com.tencent.ig
+#     Free Fire adicionais: com.dts.freefireth.br / .id
+# ------------------------------------------------------------
+PKG=com.dts.freefireth
+
+# ------------------------------------------------------------
+#  2) PERFIS PRONTOS
+#     downscaleFactor = resolução (0.5 = 50% · 0.9 = 90%)
+#     fps = teto de FPS da intervention (0 = padrão)
+#     mode=2 = performance · mode=3 = economia
+#
+#     Escolha UM perfil e descomente a linha. Depois rode.
+# ------------------------------------------------------------
+
+# --- PERFIL FPS (recomendado: mais FPS, quase sem perder nitidez) ---
+# device_config put game_overlay $PKG mode=2,downscaleFactor=0.9:mode=3,downscaleFactor=0.9
+
+# --- PERFIL EQUILIBRADO (aparelho médio: mais FPS, imagem boa) ---
+# device_config put game_overlay $PKG mode=2,downscaleFactor=0.75:mode=3,downscaleFactor=0.75
+
+# --- PERFIL FPS MÁXIMO (aparelho fraco: ganho grande, imagem serrilhada) ---
+# device_config put game_overlay $PKG mode=2,downscaleFactor=0.5:mode=3,downscaleFactor=0.5
+
+# --- PERFIL COM TETO DE FPS (Android 13+: segura o FPS estável) ---
+# device_config put game_overlay $PKG mode=2,fps=60,downscaleFactor=0.9:mode=3,fps=30
+
+# ------------------------------------------------------------
+#  3) FORÇA O JOGO EM PERFORMANCE (usa o perfil acima)
+# ------------------------------------------------------------
+cmd game set --mode performance $PKG
+
+# ------------------------------------------------------------
+#  4) CONFERE O QUE FICOU
+# ------------------------------------------------------------
+device_config get game_overlay $PKG
+
+# ------------------------------------------------------------
+#  5) REINICIA O JOGO PARA VALER
+#     (a intervention só aplica depois de reabrir)
+# ------------------------------------------------------------
+# am force-stop $PKG

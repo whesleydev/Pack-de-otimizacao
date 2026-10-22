@@ -1,0 +1,8 @@
+id=Nova_Touch
+name=NOVA TOUCH
+version=1.0
+versionCode=1
+author=trhieuhoc
+description=⚡ NOVA TOUCH v1.0 — Stable & Lightweight touch optimization. No forced refresh rate, no synthetic touch input, no SurfaceFlinger/VSYNC overrides.
+banner=/Nova_Touch_Logo.png
+axeronPlugin=13100

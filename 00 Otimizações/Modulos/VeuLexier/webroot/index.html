@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title></title>
+  <link rel="stylesheet" href="./style.css" type="text/css" media="all" />
+</head>
+<body>
+  <div class="block-area-spiner" id="loader-blocking">
+    <div class="container-spiner" id="loader-spiner">
+      <div class="spiner"></div>
+      <h1>Loader..</h1>
+    </div>
+  </div>
+  <div class="header">
+    <h1>VeuLexier Engine Settings</h1>
+  </div>
+  <div class="layout-menu">
+    <div class="infor-list">
+      <div class="layout-info">
+        <h2>Status Engine</h2>
+        <p id="sts-engine-id">N/A</p>
+      </div>
+      <div class="layout-info">
+        <h2>Version Plugin</h2>
+        <p>V 1.7.6</p>
+      </div>
+    </div>
+    <div class="layout-panel-control">
+      <h2>Control Panel VeuLexier</h2>
+      <p>Kalian Dapat Mengontrol Engine Smart Cache Cleaner VeuLexier Dengan Adanya Panel Controler Ini Dapat Memudahkan User Mengontrol Activitas Dari Smart Cache Cleaner VeuLexier</p>
+    </div>
+    <div class="layout-panel-control">
+      <div class="layout-control">
+        <h2>Engine Activation</h2>
+        <p>Berfungsi Untuk Mematikan Atau Menghidupkan Engine Smart Cache Cleaner VeuLexier</p>
+        <div class="button-layout">
+          <button id="BtnOnSmart" type="submit">ON</button>
+          <button id="BtnOffSmart" type="submit">OFF</button>
+        </div>
+      </div>
+    </div>
+    <div class="layout-panel-control">
+      <div class="layout-control">
+        <h2>Recompiler Dex2Oat</h2>
+        <p>Mengcompile Ulang Dex2Oat Setiap Jam 3 Pagi, Scripr Ini Saya Dapatkan Dari CMD-Tweaks</p>
+        <div class="button-layout">
+          <label class="switch">
+            <input type="checkbox" id="SlideDex" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="layout-panel-control">
+      <div class="layout-control">
+        <h2>Current Time Cleaner</h2>
+        <p>Kalian Dapat Mengcustom Setiap Berapa Detik/Menit/Jam Cache Cleaner Akan Di Jalankan. Contoh Penulisan Nya 10s artinya 10 detik 10m artinya 10 menit dan 10h artinya 10 jam</p>
+        <div class="button-layout">
+          <input type="text" name="" id="time-value-id" value="" placeholder="Example : 10s"/>
+          <button style="background-color: #0470f9;" id="BtnSaveId" type="submit">Save</button>
+        </div>
+        <div class="layout-current-info">
+          <p>Current Value : </p>
+          <p id="current-time-id">N/A</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./script.js" type="module" charset="utf-8"></script>
+</body>
+</html>

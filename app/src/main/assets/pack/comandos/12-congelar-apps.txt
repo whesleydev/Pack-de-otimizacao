@@ -1,0 +1,43 @@
+# ============================================================
+#  12 · CONGELAR APPS (com WHITELIST)
+#  Congela apps de fundo para liberar RAM durante o jogo.
+#  Funciona no Brevent. Descongele com o 13-descongelar-apps.txt.
+#
+#  Como funciona a whitelist: os apps listados na WHITELIST abaixo
+#  NUNCA são congelados, mesmo que apareçam na lista de congelar.
+#  Coloque ali o que você precisa receber notificação (WhatsApp,
+#  banco, relógio, 2FA...).
+#
+#  ⚠️ NÃO congele apps do sistema, teclado, telefone, Play Store
+#  nem o gerenciador de root. O pack já os protege por padrão.
+# ============================================================
+
+# --- congelamento nativo de apps em cache ---
+settings put global cached_apps_freezer enabled
+
+# --- lista os apps instalados por você (para escolher quais congelar) ---
+pm list packages -3
+
+# ===== WHITELIST (NUNCA congelar) =====
+# (aqui é só referência; no shell a whitelist é aplicada pela lógica abaixo)
+WHITELIST="com.whatsapp com.whatsapp.w4b com.android.dialer com.android.mms com.termux com.topjohnwu.magisk frb.axeron.manager com.google.android.gms com.android.vending"
+
+# ===== BLACKLIST (congelar) =====
+BLACKLIST="com.instagram.android com.facebook.katana com.facebook.orca com.ss.android.ugc.trill com.ss.android.ugc.aweme com.twitter.android com.google.android.youtube com.android.chrome com.spotify.music com.discord com.netflix.mediaclient com.snapchat.android com.reddit.frontpage"
+
+# --- congela a blacklist, pulando a whitelist (modo Brevent-like) ---
+for a in $BLACKLIST; do
+    case " $WHITELIST " in *" $a "*) continue ;; esac
+    pm suspend --user 0 "$a"
+    am force-stop "$a"
+done
+
+# --- congelamento "soft" alternativo (se o suspend não pegar) ---
+# for a in $BLACKLIST; do
+#     case " $WHITELIST " in *" $a "*) continue ;; esac
+#     pm disable-user --user 0 "$a"
+#     am force-stop "$a"
+# done
+
+# --- congela UM app específico (troque o pacote pelos seus) ---
+# pm suspend --user 0 com.exemplo

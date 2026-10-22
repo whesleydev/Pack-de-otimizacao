@@ -1,0 +1,79 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # --- qualidade: roda em todo push e PR --------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Sintaxe (sh -n)
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            sh -n "$f" || { echo "ERRO de sintaxe: $f"; fail=1; }
+          done < <(find scripts "00 Otimizações" tests -name '*.sh' -not -path '*/.git/*')
+          exit $fail
+
+      - name: ShellCheck (avisos não bloqueiam, erros sim)
+        run: |
+          # só o nosso código; módulos/plugins de terceiros têm o estilo do autor
+          find scripts tests "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" \
+            -name '*.sh' -not -path '*/.git/*' -print0 | xargs -0 shellcheck -S error
+
+      - name: Testes (stubs, apply/restore, deep_mark)
+        run: sh tests/run.sh
+
+      - name: Segredos
+        run: sh scripts/check-secrets.sh
+
+  # --- empacotamento: só no push para main / tags -----------------------------
+  plugins:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Empacotar módulos e plugins
+        run: |
+          sh scripts/build-modules.sh
+          sh scripts/build-plugins.sh
+
+      - name: Gerar checksums
+        run: |
+          cd releases
+          sha256sum *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload artefatos
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack
+          path: |
+            releases/*.zip
+            releases/SHA256SUMS.txt
+
+      - name: Publicar release (com changelog e checksums)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            releases/*.zip
+            releases/SHA256SUMS.txt

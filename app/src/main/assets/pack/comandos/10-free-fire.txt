@@ -1,0 +1,19 @@
+# ============================================================
+#  10 · FREE FIRE
+#  Prepara e abre o Free Fire com o máximo de recursos.
+#  Rode o 09-jogo-game-mode.txt antes deste.
+# ============================================================
+
+# --- prioridade do jogo ---
+cmd game set --mode performance com.dts.freefireth
+settings put global game_driver_all_apps 1
+
+# --- limpa RAM antes de abrir ---
+am kill-all
+pm trim-caches 999999999999
+
+# --- abre o Free Fire Normal ---
+am start -n com.dts.freefireth/com.dts.freefireth.FFMainActivity
+
+# --- OU abre o Free Fire MAX ---
+# am start -n com.dts.freefiremax/com.dts.freefireth.FFMainActivity
