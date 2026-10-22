@@ -632,15 +632,19 @@ body.drawer .scrim{opacity:1;visibility:visible}
 <header class="top">
   <button class="iconbtn burger" id="burger" aria-label="Abrir categorias" aria-expanded="false"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
   <div class="mark" aria-hidden="true">00</div>
-  <div class="name">Painel<small>Otimizações</small></div>
+  <div class="name">00deUdia Otimizações<small>painel de controle</small></div>
   <div class="grow"></div>
+  <span class="iconbtn hide-sm" id="modePill" style="cursor:default"><span class="dot"></span><span id="modeTxt">verificando…</span></span>
+  <button class="iconbtn hide-sm" id="btnStatus">Status</button>
+  <button class="iconbtn hide-sm" id="btnLogs">Logs</button>
+  <button class="iconbtn" id="btnTerm">Terminal</button>
   <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
 </header>
 
 <div class="banner">
   <div class="in">
-    <h1>Bem-vindo ao Painel</h1>
+    <h1>Bem-vindo ao 00deUdia Otimizações</h1>
     <p>DNS, RAM, renderizador, touch do Free Fire, debloat e ajustes profundos — tudo num lugar só. Deixe seu celular liso que nem sabão. Toque no <b>?</b> de cada cartão para saber o que ele faz.</p>
     <span class="tag"><span class="dot"></span>conectado ao pack local</span>
   </div>
@@ -654,7 +658,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
       <button class="iconbtn side-close" id="sideClose" aria-label="Fechar"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2>Categorias</h2>
       <nav class="nav" id="nav">
-        <a href="#Painel" data-g="Painel" aria-current="true"><span class="c"></span>Painel<span class="count" id="navHomeCount" hidden></span></a>
+        <a href="#Home" data-g="Home" aria-current="true"><span class="c"></span>Home<span class="count" id="navHomeCount" hidden></span></a>
         <?php foreach ($groups as $g => $items): ?>
           <a href="#<?= htmlspecialchars(rawurlencode($g), ENT_QUOTES) ?>" data-g="<?= htmlspecialchars($g, ENT_QUOTES) ?>"
              aria-current="false">
@@ -668,96 +672,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
   </aside>
 
   <main class="content">
-    <section id="g-Painel" data-g="Painel" class="home">
-      <!-- Central Clean Phone Rocket Button (Professional Optimization Style) -->
-      <div class="hero-center-box" style="text-align:center; padding: 28px 16px 12px;">
-        <div class="rocket-container" style="display:flex; justify-content:center; align-items:center;">
-          <button class="rocket-btn" id="rocketBtn" onclick="runActionById('clean')" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000)); color: var(--accent-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 40px var(--ring), 0 0 0 6px var(--glass); border: none; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; animation: rocketPulse 2.5s infinite;">
-            <span class="icon" style="font-size: 46px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🚀</span>
-            <span style="font-size: 12px; font-weight: 800; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.8px;">Clean Phone</span>
-          </button>
-        </div>
-        <p class="sub" style="margin-top: 12px; font-size: 13px; color: var(--muted); font-weight: 600;">Toque no foguete para liberar RAM e acelerar o sistema</p>
-      </div>
-
-      <!-- Sorteio de Cargo Especial (1 use per phone, "Em breve") -->
-      <div class="panelbox mt-16 giveaway-card" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
-        <h3>Sorteio de Cargo Especial</h3>
-        <p class="sub">Participe para concorrer a um cargo exclusivo no Discord / servidor. Apenas 1 uso por aparelho.</p>
-        <button class="btn primary" id="giveawayBtn" onclick="tryGiveaway()" style="margin-top: 10px;">Em breve</button>
-      </div>
-
-      <!-- GPU Thermal Profile Card (.config-gpu-card) -->
-      <div class="panelbox mt-16 config-gpu-card" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
-        <h3>Perfil Térmico da GPU (.config-gpu-card)</h3>
-        <p class="sub">Alterne rapidamente entre Desempenho e Equilibrado para o controle térmico da GPU.</p>
-        <div class="opts" role="group" aria-label="Perfil Térmico GPU" style="display: flex; gap: 8px; margin-top: 10px;">
-          <button class="opt" type="button" id="gpuPerfBtn" onclick="setGpuThermal('performance')" style="flex:1; padding: 10px; border-radius: var(--r-sm); background: var(--glass); border: 1px solid var(--line); cursor: pointer;">
-            <span class="opt-t" style="font-weight:700; display:block;">Desempenho</span>
-            <span class="opt-s" style="font-size:0.8em; color:var(--muted);">Máx FPS</span>
-          </button>
-          <button class="opt" type="button" id="gpuBalBtn" onclick="setGpuThermal('balanced')" style="flex:1; padding: 10px; border-radius: var(--r-sm); background: var(--glass); border: 1px solid var(--line); cursor: pointer;">
-            <span class="opt-t" style="font-weight:700; display:block;">Equilibrado</span>
-            <span class="opt-s" style="font-size:0.8em; color:var(--muted);">Estável</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Game Lab & Perfis -->
-      <div class="panelbox mt-16 gamelab-section" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
-        <h3>Game Lab & Perfis</h3>
-        <p class="sub">Modos otimizados para extrair o máximo do seu hardware com inteligência.</p>
-        <div class="gamelab-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 12px;">
-          <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">1. Modo Batata (2GB a 4GB RAM)</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Sobrevivência de FPS e liberação cirúrgica de memória para jogos rodarem liso sem fechar sozinhos.</p>
-            <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
-              <li>Animações desativadas (0x)</li>
-              <li>Limite de 1 ou 2 apps em 2º plano</li>
-              <li>Compilação Dexopt recomendada</li>
-              <li>Resolução/DPI reduzida</li>
-            </ul>
-            <button class="btn" onclick="runActionById('clean')" style="width:100%;">Ativar Modo Batata</button>
-          </div>
-          <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm); border: 1.5px solid var(--accent);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">2. Modo Competitivo (Free Fire / CODM) — Recomendado</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Equilíbrio perfeito de latência de toque ultra baixa, prioridade total na CPU e bloqueio de interferências.</p>
-            <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
-              <li>Driver de jogo ativado no App</li>
-              <li>Bateria do jogo em 'Sem Restrições'</li>
-              <li>Sensibilidade e velocidade de ponteiro no máximo</li>
-              <li>Não Perturbe ativado para evitar notificações</li>
-            </ul>
-            <button class="btn primary" onclick="runActionById('ff_open')" style="width:100%;">Ativar Competitivo</button>
-          </div>
-          <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">3. Modo 90Hz / 120Hz Ultra Fluido</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Configuração avançada para telas de alta taxa de atualização, mantendo quadros constantes.</p>
-            <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
-              <li>Taxa de atualização forçada no pico</li>
-              <li>Compilação Speed-profile ativada</li>
-              <li>Buffer de log reduzido para mínimo atraso</li>
-              <li>Controle térmico preventivo</li>
-            </ul>
-            <button class="btn" onclick="runActionById('turbo.refresh_max')" style="width:100%;">Ativar 90Hz/120Hz</button>
-          </div>
-          <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">4. Modo Econômico & Resfriamento</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Ideal para quando o celular está quente após horas de jogo ou bateria abaixo de 25%.</p>
-            <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
-              <li>Taxa de atualização em 60Hz estável</li>
-              <li>Economia inteligente de energia</li>
-              <li>Desativação de serviços desnecessários</li>
-              <li>Redução da temperatura do SoC</li>
-            </ul>
-            <button class="btn" onclick="runActionById('cool-down')" style="width:100%;">Ativar Resfriamento</button>
-          </div>
-          <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">5. Personalizado</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Ajustes manuais avançados para personalizar cada parâmetro do seu jeito nas categorias.</p>
-            <button class="btn" onclick="go('Desempenho')" style="width:100%;">Configurar Personalizado</button>
-          </div>
-        </div>
+    <section id="g-Home" data-g="Home" class="home">
+      <div class="hero">
+        <h2>Olá! Este é o <span class="hi">00deUdia Otimizações</span>.</h2>
+        <p>Aplica as otimizações com um toque e acompanha o <b>consumo real</b> do aparelho — os números vêm do próprio celular e o que ele não informa aparece como <b>—</b>. Comece salvando um <b>snapshot</b> e depois explore as categorias.</p>
       </div>
       <div class="cols">
         <div class="panelbox" id="visual">
@@ -1302,44 +1220,20 @@ if (gearReset) gearReset.onclick = () => {
 
 /* navegação */
 function go(g, push){
-  if (!g) g = "Painel";
+  if (!g) g = "Home";
   const secs = document.querySelectorAll("section[data-g]");
   let ok = false;
   secs.forEach(s => { const on = s.dataset.g === g; s.hidden = !on; if (on) ok = true; });
-  if (!ok){ g = "Painel"; secs.forEach(s => s.hidden = s.dataset.g !== "Painel"); }
+  if (!ok){ g = "Home"; secs.forEach(s => s.hidden = s.dataset.g !== "Home"); }
   document.querySelectorAll("#nav a").forEach(a => a.setAttribute("aria-current", a.dataset.g === g ? "true" : "false"));
   document.body.classList.remove("drawer");
   $("#burger").setAttribute("aria-expanded", "false");
   if (push !== false) history.replaceState(null, "", "#" + encodeURIComponent(g));
   window.scrollTo({top:0, behavior:"instant"});
-  if (g === "Painel") startStats(); else stopStats();
+  if (g === "Home") startStats(); else stopStats();
 }
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
-const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Painel", false); };
-
-function tryGiveaway() {
-  if (localStorage.getItem('otm_giveaway_used')) {
-    alert('Você já participou do sorteio neste aparelho! Apenas 1 uso permitido.');
-    return;
-  }
-  localStorage.setItem('otm_giveaway_used', '1');
-  const btn = document.getElementById('giveawayBtn');
-  if (btn) {
-    btn.textContent = 'Participando (Em breve)';
-    btn.disabled = true;
-  }
-  alert('Inscrição no sorteio de cargo especial registrada! (Em breve)');
-}
-
-function setGpuThermal(mode) {
-  toast('Perfil térmico GPU alterado para: ' + mode, 'ok');
-  document.querySelectorAll('.config-gpu-card .opt').forEach(b => b.classList.remove('active'));
-  if (mode === 'performance') {
-    const el = document.getElementById('gpuPerfBtn'); if (el) el.classList.add('active');
-  } else {
-    const el = document.getElementById('gpuBalBtn'); if (el) el.classList.add('active');
-  }
-}
+const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Home", false); };
 
 /* gaveta */
 $("#burger").onclick = () => { document.body.classList.add("drawer"); $("#burger").setAttribute("aria-expanded","true"); };
