@@ -99,7 +99,7 @@ switch ($cmd) {
             foreach ($res['rows'] as $k) {
                 printf("%-5d %-10s %-22s %-10s %-12s %-6s %s\n",
                     (int)$k['id'], (string)$k['key_prefix'],
-                    mb_substr((string)($k['label'] ?: '(sem nome)'), 0, 21),
+                    otm_substr((string)($k['label'] ?: '(sem nome)'), 0, 21),
                     (string)$k['status'],
                     ($k['expires_at'] ? otm_fmt_dt($k['expires_at'], 'd/m/Y') : 'nunca'),
                     ((int)$k['max_devices'] === 0 ? '∞' : $k['max_devices']),

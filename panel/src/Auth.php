@@ -89,7 +89,7 @@ final class Auth
         $this->db->run(
             'INSERT INTO otm_admin_sessions (id, admin_id, ip, user_agent, created_at, last_seen_at, expires_at)
              VALUES (?,?,?,?,?,?,?)',
-            [$sid, $adminId, $ip, mb_substr($ua, 0, 250), otm_now(), otm_now(),
+            [$sid, $adminId, $ip, otm_substr($ua, 0, 250), otm_now(), otm_now(),
              gmdate('Y-m-d H:i:s', time() + self::SESSION_H * 3600)]
         );
     }
@@ -201,7 +201,7 @@ final class Auth
     {
         try {
             $this->db->run('INSERT INTO otm_login_attempts (username, ip, ok, created_at) VALUES (?,?,?,?)',
-                           [mb_substr($user, 0, 80), $ip, $ok ? 1 : 0, otm_now()]);
+                           [otm_substr($user, 0, 80), $ip, $ok ? 1 : 0, otm_now()]);
             if (random_int(1, 20) === 1) {
                 $this->db->run("DELETE FROM otm_login_attempts WHERE created_at < datetime('now','-7 day')");
             }

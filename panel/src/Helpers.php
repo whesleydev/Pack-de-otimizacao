@@ -65,8 +65,16 @@ function otm_key_prefix_of(string $raw): string
 
 function otm_str(?string $v, int $max = 500): string
 {
-    $v = trim((string)$v);
-    return mb_substr($v, 0, $max);
+    return otm_substr(trim((string)$v), 0, $max);
+}
+
+/** substr seguro para UTF-8. Usa mbstring quando existe; senão, cai no substr
+ *  (o painel não deve exigir a extensão mbstring para funcionar). */
+function otm_substr(?string $v, int $start, ?int $len = null): string
+{
+    $v = (string)$v;
+    if (function_exists('mb_substr')) return mb_substr($v, $start, $len);
+    return $len === null ? substr($v, $start) : substr($v, $start, $len);
 }
 
 function otm_int($v, int $default = 0): int

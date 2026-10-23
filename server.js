@@ -9,6 +9,15 @@ const PORT = parseInt(process.env.DEFAULT_APP_PORT || '3000', 10);
 const HOST = '0.0.0.0';
 const ROOT_DIR = process.cwd();
 
+// O painel do app já morou em android/app/src/main/assets e hoje fica em
+// app/src/main/assets. Resolve o primeiro que existir para o servidor local
+// funcionar nos dois layouts.
+const ASSETS_DIR = [
+  path.join(ROOT_DIR, 'app/src/main/assets'),
+  path.join(ROOT_DIR, 'android/app/src/main/assets'),
+].find(d => fs.existsSync(path.join(d, 'panel'))) || path.join(ROOT_DIR, 'app/src/main/assets');
+const assetPath_ = (...p) => path.join(ASSETS_DIR, ...p);
+
 // Setup Android stubs directory in /tmp/otm_bin so shell scripts find settings, cmd, getprop, etc.
 const STUB_BIN = '/tmp/otm_bin';
 const STUB_STORE = '/tmp/otm_store';
@@ -118,7 +127,7 @@ const TERM_HIST = [
 let catalog = {};
 let actionsList = [];
 try {
-  const rawActions = fs.readFileSync(path.join(ROOT_DIR, 'android/app/src/main/assets/panel/actions.json'), 'utf8');
+  const rawActions = fs.readFileSync(assetPath_('panel/actions.json'), 'utf8');
   actionsList = JSON.parse(rawActions);
   actionsList.forEach(a => { catalog[a.id] = a; });
 } catch (e) {
@@ -807,7 +816,7 @@ const server = http.createServer(async (req, res) => {
   // Audio files route
   if (pathname.startsWith('/audio/')) {
     const audioName = path.basename(pathname);
-    const audioPath = path.join(ROOT_DIR, 'android/app/src/main/assets/audio', audioName);
+    const audioPath = assetPath_('audio', audioName);
     if (fs.existsSync(audioPath)) {
       res.writeHead(200, {
         'Content-Type': 'audio/mpeg',
@@ -821,7 +830,7 @@ const server = http.createServer(async (req, res) => {
   // Panel images route
   if (pathname.startsWith('/assets/')) {
     const assetName = path.basename(pathname);
-    const assetPath = path.join(ROOT_DIR, 'android/app/src/main/assets/panel/assets', assetName);
+    const assetPath = assetPath_('panel/assets', assetName);
     if (fs.existsSync(assetPath)) {
       const ext = path.extname(assetPath).toLowerCase();
       res.writeHead(200, {
@@ -835,7 +844,7 @@ const server = http.createServer(async (req, res) => {
 
   // Root or index.html -> serve enhanced panel index.html
   if (pathname === '/' || pathname === '/index.html' || pathname === '/panel.html') {
-    const panelPath = path.join(ROOT_DIR, 'android/app/src/main/assets/panel/index.html');
+    const panelPath = assetPath_('panel/index.html');
     if (fs.existsSync(panelPath)) {
       let content = fs.readFileSync(panelPath, 'utf8');
       // Inject the OTM web bridge before closing head

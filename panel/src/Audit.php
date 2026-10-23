@@ -26,7 +26,7 @@ final class Audit
                     $action,
                     $entity,
                     (string)$entityId,
-                    mb_substr($details, 0, 500),
+                    otm_substr($details, 0, 500),
                     otm_client_ip(),
                     otm_now(),
                 ]
