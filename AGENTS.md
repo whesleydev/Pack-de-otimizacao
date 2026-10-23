@@ -95,6 +95,9 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
   **hash SHA-256** em `~/.packotm/web/keys.json` (nunca em texto puro, nunca versionado, `chmod 600`).
   Crie com `sh main.sh web key new`, liste com `sh main.sh web key list` e revogue com
   `sh main.sh web key revoke <id>`. A tela de entrada (`web/access.php`) usa **CSRF** (`otm_csrf`).
+  `sh main.sh web key sync` exporta só os hashes das chaves ativas para
+  `app/src/main/assets/panel/keys.json` (é o que o app usa para validar a chave offline;
+  rode antes de gerar o APK).
 - `web/api.php` aceita a **sessão do painel** ou a própria chave no cabeçalho `X-OTM-Key` / em
   `?key=` (para scripts e integrações), e só roda scripts da lista branca `otm_allowed_scripts()`.
   Parâmetros são validados por tipo (pkg/host/int/float/enum). Nunca passe input do usuário direto para o shell.
@@ -145,7 +148,7 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
 
-## App Android (`android/`)
+## App Android (`app/`)
 
 App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
 ou por ADB Wi-Fi (pareamento) / depuração USB (só autorizar, sem parear), com os
@@ -156,9 +159,16 @@ nativa além do necessário para conectar e rodar os comandos.
 
 - `PanelActivity` é o launcher: carrega `assets/panel/index.html` (o painel)
   direto numa WebView e injeta "Conectar"/"Som" no cabeçalho.
-- Sem login no app: o painel abre direto, sem tela de entrada nem sessão em
-  `localStorage`. O acesso é por chave apenas no **painel web** (`web/keys.php`);
-  dentro do app, as ações passam pelo `window.OTM` (bridge), não pela API HTTP.
+- Entrada por chave (sem usuário e senha): a tela da chave vem **antes** do
+  método de conexão. A chave é validada localmente pelo `KeyGate` contra os
+  hashes SHA-256 em `assets/panel/keys.json` (gerado por
+  `sh main.sh web key sync`). A chave em texto nunca vai para o APK.
+- `KeyGate` falha fechado: sem lista de hashes (ou lista vazia) nada é aceito.
+  A forma canônica e o hash espelham `web/keys.php`, então digitar com espaços,
+  sem hífen ou em minúsculas dá no mesmo.
+- "Trocar chave" no cabeçalho volta para a tela da chave (`showKeyScreen()`).
+- Áudio segue a ação, não a tela: som do grupo no início, e no fim
+  `perfil-aplicado-com-sucesso.mp3` ou `erro.mp3` conforme o resultado.
 - Menu lateral do painel: `.side .panel` é `position:fixed` (trava na viewport,
   sem "escorregar" ao rolar); no mobile (`<=960px`) vira gaveta `position:static`
   dentro do `.side` fixo.
@@ -370,13 +380,13 @@ cd android && GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home \
 ```
 
 Assinatura (atualizar por cima, sem desinstalar): o `release` usa a keystore fixa
-`android/keystore/otm-release.jks` (alias `otm`, senha `00deUdia`), configurada em
-`android/app/build.gradle.kts`. A mesma chave assina toda versão, então o Android
+`keystore/otm-release.jks` (alias `otm`, senha `00deUdia`), configurada em
+`app/build.gradle.kts`. A mesma chave assina toda versão, então o Android
 aceita instalar a nova por cima da anterior. Não troque essa keystore sem avisar:
 trocar a chave quebra a atualização e obriga a desinstalar. O `zipalign`/`apksigner`
 manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
-`android/app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
+`app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
 publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git).
 
