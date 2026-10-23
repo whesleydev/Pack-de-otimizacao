@@ -252,14 +252,14 @@ class PanelActivity : AppCompatActivity() {
             gravity = android.view.Gravity.CENTER
         })
         box.addView(android.widget.TextView(this).apply {
-            text = "Digite a sua chave de acesso (OTM-XXXX-XXXX-XXXX)."
+            text = "Digite a sua chave de acesso (00-XXXX-XXXX-XXXX)."
             setTextColor(Color.parseColor("#F3EFE7"))
             textSize = 14f
             gravity = android.view.Gravity.CENTER
             setPadding(0, dp(10), 0, dp(14))
         })
         keyInput = android.widget.EditText(this).apply {
-            hint = "OTM-XXXX-XXXX-XXXX"
+            hint = "00-XXXX-XXXX-XXXX"
             setTextColor(Color.parseColor("#F3EFE7"))
             setHintTextColor(Color.parseColor("#A49D90"))
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
@@ -303,7 +303,7 @@ class PanelActivity : AppCompatActivity() {
         val typed = keyInput.text.toString().trim()
         if (!KeyGate.wellFormed(typed)) {
             sound.play("credenciais_incorretas.mp3")
-            keyError.text = "Formato inválido. Use OTM-XXXX-XXXX-XXXX."
+            keyError.text = "Formato inválido. Use 00-XXXX-XXXX-XXXX."
             keyError.visibility = View.VISIBLE
             return
         }

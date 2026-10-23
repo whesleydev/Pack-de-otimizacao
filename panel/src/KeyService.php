@@ -118,13 +118,27 @@ final class KeyService
     /**
      * Cria uma chave. Devolve a chave em TEXTO uma única vez — depois só o hash
      * existe. duration_days null = vitalício.
-     * @param array{label?:string,owner_contact?:string,note?:string,plan_id?:?int,
+     * @param array{key?:string,label?:string,owner_contact?:string,note?:string,plan_id?:?int,
      *              duration_days?:?int,max_devices?:int,max_uses?:int,created_by?:string} $in
      * @return array{id:int,key:string,row:array}
      */
     public function create(array $in): array
     {
-        $raw  = otm_key_generate();
+        // Chave digitada à mão (in['key']) ou gerada pelo sistema. A digitada
+        // passa pela mesma normalização/validação: forma 00-XXXX-XXXX-XXXX.
+        $typed = trim((string)($in['key'] ?? ''));
+        if ($typed !== '') {
+            if (!otm_key_well_formed($typed)) {
+                throw new InvalidArgumentException('Chave em formato inválido. Use 00-XXXX-XXXX-XXXX.');
+            }
+            $raw = otm_key_normalize($typed);
+            if ($this->db->one('SELECT id FROM otm_keys WHERE key_hash = ?', [otm_key_hash($raw)])) {
+                throw new InvalidArgumentException('Já existe uma chave com esse código.');
+            }
+        } else {
+            $raw = otm_key_generate();
+        }
+
         $days = array_key_exists('duration_days', $in) ? $in['duration_days'] : 30;
         $days = ($days === null) ? null : max(0, (int)$days);
 

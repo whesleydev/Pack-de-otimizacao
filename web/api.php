@@ -13,7 +13,7 @@ header('X-Content-Type-Options: nosniff');
 
 // --- autenticação por chave ---------------------------------------------------
 // Vale a sessão do painel (entrou com a chave) OU a chave enviada no cabeçalho
-// X-OTM-Key / em ?key=. Sem chave válida, nada executa.
+// X-Otm-Key / em ?key=. Sem chave válida, nada executa.
 function otm_check_access(): bool {
     // 1) sessão do painel (a chave já foi validada no acesso)
     if (otm_key_logged_in()) return true;

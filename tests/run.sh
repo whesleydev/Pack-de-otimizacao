@@ -336,7 +336,7 @@ t_auth() {
                  > "$TMP/key1" 2>&1
         assert_contains "$TMP/key1" "OK" "chave válida entra no painel"
         php -r 'require "'"$ROOT"'/web/keys.php";
-                 echo otm_key_verify("OTM-AAAA-BBBB-CCCC") === null ? "RECUSOU":"ACEITOU";' \
+                 echo otm_key_verify("00-AAAA-BBBB-CCCC") === null ? "RECUSOU":"ACEITOU";' \
                  > "$TMP/key2" 2>&1
         assert_contains "$TMP/key2" "RECUSOU" "chave inventada é recusada"
         php -r 'require "'"$ROOT"'/web/keys.php";
@@ -345,7 +345,7 @@ t_auth() {
                  echo otm_key_verify($c["key"]) === null ? "RECUSOU":"ACEITOU";' \
                  > "$TMP/key3" 2>&1
         assert_contains "$TMP/key3" "RECUSOU" "chave revogada é recusada"
-        if grep -q "OTM-" "$HOME/.packotm/web/keys.json" 2>/dev/null; then
+        if grep -q "00-" "$HOME/.packotm/web/keys.json" 2>/dev/null; then
             bad "chave gravada em texto puro"
         else
             ok "chave guardada com hash (nao em texto puro)"
@@ -437,7 +437,7 @@ t_panel_db() {
         $c = $ks->validate($key, ["device_id"=>"dev-C","model"=>"Xiaomi"], "127.0.0.1");
         echo ($a["ok"] && $b["ok"] ? "DOIS_OK " : "FALHOU ");
         echo ($c["ok"] === false && $c["result"] === "device_limit" ? "LIMITE_OK " : "SEM_LIMITE ");
-        $id = (int)$db->scalar("select id from otm_keys where key_prefix = ?", [substr($key,0,8)]);
+        $id = (int)$db->scalar("select id from otm_keys where key_prefix = ?", [otm_key_prefix_of($key)]);
         $ks->revoke($id, "teste");
         $d = $ks->validate($key, ["device_id"=>"dev-A"], "127.0.0.1");
         echo (!$d["ok"] && $d["result"] === "revoked" ? "REVOGADA_OK" : "REVOGACAO_FALHOU");
@@ -460,7 +460,7 @@ t_panel_db() {
         assert_contains "$TMP/vok" '"ok":true' "endpoint: chave válida responde ok"
 
         curl -s -X POST -H 'Content-Type: application/json' \
-            -d '{"key":"OTM-2222-3333-4444","device_id":"x"}' \
+            -d '{"key":"00-2222-3333-4444","device_id":"x"}' \
             "http://127.0.0.1:$port/api/validate.php" > "$TMP/vbad" 2>&1
         assert_contains "$TMP/vbad" '"ok":false' "endpoint: chave inexistente é recusada"
 
@@ -487,7 +487,7 @@ t_panel_db() {
         else
             bad "hashes: hash não bate (app não validaria offline)"
         fi
-        assert_not_contains "$TMP/hok" "OTM-" "hashes: não expõe a chave em texto"
+        assert_not_contains "$TMP/hok" "00-" "hashes: não expõe a chave em texto"
 
         # páginas do painel: login real (com CSRF) e todas autenticadas em 200
         local cj="$TMP/cookies.txt"
@@ -516,10 +516,48 @@ t_panel_db() {
 
     # o keys.json que vai no APK tem só hashes (64 hex), nunca a chave
     OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" sync --out "$TMP/keys.json" >/dev/null 2>&1
-    if grep -qE '"OTM-' "$TMP/keys.json" 2>/dev/null; then
+    if grep -qE '"00-' "$TMP/keys.json" 2>/dev/null; then
         bad "keys.json do app vazou chave em texto"
     else
         ok "keys.json do app tem só hashes"
+    fi
+
+    # painel limpo: sem planos de exemplo pré-cadastrados
+    OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        echo (int)otm_db()->scalar("SELECT COUNT(*) FROM otm_plans") === 0 ? "VAZIO" : "TEM_PLANO";
+    ' "$ROOT/panel" > "$TMP/noplans" 2>&1
+    assert_contains "$TMP/noplans" "VAZIO" "painel novo não traz planos de exemplo"
+
+    # chave digitada à mão: aceita, normaliza e grava com o mesmo hash
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --key "00-ABCD-EFGH-JKMN" --label "Digitada" --json \
+        > "$TMP/ktyped" 2>&1
+    assert_contains "$TMP/ktyped" '"key":"00-ABCD-EFGH-JKMN"' "aceita chave digitada à mão"
+    local htyped
+    htyped="$(printf '%s' "00-ABCD-EFGH-JKMN" | sha256sum | cut -d' ' -f1)"
+    OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $n = (int)otm_db()->scalar("SELECT COUNT(*) FROM otm_keys WHERE key_hash = ?", [$argv[2]]);
+        echo $n === 1 ? "GRAVOU" : "FALTOU";
+    ' "$ROOT/panel" "$htyped" > "$TMP/htyped" 2>&1
+    assert_contains "$TMP/htyped" "GRAVOU" "chave digitada é gravada com o hash correto"
+
+    # chave digitada em formato inválido é recusada (não cria nada)
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --key "OTM-ZZZZ-YYYY-XXXX" --label "Ruim" --json \
+        > "$TMP/kbadfmt" 2>&1
+    if grep -q '"ok":true' "$TMP/kbadfmt" 2>/dev/null; then
+        bad "aceitou chave digitada em formato inválido"
+    else
+        ok "recusa chave digitada em formato inválido"
+    fi
+
+    # chave digitada repetida é recusada (não duplica)
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --key "00-ABCD-EFGH-JKMN" --label "Clone" --json \
+        > "$TMP/kdup" 2>&1
+    if grep -q '"ok":true' "$TMP/kdup" 2>/dev/null; then
+        bad "aceitou chave digitada duplicada"
+    else
+        ok "recusa chave digitada duplicada"
     fi
 }
 

@@ -11,8 +11,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 48
-        versionName = "2.26.1"
+        versionCode = 49
+        versionName = "2.27.0"
 
         // Endereço do painel que valida a chave no banco (Turso). Pode ser
         // trocado em tempo de execução (ajustes do app) sem recompilar.

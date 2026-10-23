@@ -143,7 +143,7 @@ input.key{
       <div class="field">
         <label for="key">Chave de acesso</label>
         <input id="key" name="key" type="text" class="key" inputmode="text" spellcheck="false"
-               placeholder="OTM-XXXX-XXXX-XXXX" autocomplete="off" required autofocus>
+               placeholder="00-XXXX-XXXX-XXXX" autocomplete="off" required autofocus>
       </div>
       <button class="btn" id="entrar" type="submit">Entrar</button>
       <p class="hint">Sem chave? Crie uma com <code>sh main.sh web key new</code></p>
@@ -168,16 +168,16 @@ input.key{
 </div>
 
 <script>
-/* agrupa a chave enquanto digita: OTM-XXXX-XXXX-XXXX */
+/* agrupa a chave enquanto digita: 00-XXXX-XXXX-XXXX */
 const keyEl = document.getElementById("key");
 if (keyEl) {
   keyEl.addEventListener("input", () => {
     let s = keyEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (s.startsWith("OTM")) s = s.slice(3);
+    if (s.startsWith("00")) s = s.slice(2);
     s = s.slice(0, 12);
     const parts = [];
     for (let i = 0; i < s.length; i += 4) parts.push(s.slice(i, i + 4));
-    keyEl.value = parts.length ? "OTM-" + parts.join("-") : "";
+    keyEl.value = parts.length ? "00-" + parts.join("-") : "";
   });
 }
 const form = document.querySelector("form");

@@ -4,7 +4,7 @@
 //
 //  Uso:
 //      php panel/bin/key.php list [--status active] [--q texto]
-//      php panel/bin/key.php new [--label "Fulano"] [--days 30] [--devices 2] [--uses 0] [--plan mensal]
+//      php panel/bin/key.php new [--key 00-XXXX-XXXX-XXXX] [--label "Fulano"] [--days 30] [--devices 2] [--uses 0] [--plan mensal]
 //      php panel/bin/key.php show <id>
 //      php panel/bin/key.php duration <id> <dias|vitalicio>
 //      php panel/bin/key.php extend <id> <dias>
@@ -61,16 +61,23 @@ switch ($cmd) {
             ? (in_array((string)$opts['days'], ['0', 'vitalicio', 'vitalício', 'never'], true) ? null : max(0, (int)$opts['days']))
             : 30;
 
-        $c = $keys->create([
-            'label'         => (string)($opts['label'] ?? ''),
-            'owner_contact' => (string)($opts['contact'] ?? ''),
-            'note'          => (string)($opts['note'] ?? ''),
-            'plan_id'       => $planId,
-            'duration_days' => $days,
-            'max_devices'   => (int)($opts['devices'] ?? 1),
-            'max_uses'      => (int)($opts['uses'] ?? 0),
-            'created_by'    => 'cli',
-        ]);
+        try {
+            $c = $keys->create([
+                'key'           => (string)($opts['key'] ?? ''),
+                'label'         => (string)($opts['label'] ?? ''),
+                'owner_contact' => (string)($opts['contact'] ?? ''),
+                'note'          => (string)($opts['note'] ?? ''),
+                'plan_id'       => $planId,
+                'duration_days' => $days,
+                'max_devices'   => (int)($opts['devices'] ?? 1),
+                'max_uses'      => (int)($opts['uses'] ?? 0),
+                'created_by'    => 'cli',
+            ]);
+        } catch (Throwable $e) {
+            if ($json) { echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE), "\n"; }
+            else       { fwrite(STDERR, 'x ' . $e->getMessage() . "\n"); }
+            exit(1);
+        }
         $r = $c['row'];
         out($json, ['ok' => true, 'id' => $c['id'], 'key' => $c['key'],
                     'prefix' => $r['key_prefix'], 'expires_at' => $r['expires_at'],
@@ -189,7 +196,7 @@ switch ($cmd) {
         Painel 00deUdia — chaves
 
           php panel/bin/key.php list [--status active|expired|revoked|exhausted] [--q texto]
-          php panel/bin/key.php new [--label "Fulano"] [--days 30|vitalicio] [--devices 2] [--uses 0] [--plan mensal]
+          php panel/bin/key.php new [--key 00-XXXX-XXXX-XXXX] [--label "Fulano"] [--days 30|vitalicio] [--devices 2] [--uses 0] [--plan mensal]
           php panel/bin/key.php show <id>
           php panel/bin/key.php duration <id> <dias|vitalicio>
           php panel/bin/key.php extend <id> <dias>

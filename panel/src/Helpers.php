@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 // Formato da chave (mesmo do app/KeyGate e do web/keys.php antigo).
 const OTM_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // sem I, L, O, U (ambíguos)
-const OTM_PREFIX   = 'OTM';
+const OTM_PREFIX   = '00';
 const OTM_GROUPS   = 3;
 const OTM_GLEN     = 4;
 
@@ -18,11 +18,18 @@ const OTM_GLEN     = 4;
 //  chave: normalizar, validar forma, gerar, hash
 // -----------------------------------------------------------------------------
 
-/** Forma canônica OTM-XXXX-XXXX-XXXX (idêntica à do app). */
+/** Forma canônica 00-XXXX-XXXX-XXXX (idêntica à do app). */
 function otm_key_normalize(string $raw): string
 {
     $s = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $raw) ?? '');
-    if (str_starts_with($s, OTM_PREFIX)) $s = substr($s, strlen(OTM_PREFIX));
+    $body = OTM_GROUPS * OTM_GLEN;
+    // O prefixo "00" também é caractere válido do alfabeto: só tira quando sobra
+    // corpo suficiente para uma chave inteira, senão um corpo que comece com
+    // "00" (ex.: 00AB-CDEF-GHJK) perderia os dois primeiros dígitos.
+    if (str_starts_with($s, OTM_PREFIX) && strlen($s) > $body) {
+        $s = substr($s, strlen(OTM_PREFIX));
+    }
+    $s = substr($s, 0, $body);
     $out = [];
     for ($i = 0; $i < OTM_GROUPS; $i++) {
         $chunk = substr($s, $i * OTM_GLEN, OTM_GLEN);
@@ -53,10 +60,12 @@ function otm_key_generate(): string
     return otm_key_normalize($s);
 }
 
-/** Pedaço visível da chave (OTM-A1B2) para identificar sem revelar. */
+/** Pedaço visível da chave (00-A1B2) para identificar sem revelar. */
 function otm_key_prefix_of(string $raw): string
 {
-    return substr(otm_key_normalize($raw), 0, 8);
+    $n = otm_key_normalize($raw);
+    // "00-" + primeiro grupo (não um corte fixo de 8, que deixaria "00-ABCD-").
+    return substr($n, 0, strlen(OTM_PREFIX) + 1 + OTM_GLEN);
 }
 
 // -----------------------------------------------------------------------------

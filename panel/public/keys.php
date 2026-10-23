@@ -110,7 +110,7 @@ require __DIR__ . '/../src/layout.php';
   <?php if (!$res['rows']): ?>
     <tr><td class="empty" colspan="9">Nenhuma chave com esses filtros. <a href="key_new.php">Criar uma chave</a>.</td></tr>
   <?php else: foreach ($res['rows'] as $k): ?>
-    <tr>
+    <tr class="rowlink" data-href="key_view.php?id=<?= (int)$k['id'] ?>">
       <td class="mono"><a href="key_view.php?id=<?= (int)$k['id'] ?>"><?= otm_e((string)$k['key_prefix']) ?></a></td>
       <td><?= otm_e((string)($k['label'] ?: '—')) ?>
           <?php if (!empty($k['plan_name'])): ?><br><span class="muted"><?= otm_e((string)$k['plan_name']) ?></span><?php endif; ?></td>
@@ -156,5 +156,17 @@ require __DIR__ . '/../src/layout.php';
     <span class="muted">página <?= $page ?> de <?= $pages ?></span>
   </div>
 <?php endif; ?>
+
+<script>
+// A linha inteira abre o detalhe da chave. Cliques em botões/links de ação
+// seguem o caminho normal, sem navegar duas vezes.
+document.querySelectorAll('tr.rowlink[data-href]').forEach(function (tr) {
+  tr.style.cursor = 'pointer';
+  tr.addEventListener('click', function (ev) {
+    if (ev.target.closest('a, button, input, select, form')) return;
+    window.location.href = tr.dataset.href;
+  });
+});
+</script>
 
 <?php otm_layout_end(); ?>

@@ -46,16 +46,12 @@ CREATE INDEX IF NOT EXISTS idx_otm_audit_created ON otm_audit (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_otm_audit_entity  ON otm_audit (entity, entity_id);
 
 -- -----------------------------------------------------------------------------
---  Dados iniciais: planos que todo mundo usa no dia a dia.
+--  Ajustes iniciais do painel.
+--
+--  Não há planos pré-cadastrados: os planos são seus, então você cria os que
+--  fizer sentido em "Planos" (ou cria chaves sem plano). Assim o painel começa
+--  limpo, sem nenhum dado de exemplo.
 -- -----------------------------------------------------------------------------
-INSERT OR IGNORE INTO otm_plans (slug, name, description, duration_days, max_devices, sort_order) VALUES
-    ('teste',     'Teste',     '7 dias, 1 aparelho',      7,    1, 10),
-    ('quinzenal', 'Quinzenal', '15 dias, 1 aparelho',     15,   1, 20),
-    ('mensal',    'Mensal',    '30 dias, 2 aparelhos',    30,   2, 30),
-    ('trimestral','Trimestral','90 dias, 2 aparelhos',    90,   2, 40),
-    ('anual',     'Anual',     '365 dias, 3 aparelhos',   365,  3, 50),
-    ('vitalicio', 'Vitalício', 'nunca expira, 3 aparelhos', NULL, 3, 60);
-
 INSERT OR IGNORE INTO otm_settings (key, value) VALUES
     ('brand_name',     '00deUdia Otimizações'),
     ('default_days',   '30'),

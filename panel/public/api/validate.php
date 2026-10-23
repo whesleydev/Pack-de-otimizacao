@@ -6,7 +6,7 @@
 //  aqui no servidor; o APK nunca vê esse token.
 //
 //  POST /api/validate.php
-//      { "key": "OTM-XXXX-XXXX-XXXX",
+//      { "key": "00-XXXX-XXXX-XXXX",
 //        "device_id": "abc123", "model": "Pixel 7", "android": "14", "app": "2.27.0" }
 //
 //  Resposta (sempre 200, com ok true/false):

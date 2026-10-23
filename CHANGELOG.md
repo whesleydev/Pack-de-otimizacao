@@ -5,13 +5,39 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+- **Painel de licenças com banco (Turso/libSQL).** O painel PHP (`panel/`) guarda as
+  chaves num banco de verdade, com planos, aparelhos, histórico de tentativas e auditoria.
+  Antes era um arquivo JSON local; agora dá para ver e agir sobre cada chave.
+- **Chave digitada à mão.** Em *Nova chave* (ou `php panel/bin/key.php new --key ...`) você
+  pode escrever a chave no formato `00-XXXX-XXXX-XXXX` em vez de deixar o sistema gerar.
+  A chave digitada passa pela mesma normalização/validação e é recusada se estiver em
+  formato inválido ou se já existir.
+- **Clicar na chave abre o detalhe.** Na lista de chaves a linha inteira leva ao
+  `key_view.php`, com os dados, os aparelhos vistos e o histórico — e as ações
+  (revogar, estender, bloquear aparelho).
+
+### Alterado
+- **Formato da chave: `00-XXXX-XXXX-XXXX`** (antes `OTM-XXXX-XXXX-XXXX`), igual no painel,
+  no app e nos scripts. O alfabeto continua sem os caracteres ambíguos I, L, O e U.
+- **Painel começa limpo.** Não há mais planos de exemplo (`teste`, `mensal`, …) nem
+  chaves de teste no banco: os planos são criados por você, do jeito que fizer sentido.
+- O app não traz mais nenhuma chave embutida: a lista offline (`assets/panel/keys.json`)
+  sai vazia e é preenchida pelo sync do painel (`php panel/bin/key.php sync`).
+
+### Removido
+- Planos de demonstração semeados pela migração `0005_plans.sql`.
+- Chave de teste embutida em `app/src/main/assets/panel/keys.json`.
+
+## [2.26.1] - 2026-10-23
+
 ### Alterado
 - **Acesso por chave no lugar de login e senha.** O painel web não pede mais usuário
   e senha: agora você cria uma chave (`sh main.sh web key new`) no formato
-  `OTM-XXXX-XXXX-XXXX` e cola na tela de entrada. O servidor guarda só o **hash
+  `00-XXXX-XXXX-XXXX` e cola na tela de entrada. O servidor guarda só o **hash
   SHA-256** da chave em `~/.packotm/web/keys.json` (nunca em texto puro), com
   `sh main.sh web key list` e `sh main.sh web key revoke <id>` para gerenciar.
-  A API também aceita a chave no cabeçalho `X-OTM-Key` (ou `?key=`).
+  A API também aceita a chave no cabeçalho `X-Otm-Key` (ou `?key=`).
 
 ### Removido
 - Sistema de login e senha do painel web (`web/auth.php`, `web/login.php`) e a tela de

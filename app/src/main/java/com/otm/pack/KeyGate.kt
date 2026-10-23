@@ -31,7 +31,7 @@ object KeyGate {
     private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
     private const val GROUPS = 3
     private const val GLEN = 4
-    private const val PREFIX = "OTM"
+    private const val PREFIX = "00"
 
     private const val PREF = "otm_gate"
     private const val PREF_OK = "unlocked"
@@ -54,12 +54,17 @@ object KeyGate {
 
     fun normalize(raw: String): String {
         val clean = raw.uppercase().replace(Regex("[^A-Z0-9]"), "")
-        val body = if (clean.startsWith(PREFIX)) clean.substring(PREFIX.length) else clean
+        val body = GROUPS * GLEN
+        // O prefixo "00" também é caractere válido do alfabeto: só tira quando
+        // sobra corpo suficiente, senão um corpo que comece com "00" perderia
+        // os dois primeiros dígitos.
+        val stripped = if (clean.startsWith(PREFIX) && clean.length > body) clean.substring(PREFIX.length) else clean
+        val trimmed = stripped.take(body)
         val groups = ArrayList<String>()
         for (i in 0 until GROUPS) {
             val start = i * GLEN
-            if (start >= body.length) break
-            groups.add(body.substring(start, minOf(start + GLEN, body.length)))
+            if (start >= trimmed.length) break
+            groups.add(trimmed.substring(start, minOf(start + GLEN, trimmed.length)))
         }
         return PREFIX + if (groups.isEmpty()) "" else "-" + groups.joinToString("-")
     }
@@ -121,7 +126,7 @@ object KeyGate {
     /** Verifica a chave: online quando possível; sem rede, decide pela lista local. */
     fun check(c: Context, raw: String): Result {
         if (!wellFormed(raw)) {
-            return Result(false, "unknown", "Formato inválido. Use OTM-XXXX-XXXX-XXXX.")
+            return Result(false, "unknown", "Formato inválido. Use 00-XXXX-XXXX-XXXX.")
         }
 
         val url = getApiUrl(c)

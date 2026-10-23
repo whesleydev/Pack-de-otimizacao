@@ -142,9 +142,9 @@ lateral acompanha a rolagem no desktop (no celular vira uma gaveta).
 
 **Segurança:** o painel só executa scripts de uma **lista branca** e valida cada
 parâmetro (nunca recebe comando cru). **O acesso exige uma chave** no formato
-`OTM-XXXX-XXXX-XXXX`; o servidor guarda só o **hash SHA-256** dela em
+`00-XXXX-XXXX-XXXX`; o servidor guarda só o **hash SHA-256** dela em
 `~/.packotm/web/keys.json` (**nunca em texto puro**, nunca versionado), com CSRF na tela de
-entrada. A API também aceita a chave no cabeçalho `X-OTM-Key` (ou `?key=`) para scripts.
+entrada. A API também aceita a chave no cabeçalho `X-Otm-Key` (ou `?key=`) para scripts.
 Ações de risco abrem um **modal** que exige marcar "estou ciente". Requer **PHP**
 (Termux: `pkg install php`).
 

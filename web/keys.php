@@ -7,7 +7,7 @@
 //  ~/.packotm/web/keys.json — a chave em texto nunca é gravada em disco.
 //
 //  Entrar no painel: a chave vira uma sessão no navegador (cookie httpOnly).
-//  Falar com a API: mande a chave no cabeçalho `X-OTM-Key`, em `?key=` ou use
+//  Falar com a API: mande a chave no cabeçalho `X-Otm-Key`, em `?key=` ou use
 //  a sessão do painel.
 // =============================================================================
 
@@ -15,8 +15,8 @@ declare(strict_types=1);
 
 // alfabeto sem letras ambíguas (sem I, L, O e U) para digitar sem erro
 const OTM_KEY_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-const OTM_KEY_PREFIX   = 'OTM';
-const OTM_KEY_GROUPS   = 3;   // OTM-XXXX-XXXX-XXXX
+const OTM_KEY_PREFIX   = '00';
+const OTM_KEY_GROUPS   = 3;   // 00-XXXX-XXXX-XXXX
 const OTM_KEY_GLEN     = 4;
 const OTM_SESSION_NAME = 'otm_sess';
 
@@ -55,10 +55,15 @@ function otm_key_hash(string $raw): string {
     return hash('sha256', otm_key_normalize($raw));
 }
 
-/** Normaliza para o formato canônico OTM-XXXX-XXXX-XXXX. */
+/** Normaliza para o formato canônico 00-XXXX-XXXX-XXXX. */
 function otm_key_normalize(string $raw): string {
     $s = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $raw) ?? '');
-    if (str_starts_with($s, OTM_KEY_PREFIX)) $s = substr($s, strlen(OTM_KEY_PREFIX));
+    $body = OTM_KEY_GROUPS * OTM_KEY_GLEN;
+    // "00" também é caractere do alfabeto: só tira quando sobra corpo inteiro.
+    if (str_starts_with($s, OTM_KEY_PREFIX) && strlen($s) > $body) {
+        $s = substr($s, strlen(OTM_KEY_PREFIX));
+    }
+    $s = substr($s, 0, $body);
     $out = [];
     for ($i = 0; $i < OTM_KEY_GROUPS; $i++) {
         $chunk = substr($s, $i * OTM_KEY_GLEN, OTM_KEY_GLEN);
@@ -68,7 +73,7 @@ function otm_key_normalize(string $raw): string {
     return OTM_KEY_PREFIX . ($out ? '-' . implode('-', $out) : '');
 }
 
-/** Aceita só chaves bem formadas: OTM-XXXX-XXXX-XXXX, alfabeto sem ambíguos. */
+/** Aceita só chaves bem formadas: 00-XXXX-XXXX-XXXX, alfabeto sem ambíguos. */
 function otm_key_well_formed(string $raw): bool {
     return (bool)preg_match('/^' . OTM_KEY_PREFIX . '(-[' . OTM_KEY_ALPHABET . ']{' . OTM_KEY_GLEN . '}){' . OTM_KEY_GROUPS . '}$/', otm_key_normalize($raw));
 }

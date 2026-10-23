@@ -91,14 +91,14 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
   Mantenha o visual **clean**, a paleta própria e o CSS **responsivo** (gaveta no celular,
   tema claro/escuro) ao mexer.
 - `web/index.php` e `web/api.php` **exigem chave de acesso** (`web/keys.php`, sessão PHP).
-  Não há usuário nem senha. A chave tem o formato `OTM-XXXX-XXXX-XXXX`; o servidor guarda só o
+  Não há usuário nem senha. A chave tem o formato `00-XXXX-XXXX-XXXX`; o servidor guarda só o
   **hash SHA-256** em `~/.packotm/web/keys.json` (nunca em texto puro, nunca versionado, `chmod 600`).
   Crie com `sh main.sh web key new`, liste com `sh main.sh web key list` e revogue com
   `sh main.sh web key revoke <id>`. A tela de entrada (`web/access.php`) usa **CSRF** (`otm_csrf`).
   `sh main.sh web key sync` exporta só os hashes das chaves ativas para
   `app/src/main/assets/panel/keys.json` (é o que o app usa para validar a chave offline;
   rode antes de gerar o APK).
-- `web/api.php` aceita a **sessão do painel** ou a própria chave no cabeçalho `X-OTM-Key` / em
+- `web/api.php` aceita a **sessão do painel** ou a própria chave no cabeçalho `X-Otm-Key` / em
   `?key=` (para scripts e integrações), e só roda scripts da lista branca `otm_allowed_scripts()`.
   Parâmetros são validados por tipo (pkg/host/int/float/enum). Nunca passe input do usuário direto para o shell.
 - Ações com `confirm:true` exigem `confirm=1` no POST (o `index.php` mostra o modal).
@@ -127,6 +127,15 @@ Regras:
   não sabem a diferença. **Nunca** use type hint de `Turso` em código novo — use `OtmDb`.
 - **Só o hash vai para o banco** (`key_hash` = SHA-256 da chave normalizada). A chave em
   texto aparece uma única vez, na criação. Nunca grave a chave em claro.
+- **Formato da chave: `00-XXXX-XXXX-XXXX`** (`OTM_PREFIX = '00'` em `src/Helpers.php`),
+  igual no painel, no `KeyGate.kt` e no `web/keys.php`. Cuidado: `00` também é caractere
+  válido do alfabeto, então `otm_key_normalize()` só remove o prefixo quando sobra corpo
+  suficiente — senão uma chave cujo corpo comece com `00` perderia dois dígitos.
+- **Chave digitada à mão é aceita** (`create(['key' => ...])`, `--key` no CLI, campo em
+  `key_new.php`). Passa pela mesma validação e é recusada se o formato for inválido ou se
+  já existir. Sem `key`, o sistema gera.
+- **O painel começa limpo**: sem planos de exemplo nem chaves de teste. A migração
+  `0005_plans.sql` só grava `otm_settings`; os planos são criados pelo usuário.
 - **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
   nunca o vê: quem fala com o banco é o painel, via `api/validate.php`.
 - `api/validate.php` só aceita **POST** (405 caso contrário), tem freio por IP (429) e
