@@ -10,6 +10,8 @@
             "all"
         ],
         "confirm": true,
+        "timeout": 300,
+        "params": [],
         "risk": "safe"
     },
     {
@@ -23,6 +25,8 @@
             "restore"
         ],
         "confirm": true,
+        "timeout": 300,
+        "params": [],
         "risk": "safe"
     },
     {
@@ -35,6 +39,7 @@
             "snapshot.sh",
             "save"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -48,11 +53,12 @@
             "dns.sh",
             "cloudflare"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "Cloudflare",
-        "state_value": "one.one.one.one"
+        "state_value": "one.one.one.one",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.quad9",
@@ -64,11 +70,12 @@
             "dns.sh",
             "quad9"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "Quad9",
-        "state_value": "dns.quad9.net"
+        "state_value": "dns.quad9.net",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.adguard",
@@ -80,11 +87,12 @@
             "dns.sh",
             "adguard"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "AdGuard",
-        "state_value": "dns.adguard-dns.com"
+        "state_value": "dns.adguard-dns.com",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.adguard-family",
@@ -96,6 +104,7 @@
             "dns.sh",
             "adguard-family"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -109,6 +118,7 @@
             "dns.sh",
             "adguard-unfiltered"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -122,6 +132,7 @@
             "dns.sh",
             "cloudflare-family"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -135,6 +146,7 @@
             "dns.sh",
             "cloudflare-security"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -148,6 +160,7 @@
             "dns.sh",
             "mullvad"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -161,6 +174,7 @@
             "dns.sh",
             "mullvad-base"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -174,6 +188,7 @@
             "dns.sh",
             "mullvad-adblock"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -187,6 +202,7 @@
             "dns.sh",
             "mullvad-family"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -200,6 +216,7 @@
             "dns.sh",
             "mullvad-extended"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -213,11 +230,12 @@
             "dns.sh",
             "mullvad-all"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "Mullvad Tudo",
-        "state_value": "all.dns.mullvad.net"
+        "state_value": "all.dns.mullvad.net",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.dnsforge",
@@ -229,6 +247,7 @@
             "dns.sh",
             "dnsforge"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -242,11 +261,12 @@
             "dns.sh",
             "google"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "Google",
-        "state_value": "dns.google"
+        "state_value": "dns.google",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.nextdns",
@@ -258,6 +278,7 @@
             "dns.sh",
             "nextdns"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -271,6 +292,7 @@
             "dns.sh",
             "opendns"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -284,11 +306,12 @@
             "dns.sh",
             "opendns-family"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "OpenDNS Família",
-        "state_value": "familyshield.opendns.com"
+        "state_value": "familyshield.opendns.com",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.cleanbrowsing-family",
@@ -300,6 +323,7 @@
             "dns.sh",
             "cleanbrowsing-family"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -313,6 +337,7 @@
             "dns.sh",
             "cleanbrowsing-security"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -326,6 +351,7 @@
             "dns.sh",
             "cleanbrowsing-adult"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -339,6 +365,7 @@
             "dns.sh",
             "controld-unfiltered"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -352,6 +379,7 @@
             "dns.sh",
             "controld-malware"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -365,6 +393,7 @@
             "dns.sh",
             "controld-ads"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -378,6 +407,7 @@
             "dns.sh",
             "controld-social"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -391,6 +421,7 @@
             "dns.sh",
             "controld-family"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -404,6 +435,7 @@
             "dns.sh",
             "controld-oisd"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -417,6 +449,7 @@
             "dns.sh",
             "dns4eu-protective"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -430,6 +463,7 @@
             "dns.sh",
             "dns4eu-child"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -443,6 +477,7 @@
             "dns.sh",
             "dns4eu-noads"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -456,6 +491,7 @@
             "dns.sh",
             "dns4eu-child-noads"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -469,6 +505,7 @@
             "dns.sh",
             "dns4eu-unfiltered"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -482,6 +519,7 @@
             "dns.sh",
             "dns-sb"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -495,6 +533,7 @@
             "dns.sh",
             "cz-nic"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -508,6 +547,7 @@
             "dns.sh",
             "digitale-gesellschaft"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -521,6 +561,7 @@
             "dns.sh",
             "restena"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -534,6 +575,7 @@
             "dns.sh",
             "applied-privacy"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -547,6 +589,7 @@
             "dns.sh",
             "uncensored"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -560,11 +603,12 @@
             "dns.sh",
             "gaming"
         ],
-        "confirm": false,
-        "risk": "safe",
         "choice": "dns_fast",
         "option": "Gaming",
-        "state_value": "one.one.one.one"
+        "state_value": "one.one.one.one",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.custom",
@@ -577,15 +621,15 @@
             "custom",
             "{host}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "host",
                 "type": "host",
                 "label": "Hostname DoT"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "dns.off",
@@ -597,6 +641,7 @@
             "dns.sh",
             "off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -610,6 +655,8 @@
             "dns.sh",
             "bench"
         ],
+        "timeout": 180,
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -624,6 +671,7 @@
             "mem",
             "padrao"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -638,6 +686,7 @@
             "mem",
             "gaming"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -651,6 +700,7 @@
             "adb-tweaks.sh",
             "clean"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -664,6 +714,7 @@
             "adb-tweaks.sh",
             "clean_scan"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -677,8 +728,10 @@
             "adb-tweaks.sh",
             "clean_deep"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "clean.undo",
@@ -690,6 +743,7 @@
             "clean.sh",
             "off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -699,15 +753,17 @@
         "label": "Liberar RAM: normal",
         "desc": "Encerra o fundo, poda cache e solta pagecache. Mostra o ganho.",
         "help": "Libera memória na hora: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), apaga o cache de todos os apps e, com root, manda o kernel soltar o pagecache. Diferente de \"RAM: perfil gaming\" — aqui a RAM é liberada de verdade. O resultado mostra quantos MB sobraram.",
+        "choice": "ramboost",
+        "option": "Normal",
         "argv": [
             "ram-boost.sh",
             "boost",
             "normal"
         ],
-        "confirm": true,
         "risk": "careful",
-        "choice": "ramboost",
-        "option": "Normal"
+        "confirm": true,
+        "timeout": 120,
+        "params": []
     },
     {
         "id": "ram.max",
@@ -715,15 +771,17 @@
         "label": "Liberar RAM: máximo",
         "desc": "Igual ao normal e ainda encerra apps de mídia/chat conhecidos.",
         "help": "A versão mais agressiva: além de tudo do normal, encerra também apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch). Sobra o máximo de RAM. Use só quando quiser o aparelho 100% livre.",
+        "choice": "ramboost",
+        "option": "Máximo",
         "argv": [
             "ram-boost.sh",
             "boost",
             "max"
         ],
-        "confirm": true,
         "risk": "careful",
-        "choice": "ramboost",
-        "option": "Máximo"
+        "confirm": true,
+        "timeout": 120,
+        "params": []
     },
     {
         "id": "ram.status",
@@ -735,6 +793,7 @@
             "ram-boost.sh",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -744,15 +803,17 @@
         "label": "Resfriar aparelho: normal",
         "desc": "Limita CPU/GPU e baixa o brilho para esfriar. Desliga sozinho.",
         "help": "Use quando o celular estiver quente. Reduz o que esquenta: prende a CPU e a GPU no clock mínimo, baixa o brilho da tela e encerra os apps de fundo. Desliga automaticamente ao esfriar (38°C) ou após 30 minutos. Requer root. Reverta em \"Parar resfriamento\".",
+        "choice": "cooldown",
+        "option": "Normal",
         "argv": [
             "cool-down.sh",
             "on",
             "normal"
         ],
-        "confirm": true,
         "risk": "root",
-        "choice": "cooldown",
-        "option": "Normal"
+        "confirm": true,
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "cool.max",
@@ -760,15 +821,17 @@
         "label": "Resfriar aparelho: máximo",
         "desc": "Igual ao normal e ainda desliga os núcleos extras.",
         "help": "A versão mais forte: além de tudo do normal, desliga os núcleos de CPU extras para reduzir ainda mais o calor. O aparelho fica mais lento enquanto está ligado — é o preço de esfriar rápido. Desliga sozinho ao esfriar. Requer root.",
+        "choice": "cooldown",
+        "option": "Máximo",
         "argv": [
             "cool-down.sh",
             "on",
             "max"
         ],
-        "confirm": true,
         "risk": "root",
-        "choice": "cooldown",
-        "option": "Máximo"
+        "confirm": true,
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "cool.off",
@@ -780,8 +843,9 @@
             "cool-down.sh",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "cool.status",
@@ -793,6 +857,7 @@
             "cool-down.sh",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -806,6 +871,7 @@
             "adb-tweaks.sh",
             "gpu"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -815,16 +881,17 @@
         "label": "Renderizador: OpenGL (padrão)",
         "desc": "Motor gráfico de fábrica. Mais compatível.",
         "help": "Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.",
+        "choice": "renderer",
+        "option": "OpenGL",
+        "state_value": "opengl",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
             "opengl"
         ],
+        "params": [],
         "confirm": false,
-        "risk": "safe",
-        "choice": "renderer",
-        "option": "OpenGL",
-        "state_value": "opengl"
+        "risk": "safe"
     },
     {
         "id": "gpu.skiagl",
@@ -832,16 +899,17 @@
         "label": "Renderizador: SkiaGL",
         "desc": "Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.",
         "help": "Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.",
+        "choice": "renderer",
+        "option": "SkiaGL",
+        "state_value": "skiagl",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
             "skiagl"
         ],
+        "params": [],
         "confirm": false,
-        "risk": "safe",
-        "choice": "renderer",
-        "option": "SkiaGL",
-        "state_value": "skiagl"
+        "risk": "safe"
     },
     {
         "id": "gpu.skiavk",
@@ -849,16 +917,17 @@
         "label": "Renderizador: Skia Vulkan",
         "desc": "Skia sobre Vulkan. Costuma dar mais fluidez.",
         "help": "Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.",
+        "choice": "renderer",
+        "option": "Skia Vulkan",
+        "state_value": "skiavk",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
             "skiavk"
         ],
+        "params": [],
         "confirm": false,
-        "risk": "safe",
-        "choice": "renderer",
-        "option": "Skia Vulkan",
-        "state_value": "skiavk"
+        "risk": "safe"
     },
     {
         "id": "gpu.skiagl_threaded",
@@ -866,17 +935,18 @@
         "label": "Renderizador: SkiaGL multithread",
         "desc": "SkiaGL desenhando numa thread separada. Mais suave.",
         "help": "Usa SkiaGL e move a composição para uma thread separada (backend \"skiaglthreaded\"). Costuma deixar a rolagem mais suave em telas de alta taxa. É mais exigente: se esquentar ou instabilizar, volte para SkiaGL.",
+        "choice": "renderer",
+        "option": "SkiaGL multithread",
+        "state_value": "skiagl",
+        "state_backend_value": "skiaglthreaded",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
             "skiagl-threaded"
         ],
+        "params": [],
         "confirm": false,
-        "risk": "safe",
-        "choice": "renderer",
-        "option": "SkiaGL multithread",
-        "state_value": "skiagl",
-        "state_backend_value": "skiaglthreaded"
+        "risk": "safe"
     },
     {
         "id": "gpu.skiavk_threaded",
@@ -884,17 +954,18 @@
         "label": "Renderizador: Skia Vulkan multithread",
         "desc": "Skia Vulkan em thread separada. Máxima fluidez.",
         "help": "Usa Skia Vulkan com a composição numa thread separada (backend \"skiavkthreaded\"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou OpenGL.",
+        "choice": "renderer",
+        "option": "Skia Vulkan multithread",
+        "state_value": "skiavk",
+        "state_backend_value": "skiavkthreaded",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
             "skiavk-threaded"
         ],
+        "params": [],
         "confirm": false,
-        "risk": "safe",
-        "choice": "renderer",
-        "option": "Skia Vulkan multithread",
-        "state_value": "skiavk",
-        "state_backend_value": "skiavkthreaded"
+        "risk": "safe"
     },
     {
         "id": "gpu.force",
@@ -907,6 +978,7 @@
             "raw",
             "settings put global force_gpu_rendering 1"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -916,6 +988,8 @@
         "label": "Escolher driver do app",
         "desc": "Escolha o app e o driver gráfico que ele deve usar.",
         "help": "Escolhe o driver gráfico de um app específico: ANGLE (OpenGL ES sobre Vulkan, costuma render mais FPS), Nativo (força o driver OpenGL ES do fabricante) ou Padrão (o sistema decide). É a mesma opção de \"Driver gráfico\" das Opções de desenvolvedor, mas aqui por app e sem root. Reabra o app depois.",
+        "choice": "renderapp",
+        "option": "Driver do app",
         "argv": [
             "deep-tune.sh",
             "angle",
@@ -923,8 +997,6 @@
             "{pkg}",
             "{driver}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
@@ -935,16 +1007,16 @@
                 "name": "driver",
                 "type": "enum",
                 "label": "Driver",
-                "default": "angle",
                 "options": [
                     "angle",
                     "native",
                     "default"
-                ]
+                ],
+                "default": "angle"
             }
         ],
-        "choice": "renderapp",
-        "option": "Driver do app"
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "refresh.60",
@@ -952,16 +1024,17 @@
         "label": "60Hz (economia)",
         "desc": "Trava a tela em 60Hz. Menos bateria, frametime estável.",
         "help": "Trava a tela em 60Hz. É a taxa do dia a dia para quem não precisa de mais: gasta menos bateria e esquenta menos. Em jogo, uma taxa fixa evita a tela oscilar (60↔90Hz), o que causa micro-travada. Reverte em \"Automático\".",
+        "choice": "refresh",
+        "option": "60Hz",
+        "state_value": "60.0",
         "argv": [
             "turbo.sh",
             "refresh_fixed",
             "60"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "refresh",
-        "option": "60Hz",
-        "state_value": "60.0"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "refresh.90",
@@ -969,16 +1042,17 @@
         "label": "90Hz",
         "desc": "Trava a tela em 90Hz. Um meio-termo.",
         "help": "Trava a tela em 90Hz: mais fluido que 60Hz, gastando um pouco mais de bateria que o normal. Só funciona se a tela do aparelho suportar 90Hz. Reverte em \"Automático\".",
+        "choice": "refresh",
+        "option": "90Hz",
+        "state_value": "90.0",
         "argv": [
             "turbo.sh",
             "refresh_fixed",
             "90"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "refresh",
-        "option": "90Hz",
-        "state_value": "90.0"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "refresh.120",
@@ -986,16 +1060,17 @@
         "label": "120Hz (máximo)",
         "desc": "Trava a tela na taxa mais alta. Mais fluidez.",
         "help": "Trava a tela em 120Hz, a maior taxa da maioria dos aparelhos: rolagem e jogo mais lisos. Gasta mais bateria. Só funciona se a tela suportar 120Hz. Reverte em \"Automático\".",
+        "choice": "refresh",
+        "option": "120Hz",
+        "state_value": "120.0",
         "argv": [
             "turbo.sh",
             "refresh_fixed",
             "120"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "refresh",
-        "option": "120Hz",
-        "state_value": "120.0"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "refresh.auto",
@@ -1003,15 +1078,16 @@
         "label": "Automático",
         "desc": "O sistema decide a taxa conforme a tela e a bateria.",
         "help": "Remove a trava e devolve a decisão da taxa de atualização ao Android: ele escolhe conforme a tela e a bateria. Use se quiser voltar ao comportamento de fábrica.",
+        "choice": "refresh",
+        "option": "Automático",
         "argv": [
             "turbo.sh",
             "refresh",
             "auto"
         ],
-        "confirm": false,
         "risk": "safe",
-        "choice": "refresh",
-        "option": "Automático"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "app.angle",
@@ -1025,15 +1101,15 @@
             "add",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "app.angle_remove",
@@ -1047,15 +1123,15 @@
             "remove",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "app.angle_reset",
@@ -1069,6 +1145,7 @@
             "reset"
         ],
         "confirm": true,
+        "params": [],
         "risk": "safe"
     },
     {
@@ -1083,15 +1160,15 @@
             "{pkg}",
             "performance"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "app.downscale",
@@ -1105,8 +1182,6 @@
             "{pkg}",
             "{scale}"
         ],
-        "confirm": true,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
@@ -1117,12 +1192,14 @@
                 "name": "scale",
                 "type": "float",
                 "label": "Downscale",
-                "default": 0.9,
                 "min": 0.3,
                 "max": 1,
-                "step": 0.05
+                "step": 0.05,
+                "default": 0.9
             }
-        ]
+        ],
+        "confirm": true,
+        "risk": "safe"
     },
     {
         "id": "app.reset",
@@ -1135,8 +1212,32 @@
             "reset",
             "{pkg}"
         ],
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ],
         "confirm": false,
-        "risk": "safe",
+        "risk": "safe"
+    },
+    {
+        "id": "clean.normal",
+        "group": "Apps e jogos",
+        "label": "Game Clean: limpeza normal",
+        "desc": "Fecha o fundo, limpa cache/RAM e otimiza o jogo escolhido.",
+        "help": "Deixa o jogo \"clean\": encerra os apps que estavam rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), poda o cache e o dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. É o \"entrar em modo partida\" completo. Reverta em \"Game Clean: desligar\".",
+        "choice": "gameclean",
+        "option": "Normal",
+        "argv": [
+            "game-clean.sh",
+            "on",
+            "{pkg}"
+        ],
+        "risk": "careful",
+        "confirm": true,
+        "timeout": 300,
         "params": [
             {
                 "name": "pkg",
@@ -1146,51 +1247,29 @@
         ]
     },
     {
-        "id": "clean.normal",
-        "group": "Apps e jogos",
-        "label": "Game Clean: limpeza normal",
-        "desc": "Fecha o fundo, limpa cache/RAM e otimiza o jogo escolhido.",
-        "help": "Deixa o jogo \"clean\": encerra os apps que estavam rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), poda o cache e o dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. É o \"entrar em modo partida\" completo. Reverta em \"Game Clean: desligar\".",
-        "argv": [
-            "game-clean.sh",
-            "on",
-            "{pkg}"
-        ],
-        "confirm": true,
-        "risk": "careful",
-        "params": [
-            {
-                "name": "pkg",
-                "type": "pkg",
-                "label": "App/jogo"
-            }
-        ],
-        "choice": "gameclean",
-        "option": "Normal"
-    },
-    {
         "id": "clean.max",
         "group": "Apps e jogos",
         "label": "Game Clean: máximo",
         "desc": "Igual ao normal, e ainda encerra apps de mídia/chat conhecidos.",
         "help": "A versão mais agressiva: além de tudo do modo normal, encerra também os apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch) para sobrar o máximo de RAM e CPU. Use só quando quiser o aparelho 100% para o jogo.",
+        "choice": "gameclean",
+        "option": "Máximo",
         "argv": [
             "game-clean.sh",
             "on",
             "{pkg}",
             "max"
         ],
-        "confirm": true,
         "risk": "careful",
+        "confirm": true,
+        "timeout": 300,
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ],
-        "choice": "gameclean",
-        "option": "Máximo"
+        ]
     },
     {
         "id": "clean.off",
@@ -1203,15 +1282,15 @@
             "off",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "clean.status",
@@ -1224,15 +1303,15 @@
             "status",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "touch.balanced",
@@ -1240,15 +1319,16 @@
         "label": "Touch: Equilibrado",
         "desc": "Ajuste geral, bom para a maioria.",
         "help": "Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".",
+        "choice": "touchprofile",
+        "option": "Equilibrado",
+        "state_match": "touch:100,400,0,8",
         "argv": [
             "ff-touch.sh",
             "balanced"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "touchprofile",
-        "option": "Equilibrado",
-        "state_match": "touch:100,400,0,8"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "touch.headshot",
@@ -1256,15 +1336,16 @@
         "label": "Touch: Headshot",
         "desc": "Resposta mais rápida: mira ágil.",
         "help": "Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".",
+        "choice": "touchprofile",
+        "option": "Headshot",
+        "state_match": "touch:110,350,0,4",
         "argv": [
             "ff-touch.sh",
             "headshot"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "touchprofile",
-        "option": "Headshot",
-        "state_match": "touch:110,350,0,4"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "touch.spray",
@@ -1272,15 +1353,16 @@
         "label": "Touch: Spray",
         "desc": "Mais controle de recuo no tiro contínuo.",
         "help": "Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".",
+        "choice": "touchprofile",
+        "option": "Spray",
+        "state_match": "touch:105,300,0,6",
         "argv": [
             "ff-touch.sh",
             "spray"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "touchprofile",
-        "option": "Spray",
-        "state_match": "touch:105,300,0,6"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "touch.sniper",
@@ -1288,15 +1370,16 @@
         "label": "Touch: Sniper",
         "desc": "Mira precisa e estável para longa distância.",
         "help": "Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".",
+        "choice": "touchprofile",
+        "option": "Sniper",
+        "state_match": "touch:95,500,-1,10",
         "argv": [
             "ff-touch.sh",
             "sniper"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "touchprofile",
-        "option": "Sniper",
-        "state_match": "touch:95,500,-1,10"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "touch.speed",
@@ -1304,15 +1387,16 @@
         "label": "Touch: Speed",
         "desc": "Máxima reatividade: resposta imediata.",
         "help": "Ajusta a sensibilidade e o tempo de resposta do toque do sistema (vale para o jogo todo). Cada perfil muda a rapidez da mira e a suavidade. Teste um, jogue e veja qual combina com você. Reverta em \"Restaurar touch\".",
+        "choice": "touchprofile",
+        "option": "Speed",
+        "state_match": "touch:120,300,1,2",
         "argv": [
             "ff-touch.sh",
             "speed"
         ],
-        "confirm": false,
         "risk": "careful",
-        "choice": "touchprofile",
-        "option": "Speed",
-        "state_match": "touch:120,300,1,2"
+        "params": [],
+        "confirm": false
     },
     {
         "id": "touch.custom",
@@ -1328,46 +1412,46 @@
             "{ps}",
             "{slop}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "tr",
                 "type": "int",
                 "label": "responsiveness",
-                "default": 110,
                 "min": 50,
                 "max": 200,
+                "default": 110,
                 "state": "touch_responsiveness"
             },
             {
                 "name": "lp",
                 "type": "int",
                 "label": "long press (ms)",
-                "default": 350,
                 "min": 100,
                 "max": 800,
+                "default": 350,
                 "state": "long_press_timeout"
             },
             {
                 "name": "ps",
                 "type": "int",
                 "label": "pointer speed",
-                "default": 0,
                 "min": -5,
                 "max": 5,
+                "default": 0,
                 "state": "pointer_speed"
             },
             {
                 "name": "slop",
                 "type": "int",
                 "label": "touch slop",
-                "default": 4,
                 "min": 0,
                 "max": 30,
+                "default": 4,
                 "state": "touch_slop"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "touch.restore",
@@ -1379,6 +1463,7 @@
             "ff-touch.sh",
             "restore"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1393,18 +1478,18 @@
             "touch_multi",
             "{ms}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "ms",
                 "type": "int",
                 "label": "Milissegundos",
-                "default": 300,
                 "min": 100,
-                "max": 800
+                "max": 800,
+                "default": 300
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "touch.latency",
@@ -1420,42 +1505,42 @@
             "{ps}",
             "{slop}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "tr",
                 "type": "int",
                 "label": "responsividade",
-                "default": 90,
                 "min": 1,
-                "max": 1000
+                "max": 1000,
+                "default": 90
             },
             {
                 "name": "lp",
                 "type": "int",
                 "label": "long press (ms)",
-                "default": 350,
                 "min": 50,
-                "max": 1500
+                "max": 1500,
+                "default": 350
             },
             {
                 "name": "ps",
                 "type": "int",
                 "label": "pointer speed",
-                "default": 0,
                 "min": -10,
-                "max": 10
+                "max": 10,
+                "default": 0
             },
             {
                 "name": "slop",
                 "type": "int",
                 "label": "touch slop",
-                "default": 4,
                 "min": 0,
-                "max": 50
+                "max": 50,
+                "default": 4
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "ff",
@@ -1467,6 +1552,7 @@
             "adb-tweaks.sh",
             "ff"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1480,6 +1566,7 @@
             "adb-tweaks.sh",
             "game"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1493,6 +1580,7 @@
             "adb-tweaks.sh",
             "perf"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1506,6 +1594,7 @@
             "adb-tweaks.sh",
             "perf_max"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1519,6 +1608,7 @@
             "adb-tweaks.sh",
             "fluidez"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1532,6 +1622,7 @@
             "adb-tweaks.sh",
             "dnd"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1545,6 +1636,7 @@
             "adb-tweaks.sh",
             "dnd_off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1558,8 +1650,9 @@
             "adb-tweaks.sh",
             "game_focus"
         ],
-        "confirm": false,
-        "risk": "careful"
+        "risk": "careful",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "game_focus_off",
@@ -1571,6 +1664,7 @@
             "adb-tweaks.sh",
             "game_focus_off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1584,6 +1678,7 @@
             "adb-tweaks.sh",
             "screen"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1597,6 +1692,7 @@
             "adb-tweaks.sh",
             "battery"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1610,6 +1706,7 @@
             "adb-tweaks.sh",
             "battery_off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1624,8 +1721,9 @@
             "doze",
             "on"
         ],
+        "risk": "careful",
         "confirm": true,
-        "risk": "careful"
+        "params": []
     },
     {
         "id": "doze.off",
@@ -1638,6 +1736,7 @@
             "doze",
             "off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1652,6 +1751,7 @@
             "doze",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1666,18 +1766,18 @@
             "top",
             "{n}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "n",
                 "type": "int",
                 "label": "Quantos",
-                "default": 12,
                 "min": 5,
-                "max": 40
+                "max": 40,
+                "default": 12
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "proc.info",
@@ -1690,15 +1790,15 @@
             "info",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "proc.ram",
@@ -1712,8 +1812,6 @@
             "{pkg}",
             "{mb}"
         ],
-        "confirm": true,
-        "risk": "root",
         "params": [
             {
                 "name": "pkg",
@@ -1724,11 +1822,13 @@
                 "name": "mb",
                 "type": "int",
                 "label": "Limite (MB, 0 = sem)",
-                "default": 0,
                 "min": 0,
-                "max": 8192
+                "max": 8192,
+                "default": 0
             }
-        ]
+        ],
+        "risk": "root",
+        "confirm": true
     },
     {
         "id": "proc.cpu",
@@ -1742,8 +1842,6 @@
             "{pkg}",
             "{group}"
         ],
-        "confirm": true,
-        "risk": "root",
         "params": [
             {
                 "name": "pkg",
@@ -1754,14 +1852,16 @@
                 "name": "group",
                 "type": "enum",
                 "label": "Grupo",
-                "default": "top-app",
                 "options": [
                     "top-app",
                     "foreground",
                     "background"
-                ]
+                ],
+                "default": "top-app"
             }
-        ]
+        ],
+        "risk": "root",
+        "confirm": true
     },
     {
         "id": "proc.renice",
@@ -1775,8 +1875,6 @@
             "{pkg}",
             "{nice}"
         ],
-        "confirm": true,
-        "risk": "root",
         "params": [
             {
                 "name": "pkg",
@@ -1787,11 +1885,13 @@
                 "name": "nice",
                 "type": "int",
                 "label": "nice",
-                "default": -5,
                 "min": -20,
-                "max": 19
+                "max": 19,
+                "default": -5
             }
-        ]
+        ],
+        "risk": "root",
+        "confirm": true
     },
     {
         "id": "proc.freeze",
@@ -1804,15 +1904,15 @@
             "freeze",
             "{pkg}"
         ],
-        "confirm": true,
-        "risk": "root",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "risk": "root",
+        "confirm": true
     },
     {
         "id": "proc.unfreeze",
@@ -1825,15 +1925,15 @@
             "unfreeze",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "proc.status",
@@ -1845,6 +1945,7 @@
             "proc-mgr.sh",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1858,8 +1959,9 @@
             "proc-mgr.sh",
             "restore"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "keep.on",
@@ -1872,15 +1974,15 @@
             "on",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "keep.game",
@@ -1894,15 +1996,15 @@
             "{pkg}",
             "jogo"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "keep.off",
@@ -1915,15 +2017,15 @@
             "off",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "keep.status",
@@ -1936,15 +2038,15 @@
             "status",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App/jogo"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "keep.list",
@@ -1956,6 +2058,7 @@
             "keep-alive.sh",
             "list"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -1969,8 +2072,9 @@
             "keep-alive.sh",
             "restore"
         ],
+        "risk": "careful",
         "confirm": true,
-        "risk": "careful"
+        "params": []
     },
     {
         "id": "freeze",
@@ -1983,6 +2087,7 @@
             "freezer"
         ],
         "confirm": true,
+        "params": [],
         "risk": "safe"
     },
     {
@@ -1995,6 +2100,7 @@
             "adb-tweaks.sh",
             "unfreeze_apps"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2010,7 +2116,9 @@
             "leve"
         ],
         "confirm": true,
-        "risk": "careful"
+        "risk": "careful",
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "debloat.medio",
@@ -2024,7 +2132,9 @@
             "medio"
         ],
         "confirm": true,
-        "risk": "careful"
+        "risk": "careful",
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "debloat.pesado",
@@ -2038,7 +2148,9 @@
             "pesado"
         ],
         "confirm": true,
-        "risk": "careful"
+        "risk": "careful",
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "debloat.off",
@@ -2050,6 +2162,8 @@
             "debloat.sh",
             "off"
         ],
+        "timeout": 180,
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2064,8 +2178,9 @@
             "freq",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "deep.freq.off",
@@ -2078,8 +2193,9 @@
             "freq",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "deep.io",
@@ -2092,8 +2208,9 @@
             "io",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "deep.io.off",
@@ -2106,8 +2223,9 @@
             "io",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "deep.mem",
@@ -2120,8 +2238,9 @@
             "mem",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "deep.mem.off",
@@ -2134,8 +2253,9 @@
             "mem",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "deep.net",
@@ -2148,8 +2268,9 @@
             "net",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "deep.net.off",
@@ -2162,8 +2283,9 @@
             "net",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "deep.latency",
@@ -2176,8 +2298,9 @@
             "latency",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "deep.latency.off",
@@ -2190,8 +2313,9 @@
             "latency",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "deep.gaming",
@@ -2204,8 +2328,10 @@
             "gaming",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "timeout": 180,
+        "params": []
     },
     {
         "id": "deep.thermal",
@@ -2218,8 +2344,9 @@
             "thermal",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "deep.detect",
@@ -2231,6 +2358,7 @@
             "deep-tune.sh",
             "detect"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2245,8 +2373,9 @@
             "vm",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.vm.off",
@@ -2259,8 +2388,9 @@
             "vm",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.sched",
@@ -2273,8 +2403,9 @@
             "sched",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.sched.off",
@@ -2287,8 +2418,9 @@
             "sched",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.gpu",
@@ -2301,8 +2433,9 @@
             "gpu",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.gpu.off",
@@ -2315,8 +2448,9 @@
             "gpu",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.cores",
@@ -2329,8 +2463,9 @@
             "cores",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.cores.off",
@@ -2343,8 +2478,9 @@
             "cores",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.input",
@@ -2357,8 +2493,9 @@
             "input",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.input.off",
@@ -2371,8 +2508,9 @@
             "input",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.idle",
@@ -2385,8 +2523,9 @@
             "idle",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.idle.off",
@@ -2399,8 +2538,9 @@
             "idle",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.net2",
@@ -2413,8 +2553,9 @@
             "net2",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.net2.off",
@@ -2427,8 +2568,9 @@
             "net2",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.zram",
@@ -2441,8 +2583,9 @@
             "zram",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.zram.off",
@@ -2455,8 +2598,9 @@
             "zram",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.kernel",
@@ -2469,8 +2613,9 @@
             "kernel",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.kernel.off",
@@ -2483,8 +2628,9 @@
             "kernel",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.dalvik",
@@ -2497,8 +2643,9 @@
             "dalvik",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "ext.dalvik.off",
@@ -2511,8 +2658,9 @@
             "dalvik",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "ext.display",
@@ -2525,6 +2673,7 @@
             "display",
             "on"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2539,6 +2688,7 @@
             "display",
             "off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2552,8 +2702,10 @@
             "deep-tune.sh",
             "extreme"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "timeout": 300,
+        "params": []
     },
     {
         "id": "ext.dexopt",
@@ -2566,8 +2718,10 @@
             "dexopt",
             "run"
         ],
+        "timeout": 900,
+        "risk": "careful",
         "confirm": true,
-        "risk": "careful"
+        "params": []
     },
     {
         "id": "ext.dexopt_status",
@@ -2580,6 +2734,7 @@
             "dexopt",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2593,6 +2748,7 @@
             "adb-tweaks.sh",
             "obscure"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2606,6 +2762,7 @@
             "adb-tweaks.sh",
             "mobile_net"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2619,6 +2776,7 @@
             "adb-tweaks.sh",
             "notif"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2632,6 +2790,7 @@
             "adb-tweaks.sh",
             "window_tweaks"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2645,6 +2804,7 @@
             "turbo.sh",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2660,8 +2820,6 @@
             "{pkg}",
             "{mode}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
@@ -2672,14 +2830,17 @@
                 "name": "mode",
                 "type": "enum",
                 "label": "Modo",
-                "default": "speed-profile",
                 "options": [
                     "speed-profile",
                     "speed",
                     "everything"
-                ]
+                ],
+                "default": "speed-profile"
             }
-        ]
+        ],
+        "timeout": 600,
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "turbo.art_all",
@@ -2692,8 +2853,10 @@
             "art-all",
             "speed-profile"
         ],
+        "timeout": 900,
+        "risk": "careful",
         "confirm": true,
-        "risk": "careful"
+        "params": []
     },
     {
         "id": "turbo.dexopt_bg",
@@ -2705,6 +2868,7 @@
             "turbo.sh",
             "dexopt-bg"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2720,8 +2884,6 @@
             "{pkg}",
             "{bucket}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
@@ -2732,16 +2894,18 @@
                 "name": "bucket",
                 "type": "enum",
                 "label": "Bucket",
-                "default": "rare",
                 "options": [
                     "active",
                     "working",
                     "frequent",
                     "rare",
                     "restricted"
-                ]
+                ],
+                "default": "rare"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "turbo.hibernate",
@@ -2754,15 +2918,15 @@
             "hibernate",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "turbo.hibernate_all",
@@ -2775,8 +2939,9 @@
             "hibernate",
             "now"
         ],
+        "risk": "careful",
         "confirm": true,
-        "risk": "careful"
+        "params": []
     },
     {
         "id": "turbo.killbg",
@@ -2788,8 +2953,9 @@
             "turbo.sh",
             "killbg"
         ],
-        "confirm": false,
-        "risk": "careful"
+        "risk": "careful",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.phantom_on",
@@ -2802,6 +2968,7 @@
             "phantom",
             "on"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2816,8 +2983,9 @@
             "phantom",
             "off"
         ],
-        "confirm": false,
-        "risk": "careful"
+        "risk": "careful",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.trim",
@@ -2829,6 +2997,7 @@
             "turbo.sh",
             "trim"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2843,8 +3012,9 @@
             "refresh",
             "max"
         ],
-        "confirm": false,
-        "risk": "careful"
+        "risk": "careful",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.refresh_auto",
@@ -2857,6 +3027,7 @@
             "refresh",
             "auto"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -2871,22 +3042,22 @@
             "refresh_fixed",
             "{hz}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "hz",
                 "type": "enum",
                 "label": "Taxa (Hz)",
-                "default": "120",
                 "options": [
                     "60",
                     "90",
                     "120",
                     "144"
-                ]
+                ],
+                "default": "120"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "turbo.audio",
@@ -2899,8 +3070,9 @@
             "audio",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "turbo.audio_off",
@@ -2913,8 +3085,9 @@
             "audio",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.mem_compact",
@@ -2927,8 +3100,9 @@
             "mem_compact",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "params": []
     },
     {
         "id": "turbo.mem_compact_off",
@@ -2941,8 +3115,9 @@
             "mem_compact",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.boot",
@@ -2955,8 +3130,10 @@
             "boot",
             "on"
         ],
+        "risk": "root",
         "confirm": true,
-        "risk": "root"
+        "timeout": 120,
+        "params": []
     },
     {
         "id": "turbo.boot_off",
@@ -2969,8 +3146,9 @@
             "boot",
             "off"
         ],
-        "confirm": false,
-        "risk": "root"
+        "risk": "root",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.perfmode_on",
@@ -2983,8 +3161,9 @@
             "perfmode",
             "on"
         ],
-        "confirm": false,
-        "risk": "careful"
+        "risk": "careful",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.perfmode_off",
@@ -2997,6 +3176,7 @@
             "perfmode",
             "off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3011,8 +3191,9 @@
             "telemetry",
             "off"
         ],
-        "confirm": false,
-        "risk": "careful"
+        "risk": "careful",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "turbo.telemetry_on",
@@ -3025,6 +3206,7 @@
             "telemetry",
             "on"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3040,8 +3222,6 @@
             "{pkg}",
             "{mode}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
@@ -3052,14 +3232,16 @@
                 "name": "mode",
                 "type": "enum",
                 "label": "Modo",
-                "default": "performance",
                 "options": [
                     "performance",
                     "standard",
                     "battery"
-                ]
+                ],
+                "default": "performance"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "debloat.preview",
@@ -3072,21 +3254,21 @@
             "preview",
             "{profile}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "profile",
                 "type": "enum",
                 "label": "Perfil",
-                "default": "medio",
                 "options": [
                     "leve",
                     "medio",
                     "pesado"
-                ]
+                ],
+                "default": "medio"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "wifi",
@@ -3098,6 +3280,7 @@
             "adb-tweaks.sh",
             "wifi"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3111,6 +3294,7 @@
             "adb-tweaks.sh",
             "net"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3124,6 +3308,7 @@
             "adb-tweaks.sh",
             "net_reset"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3137,6 +3322,7 @@
             "adb-tweaks.sh",
             "freezer_off"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3151,7 +3337,8 @@
             "freeze_apps"
         ],
         "confirm": true,
-        "risk": "careful"
+        "risk": "careful",
+        "params": []
     },
     {
         "id": "unfreeze_now",
@@ -3163,6 +3350,7 @@
             "adb-tweaks.sh",
             "unfreeze_apps"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3177,15 +3365,15 @@
             "disable",
             "{pkg}"
         ],
-        "confirm": true,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": true
     },
     {
         "id": "debloat.app.enable",
@@ -3198,15 +3386,15 @@
             "enable",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "debloat.app.uninstall",
@@ -3219,15 +3407,15 @@
             "uninstall",
             "{pkg}"
         ],
-        "confirm": true,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": true
     },
     {
         "id": "debloat.app.restore",
@@ -3240,15 +3428,15 @@
             "restore",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "debloat.app.restrict",
@@ -3261,15 +3449,15 @@
             "restrict",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "careful",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "debloat.app.unrestrict",
@@ -3282,15 +3470,15 @@
             "unrestrict",
             "{pkg}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "pkg",
                 "type": "pkg",
                 "label": "App"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "snapshot_list",
@@ -3302,6 +3490,7 @@
             "snapshot.sh",
             "list"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3316,6 +3505,7 @@
             "diff",
             "latest"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3330,8 +3520,9 @@
             "restore",
             "latest"
         ],
+        "risk": "careful",
         "confirm": true,
-        "risk": "careful"
+        "params": []
     },
     {
         "id": "diag.profile",
@@ -3342,6 +3533,7 @@
         "argv": [
             "device-profile.sh"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3355,6 +3547,7 @@
             "device-profile.sh",
             "save"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3368,6 +3561,7 @@
             "deep-tune.sh",
             "detect"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3382,6 +3576,7 @@
             "thermal",
             "temp"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3395,6 +3590,7 @@
             "dns.sh",
             "status"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3409,8 +3605,6 @@
             "save",
             "{label}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "label",
@@ -3418,7 +3612,9 @@
                 "label": "Rótulo",
                 "default": "antes"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "diag.bench_after",
@@ -3431,8 +3627,6 @@
             "run",
             "{label}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "label",
@@ -3440,7 +3634,9 @@
                 "label": "Rótulo",
                 "default": "depois"
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "module.run",
@@ -3453,15 +3649,16 @@
             "run",
             "{name}"
         ],
-        "confirm": true,
-        "risk": "careful",
         "params": [
             {
                 "name": "name",
                 "type": "name",
                 "label": "Nome do módulo"
             }
-        ]
+        ],
+        "risk": "careful",
+        "confirm": true,
+        "timeout": 180
     },
     {
         "id": "ff_open",
@@ -3473,6 +3670,7 @@
             "adb-tweaks.sh",
             "ff_open"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3488,8 +3686,6 @@
             "{mode}",
             "{target}"
         ],
-        "confirm": false,
-        "risk": "safe",
         "params": [
             {
                 "name": "mode",
@@ -3503,7 +3699,9 @@
                 "label": "Endereço (só p/ ADB Wi-Fi: host:porta)",
                 "optional": true
             }
-        ]
+        ],
+        "confirm": false,
+        "risk": "safe"
     },
     {
         "id": "config.test",
@@ -3515,6 +3713,7 @@
             "config.sh",
             "test"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3528,6 +3727,7 @@
             "config.sh",
             "show"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3541,6 +3741,7 @@
             "config.sh",
             "reset"
         ],
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3554,6 +3755,8 @@
             "adb-tweaks.sh",
             "perm_app"
         ],
+        "timeout": 120,
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3567,6 +3770,8 @@
             "adb-tweaks.sh",
             "perm_ff"
         ],
+        "timeout": 120,
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3580,6 +3785,8 @@
             "adb-tweaks.sh",
             "perm_battery"
         ],
+        "timeout": 120,
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3593,6 +3800,8 @@
             "adb-tweaks.sh",
             "perm_all"
         ],
+        "timeout": 180,
+        "params": [],
         "confirm": false,
         "risk": "safe"
     },
@@ -3603,16 +3812,21 @@
         "desc": "Permissões, tema, cor, fonte, DPI e som do app.",
         "help": "Abre as configurações do painel: as permissões que o app precisa para funcionar (bateria, segundo plano, Doze), o tema (claro, escuro ou automático), a cor de destaque, a fonte, o DPI do app e ligar/desligar os sons. Fica salvo neste aparelho.",
         "argv": [],
+        "ui": "appearance",
+        "params": [],
         "confirm": false,
         "risk": "safe"
-    }
-    ,
+    },
     {
         "id": "game_lab.batata",
         "group": "Apps e jogos",
         "label": "Modo Batata (4GB RAM)",
         "desc": "FPS estável, animações 0x, Dexopt otimizado.",
-        "argv": ["turbo.sh", "hibernate", "all"],
+        "argv": [
+            "turbo.sh",
+            "hibernate",
+            "all"
+        ],
         "confirm": true,
         "risk": "safe"
     },
@@ -3621,27 +3835,56 @@
         "group": "Apps e jogos",
         "label": "Modo Competitivo",
         "desc": "Latência ultra baixa, prioridade total na CPU.",
-        "argv": ["game-clean.sh", "on", "{pkg}", "max"],
+        "argv": [
+            "game-clean.sh",
+            "on",
+            "{pkg}",
+            "max"
+        ],
         "confirm": true,
         "risk": "safe",
-        "params": [{"name":"pkg","type":"pkg","label":"App/jogo"}]
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "App/jogo"
+            }
+        ]
     },
     {
         "id": "game_lab.fluido",
         "group": "Display & Touch",
         "label": "Modo 90Hz / 120Hz Ultra",
         "desc": "Taxa de atualização forçada no pico.",
-        "argv": ["turbo.sh", "refresh_fixed", "{hz}"],
+        "argv": [
+            "turbo.sh",
+            "refresh_fixed",
+            "{hz}"
+        ],
         "confirm": true,
         "risk": "careful",
-        "params": [{"name":"hz","type":"enum","label":"Hz","options":["90","120"]}]
+        "params": [
+            {
+                "name": "hz",
+                "type": "enum",
+                "label": "Hz",
+                "options": [
+                    "90",
+                    "120"
+                ]
+            }
+        ]
     },
     {
         "id": "game_lab.eco",
         "group": "Desempenho",
         "label": "Modo Econômico/Resfriar",
         "desc": "Estável 60Hz, economia inteligente, resfriamento.",
-        "argv": ["cool-down.sh", "on", "max"],
+        "argv": [
+            "cool-down.sh",
+            "on",
+            "max"
+        ],
         "confirm": true,
         "risk": "root"
     },
@@ -3650,17 +3893,31 @@
         "group": "Apps e jogos",
         "label": "Modo Personalizado",
         "desc": "Ajustes sob medida para seu dispositivo.",
-        "argv": ["pack.sh", "apply", "{custom}"],
+        "argv": [
+            "pack.sh",
+            "apply",
+            "{custom}"
+        ],
         "confirm": true,
         "risk": "careful",
-        "params": [{"name":"custom","type":"text","label":"Comando personalizado"}]
+        "params": [
+            {
+                "name": "custom",
+                "type": "text",
+                "label": "Comando personalizado"
+            }
+        ]
     },
     {
         "id": "gpu.thermal.performance",
         "group": "Display & Touch",
         "label": "GPU: Performance",
         "desc": "Perfil de alto desempenho para a GPU.",
-        "argv": ["deep-tune.sh", "gpu", "perf"],
+        "argv": [
+            "deep-tune.sh",
+            "gpu",
+            "perf"
+        ],
         "confirm": false,
         "risk": "safe"
     },
@@ -3669,7 +3926,11 @@
         "group": "Display & Touch",
         "label": "GPU: Equilibrado",
         "desc": "Perfil equilibrado entre calor e desempenho.",
-        "argv": ["deep-tune.sh", "gpu", "balanced"],
+        "argv": [
+            "deep-tune.sh",
+            "gpu",
+            "balanced"
+        ],
         "confirm": false,
         "risk": "safe"
     },
@@ -3678,7 +3939,10 @@
         "group": "Apps e jogos",
         "label": "Modo Batata",
         "desc": "2GB a 4GB RAM: Foco em sobrevivência de FPS.",
-        "argv": ["game.sh", "batata"],
+        "argv": [
+            "game.sh",
+            "batata"
+        ],
         "confirm": true,
         "risk": "safe"
     },
@@ -3687,7 +3951,10 @@
         "group": "Apps e jogos",
         "label": "Modo Competitivo",
         "desc": "FF/CODM: Latência ultra baixa, CPU total no jogo.",
-        "argv": ["game.sh", "competitivo"],
+        "argv": [
+            "game.sh",
+            "competitivo"
+        ],
         "confirm": true,
         "risk": "safe"
     },
@@ -3696,7 +3963,10 @@
         "group": "Apps e jogos",
         "label": "Modo 90Hz / 120Hz",
         "desc": "Ultra fluido para telas de alta taxa.",
-        "argv": ["game.sh", "ultra"],
+        "argv": [
+            "game.sh",
+            "ultra"
+        ],
         "confirm": true,
         "risk": "safe"
     },
@@ -3705,7 +3975,10 @@
         "group": "Apps e jogos",
         "label": "Modo Econômico & Resfriamento",
         "desc": "Para quando esquenta ou bateria baixa.",
-        "argv": ["game.sh", "resfriamento"],
+        "argv": [
+            "game.sh",
+            "resfriamento"
+        ],
         "confirm": true,
         "risk": "safe"
     },
@@ -3714,8 +3987,153 @@
         "group": "Apps e jogos",
         "label": "Modo Personalizado",
         "desc": "Suas configurações.",
-        "argv": ["game.sh", "custom"],
+        "argv": [
+            "game.sh",
+            "custom"
+        ],
         "confirm": true,
         "risk": "safe"
+    },
+    {
+        "id": "profile.custom",
+        "group": "Geral",
+        "label": "Perfil personalizado",
+        "desc": "Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza, resfriamento.",
+        "help": "Abre um menu onde você liga só o que quiser. Cada recurso é independente: animações (0x/0.5x), limite de apps em 2º plano (RAM), taxa de atualização da tela, perfil de toque, telemetria, limpeza de cache/RAM, hibernar apps de fundo e resfriamento. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em \"Perfil personalizado: desligar\".",
+        "argv": [],
+        "ui": "customprofile",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "profile.custom.apply",
+        "group": "Geral",
+        "label": "Aplicar perfil personalizado",
+        "desc": "Liga os recursos escolhidos no menu do perfil personalizado.",
+        "help": "Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso.",
+        "argv": [
+            "profile-custom.sh",
+            "apply",
+            "{anim}",
+            "{ram}",
+            "{hz}",
+            "{touch}",
+            "{telemetry}",
+            "{clean}",
+            "{hibernate}",
+            "{cool}"
+        ],
+        "params": [
+            {
+                "name": "anim",
+                "type": "enum",
+                "label": "Animações",
+                "options": [
+                    "normal",
+                    "half",
+                    "off"
+                ],
+                "default": "normal"
+            },
+            {
+                "name": "ram",
+                "type": "enum",
+                "label": "RAM",
+                "options": [
+                    "padrao",
+                    "gaming",
+                    "batata"
+                ],
+                "default": "padrao"
+            },
+            {
+                "name": "hz",
+                "type": "enum",
+                "label": "Taxa da tela",
+                "options": [
+                    "off",
+                    "60",
+                    "90",
+                    "120",
+                    "144"
+                ],
+                "default": "off"
+            },
+            {
+                "name": "touch",
+                "type": "enum",
+                "label": "Toque",
+                "options": [
+                    "none",
+                    "balanced",
+                    "headshot",
+                    "spray",
+                    "sniper",
+                    "speed"
+                ],
+                "default": "none"
+            },
+            {
+                "name": "telemetry",
+                "type": "enum",
+                "label": "Telemetria",
+                "options": [
+                    "on",
+                    "off"
+                ],
+                "default": "on"
+            },
+            {
+                "name": "clean",
+                "type": "enum",
+                "label": "Limpeza",
+                "options": [
+                    "off",
+                    "fundo",
+                    "suave",
+                    "normal"
+                ],
+                "default": "off"
+            },
+            {
+                "name": "hibernate",
+                "type": "enum",
+                "label": "Hibernar apps",
+                "options": [
+                    "off",
+                    "on"
+                ],
+                "default": "off"
+            },
+            {
+                "name": "cool",
+                "type": "enum",
+                "label": "Resfriamento",
+                "options": [
+                    "off",
+                    "on"
+                ],
+                "default": "off"
+            }
+        ],
+        "confirm": true,
+        "risk": "careful",
+        "timeout": 300
+    },
+    {
+        "id": "profile.custom.off",
+        "group": "Geral",
+        "label": "Perfil personalizado: desligar",
+        "desc": "Desfaz o perfil personalizado e volta o aparelho ao padrão.",
+        "help": "Reverte tudo o que o perfil personalizado aplicou e devolve o aparelho ao estado de fábrica de configuração. A sua escolha de recursos fica salva para aplicar de novo depois.",
+        "argv": [
+            "profile-custom.sh",
+            "off"
+        ],
+        "confirm": true,
+        "risk": "safe",
+        "timeout": 300,
+        "params": []
     }
 ]

@@ -60,6 +60,29 @@ $meta = [
 
 $riskLabel = ['safe' => 'seguro', 'careful' => 'cuidado', 'root' => 'root'];
 
+// --- Perfil personalizado: opções do menu (o painel monta e envia ligadas) ----
+// A ordem das chaves é a mesma do argv de profile.custom.apply em lib.php.
+$CPROF = [
+    ['k' => 'anim',      't' => 'Animações',        's' => 'Transições e efeitos da interface.',
+     'opts' => [['normal', 'Padrão'], ['half', '0.5x'], ['off', 'Desligadas']]],
+    ['k' => 'ram',       't' => 'Apps em 2º plano', 's' => 'Quantos apps podem ficar abertos na memória.',
+     'opts' => [['padrao', 'Padrão'], ['gaming', 'Gaming'], ['batata', 'Batata']]],
+    ['k' => 'hz',        't' => 'Taxa da tela',     's' => 'Trava a tela numa taxa fixa para não oscilar.',
+     'opts' => [['off', 'Automática'], ['60', '60 Hz'], ['90', '90 Hz'], ['120', '120 Hz'], ['144', '144 Hz']]],
+    ['k' => 'touch',     't' => 'Perfil de toque',  's' => 'Ajuste de resposta do toque (bom no Free Fire).',
+     'opts' => [['none', 'Nenhum'], ['balanced', 'Equilibrado'], ['headshot', 'Headshot'], ['spray', 'Spray'], ['sniper', 'Sniper'], ['speed', 'Velocidade']]],
+    ['k' => 'clean',     't' => 'Limpeza',          's' => 'Limpa cache e libera RAM na hora.',
+     'opts' => [['off', 'Nenhuma'], ['fundo', 'Fundo'], ['suave', 'Suave'], ['normal', 'Completa']]],
+    ['k' => 'telemetry', 't' => 'Telemetria e logs','s' => 'Desligar reduz atividade em segundo plano.',
+     'opts' => [['on', 'Ligada'], ['off', 'Desligada']]],
+    ['k' => 'hibernate', 't' => 'Hibernar apps',    's' => 'Suspende os apps de fundo para ganhar RAM.',
+     'opts' => [['off', 'Não'], ['on', 'Sim']]],
+    ['k' => 'cool',      't' => 'Resfriamento',     's' => 'Reduz o aquecimento enquanto joga.',
+     'opts' => [['off', 'Não'], ['on', 'Sim']]],
+];
+$CPROF_DEFAULT = [];
+foreach ($CPROF as $c) { $CPROF_DEFAULT[$c['k']] = $c['opts'][0][0]; }
+
 // --- Terminal (aba própria): executa comandos crus via api.php do=term ---------
 // O Terminal é renderizado no servidor como uma seção a mais do menu. Ele não é
 // um "card de ação" (o comando é livre), por isso fica fora do registro.
@@ -243,16 +266,42 @@ button{font:inherit;color:inherit}
 @keyframes otmSheen{0%{background-position:-160% 0}60%,100%{background-position:260% 0}}
 @keyframes otmPulse{0%,100%{box-shadow:0 0 0 0 var(--ring)}50%{box-shadow:0 0 0 6px transparent}}
 @keyframes otmSpin{to{transform:rotate(360deg)}}
-.rocket-container{display:grid;place-items:center;padding:20px 0}
-.rocket-btn{
-  width:140px;height:140px;border-radius:50%;border:4px solid var(--accent);
-  background:var(--accent);color:white;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;font-weight:800;font-size:16px;box-shadow:0 0 20px rgba(228,87,28,.4);
-  transition:.2s;animation:otmPulse 2s infinite
+/* ---- Ação principal: limpeza inteligente (Clean Phone) ---------------------- */
+.hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--glass-card);padding:20px;margin:0 0 4px}
+.hero-glow{position:absolute;inset:-40% -20% auto -20%;height:180px;pointer-events:none;
+  background:radial-gradient(60% 100% at 50% 0%,var(--ring),transparent 70%);opacity:.5}
+.hero-body{position:relative;display:flex;flex-direction:column;gap:14px}
+.hero-head{display:flex;align-items:center;gap:14px}
+.hero-ico{flex:0 0 auto;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
+  color:var(--accent-ink);background:linear-gradient(145deg,var(--accent),color-mix(in srgb,var(--accent) 72%,#000));
+  box-shadow:0 6px 18px var(--ring)}
+.hero-ico svg{width:26px;height:26px}
+.hero-txt{min-width:0}
+.hero-kicker{display:block;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.hero-title{margin:2px 0 2px;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.hero-sub{margin:0;font-size:13px;color:var(--muted)}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px}
+.hero-chip{font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line);
+  background:var(--glass-2);border-radius:999px;padding:5px 11px}
+.hero-btn{position:relative;width:100%;border:0;cursor:pointer;border-radius:14px;padding:15px 18px;
+  display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:800;
+  color:var(--accent-ink);background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 78%,#000));
+  box-shadow:0 8px 24px var(--ring);transition:transform .16s ease,box-shadow .16s ease,filter .16s ease}
+.hero-btn:hover{filter:brightness(1.05)}
+.hero-btn:active{transform:translateY(1px) scale(.995)}
+.hero-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.hero-btn[disabled]{opacity:.75;cursor:progress}
+.hb-ico{width:19px;height:19px;flex:0 0 auto}
+.hb-load{display:none;width:16px;height:16px;border-radius:50%;flex:0 0 auto;
+  border:2px solid color-mix(in srgb,var(--accent-ink) 35%,transparent);border-top-color:var(--accent-ink);
+  animation:otmSpin .8s linear infinite}
+.hero-btn.busy .hb-load{display:block}
+.hero-note{margin:0;font-size:11.5px;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion: reduce){
+  .hero-btn{transition:none}
+  .hb-load{animation:none}
 }
-.rocket-btn:active{transform:scale(.95)}
-.rocket-btn .icon{font-size:40px}
 .mt-16{margin-top:16px}
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
@@ -424,6 +473,14 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .slider input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
 .slider .val{min-width:56px;text-align:right;font-size:13px;font-weight:700;color:var(--accent)}
 .modal.wide{max-width:520px;max-height:86vh;overflow:auto}
+/* ---- Perfil personalizado (linhas com opções lado a lado) -------------------- */
+.cp-list{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.cp-row{border:1px solid var(--line);border-radius:12px;background:var(--glass-2);padding:10px 12px}
+.cp-info{display:flex;flex-direction:column;gap:2px;margin:0 0 8px}
+.cp-info b{font-size:13.5px}
+.cp-info span{font-size:11.5px;color:var(--muted)}
+.cp-seg{flex-wrap:wrap}
+.cp-seg .seg-btn{flex:1 1 auto;min-width:72px;font-size:12.5px;padding:8px 10px}
 .set-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .set-actions .btn{flex:1;min-width:120px}
 .perms{display:flex;flex-direction:column;gap:8px}
@@ -669,16 +726,37 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
   <main class="content">
     <section id="g-Painel" data-g="Painel" class="home">
-      <!-- Central Clean Phone Rocket Button (Professional Optimization Style) -->
-      <div class="hero-center-box" style="text-align:center; padding: 28px 16px 12px;">
-        <div class="rocket-container" style="display:flex; justify-content:center; align-items:center;">
-          <button class="rocket-btn" id="rocketBtn" onclick="runActionById('clean')" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000)); color: var(--accent-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 40px var(--ring), 0 0 0 6px var(--glass); border: none; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; animation: rocketPulse 2.5s infinite;">
-            <span class="icon" style="font-size: 46px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🚀</span>
-            <span style="font-size: 12px; font-weight: 800; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.8px;">Clean Phone</span>
+      <!-- Ação principal: limpeza inteligente (card de destaque) -->
+      <section class="hero" aria-label="Limpeza inteligente">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-body">
+          <div class="hero-head">
+            <span class="hero-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3 5 6.5v4.8c0 4.3 2.9 7.9 7 9.2 4.1-1.3 7-4.9 7-9.2V6.5L12 3Z"/>
+                <path d="M9.2 12.1l2 2 3.6-4"/>
+              </svg>
+            </span>
+            <div class="hero-txt">
+              <span class="hero-kicker">Otimização em 1 toque</span>
+              <h2 class="hero-title">Clean Phone</h2>
+              <p class="hero-sub">Libera RAM, limpa cache e alivia o sistema.</p>
+            </div>
+          </div>
+          <div class="hero-meta">
+            <span class="hero-chip" data-stat="ramf">—</span>
+            <span class="hero-chip" id="heroStatus">Pronto para otimizar</span>
+          </div>
+          <button class="hero-btn" id="rocketBtn" type="button" onclick="runActionById('clean')">
+            <svg class="hb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13l0-8Z"/>
+            </svg>
+            <span class="hb-txt">Otimizar agora</span>
+            <span class="hb-load" aria-hidden="true"></span>
           </button>
+          <p class="hero-note">Nada é encerrado sem necessidade — o pack ajusta só o que está pesando.</p>
         </div>
-        <p class="sub" style="margin-top: 12px; font-size: 13px; color: var(--muted); font-weight: 600;">Toque no foguete para liberar RAM e acelerar o sistema</p>
-      </div>
+      </section>
 
       <!-- Sorteio de Cargo Especial (1 use per phone, "Em breve") -->
       <div class="panelbox mt-16 giveaway-card" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
@@ -754,8 +832,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">5. Personalizado</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Ajustes manuais avançados para personalizar cada parâmetro do seu jeito nas categorias.</p>
-            <button class="btn" onclick="go('Desempenho')" style="width:100%;">Configurar Personalizado</button>
+            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Monte o seu perfil: ligue só o que quiser e aplique quando estiver pronto.</p>
+            <button class="btn primary" onclick="runActionById('profile.custom')" style="width:100%;">Configurar Personalizado</button>
           </div>
         </div>
       </div>
@@ -1058,6 +1136,37 @@ body.drawer .scrim{opacity:1;visibility:visible}
   </div>
 </div>
 
+<div class="mask" id="profMask" role="dialog" aria-modal="true" aria-labelledby="profTitle">
+  <div class="modal wide">
+    <h3 id="profTitle">Perfil personalizado</h3>
+    <p>Ligue só o que você quer. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados.</p>
+
+    <div class="cp-list" id="profList">
+<?php foreach ($CPROF as $c): ?>
+      <div class="cp-row" data-key="<?= htmlspecialchars($c['k'], ENT_QUOTES) ?>">
+        <div class="cp-info"><b><?= htmlspecialchars($c['t'], ENT_QUOTES) ?></b><span><?= htmlspecialchars($c['s'], ENT_QUOTES) ?></span></div>
+        <div class="seg cp-seg">
+<?php foreach ($c['opts'] as $i => $o): ?>
+          <button class="seg-btn" type="button" data-val="<?= htmlspecialchars($o[0], ENT_QUOTES) ?>"<?= $i === 0 ? ' aria-pressed="true"' : ' aria-pressed="false"' ?>><?= htmlspecialchars($o[1], ENT_QUOTES) ?></button>
+<?php endforeach; ?>
+        </div>
+      </div>
+<?php endforeach; ?>
+    </div>
+
+    <div class="set-hint" id="profHint">Nada foi aplicado ainda — escolha os recursos e toque em Aplicar.</div>
+
+    <div class="row">
+      <button class="btn" id="profReset" type="button">Limpar escolhas</button>
+      <button class="btn danger" id="profOff" type="button">Desligar perfil</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="profClose" type="button">Fechar</button>
+      <button class="btn primary" id="profApply" type="button">Aplicar perfil</button>
+    </div>
+  </div>
+</div>
+
 <div class="mask" id="gearMask" role="dialog" aria-modal="true" aria-labelledby="gearTitle">
   <div class="modal wide">
     <h3 id="gearTitle">Configurações</h3>
@@ -1150,14 +1259,6 @@ body.drawer .scrim{opacity:1;visibility:visible}
     </div>
   </div>
 </div>
-
-<style>
-@keyframes rocketPulse {
-  0% { transform: scale(1); box-shadow: 0 10px 40px var(--ring), 0 0 0 6px var(--glass); }
-  50% { transform: scale(1.04); box-shadow: 0 14px 48px var(--ring), 0 0 0 12px color-mix(in srgb, var(--accent) 20%, transparent); }
-  100% { transform: scale(1); box-shadow: 0 10px 40px var(--ring), 0 0 0 6px var(--glass); }
-}
-</style>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -1430,6 +1531,8 @@ function runPending(){
 }
 async function doRun(a, params, confirmed, btn){
   if (a.id === "appearance"){ syncGear(); $("#gearMask").classList.add("open"); return; }
+  if (a.id === "profile.custom"){ openCustomProfile(); return; }
+  if (a.id === "profile.custom.apply"){ return applyCustomProfile(a, btn); }
   setBusy(true, btn);
   openConsole(a.label, "executando…");
   try{
@@ -1541,7 +1644,8 @@ $("#mCheck").onchange = e => $("#mGo").disabled = !e.target.checked;
 $("#mGo").onclick = () => { $("#mask").classList.remove("open");
   runPending(); pending = null; };
 $("#mask").onclick = e => { if (e.target.id === "mask"){ $("#mask").classList.remove("open"); pending = null; } };
-$("#btnStatus").onclick = async () => { openConsole("Status do aparelho", "lendo…");
+const btnStatus = $("#btnStatus");
+if (btnStatus) btnStatus.onclick = async () => { openConsole("Status do aparelho", "lendo…");
   const j = await apiGet("status"); openConsole("Status do aparelho", j.text || "(sem saída)"); };
 
 /* ---- LOGS: histórico completo (sem truncar) -------------------------------- */
@@ -1823,6 +1927,94 @@ function runActionById(id){
   else doRun(a, {}, false, null);
 }
 document.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => runActionById(b.dataset.qa));
+
+/* status do botão principal (Clean Phone) enquanto a limpeza roda */
+const heroBtn = document.getElementById("rocketBtn");
+const heroStatus = document.getElementById("heroStatus");
+if (heroBtn && heroStatus){
+  heroBtn.addEventListener("click", () => {
+    heroStatus.textContent = "Otimizando…";
+    const t = setInterval(() => {
+      if (!heroBtn.classList.contains("busy")){ clearInterval(t); heroStatus.textContent = "Pronto para otimizar"; }
+    }, 300);
+  });
+}
+
+/* ---- Perfil personalizado: monta as escolhas e aplica numa ação só ---------- */
+const CPROF = <?= json_encode($CPROF, JSON_UNESCAPED_UNICODE) ?>;
+const CPROF_DEFAULT = <?= json_encode($CPROF_DEFAULT, JSON_UNESCAPED_UNICODE) ?>;
+const CPROF_KEY = "otm-custom-profile";
+
+function profRead(){
+  try{ const j = JSON.parse(localStorage.getItem(CPROF_KEY) || "{}");
+       return Object.assign({}, CPROF_DEFAULT, (j && typeof j === "object") ? j : {}); }
+  catch(e){ return Object.assign({}, CPROF_DEFAULT); }
+}
+function profPaint(){
+  const cur = profRead();
+  CPROF.forEach(c => {
+    const row = document.querySelector('.cp-row[data-key="' + c.k + '"]'); if (!row) return;
+    row.querySelectorAll(".seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.val === cur[c.k] ? "true" : "false"));
+  });
+}
+function profSet(k, v){
+  const cur = profRead(); cur[k] = v;
+  localStorage.setItem(CPROF_KEY, JSON.stringify(cur));
+  profPaint();
+}
+function profActiveCount(){
+  const cur = profRead();
+  return CPROF.filter(c => cur[c.k] !== CPROF_DEFAULT[c.k]).length;
+}
+function openCustomProfile(){
+  profPaint();
+  const n = profActiveCount();
+  const hint = document.getElementById("profHint");
+  if (hint) hint.textContent = n === 0
+    ? "Nada alterado do padrão — escolha os recursos e toque em Aplicar."
+    : n + " recurso(s) diferente(s) do padrão. Toque em Aplicar para valer.";
+  document.getElementById("profMask").classList.add("open");
+}
+async function applyCustomProfile(a, btn){
+  const cur = profRead();
+  const params = {};
+  CPROF.forEach(c => { params[c.k] = cur[c.k]; });
+  setBusy(true, btn);
+  openConsole(a.label, "executando…");
+  try{
+    const r = await fetch("api.php?do=run", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
+      body: JSON.stringify({id:"profile.custom.apply", params, confirm:true})
+    });
+    const j = await r.json();
+    let head = (j.ok ? "[ok] " : "[erro] ") + "[" + (j.code ?? "?") + "]";
+    if (j.changed > 0) head += "  — " + j.changed + " mudança(s) confirmada(s)";
+    openConsole(a.label, head + "\n\n" + (j.out || j.error || ""));
+    if (j.ok) toast("Perfil personalizado aplicado", "ok"); else toast("Falhou ao aplicar o perfil", "bad");
+    document.getElementById("profMask").classList.remove("open");
+    loadState();
+  }catch(e){
+    openConsole(a.label, "erro: " + e);
+    toast("Falhou ao aplicar o perfil", "bad");
+  }finally{ setBusy(false, btn); }
+}
+document.querySelectorAll("#profList .cp-row").forEach(row => {
+  row.querySelectorAll(".seg-btn").forEach(b => b.onclick = () => profSet(row.dataset.key, b.dataset.val));
+});
+document.getElementById("profApply").onclick = () => applyCustomProfile(ACTIONS["profile.custom.apply"], document.getElementById("profApply"));
+document.getElementById("profClose").onclick = () => document.getElementById("profMask").classList.remove("open");
+document.getElementById("profReset").onclick = () => {
+  localStorage.removeItem(CPROF_KEY); profPaint();
+  const hint = document.getElementById("profHint"); if (hint) hint.textContent = "Escolhas limpas — tudo no padrão.";
+};
+document.getElementById("profOff").onclick = () => {
+  const a = ACTIONS["profile.custom.off"];
+  pending = { dataset:{id:"profile.custom.off"}, querySelector:()=>null, classList:{contains:()=>false} };
+  run(pending);
+};
+profPaint();
+
 (function buildJump(){
   const j = document.getElementById("jump"); if (!j) return;
   document.querySelectorAll("#nav a").forEach(a => {
@@ -1834,7 +2026,7 @@ document.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => runActionB
 })();
 
 window.addEventListener("hashchange", fromHash);
-addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); $("#gearMask").classList.remove("open"); document.body.classList.remove("drawer"); } });
+addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList.remove("open"); $("#gearMask").classList.remove("open"); $("#profMask").classList.remove("open"); document.body.classList.remove("drawer"); } });
 
 /* apps instalados (autocomplete) + estado do modo de acesso */
 (async () => {
@@ -1842,13 +2034,15 @@ addEventListener("keydown", e => { if (e.key === "Escape"){ $("#mask").classList
     const m = await apiGet("mode");
     const names = {rish:"Shizuku", adb:"ADB Wi-Fi", su:"root", local:"local (sem acesso)"};
     const txt = names[m.mode] || m.mode || "auto";
-    $("#modeTxt").textContent = txt;
+    const modeTxt = $("#modeTxt");
+    if (modeTxt) modeTxt.textContent = txt;
     const pill = $("#modePill");
     if (pill) pill.title = "Acesso: " + txt + (m.priv ? " — " + m.priv : "") + ". Configure em Configs.";
-  }catch(e){ $("#modeTxt").textContent = "offline"; }
+  }catch(e){ const mt = $("#modeTxt"); if (mt) mt.textContent = "offline"; }
   try{ const i = await apiGet("info");
-    if (!document.getElementById("modeTxt").textContent || document.getElementById("modeTxt").textContent === "verificando…")
-      $("#modeTxt").textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
+    const t2 = $("#modeTxt");
+    if (t2 && (!t2.textContent || t2.textContent === "verificando…"))
+      t2.textContent = (i.have_adb ? "ADB ok" : "sem ADB") + " · PHP " + i.php;
   }catch(e){}
   // pré-carrega a lista de apps (nome + ícone) para o seletor abrir rápido
   loadApps();

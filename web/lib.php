@@ -71,6 +71,7 @@ function otm_allowed_scripts(): array {
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'cool-down.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
+        'profile-custom.sh',
     ];
 }
 
@@ -1058,6 +1059,32 @@ function otm_actions(): array {
           'desc' => 'Permissões, tema, cor, fonte, DPI e som do app.',
           'help' => 'Abre as configurações do painel: as permissões que o app precisa para funcionar (bateria, segundo plano, Doze), o tema (claro, escuro ou automático), a cor de destaque, a fonte, o DPI do app e ligar/desligar os sons. Fica salvo neste aparelho.',
           'argv' => [], 'ui' => 'appearance']);
+
+    // ----- Perfil personalizado: o painel monta as opções e manda ligadas -----
+    $add(['id' => 'profile.custom', 'group' => 'Geral', 'label' => 'Perfil personalizado',
+          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza, resfriamento.',
+          'help' => 'Abre um menu onde você liga só o que quiser. Cada recurso é independente: animações (0x/0.5x), limite de apps em 2º plano (RAM), taxa de atualização da tela, perfil de toque, telemetria, limpeza de cache/RAM, hibernar apps de fundo e resfriamento. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
+          'argv' => [], 'ui' => 'customprofile']);
+    $add(['id' => 'profile.custom.apply', 'group' => 'Geral', 'label' => 'Aplicar perfil personalizado',
+          'desc' => 'Liga os recursos escolhidos no menu do perfil personalizado.',
+          'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso.',
+          'argv' => ['profile-custom.sh', 'apply', '{anim}', '{ram}', '{hz}', '{touch}',
+                     '{telemetry}', '{clean}', '{hibernate}', '{cool}'],
+          'params' => [
+              ['name' => 'anim', 'type' => 'enum', 'label' => 'Animações', 'options' => ['normal', 'half', 'off'], 'default' => 'normal'],
+              ['name' => 'ram', 'type' => 'enum', 'label' => 'RAM', 'options' => ['padrao', 'gaming', 'batata'], 'default' => 'padrao'],
+              ['name' => 'hz', 'type' => 'enum', 'label' => 'Taxa da tela', 'options' => ['off', '60', '90', '120', '144'], 'default' => 'off'],
+              ['name' => 'touch', 'type' => 'enum', 'label' => 'Toque', 'options' => ['none', 'balanced', 'headshot', 'spray', 'sniper', 'speed'], 'default' => 'none'],
+              ['name' => 'telemetry', 'type' => 'enum', 'label' => 'Telemetria', 'options' => ['on', 'off'], 'default' => 'on'],
+              ['name' => 'clean', 'type' => 'enum', 'label' => 'Limpeza', 'options' => ['off', 'fundo', 'suave', 'normal'], 'default' => 'off'],
+              ['name' => 'hibernate', 'type' => 'enum', 'label' => 'Hibernar apps', 'options' => ['off', 'on'], 'default' => 'off'],
+              ['name' => 'cool', 'type' => 'enum', 'label' => 'Resfriamento', 'options' => ['off', 'on'], 'default' => 'off'],
+          ],
+          'confirm' => true, 'risk' => 'careful', 'timeout' => 300]);
+    $add(['id' => 'profile.custom.off', 'group' => 'Geral', 'label' => 'Perfil personalizado: desligar',
+          'desc' => 'Desfaz o perfil personalizado e volta o aparelho ao padrão.',
+          'help' => 'Reverte tudo o que o perfil personalizado aplicou e devolve o aparelho ao estado de fábrica de configuração. A sua escolha de recursos fica salva para aplicar de novo depois.',
+          'argv' => ['profile-custom.sh', 'off'], 'confirm' => true, 'risk' => 'safe', 'timeout' => 300]);
 
     return $A;
 }
