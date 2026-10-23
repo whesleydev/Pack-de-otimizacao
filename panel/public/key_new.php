@@ -112,16 +112,6 @@ require __DIR__ . '/../src/layout.php';
 
     <div class="row">
       <div class="fld">
-        <label for="key">Chave (opcional)</label>
-        <input id="key" name="key" type="text" maxlength="19" placeholder="00-XXXX-XXXX-XXXX"
-               autocomplete="off" spellcheck="false" style="font-family:var(--mono)">
-        <span class="hint">deixe vazio para o sistema gerar uma. Se digitar, use o formato
-          <b>00-XXXX-XXXX-XXXX</b> (alfabeto sem I, L, O e U).</span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="fld">
         <label for="mode">Como definir a vigência</label>
         <select id="mode" name="mode" onchange="otmMode()">
           <option value="custom">Personalizada (dias / aparelhos)</option>
@@ -191,20 +181,6 @@ require __DIR__ . '/../src/layout.php';
     document.getElementById('duration_days').disabled = (m === 'plan');
   }
   otmMode();
-
-  // Agrupa a chave enquanto digita: 00-XXXX-XXXX-XXXX
-  (function () {
-    var el = document.getElementById('key');
-    if (!el) return;
-    el.addEventListener('input', function () {
-      var s = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (s.slice(0, 2) === '00') s = s.slice(2);
-      s = s.slice(0, 12);
-      var parts = [];
-      for (var i = 0; i < s.length; i += 4) parts.push(s.slice(i, i + 4));
-      el.value = parts.length ? '00-' + parts.join('-') : '';
-    });
-  })();
   </script>
 
 <?php endif; ?>
