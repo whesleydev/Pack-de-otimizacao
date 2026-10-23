@@ -31,6 +31,7 @@ class PanelActivity : AppCompatActivity() {
     private lateinit var overlay: View
     private lateinit var keyInput: android.widget.EditText
     private lateinit var keyError: android.widget.TextView
+    private var keySubmitBtn: Button? = null
     private val shizuku = ShizukuRunner()
     private val sound by lazy { SoundPlayer(applicationContext) }
     private var runner: ShellRunner? = null
@@ -281,10 +282,11 @@ class PanelActivity : AppCompatActivity() {
         }
         box.addView(keyError)
         box.addView(android.widget.Space(this), lp(dp(14)))
-        box.addView(Button(this).apply {
+        keySubmitBtn = Button(this).apply {
             text = "Validar chave"
             setOnClickListener { submitKey() }
-        })
+        }
+        box.addView(keySubmitBtn)
         box.addView(Button(this).apply {
             text = "Ver o painel sem conectar"
             setOnClickListener { this@PanelActivity.overlay.visibility = View.GONE }
@@ -292,22 +294,47 @@ class PanelActivity : AppCompatActivity() {
         return box
     }
 
-    /** Valida a chave digitada: acerta → som de sucesso e vai para a conexão. */
+    /**
+     * Valida a chave digitada. A checagem fala com o painel (banco), então roda
+     * fora da thread da tela — nada de travar o app esperando a rede. Acerta →
+     * som de sucesso e vai para a conexão; erra → explica o motivo.
+     */
     private fun submitKey() {
         val typed = keyInput.text.toString().trim()
-        if (KeyGate.verify(this, typed)) {
-            KeyGate.unlock(this)
-            keyError.visibility = View.GONE
-            sound.play("key_validada_com_sucesso.mp3")
-            overlay.visibility = View.GONE
-            askConnect()
-        } else {
+        if (!KeyGate.wellFormed(typed)) {
             sound.play("credenciais_incorretas.mp3")
-            keyError.text = if (KeyGate.wellFormed(typed))
-                "Chave não reconhecida. Confira com quem te passou."
-            else
-                "Formato inválido. Use OTM-XXXX-XXXX-XXXX."
+            keyError.text = "Formato inválido. Use OTM-XXXX-XXXX-XXXX."
             keyError.visibility = View.VISIBLE
+            return
+        }
+
+        keyError.visibility = View.GONE
+        val btn = keySubmitBtn
+        btn?.isEnabled = false
+        btn?.text = "Validando…"
+
+        lifecycleScope.launch {
+            val res = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                KeyGate.check(this@PanelActivity, typed)
+            }
+            btn?.isEnabled = true
+            btn?.text = "Validar chave"
+
+            if (res.ok) {
+                sound.play("key_validada_com_sucesso.mp3")
+                // Em segundo plano, atualiza a lista de chaves para o modo offline.
+                lifecycleScope.launch {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        KeyGate.syncOffline(this@PanelActivity)
+                    }
+                }
+                overlay.visibility = View.GONE
+                askConnect()
+            } else {
+                sound.play("credenciais_incorretas.mp3")
+                keyError.text = res.message
+                keyError.visibility = View.VISIBLE
+            }
         }
     }
 

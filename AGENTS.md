@@ -104,6 +104,53 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
 - Ações com `confirm:true` exigem `confirm=1` no POST (o `index.php` mostra o modal).
 - `web/.token`, `web/.state/` e `web/auth.json` são **locais** (no `.gitignore` e removidos do zip).
 
+### Painel de licenças (`panel/`) — o sistema novo
+
+`panel/` é o painel de **chaves/licenças** que o app consulta para validar o acesso.
+Substitui o `web/keys.php` (que guardava `keys.json` em disco) por um banco de verdade.
+Estrutura:
+
+```
+panel/
+  bin/          CLIs: admin.php, key.php, migrate.php
+  config/       config.php, turso.php (segredo, fora do git), local.php
+  database/     migrations/*.sql (0001..0005)
+  public/       páginas (login, index, keys, key_view, plans, events, audit, settings, admins, export)
+  public/api/   validate.php (o app chama), hashes.php (sync offline)
+  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), KeyService, Auth, Audit, Helpers
+```
+
+Regras:
+- **Dois bancos, um código.** `OtmDb` é o contrato; `Turso` (HTTP, produção) e `Db`
+  (SQLite local) implementam. `otm_db()` escolhe: `OTM_LOCAL_DB` definido → SQLite;
+  senão, se o Turso estiver configurado → Turso; senão → SQLite. `KeyService`/`Auth`/`Audit`
+  não sabem a diferença. **Nunca** use type hint de `Turso` em código novo — use `OtmDb`.
+- **Só o hash vai para o banco** (`key_hash` = SHA-256 da chave normalizada). A chave em
+  texto aparece uma única vez, na criação. Nunca grave a chave em claro.
+- **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
+  nunca o vê: quem fala com o banco é o painel, via `api/validate.php`.
+- `api/validate.php` só aceita **POST** (405 caso contrário), tem freio por IP (429) e
+  responde sempre com `{ok, result, message}`. `api/hashes.php` exige o segredo
+  `sync_token` (guardado em `otm_settings`), senão devolve 403.
+- `bin/key.php sync --out ...` gera o `app/src/main/assets/panel/keys.json` (só hashes).
+  Rode antes de gerar o APK. O `main.sh web key sync` faz o mesmo.
+- Páginas do painel exigem **login de administrador** (`otm_admins`, senha com
+  `password_hash`) + **CSRF**. Crie o primeiro com
+  `php panel/bin/admin.php add SEU_USUARIO --role owner`.
+- `otm_msg()` mora em `src/Helpers.php` (não no layout) porque a tela de login usa sem
+  carregar o layout.
+
+Comandos:
+
+```sh
+sh main.sh web migrate                     # aplica as migrations (Turso ou SQLite)
+sh main.sh web admin add whesley --role owner
+sh main.sh web key new "Cliente"           # cria uma chave (aparece uma vez)
+sh main.sh web key list                    # id, prefixo, nome, situação, expira
+sh main.sh web key sync                    # atualiza assets/panel/keys.json p/ o APK
+OTM_LOCAL_DB=/tmp/painel.sqlite php panel/bin/migrate.php   # roda no SQLite local (sem rede)
+```
+
 `index.html` é o site público (um só arquivo, sem dependências): explica os 4 níveis, os
 apps, os plugins/módulos e tem uma **área de comandos** com busca e botão de copiar.
 Publique no GitHub Pages apontando para a raiz (o `index.html` fica na raiz).

@@ -1,0 +1,23 @@
+<?php
+// =============================================================================
+//  turso.php - Credenciais do banco Turso.  NÃO VAI PARA O GIT.
+//
+//  Copie este arquivo para config/turso.php e preencha com os dados do seu
+//  banco (https://turso.tech → Database → Connect → "HTTP API").
+//
+//      cp panel/config/turso.php.example panel/config/turso.php
+//
+//  Alternativa: defina as variáveis de ambiente TURSO_DATABASE_URL e
+//  TURSO_AUTH_TOKEN (útil em produção/Docker).
+// =============================================================================
+
+return [
+    // libsql:// ou https:// — os dois funcionam.
+    'url'     => getenv('TURSO_DATABASE_URL') ?: 'libsql://SEU-BANCO.turso.io',
+
+    // Token de acesso (o mesmo que o `turso db tokens create` devolve).
+    'token'   => getenv('TURSO_AUTH_TOKEN') ?: 'COLE-O-TOKEN-AQUI',
+
+    // Tempo limite das requisições HTTP, em segundos.
+    'timeout' => 20,
+];

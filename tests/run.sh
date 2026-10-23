@@ -379,6 +379,151 @@ t_noroot_only() {
 }
 
 
+# --- painel novo (Turso/SQLite): chaves validadas no banco --------------------
+t_panel_db() {
+    printf '\n  # painel novo: chaves e validação no banco\n'
+    if ! command -v php >/dev/null 2>&1; then
+        printf '  [skip] php ausente: pulei os testes do painel\n'
+        return 0
+    fi
+    if ! php -m 2>/dev/null | grep -qi 'pdo_sqlite'; then
+        printf '  [skip] pdo_sqlite ausente: pulei os testes do painel\n'
+        return 0
+    fi
+
+    local dbf="$TMP/painel.sqlite"
+    rm -f "$dbf"*
+    # banco local (sem rede): o mesmo código que roda no Turso
+    if OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/migrate.php" > "$TMP/mig" 2>&1; then
+        grep -q '5 migration' "$TMP/mig" && ok "migrações aplicam no banco" || bad "migrações incompletas"
+    else
+        bad "migrações falharam: $(head -1 "$TMP/mig")"
+        return 0
+    fi
+
+    # admin do painel
+    if OTM_LOCAL_DB="$dbf" OTM_PASSWORD=segredo123 php "$ROOT/panel/bin/admin.php" add whesley --role owner >/dev/null 2>&1; then
+        ok "admin do painel criado"
+    else
+        bad "não criei o admin do painel"
+    fi
+
+    # cria uma chave e captura o JSON
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Cliente Teste" --days 30 --devices 2 --json \
+        > "$TMP/knew" 2>&1
+    local k
+    k="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/knew" 2>/dev/null)"
+    if [ -n "$k" ]; then ok "chave criada pelo painel ($k)"; else bad "não criei a chave: $(head -1 "$TMP/knew")"; fi
+
+    # hash guardado é o sha256 da chave (bate com o que o app calcula)
+    local h1 h2
+    h1="$(OTM_LOCAL_DB="$dbf" php -r 'require $argv[1]."/src/bootstrap.php"; echo (string)otm_db()->scalar("select key_hash from otm_keys where id=1");' "$ROOT/panel" 2>/dev/null)"
+    h2="$(printf '%s' "$k" | sha256sum | cut -d' ' -f1)"
+    assert_eq "$h1" "$h2" "hash no banco = sha256 da chave"
+
+    # a chave em texto NÃO aparece no banco
+    if OTM_LOCAL_DB="$dbf" php -r 'require $argv[1]."/src/bootstrap.php"; $r=otm_db()->all("select * from otm_keys"); echo (str_contains(json_encode($r), $argv[2]) ? "ACHOU" : "SEGURO");' \
+            "$ROOT/panel" "$k" > "$TMP/plain" 2>&1; then
+        assert_contains "$TMP/plain" "SEGURO" "chave em texto não é gravada"
+    fi
+
+    # KeyService: valida a chave com o aparelho, aplica limite e revoga
+    OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $db = otm_db(); $ks = new KeyService($db);
+        $key = json_decode(file_get_contents($argv[2]), true)["key"];
+        $a = $ks->validate($key, ["device_id"=>"dev-A","model"=>"Pixel"], "127.0.0.1");
+        $b = $ks->validate($key, ["device_id"=>"dev-B","model"=>"Moto"], "127.0.0.1");
+        $c = $ks->validate($key, ["device_id"=>"dev-C","model"=>"Xiaomi"], "127.0.0.1");
+        echo ($a["ok"] && $b["ok"] ? "DOIS_OK " : "FALHOU ");
+        echo ($c["ok"] === false && $c["result"] === "device_limit" ? "LIMITE_OK " : "SEM_LIMITE ");
+        $id = (int)$db->scalar("select id from otm_keys where key_prefix = ?", [substr($key,0,8)]);
+        $ks->revoke($id, "teste");
+        $d = $ks->validate($key, ["device_id"=>"dev-A"], "127.0.0.1");
+        echo (!$d["ok"] && $d["result"] === "revoked" ? "REVOGADA_OK" : "REVOGACAO_FALHOU");
+    ' "$ROOT/panel" "$TMP/knew" > "$TMP/ks" 2>&1
+    assert_contains "$TMP/ks" "DOIS_OK"     "duas primeiras entradas passam"
+    assert_contains "$TMP/ks" "LIMITE_OK"   "terceiro aparelho é barrado"
+    assert_contains "$TMP/ks" "REVOGADA_OK" "chave revogada é recusada"
+
+    # endpoint HTTP de validação, servido de verdade
+    local port=8123
+    ( cd "$ROOT/panel/public" && OTM_LOCAL_DB="$dbf" php -S "127.0.0.1:$port" >/dev/null 2>&1 & echo $! > "$TMP/srv.pid" )
+    sleep 1
+    if command -v curl >/dev/null 2>&1; then
+        OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "HTTP" --json > "$TMP/k2" 2>&1
+        local k2
+        k2="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/k2" 2>/dev/null)"
+        curl -s -X POST -H 'Content-Type: application/json' \
+            -d "{\"key\":\"$k2\",\"device_id\":\"http-dev\"}" \
+            "http://127.0.0.1:$port/api/validate.php" > "$TMP/vok" 2>&1
+        assert_contains "$TMP/vok" '"ok":true' "endpoint: chave válida responde ok"
+
+        curl -s -X POST -H 'Content-Type: application/json' \
+            -d '{"key":"OTM-2222-3333-4444","device_id":"x"}' \
+            "http://127.0.0.1:$port/api/validate.php" > "$TMP/vbad" 2>&1
+        assert_contains "$TMP/vbad" '"ok":false' "endpoint: chave inexistente é recusada"
+
+        curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/api/validate.php" > "$TMP/vget" 2>&1
+        assert_contains "$TMP/vget" "405" "endpoint: GET é recusado (405)"
+
+        # hashes.php (modo offline): exige o segredo sync_token
+        curl -s "http://127.0.0.1:$port/api/hashes.php" > "$TMP/hno" 2>&1
+        assert_contains "$TMP/hno" '"ok":false' "hashes: sem segredo é negado"
+
+        OTM_LOCAL_DB="$dbf" php -r '
+            require $argv[1]."/src/bootstrap.php";
+            otm_db()->run("INSERT OR REPLACE INTO otm_settings (key, value) VALUES (?,?)", ["sync_token","tok-teste"]);
+        ' "$ROOT/panel" >/dev/null 2>&1
+        OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Offline" --json > "$TMP/k3" 2>&1
+        local k3 hh
+        k3="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/k3" 2>/dev/null)"
+        hh="$(printf '%s' "$k3" | sha256sum | cut -d' ' -f1)"
+        curl -s "http://127.0.0.1:$port/api/hashes.php?token=tok-teste" > "$TMP/hok" 2>&1
+        assert_contains "$TMP/hok" '"ok":true' "hashes: com segredo responde ok"
+        # o hash devolvido é exatamente o que o app calcula (mesma normalização)
+        if grep -q "$hh" "$TMP/hok" 2>/dev/null; then
+            ok "hashes: hash bate com o cálculo do app"
+        else
+            bad "hashes: hash não bate (app não validaria offline)"
+        fi
+        assert_not_contains "$TMP/hok" "OTM-" "hashes: não expõe a chave em texto"
+
+        # páginas do painel: login real (com CSRF) e todas autenticadas em 200
+        local cj="$TMP/cookies.txt"
+        rm -f "$cj"
+        local csrf
+        csrf="$(curl -s -c "$cj" "http://127.0.0.1:$port/login.php" \
+                | sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -1)"
+        if [ -n "$csrf" ]; then
+            curl -s -b "$cj" -c "$cj" -o /dev/null \
+                -d "username=whesley&password=segredo123&_csrf=$csrf" \
+                "http://127.0.0.1:$port/login.php" >/dev/null 2>&1
+            local badpg=0
+            for pg in index.php keys.php plans.php events.php audit.php settings.php admins.php key_new.php; do
+                code="$(curl -s -b "$cj" -o "$TMP/pg" -w '%{http_code}' "http://127.0.0.1:$port/$pg")"
+                [ "$code" = "200" ] && grep -q '<h1' "$TMP/pg" || { badpg=1; bad "página $pg não abriu (HTTP $code)"; }
+            done
+            [ "$badpg" = "0" ] && ok "todas as páginas do painel abrem autenticadas"
+            # export CSV responde planilha
+            curl -s -b "$cj" -o "$TMP/x.csv" -w '%{content_type}' "http://127.0.0.1:$port/export.php" > "$TMP/ct" 2>&1
+            assert_contains "$TMP/ct" "csv" "export devolve CSV"
+        else
+            bad "não consegui o token CSRF da tela de login"
+        fi
+    fi
+    kill "$(cat "$TMP/srv.pid")" 2>/dev/null
+
+    # o keys.json que vai no APK tem só hashes (64 hex), nunca a chave
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" sync --out "$TMP/keys.json" >/dev/null 2>&1
+    if grep -qE '"OTM-' "$TMP/keys.json" 2>/dev/null; then
+        bad "keys.json do app vazou chave em texto"
+    else
+        ok "keys.json do app tem só hashes"
+    fi
+}
+
+
 # --- login do app Android (painel estático) ----------------------------------
 t_app_login() {
     printf '\n  # acesso do app (sem tela de login)\n'
@@ -1703,6 +1848,7 @@ t_realverify
 t_realverify_deep
 t_config
 t_auth
+t_panel_db
 t_noroot_only
 t_app_login
 t_app_exec

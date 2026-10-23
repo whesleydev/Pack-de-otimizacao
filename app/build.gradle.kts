@@ -13,6 +13,15 @@ android {
         targetSdk = 34
         versionCode = 47
         versionName = "2.26.0"
+
+        // Endereço do painel que valida a chave no banco (Turso). Pode ser
+        // trocado em tempo de execução (ajustes do app) sem recompilar.
+        // Sobrescreva no build com: -PotmPanelUrl=https://seu-painel
+        val panelUrl = (project.findProperty("otmPanelUrl") as String?) ?: ""
+        buildConfigField("String", "PANEL_URL", "\"$panelUrl\"")
+        // Segredo do endpoint de hashes (validação offline). Opcional.
+        val syncToken = (project.findProperty("otmSyncToken") as String?) ?: ""
+        buildConfigField("String", "SYNC_TOKEN", "\"$syncToken\"")
     }
 
     signingConfigs {

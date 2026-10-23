@@ -17,6 +17,12 @@ scratch/
 *.log
 .DS_Store
 
+# build do Android (gerado)
+local.properties
+.gradle/
+app/build/
+build/
+
 # releases empacotados
 releases/*.zip
 releases/*.zip.sha256
@@ -36,3 +42,12 @@ app/src/main/assets/panel/keys.json
 
 # backup local com dumps de conversa e módulos de terceiros (não versionar)
 apps_otm.zip
+
+# credenciais locais do painel (nunca versionar)
+panel/config/turso.php
+panel/config/*.local.php
+
+# banco local do painel (modo offline/dev)
+panel/database/*.sqlite
+panel/database/*.sqlite-wal
+panel/database/*.sqlite-shm
