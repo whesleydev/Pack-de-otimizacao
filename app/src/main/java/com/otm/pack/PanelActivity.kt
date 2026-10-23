@@ -27,8 +27,10 @@ import rikka.shizuku.Shizuku
 class PanelActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
+    private lateinit var root: FrameLayout
     private lateinit var overlay: View
-    private lateinit var overlayText: android.widget.TextView
+    private lateinit var keyInput: android.widget.EditText
+    private lateinit var keyError: android.widget.TextView
     private val shizuku = ShizukuRunner()
     private val sound by lazy { SoundPlayer(applicationContext) }
     private var runner: ShellRunner? = null
@@ -39,17 +41,29 @@ class PanelActivity : AppCompatActivity() {
         window.statusBarColor = Color.parseColor("#0D0C0A")
 
         val root = FrameLayout(this)
+        this.root = root
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(MATCH, MATCH))
 
-        overlay = buildOverlay()
+        // A capa inicial depende do estado: sem chave validada ela é a tela da
+        // chave; com a chave já validada, é a tela do método de conexão.
+        overlay = if (KeyGate.isUnlocked(this)) buildOverlay() else buildKeyOverlay()
         root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
         setContentView(root)
 
-        // Se o Shizuku já está autorizado, conecta direto e esconde a capa.
-        if (shizuku.isAvailable() && shizuku.hasPermission()) {
-            runner = shizuku
+        // Fluxo de entrada: primeiro a chave, depois o método de conexão.
+        // A chave fica lembrada (SharedPreferences), então só pede na 1ª vez.
+        if (KeyGate.isUnlocked(this)) {
             overlay.visibility = View.GONE
+            // Já com a chave validada: se o Shizuku já está autorizado, conecta direto.
+            if (shizuku.isAvailable() && shizuku.hasPermission()) {
+                runner = shizuku
+            } else {
+                pendingAfterConnect = null
+                askConnect()
+            }
+        } else {
+            overlay.visibility = View.VISIBLE
         }
 
         Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
@@ -158,7 +172,7 @@ class PanelActivity : AppCompatActivity() {
                     1 -> WifiDialog.show(this, applicationContext) { r, msg ->
                         runner = r
                         toast(msg)
-                        sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
+                        sound.play("pareamento_feito_com_sucesso.mp3")
                         pendingAfterConnect?.invoke(); pendingAfterConnect = null
                         web.reload()
                     }
@@ -181,7 +195,7 @@ class PanelActivity : AppCompatActivity() {
             if (r.ok) {
                 runner = adb
                 toast(r.stdout.ifBlank { "Conectado." })
-                sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
+                sound.play("pareamento_feito_com_sucesso.mp3")
                 pendingAfterConnect?.invoke(); pendingAfterConnect = null
                 web.reload()
             } else {
@@ -210,13 +224,94 @@ class PanelActivity : AppCompatActivity() {
     private fun activateShizuku() {
         runner = shizuku
         toast("Shizuku conectado.")
-        sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")
+        sound.play("pareamento_feito_com_sucesso.mp3")
         pendingAfterConnect?.invoke()
         pendingAfterConnect = null
         web.reload()
     }
 
-    // ---- sobreposição (primeira abertura) ------------------------------------
+    // ---- sobreposição: chave de acesso ---------------------------------------
+
+    /**
+     * Primeira tela: pede a chave de acesso. Só depois de validar é que o app
+     * segue para o método de conexão — é o mesmo acesso por chave do painel web,
+     * com a validação feita aqui (hashes em `assets/panel/keys.json`).
+     */
+    private fun buildKeyOverlay(): View {
+        val box = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#0D0C0A"))
+            setPadding(dp(28), dp(28), dp(28), dp(28))
+        }
+        box.addView(android.widget.TextView(this).apply {
+            text = "00deUdia Otimizações"
+            setTextColor(Color.parseColor("#FF6A2B"))
+            textSize = 22f
+            gravity = android.view.Gravity.CENTER
+        })
+        box.addView(android.widget.TextView(this).apply {
+            text = "Digite a sua chave de acesso (OTM-XXXX-XXXX-XXXX)."
+            setTextColor(Color.parseColor("#F3EFE7"))
+            textSize = 14f
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(14))
+        })
+        keyInput = android.widget.EditText(this).apply {
+            hint = "OTM-XXXX-XXXX-XXXX"
+            setTextColor(Color.parseColor("#F3EFE7"))
+            setHintTextColor(Color.parseColor("#A49D90"))
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+            setSingleLine(true)
+            setBackgroundColor(Color.parseColor("#1A1815"))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+        }
+        box.addView(
+            keyInput,
+            android.widget.LinearLayout.LayoutParams(
+                MATCH, android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+        keyError = android.widget.TextView(this).apply {
+            setTextColor(Color.parseColor("#FF6B5E"))
+            textSize = 12.5f
+            visibility = View.GONE
+            setPadding(0, dp(8), 0, 0)
+        }
+        box.addView(keyError)
+        box.addView(android.widget.Space(this), lp(dp(14)))
+        box.addView(Button(this).apply {
+            text = "Validar chave"
+            setOnClickListener { submitKey() }
+        })
+        box.addView(Button(this).apply {
+            text = "Ver o painel sem conectar"
+            setOnClickListener { this@PanelActivity.overlay.visibility = View.GONE }
+        })
+        return box
+    }
+
+    /** Valida a chave digitada: acerta → som de sucesso e vai para a conexão. */
+    private fun submitKey() {
+        val typed = keyInput.text.toString().trim()
+        if (KeyGate.verify(this, typed)) {
+            KeyGate.unlock(this)
+            keyError.visibility = View.GONE
+            sound.play("key_validada_com_sucesso.mp3")
+            overlay.visibility = View.GONE
+            askConnect()
+        } else {
+            sound.play("credenciais_incorretas.mp3")
+            keyError.text = if (KeyGate.wellFormed(typed))
+                "Chave não reconhecida. Confira com quem te passou."
+            else
+                "Formato inválido. Use OTM-XXXX-XXXX-XXXX."
+            keyError.visibility = View.VISIBLE
+        }
+    }
+
+    // ---- sobreposição: método de conexão -------------------------------------
 
     private fun buildOverlay(): View {
         val box = android.widget.LinearLayout(this).apply {
@@ -225,15 +320,14 @@ class PanelActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#0D0C0A"))
             setPadding(dp(28), dp(28), dp(28), dp(28))
         }
-        overlayText = android.widget.TextView(this).apply {
+        box.addView(android.widget.TextView(this).apply {
             text = "Para o pack funcionar, o app precisa de um acesso privilegiado de shell.\n\n" +
                 "Recomendado: Shizuku (sem root). No PC, use a depuração USB (cabo) — " +
                 "basta aceitar \"Permitir depuração USB\" no celular."
             setTextColor(Color.parseColor("#F3EFE7"))
             textSize = 14f
             gravity = android.view.Gravity.CENTER
-        }
-        box.addView(overlayText)
+        })
         box.addView(android.widget.Space(this), lp(dp(16)))
         box.addView(Button(this).apply {
             text = "Conectar agora"
@@ -246,7 +340,21 @@ class PanelActivity : AppCompatActivity() {
             text = "Ver o painel sem conectar"
             setOnClickListener { this@PanelActivity.overlay.visibility = View.GONE }
         })
+        box.addView(Button(this).apply {
+            text = "Trocar chave"
+            setOnClickListener { showKeyScreen() }
+        })
         return box
+    }
+
+    /** Volta para a tela da chave (para trocar a chave já validada). */
+    private fun showKeyScreen() {
+        KeyGate.lock(this)
+        val nova = buildKeyOverlay()
+        root.removeView(overlay)
+        overlay = nova
+        root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
+        overlay.visibility = View.VISIBLE
     }
 
     // ---- utilidades ----------------------------------------------------------

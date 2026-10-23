@@ -50,7 +50,9 @@ function otm_keys_save(array $data): void {
 //  chaves
 // -----------------------------------------------------------------------------
 function otm_key_hash(string $raw): string {
-    return hash('sha256', strtoupper(trim($raw)));
+    // hash da forma canônica: assim digitar com espaços, sem hífen ou em
+    // minúsculas dá no mesmo (o usuário não precisa acertar a pontuação).
+    return hash('sha256', otm_key_normalize($raw));
 }
 
 /** Normaliza para o formato canônico OTM-XXXX-XXXX-XXXX. */
@@ -113,6 +115,20 @@ function otm_key_list(): array {
         ];
     }
     return $out;
+}
+
+/**
+ * Só os hashes das chaves ativas. É o que o app recebe (assets/panel/keys.json)
+ * para validar a chave localmente, sem levar a chave em texto para o APK.
+ */
+function otm_key_active_hashes(): array {
+    $out = [];
+    foreach (otm_keys_load()['keys'] as $k) {
+        if (!empty($k['revoked'])) continue;
+        $h = (string)($k['hash'] ?? '');
+        if ($h !== '') $out[$h] = true;
+    }
+    return array_keys($out);
 }
 
 function otm_key_revoke(string $id): bool {

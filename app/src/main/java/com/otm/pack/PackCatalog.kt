@@ -48,6 +48,10 @@ object PackCatalog {
     const val SND_ACTIVATE = "ativando.mp3"
     const val SND_CONFIGURE = "configurando.mp3"
 
+    /** Fecho de cada ação: confirma o desfecho (sucesso/erro). */
+    const val SND_OK = "perfil-aplicado-com-sucesso.mp3"
+    const val SND_ERR = "erro.mp3"
+
     val actions: List<PackAction> = listOf(
         // ---- Rápido ----------------------------------------------------------
         txt("apply_all", "Rápido", "Aplicar TUDO (nível 1)", "Roda o conjunto recomendado de comandos seguros de uma vez.", "careful", "00-aplicar-tudo.txt"),

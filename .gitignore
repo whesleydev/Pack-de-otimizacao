@@ -26,6 +26,7 @@ web/.token
 web/.state/
 web/auth.json
 web/keys.json
+app/src/main/assets/panel/keys.json
 
 # estado local dos plugins
 "00 Otimizações/Plugins AxManager"/*/state/

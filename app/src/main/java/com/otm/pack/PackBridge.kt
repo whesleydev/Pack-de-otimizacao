@@ -149,6 +149,10 @@ class PackBridge(
                 ".\nConfira o acesso em Configs: sem Shizuku/ADB/root os ajustes não aplicam."
         }
 
+        // Fecho do som: o áudio do grupo já anunciou o que ia acontecer; aqui
+        // confirmamos o desfecho — sucesso ou erro — para o usuário não ficar na dúvida.
+        onActionSound(if (ok) PackCatalog.SND_OK else PackCatalog.SND_ERR)
+
         onRunDone(a.group, ok)
         logAppend(id, a.label, argv.joinToString(" "), ok, res.code)
 
@@ -447,11 +451,17 @@ class PackBridge(
         return null
     }
 
+    /**
+     * Áudio que **anuncia** a ação, tocado no começo. Segue o grupo: mexer em
+     * memória/processos, na rede, na tela ou na configuração do sistema tem sons
+     * diferentes. O desfecho (sucesso/erro) vem depois, em [runImpl].
+     */
     private fun soundFor(group: String): String = when (group) {
-        "Desempenho", "Apps e jogos" -> "liberando-memoria-ram.mp3"
-        "DNS e rede", "Rede e conexão" -> "configurando-dns.mp3"
-        "Display & Touch", "Sistema" -> "ativando.mp3"
-        else -> "otimizando-o-sistema.mp3"
+        "Desempenho", "Apps e jogos", "Processos" -> PackCatalog.SND_RAM
+        "DNS e rede", "Rede e conexão" -> PackCatalog.SND_DNS
+        "Display & Touch" -> PackCatalog.SND_ACTIVATE
+        "Sistema" -> PackCatalog.SND_CONFIGURE
+        else -> PackCatalog.SND_SYSTEM
     }
 
     private fun okJson(): String = JSONObject().put("ok", true).toString()

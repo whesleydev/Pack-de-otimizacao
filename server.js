@@ -384,9 +384,10 @@ const OTM_INJECTION = `
   }
   
   function getSoundFor(group) {
-    if (group === "Desempenho" || group === "Apps e jogos") return "liberando-memoria-ram.mp3";
+    if (group === "Desempenho" || group === "Apps e jogos" || group === "Processos") return "liberando-memoria-ram.mp3";
     if (group === "DNS e rede" || group === "Rede e conexão") return "configurando-dns.mp3";
-    if (group === "Display & Touch" || group === "Sistema") return "ativando.mp3";
+    if (group === "Display & Touch") return "ativando.mp3";
+    if (group === "Sistema") return "configurando.mp3";
     return "otimizando-o-sistema.mp3";
   }
 
@@ -445,7 +446,7 @@ const OTM_INJECTION = `
       document.body.appendChild(m);
       document.getElementById("btnCloseConnect").onclick = () => m.classList.remove("open");
       document.getElementById("btnTestConnect").onclick = () => {
-        playAudioFile("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3");
+        playAudioFile("pareamento_feito_com_sucesso.mp3");
         if (typeof window.toast === "function") window.toast("Conexão ativa! Shell privilegiado verificado com sucesso.", "ok");
         setTimeout(() => m.classList.remove("open"), 900);
       };
@@ -458,12 +459,12 @@ const OTM_INJECTION = `
   window.OTM = {
     __isWebBridge: true,
     call: function(kind, payload, cbId) {
-      if (kind === "login") {
-        playAudioFile("login_feito_com_sucesso.mp3");
+      if (kind === "key") {
+        playAudioFile("key_validada_com_sucesso.mp3");
         window.__otmResolve && window.__otmResolve(cbId, JSON.stringify({ ok: true }));
         return;
       }
-      if (kind === "login_fail") {
+      if (kind === "key_fail") {
         playAudioFile("credenciais_incorretas.mp3");
         window.__otmResolve && window.__otmResolve(cbId, JSON.stringify({ ok: false }));
         return;
@@ -496,6 +497,13 @@ const OTM_INJECTION = `
       })
       .then(res => res.text())
       .then(jsonStr => {
+        // Fecho: o som do grupo já anunciou a ação; aqui confirma o desfecho.
+        if (kind === "run") {
+          try {
+            const j = JSON.parse(jsonStr || "{}");
+            playAudioFile(j.ok ? "perfil-aplicado-com-sucesso.mp3" : "erro.mp3");
+          } catch(e){}
+        }
         if (window.__otmResolve) {
           window.__otmResolve(cbId, jsonStr);
         }

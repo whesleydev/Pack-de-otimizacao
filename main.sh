@@ -273,6 +273,31 @@ web_logout() {
     printf '  %b✔%b sessão encerrada (reabra a URL do painel)\n' "$C_G" "$C_R"
 }
 
+# Copia SÓ os hashes das chaves ativas para dentro do app
+# (assets/panel/keys.json), para o app validar a chave sem falar com o PHP.
+# A chave em texto nunca entra no APK — só o SHA-256.
+web_key_sync() {
+    if ! have php; then
+        err "PHP não encontrado. Instale (Termux: 'pkg install php')."
+        return 1
+    fi
+    dest="$DIR/app/src/main/assets/panel/keys.json"
+    php -r '
+        require $argv[1]."/web/keys.php";
+        $out = ["updated" => time(), "hashes" => otm_key_active_hashes()];
+        echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
+    ' "$DIR" > "$dest" 2>/dev/null </dev/null
+    if [ ! -s "$dest" ]; then
+        err "não consegui gerar a lista de chaves"
+        return 1
+    fi
+    cnt="$(php -r 'require $argv[1]."/web/keys.php"; echo count(otm_key_active_hashes());' "$DIR" 2>/dev/null </dev/null)"
+    printf '  %b✔%b lista de chaves do app atualizada (%s ativa[s])\n' "$C_G" "$C_R" "${cnt:-0}"
+    printf '     arquivo: %s\n' "$dest"
+    printf '     só hashes SHA-256 — a chave em texto não vai para o APK\n'
+    printf '     rebuild: cd app && ./gradlew :app:assembleRelease\n'
+}
+
 # --- entrada ------------------------------------------------------------------
 case "$1" in
     ""|menu) menu ;;
@@ -289,7 +314,8 @@ case "$1" in
                     list|ls)  web_key_list ;;
                     revoke|rm) web_key_revoke "$4" ;;
                     count)    web_key_count ;;
-                    *) printf '  Uso: sh main.sh web key new [nome]|list|revoke <id>\n' ;;
+                    sync)     web_key_sync ;;
+                    *) printf '  Uso: sh main.sh web key new [nome]|list|revoke <id>|sync|count\n' ;;
                 esac ;;
             logout) web_logout ;;
             *) printf '  Uso: sh main.sh web start|stop|restart|status|url|key|logout\n' ;;
@@ -306,6 +332,7 @@ case "$1" in
         printf '   web key new     cria uma chave de acesso (sem usuário/senha)\n'
         printf '   web key list    lista as chaves (id, nome, status)\n'
         printf '   web key revoke  revoga uma chave pelo id\n'
+        printf '   web key sync    copia só os hashes para o app (assets/panel/keys.json)\n'
         printf '   web logout      encerra a sessão local do painel\n'
         printf '   baixar [dir]    baixa os recursos full do pack\n'
         printf '   status          status geral (PHP/ADB/modo/web)\n' ;;
