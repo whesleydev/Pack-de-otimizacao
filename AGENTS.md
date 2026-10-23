@@ -90,13 +90,14 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
   ação saem prontos no HTML. O JS só troca de categoria, executa e mostra saída/modal.
   Mantenha o visual **clean**, a paleta própria e o CSS **responsivo** (gaveta no celular,
   tema claro/escuro) ao mexer.
-- `web/index.php` e `web/api.php` **exigem login** (`web/auth.php`, sessão PHP). A credencial
-  inicial fica em `OTM_DEFAULT_USER`/`OTM_DEFAULT_PASS` (`web/auth.php`); a senha é guardada com
-  `password_hash` em `~/.packotm/web/auth.json` (nunca em texto puro, nunca versionada). Troque
-  com `sh main.sh web senha`. O formulário de login usa **CSRF** (`otm_csrf`).
-- `web/api.php` também aceita o **token** (`web/.token`, gerado no `main.sh web start`) como
-  defesa em profundidade, e só roda scripts da lista branca `otm_allowed_scripts()`. Parâmetros
-  são validados por tipo (pkg/host/int/float/enum). Nunca passe input do usuário direto para o shell.
+- `web/index.php` e `web/api.php` **exigem chave de acesso** (`web/keys.php`, sessão PHP).
+  Não há usuário nem senha. A chave tem o formato `OTM-XXXX-XXXX-XXXX`; o servidor guarda só o
+  **hash SHA-256** em `~/.packotm/web/keys.json` (nunca em texto puro, nunca versionado, `chmod 600`).
+  Crie com `sh main.sh web key new`, liste com `sh main.sh web key list` e revogue com
+  `sh main.sh web key revoke <id>`. A tela de entrada (`web/access.php`) usa **CSRF** (`otm_csrf`).
+- `web/api.php` aceita a **sessão do painel** ou a própria chave no cabeçalho `X-OTM-Key` / em
+  `?key=` (para scripts e integrações), e só roda scripts da lista branca `otm_allowed_scripts()`.
+  Parâmetros são validados por tipo (pkg/host/int/float/enum). Nunca passe input do usuário direto para o shell.
 - Ações com `confirm:true` exigem `confirm=1` no POST (o `index.php` mostra o modal).
 - `web/.token`, `web/.state/` e `web/auth.json` são **locais** (no `.gitignore` e removidos do zip).
 
@@ -115,7 +116,7 @@ sh scripts/build-pack.sh        # gera o zip único "Pack 00" completo em releas
 sh scripts/debloat.sh on medio  # debloat (leve|medio|pesado); off reverte
 sh scripts/dns.sh list          # perfis de DNS (privacidade/ads/família/gaming)
 sh scripts/modules.sh list      # lista módulos/plugins da pasta; run <nome> executa
-sh main.sh web start            # sobe o painel web (PHP) e mostra a URL (acesso com login)
+sh main.sh web start            # sobe o painel web (PHP) e mostra a URL (acesso com chave)
 sh main.sh baixar               # baixa os recursos full do pack
 sh scripts/check-secrets.sh     # falha se achar credencial
 shellcheck -S error $(find scripts "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" tests -name '*.sh')
@@ -153,13 +154,11 @@ assets do pack embutidos.
 O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.
 
-- `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de
-  entrada) numa WebView e injeta "Conectar"/"Som" no cabeçalho do painel.
-- Login do app: `assets/panel/login.html` confere `SHA-256("usuario:senha")`
-  contra o hash embutido e guarda a sessão em `localStorage` (`otm_session`).
-  O `index.html` tem uma guarda no `<head>` que manda de volta ao login quando
-  não há sessão; o botão "Sair" limpa a sessão. Credencial: `00deUdia`/`159951`
-  (hash gerado com `scratch/build_panel.py`, constante `OTM_AUTH_HASH`).
+- `PanelActivity` é o launcher: carrega `assets/panel/index.html` (o painel)
+  direto numa WebView e injeta "Conectar"/"Som" no cabeçalho.
+- Sem login no app: o painel abre direto, sem tela de entrada nem sessão em
+  `localStorage`. O acesso é por chave apenas no **painel web** (`web/keys.php`);
+  dentro do app, as ações passam pelo `window.OTM` (bridge), não pela API HTTP.
 - Menu lateral do painel: `.side .panel` é `position:fixed` (trava na viewport,
   sem "escorregar" ao rolar); no mobile (`<=960px`) vira gaveta `position:static`
   dentro do `.side` fixo.
@@ -288,10 +287,8 @@ nativa além do necessário para conectar e rodar os comandos.
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).
   A ação de registro `appearance` (`"ui" => "appearance"` em `lib.php`) abre o
-  modal; por não ter `argv`, `PackBridge` a ignora (o painel trata a UI). O som
-  "login feito com sucesso" toca só quando a tela de login valida usuário/senha:
-  o `login.html` chama `OTM.call("login")` e o `PackBridge` repassa para
-  `onLogin`. Ligar o som usa `ativando.mp3`. O DPI é
+  modal; por não ter `argv`, `PackBridge` a ignora (o painel trata a UI). Ligar o
+  som usa `ativando.mp3`; conectar usa o áudio de pareamento. O DPI é
   um `zoom` no `<html>` com `width: calc(100% / escala)` **só acima de 100%** e
   `html{overflow-x:clip}` para não reintroduzir o arrasto lateral (medido com
   Playwright/Chromium em 320/360/412/480px).

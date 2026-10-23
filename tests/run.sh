@@ -327,28 +327,38 @@ EOF
 }
 
 t_auth() {
-    printf '\n  # login do painel (00deUdia)\n'
+    printf '\n  # acesso por chave no painel (sem usuário e senha)\n'
     if command -v php >/dev/null 2>&1; then
-        rm -f "$HOME/.packotm/web/auth.json"
-        OTM_TEST_PASS="${OTM_TEST_PASS:-159951}"; export OTM_TEST_PASS
-        php -r 'require "'"$ROOT"'/web/auth.php";
-                 echo otm_auth_login("00deUdia",getenv("OTM_TEST_PASS")) ? "OK":"NAO";' \
-                 > "$TMP/auth1" 2>&1
-        assert_contains "$TMP/auth1" "OK" "credencial inicial do painel funciona"
-        php -r 'require "'"$ROOT"'/web/auth.php";
-                 echo otm_auth_login("00deUdia","errada") ? "ACEITOU":"RECUSOU";' > "$TMP/auth2" 2>&1
-        assert_contains "$TMP/auth2" "RECUSOU" "senha errada e recusada"
-        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("chefe","segredo123");
-                 echo otm_auth_login("chefe","segredo123") ? "OK":"NAO";' > "$TMP/auth3" 2>&1
-        assert_contains "$TMP/auth3" "OK" "troca de usuario/senha funciona"
-        if grep -q "segredo123" "$HOME/.packotm/web/auth.json" 2>/dev/null; then
-            bad "senha gravada em texto puro"
+        rm -f "$HOME/.packotm/web/keys.json"
+        php -r 'require "'"$ROOT"'/web/keys.php";
+                 $c=otm_key_create("teste");
+                 echo otm_key_verify($c["key"]) !== null ? "OK":"NAO";' \
+                 > "$TMP/key1" 2>&1
+        assert_contains "$TMP/key1" "OK" "chave válida entra no painel"
+        php -r 'require "'"$ROOT"'/web/keys.php";
+                 echo otm_key_verify("OTM-AAAA-BBBB-CCCC") === null ? "RECUSOU":"ACEITOU";' \
+                 > "$TMP/key2" 2>&1
+        assert_contains "$TMP/key2" "RECUSOU" "chave inventada é recusada"
+        php -r 'require "'"$ROOT"'/web/keys.php";
+                 $c=otm_key_create("revogar");
+                 otm_key_revoke($c["id"]);
+                 echo otm_key_verify($c["key"]) === null ? "RECUSOU":"ACEITOU";' \
+                 > "$TMP/key3" 2>&1
+        assert_contains "$TMP/key3" "RECUSOU" "chave revogada é recusada"
+        if grep -q "OTM-" "$HOME/.packotm/web/keys.json" 2>/dev/null; then
+            bad "chave gravada em texto puro"
         else
-            ok "senha guardada com hash (nao em texto puro)"
+            ok "chave guardada com hash (nao em texto puro)"
         fi
-        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("00deUdia",getenv("OTM_TEST_PASS"));' >/dev/null 2>&1
+        # o sistema antigo de login/senha não pode ter sobrado
+        if [ -f "$ROOT/web/auth.php" ] || [ -f "$ROOT/web/login.php" ]; then
+            bad "ainda existe login/senha no projeto"
+        else
+            ok "sistema de login e senha removido"
+        fi
     else
-        printf '  [skip] php ausente: pulei testes de login\n'
+        printf '  [skip] php ausente: pulei testes de chave
+'
     fi
 }
 
@@ -371,31 +381,16 @@ t_noroot_only() {
 
 # --- login do app Android (painel estático) ----------------------------------
 t_app_login() {
-    printf '\n  # login do app (painel estático)\n'
-    local p="$ROOT/android/app/src/main/assets/panel"
-    [ -f "$p/login.html" ] && ok "tela de login do app existe" || bad "login.html do app ausente"
+    printf '\n  # acesso do app (sem tela de login)\n'
+    local p="$ROOT/app/src/main/assets/panel"
     [ -f "$p/index.html" ] && ok "painel do app existe" || bad "index.html do app ausente"
-    grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessão" \
-        || bad "index.html sem guarda de sessão"
-    grep -q 'localStorage.removeItem("otm_session")' "$p/index.html" \
-        && ok "botão Sair limpa a sessão" || bad "Sair não limpa a sessão"
-    # o SHA-256 em JS do login bate com o hash esperado da credencial
-    if command -v node >/dev/null 2>&1; then
-        node -e '
-          const fs=require("fs");
-          const h=fs.readFileSync(process.argv[1],"utf8");
-          const m=h.match(/function sha256\(ascii\)\{[\s\S]*?\n\}/);
-          eval(m[0]);
-          const got=sha256("00deUdia:159951");
-          const exp=(h.match(/OTM_AUTH = "([a-f0-9]+)"/)||[])[1];
-          console.log(got===exp && exp==="b6cddaaf9333c33071ae824248927b5349955fbb87167a5c1ddef5afa23d1a4d" ? "OK":"NAO");
-        ' "$p/login.html" > "$TMP/applogin" 2>&1
-        assert_contains "$TMP/applogin" "OK" "hash SHA-256 do login do app confere"
-    else
-        printf '  [skip] node ausente: pulei o hash do login\n'
-    fi
-    grep -q 'panel/login.html' "$ROOT/android/app/src/main/java/com/otm/pack/PanelActivity.kt" \
-        && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre o login"
+    [ ! -f "$p/login.html" ] && ok "tela de login do app removida" || bad "login.html do app ainda existe"
+    grep -q 'otm_session' "$p/index.html" && bad "painel do app ainda tem guarda de sessão" \
+        || ok "painel do app sem guarda de sessão"
+    grep -q 'panel/index.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
+        && ok "PanelActivity abre o painel direto" || bad "PanelActivity não abre o painel"
+    grep -q 'panel/login.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
+        && bad "PanelActivity ainda abre a tela de login" || ok "PanelActivity não abre login"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
@@ -474,29 +469,19 @@ t_app_fixes() {
     grep -q 'removeCallbacks(autoStop)' "$src/SoundPlayer.kt" \
         && ok "som: timer antigo é cancelado (não corta o próximo)" || bad "som: timer não cancelado"
     grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
-    # 6) "login feito com sucesso" só toca quando o login dá certo
-    local login="$ROOT/android/app/src/main/assets/panel/login.html"
-    grep -q 'OTM.call("login"' "$login" && ok "login: avisa o app só no acerto" || bad "login: sem aviso de sucesso"
-    grep -q 'onLogin = { sound.play("login_feito_com_sucesso.mp3") }' "$src/PanelActivity.kt" \
-        && ok "som: sucesso ligado ao onLogin" || bad "som: sucesso não está no onLogin"
-    # e não pode tocar no conectar nem ao ligar o som
-    if grep -n 'login_feito_com_sucesso' "$src/PanelActivity.kt" | grep -qv 'onLogin'; then
-        bad "som: sucesso ainda toca fora do login"
+    # 6) sem login: nenhum áudio de login deve sobrar no app
+    if grep -q 'login_feito_com_sucesso\|credenciais_incorretas' "$src/PanelActivity.kt"; then
+        bad "som: ainda há áudio de login no app"
     else
-        ok "som: sucesso não toca ao conectar/ligar som"
+        ok "som: sem áudio de login (sistema removido)"
     fi
     grep -q 'if (on) sound.play("ativando.mp3")' "$src/PanelActivity.kt" \
-        && ok "som: ligar som usa 'ativando' (não 'login')" || bad "som: ligar som com áudio errado"
-    # 7) áudios novos: pareamento (conectar) e credenciais incorretas (login errado)
-    for f in pareamento_feito_com_sucesso_faca_login_no_sistema.mp3 credenciais_incorretas.mp3; do
-        test -f "$ROOT/android/app/src/main/assets/audio/$f" \
-            && ok "áudio: $f presente" || bad "áudio: falta $f"
-    done
+        && ok "som: ligar som usa 'ativando'" || bad "som: ligar som com áudio errado"
+    # 7) áudio de pareamento (conectar) continua valendo
+    test -f "$ROOT/app/src/main/assets/audio/pareamento_feito_com_sucesso_faca_login_no_sistema.mp3" \
+        && ok "áudio: pareamento presente" || bad "áudio: falta pareamento"
     grep -q 'sound.play("pareamento_feito_com_sucesso_faca_login_no_sistema.mp3")' "$src/PanelActivity.kt" \
         && ok "som: conectar usa o áudio de pareamento" || bad "som: conectar sem áudio de pareamento"
-    grep -q 'onLoginFail = { sound.play("credenciais_incorretas.mp3") }' "$src/PanelActivity.kt" \
-        && ok "som: login errado usa 'credenciais incorretas'" || bad "som: login errado sem áudio"
-    grep -q 'OTM.call("login_fail"' "$login" && ok "login: avisa o app no erro" || bad "login: sem aviso de erro"
     # 8) ícones no lugar de emojis (menos a engrenagem, que fica como está)
     if grep -qP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' "$app"; then
         bad "ícones: ainda há emoji no painel do app"
@@ -1174,14 +1159,18 @@ t_web() {
                  echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_conf" 2>&1
         assert_contains "$TMP/web_conf" "PEDE" "debloat exige confirmação"
         # o painel é renderizado no PHP (marca, menu e cards no HTML servido)
-        # exige login: primeiro a tela de entrada, depois o painel autenticado.
+        # acesso por chave: primeiro a tela de acesso, depois o painel liberado.
+        php -r 'require "'"$ROOT"'/web/keys.php";
+                 if (otm_key_active_count() === 0) otm_key_create("suite");' >/dev/null 2>&1
         php -r '$_SERVER["REQUEST_METHOD"]="GET"; require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_login" 2>&1
-        assert_contains "$TMP/web_login" "Entrar" "sem sessão, index.php mostra a tela de login"
-        grep -q 'name="csrf"' "$TMP/web_login" && ok "login tem token CSRF" || bad "login sem CSRF"
-        # login correto libera o painel
-        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_start();
-                 $_SESSION["otm_user"]="00deUdia"; $_SERVER["REQUEST_METHOD"]="GET";
+        assert_contains "$TMP/web_login" "Entre com a sua chave de acesso" \
+            "sem chave, index.php mostra a tela de acesso"
+        grep -q 'name="csrf"' "$TMP/web_login" && ok "acesso tem token CSRF" || bad "acesso sem CSRF"
+        # chave válida libera o painel
+        php -r 'require "'"$ROOT"'/web/keys.php"; otm_key_start();
+                 $c=otm_key_create("web-test"); $_SESSION["otm_key_id"]=$c["id"];
+                 $_SERVER["REQUEST_METHOD"]="GET";
                  require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_html" 2>&1
         assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"

@@ -64,7 +64,7 @@ class PanelActivity : AppCompatActivity() {
         }
 
         setupWeb()
-        web.loadUrl("file:///android_asset/panel/login.html")
+        web.loadUrl("file:///android_asset/panel/index.html")
         Permissions.ensureChannel(applicationContext)
         Permissions.askOnce(this)
     }
@@ -125,8 +125,6 @@ class PanelActivity : AppCompatActivity() {
             if (on) sound.play("ativando.mp3")
             sound.muted
         },
-        onLogin = { sound.play("login_feito_com_sucesso.mp3") },
-        onLoginFail = { sound.play("credenciais_incorretas.mp3") },
         onActionSound = { file -> sound.play(file) },
         onRunDone = { group, ok ->
             val what = if (group.isBlank()) "Ação" else group

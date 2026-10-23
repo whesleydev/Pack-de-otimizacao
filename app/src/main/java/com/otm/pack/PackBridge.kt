@@ -50,8 +50,6 @@ class PackBridge(
     private val runnerProvider: () -> ShellRunner?,
     private val onConnect: () -> Unit,
     private val onSoundSet: (Boolean) -> Boolean,
-    private val onLogin: () -> Unit,
-    private val onLoginFail: () -> Unit,
     private val onActionSound: (String) -> Unit,
     private val onRunDone: (String, Boolean) -> Unit,
     private val deliver: (cbId: String, json: String) -> Unit,
@@ -86,8 +84,6 @@ class PackBridge(
                         okJson()
                     }
                     "connect" -> { withContext(Dispatchers.Main) { onConnect() }; okJson() }
-                    "login" -> { withContext(Dispatchers.Main) { onLogin() }; okJson() }
-                    "login_fail" -> { withContext(Dispatchers.Main) { onLoginFail() }; okJson() }
                     "sound" -> {
                         val want = payload.trim().lowercase() != "off"
                         val muted = withContext(Dispatchers.Main) { onSoundSet(want) }

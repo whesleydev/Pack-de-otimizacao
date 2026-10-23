@@ -8,28 +8,28 @@ declare(strict_types=1);
  * executar via api.php, mostrar saída e a explicação de cada ação.
  */
 require __DIR__ . '/lib.php';
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/keys.php';
 
-// --- login obrigatório --------------------------------------------------------
+// --- acesso por chave ---------------------------------------------------------
 $erro_login = '';
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['user'], $_POST['pass'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['key'])) {
     if (!otm_csrf_ok($_POST['csrf'] ?? null)) {
         $erro_login = 'Sessão expirada. Tente de novo.';
-    } elseif (otm_auth_login((string)$_POST['user'], (string)$_POST['pass'])) {
+    } elseif (otm_key_login((string)$_POST['key'])) {
         header('Location: index.php');
         exit;
     } else {
-        $erro_login = 'Usuário ou senha incorretos.';
+        $erro_login = 'Chave inválida ou revogada.';
     }
 }
 if (isset($_GET['sair'])) {
-    otm_auth_logout();
+    otm_key_logout();
     header('Location: index.php');
     exit;
 }
-if (!otm_auth_logged_in()) {
+if (!otm_key_logged_in()) {
     if ($erro_login !== '') $_GET['erro'] = $erro_login;
-    require __DIR__ . '/login.php';
+    require __DIR__ . '/access.php';
     exit;
 }
 
@@ -155,7 +155,6 @@ foreach ($CHOICE as $k => $c) {
                        'app' => !empty($c['app']), 'params' => $params, 'opts' => $opts];
 }
 
-$token = is_file(__DIR__ . '/.token') ? trim((string) file_get_contents(__DIR__ . '/.token')) : '';
 $first = array_key_first($groups);
 ?>
 <!DOCTYPE html>
@@ -1263,7 +1262,6 @@ body.drawer .scrim{opacity:1;visibility:visible}
 <div class="toast" id="toast" role="status"></div>
 
 <script>
-const TOKEN = <?= json_encode($token) ?>;
 const ACTIONS = <?= json_encode(array_column($actions, null, 'id'), JSON_UNESCAPED_UNICODE) ?>;
 const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
 const $ = s => document.querySelector(s);
@@ -1349,7 +1347,6 @@ function askPermission(id, label){
   if (!window.OTM){ toast("Permissões: use o app no celular.", "bad"); return; }
   openConsole(label, "concedendo…");
   fetch("api.php?do=run", { method:"POST",
-    headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
     body: JSON.stringify({id:id, params:{}, confirm:false}) })
     .then(r => r.json())
     .then(j => {
@@ -1538,7 +1535,6 @@ async function doRun(a, params, confirmed, btn){
   try{
     const r = await fetch("api.php?do=run", {
       method:"POST",
-      headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
       body: JSON.stringify({id:a.id, params, confirm:!!confirmed})
     });
     const j = await r.json();
@@ -1636,7 +1632,7 @@ const setBusy = (b, btn) => {
 function openConsole(t, out){ $("#consoleTitle").textContent = t; $("#consoleOut").textContent = out; $("#console").classList.add("open"); }
 function toast(m, k){ const t = $("#toast"); t.textContent = m; t.className = "toast show " + (k || "");
   clearTimeout(t._h); t._h = setTimeout(() => t.className = "toast", 3200); }
-const apiGet = async a => (await fetch("api.php?action=" + a, {headers:{"X-OTM-Token":TOKEN}})).json();
+const apiGet = async a => (await fetch("api.php?action=" + a)).json();
 
 $("#consoleClose").onclick = () => $("#console").classList.remove("open");
 $("#mCancel").onclick = () => { $("#mask").classList.remove("open"); pending = null; };
@@ -1684,7 +1680,7 @@ async function termRunCmd(cmd){
   const inp = document.getElementById("termInput"); if (inp) inp.disabled = true;
   try{
     const r = await fetch("api.php?do=term", {
-      method:"POST", headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
+      method:"POST",
       body: JSON.stringify({cmd})
     });
     const j = await r.json();
@@ -1984,7 +1980,6 @@ async function applyCustomProfile(a, btn){
   try{
     const r = await fetch("api.php?do=run", {
       method:"POST",
-      headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
       body: JSON.stringify({id:"profile.custom.apply", params, confirm:true})
     });
     const j = await r.json();

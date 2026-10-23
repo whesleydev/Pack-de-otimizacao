@@ -1,15 +1,16 @@
 <?php
 // =============================================================================
-//  login.php - Tela de entrada do painel 00deUdia Otimizações.
+//  access.php - Tela de acesso do painel (entrada por chave).
 //  Renderizada por index.php quando não há sessão. Não mostra nada do pack
-//  antes de autenticar.
+//  antes de entrar. Sem usuário e senha: só a chave.
 // =============================================================================
 
 declare(strict_types=1);
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/keys.php';
 
-$erro = (string)($_GET['erro'] ?? '');
-$csrf = otm_csrf();
+$erro    = (string)($_GET['erro'] ?? '');
+$sem_key = otm_key_active_count() === 0;   // primeira vez: ainda não há chave
+$csrf    = otm_csrf();
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -72,9 +73,10 @@ input{
   background:var(--glass-2); color:var(--ink); font-size:15px; transition:border-color .15s, box-shadow .15s;
 }
 input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
-.pw{position:relative}
-.pw button{position:absolute; right:6px; top:50%; transform:translateY(-50%); border:0; background:transparent;
-  color:var(--muted); cursor:pointer; padding:8px; border-radius:8px; font-size:13px}
+input.key{
+  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  letter-spacing:.06em; text-align:center; text-transform:uppercase;
+}
 .btn{
   width:100%; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
   border-radius:var(--r-sm); padding:12px 16px; font-size:15px; font-weight:800; cursor:pointer;
@@ -93,6 +95,13 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   background:var(--glass-2); animation:otmShake .4s both;
 }
 .erro b{color:var(--danger)}
+.setup{margin:0 0 16px; padding:13px 15px; font-size:13px; border:1px solid var(--line-strong);
+  border-left:4px solid var(--accent); border-radius:var(--r-sm); background:var(--glass-2)}
+.setup b{display:block; margin-bottom:5px}
+.setup p{margin:0 0 9px}
+.setup code{display:block; font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  font-size:12px; background:var(--glass); border:1px solid var(--line); border-radius:8px;
+  padding:8px 10px; user-select:all; word-break:break-all}
 .hint{margin:14px 0 0; font-size:12px; color:var(--muted); text-align:center}
 .hint code{background:var(--glass-2); border:1px solid var(--line); border-radius:6px; padding:1px 6px}
 .foot{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); animation:otmFade .7s .2s both}
@@ -114,28 +123,31 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   <div class="brand">
     <div class="mark" aria-hidden="true">00</div>
     <h1>00deUdia Otimizações</h1>
-    <p>Entre para acessar o painel</p>
+    <p>Entre com a sua chave de acesso</p>
   </div>
 
-  <form class="card" method="post" action="index.php" autocomplete="on">
+  <form class="card" method="post" action="index.php" autocomplete="off">
     <?php if ($erro !== ''): ?>
       <div class="erro" role="alert"><span aria-hidden="true">⚠</span>
         <div><b>Não deu para entrar.</b><br><?= htmlspecialchars($erro, ENT_QUOTES) ?></div></div>
     <?php endif; ?>
-    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES) ?>">
-    <div class="field">
-      <label for="user">Usuário</label>
-      <input id="user" name="user" type="text" inputmode="text" autocomplete="username"
-             required autofocus>
-    </div>
-    <div class="field">
-      <label for="pass">Senha</label>
-      <div class="pw">
-        <input id="pass" name="pass" type="password" autocomplete="current-password" required>
-        <button type="button" id="toggle" aria-label="Mostrar senha">ver</button>
+
+    <?php if ($sem_key): ?>
+      <div class="setup">
+        <b>Primeira vez aqui</b>
+        <p>Crie a sua primeira chave no terminal, na pasta do pack:</p>
+        <code>sh main.sh web key new</code>
       </div>
-    </div>
-    <button class="btn" id="entrar" type="submit">Entrar</button>
+    <?php else: ?>
+      <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES) ?>">
+      <div class="field">
+        <label for="key">Chave de acesso</label>
+        <input id="key" name="key" type="text" class="key" inputmode="text" spellcheck="false"
+               placeholder="OTM-XXXX-XXXX-XXXX" autocomplete="off" required autofocus>
+      </div>
+      <button class="btn" id="entrar" type="submit">Entrar</button>
+      <p class="hint">Sem chave? Crie uma com <code>sh main.sh web key new</code></p>
+    <?php endif; ?>
   </form>
 
   <div class="foot">Painel local — sem root, via Shizuku ou ADB por Wi-Fi.</div>
@@ -156,16 +168,22 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
 </div>
 
 <script>
-document.getElementById("toggle").onclick = (e) => {
-  const p = document.getElementById("pass");
-  const on = p.type === "password";
-  p.type = on ? "text" : "password";
-  e.currentTarget.textContent = on ? "ocultar" : "ver";
-  e.currentTarget.setAttribute("aria-label", on ? "Ocultar senha" : "Mostrar senha");
-};
-document.querySelector("form").addEventListener("submit", () => {
-  document.getElementById("entrar").classList.add("busy");
-  document.getElementById("entrar").textContent = "Entrando…";
+/* agrupa a chave enquanto digita: OTM-XXXX-XXXX-XXXX */
+const keyEl = document.getElementById("key");
+if (keyEl) {
+  keyEl.addEventListener("input", () => {
+    let s = keyEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (s.startsWith("OTM")) s = s.slice(3);
+    s = s.slice(0, 12);
+    const parts = [];
+    for (let i = 0; i < s.length; i += 4) parts.push(s.slice(i, i + 4));
+    keyEl.value = parts.length ? "OTM-" + parts.join("-") : "";
+  });
+}
+const form = document.querySelector("form");
+if (form) form.addEventListener("submit", () => {
+  const b = document.getElementById("entrar");
+  if (b) { b.classList.add("busy"); b.textContent = "Entrando…"; }
 });
 </script>
 </body>

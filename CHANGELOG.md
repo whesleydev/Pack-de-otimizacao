@@ -3,6 +3,21 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Alterado
+- **Acesso por chave no lugar de login e senha.** O painel web não pede mais usuário
+  e senha: agora você cria uma chave (`sh main.sh web key new`) no formato
+  `OTM-XXXX-XXXX-XXXX` e cola na tela de entrada. O servidor guarda só o **hash
+  SHA-256** da chave em `~/.packotm/web/keys.json` (nunca em texto puro), com
+  `sh main.sh web key list` e `sh main.sh web key revoke <id>` para gerenciar.
+  A API também aceita a chave no cabeçalho `X-OTM-Key` (ou `?key=`).
+
+### Removido
+- Sistema de login e senha do painel web (`web/auth.php`, `web/login.php`) e a tela de
+  login do app (`assets/panel/login.html`). O app abre o painel direto.
+- Arquivo de token do servidor (`web/.token`) e o comando `sh main.sh web senha`.
+
 ## [2.25.0] - 2026-10-05
 
 ### Corrigido

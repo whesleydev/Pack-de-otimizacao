@@ -21,10 +21,11 @@ scratch/
 releases/*.zip
 releases/*.zip.sha256
 
-# estado local do painel web (token de acesso e log)
+# estado local do painel web (chaves de acesso e log)
 web/.token
 web/.state/
 web/auth.json
+web/keys.json
 
 # estado local dos plugins
 "00 Otimizações/Plugins AxManager"/*/state/
