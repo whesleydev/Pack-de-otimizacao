@@ -17,6 +17,10 @@ define('OTM_PANEL_BOOTED', true);
 define('OTM_PANEL_ROOT', dirname(__DIR__));
 define('OTM_PANEL_SRC', __DIR__);
 
+// Versão exibida na barra de status (lê o VERSION da raiz do projeto).
+$otm_ver = @file_get_contents(dirname(OTM_PANEL_ROOT) . '/VERSION');
+define('OTM_PANEL_VERSION', $otm_ver !== false ? trim($otm_ver) : 'dev');
+
 // --- fuso: tudo em UTC no banco, horário local só na tela --------------------
 date_default_timezone_set('America/Sao_Paulo');
 

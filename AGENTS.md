@@ -136,6 +136,12 @@ Regras:
   já existir. Sem `key`, o sistema gera.
 - **O painel começa limpo**: sem planos de exemplo nem chaves de teste. A migração
   `0005_plans.sql` só grava `otm_settings`; os planos são criados pelo usuário.
+- **Visual do painel é "sistema legado"**: cinza de janela, cantos retos, tabelas com
+  grade completa, fonte de sistema pequena e densa. Tudo em `public/assets/admin.css`
+  (CSS puro, sem framework). Barra de título azul no topo (`layout.php`) e barra de
+  status no rodapé mostrando versão, banco em uso (`otm_db_label()`) e a hora. Ao mexer
+  no CSS, mantenha as classes que as páginas usam (`.grid`, `.card`, `.btn`, `.tag`,
+  `.frm`, `.dl`, `.bar`, `.pager`) e o modo estreito (`@media max-width: 760px`).
 - **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
   nunca o vê: quem fala com o banco é o painel, via `api/validate.php`.
 - `api/validate.php` só aceita **POST** (405 caso contrário), tem freio por IP (429) e

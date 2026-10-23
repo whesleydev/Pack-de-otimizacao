@@ -18,6 +18,12 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   (revogar, estender, bloquear aparelho).
 
 ### Alterado
+- **Visual do painel refeito com cara de sistema legado.** Saiu o tema escuro moderno e
+  entrou o cinza clássico de janela: cantos retos, tabelas com grade completa (estilo
+  planilha), fonte de sistema pequena e densa, botões com bisel e barra de título azul.
+  O rodapé ganhou uma **barra de status** com a versão, o banco em uso (turso ou sqlite
+  local) e a hora. Continua CSS puro, sem framework, e responsivo (menu vira faixa no
+  celular).
 - **Formato da chave: `00-XXXX-XXXX-XXXX`** (antes `OTM-XXXX-XXXX-XXXX`), igual no painel,
   no app e nos scripts. O alfabeto continua sem os caracteres ambíguos I, L, O e U.
 - **Painel começa limpo.** Não há mais planos de exemplo (`teste`, `mensal`, …) nem
