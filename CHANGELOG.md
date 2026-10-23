@@ -9,10 +9,9 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Painel de licenças com banco (Turso/libSQL).** O painel PHP (`panel/`) guarda as
   chaves num banco de verdade, com planos, aparelhos, histórico de tentativas e auditoria.
   Antes era um arquivo JSON local; agora dá para ver e agir sobre cada chave.
-- **Chave digitada à mão.** Em *Nova chave* (ou `php panel/bin/key.php new --key ...`) você
-  pode escrever a chave no formato `00-XXXX-XXXX-XXXX` em vez de deixar o sistema gerar.
-  A chave digitada passa pela mesma normalização/validação e é recusada se estiver em
-  formato inválido ou se já existir.
+- **Chave gerada só pelo sistema.** O formulário *Nova chave* não pede mais o código: o
+  sistema gera a chave e ela aparece uma única vez para copiar. (O suporte a chave digitada
+  à mão continua no CLI, `php panel/bin/key.php new --key ...`, para migrações.)
 - **Clicar na chave abre o detalhe.** Na lista de chaves a linha inteira leva ao
   `key_view.php`, com os dados, os aparelhos vistos e o histórico — e as ações
   (revogar, estender, bloquear aparelho).
