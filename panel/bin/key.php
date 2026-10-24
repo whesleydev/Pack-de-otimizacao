@@ -11,8 +11,10 @@
 //      php panel/bin/key.php revoke <id> [motivo]
 //      php panel/bin/key.php restore <id>
 //      php panel/bin/key.php rm <id>
+//      php panel/bin/key.php adopt 00-XXXX-XXXX-XXXX   # guarda a chave no cofre
 //
-//  A chave em texto só aparece UMA vez, no `new`. Depois só existe o hash.
+//  A chave em texto aparece no `new` e no `show`. Fica cifrada no cofre
+//  (KeyVault) para poder ser reexibida — o banco continua guardando só o hash.
 // =============================================================================
 
 declare(strict_types=1);
@@ -65,7 +67,6 @@ switch ($cmd) {
             $c = $keys->create([
                 'key'           => (string)($opts['key'] ?? ''),
                 'label'         => (string)($opts['label'] ?? ''),
-                'owner_contact' => (string)($opts['contact'] ?? ''),
                 'note'          => (string)($opts['note'] ?? ''),
                 'plan_id'       => $planId,
                 'duration_days' => $days,
@@ -123,15 +124,29 @@ switch ($cmd) {
         printf("id ........: %d\n", (int)$k['id']);
         printf("prefixo ...: %s\n", (string)$k['key_prefix']);
         printf("nome ......: %s\n", (string)$k['label']);
-        printf("contato ...: %s\n", (string)$k['owner_contact']);
         printf("situação ..: %s\n", (string)$k['status']);
         printf("criada ....: %s\n", otm_fmt_dt($k['created_at']));
         printf("expira ....: %s%s\n", ($k['expires_at'] ? otm_fmt_dt($k['expires_at']) : 'nunca'),
                ($k['days_left'] !== null ? ' (' . $k['days_left'] . ' dia[s])' : ''));
         printf("usos ......: %d%s\n", (int)$k['uses_count'], ((int)$k['max_uses'] ? ' / ' . $k['max_uses'] : ''));
+        $plain = $keys->plaintext($k);
+        printf("chave .....: %s\n", $plain !== '' ? $plain : '(não guardada no cofre)');
         $devs = $keys->devices($id);
         printf("aparelhos .: %d\n", count($devs));
         foreach ($devs as $d) printf("   - %s %s (visto %s)\n", $d['device_id'], $d['model'], otm_fmt_dt($d['last_seen_at']));
+        break;
+
+    case 'adopt':
+        // Guarda no cofre uma chave que já existe (criada antes do cofre).
+        // Só funciona se o texto bater com o hash guardado — é o que garante
+        // que ninguém "adota" uma chave que não é a mesma.
+        $raw = (string)($argv[2] ?? '');
+        if (!otm_key_well_formed($raw)) { fwrite(STDERR, "informe a chave no formato 00-XXXX-XXXX-XXXX\n"); exit(1); }
+        $row = $db->one('SELECT * FROM otm_keys WHERE key_hash = ?', [otm_key_hash($raw)]);
+        if (!$row) { fwrite(STDERR, "nenhuma chave no banco bate com esse texto\n"); exit(1); }
+        if (!KeyVault::isConfigured()) { fwrite(STDERR, "cofre desligado — rode: php panel/bin/vault.php keygen\n"); exit(1); }
+        $db->run('UPDATE otm_keys SET key_sealed = ? WHERE id = ?', [KeyVault::seal(otm_key_normalize($raw)), (int)$row['id']]);
+        printf("✔ chave %s (id %d) guardada no cofre\n", (string)$row['key_prefix'], (int)$row['id']);
         break;
 
     case 'duration':

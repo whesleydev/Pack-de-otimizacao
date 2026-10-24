@@ -35,9 +35,9 @@ final class KeyService
 
         $q = trim((string)($f['q'] ?? ''));
         if ($q !== '') {
-            $where[] = '(k.label LIKE ? OR k.owner_contact LIKE ? OR k.note LIKE ? OR k.key_prefix LIKE ?)';
+            $where[] = '(k.label LIKE ? OR k.note LIKE ? OR k.key_prefix LIKE ?)';
             $like = '%' . $q . '%';
-            array_push($args, $like, $like, $like, $like);
+            array_push($args, $like, $like, $like);
         }
 
         if (!empty($f['plan'])) {
@@ -92,6 +92,16 @@ final class KeyService
         return $row ? $this->decorate($row) : null;
     }
 
+    /**
+     * A chave em texto, aberta do cofre (KeyVault). Devolve '' quando o cofre
+     * não está configurado ou a chave é anterior ao cofre — nesse caso o texto
+     * não existe mais em lugar nenhum.
+     */
+    public function plaintext(array $row): string
+    {
+        return KeyVault::open($row['key_sealed'] ?? '');
+    }
+
     /** Acrescenta campos calculados (status, dias restantes). */
     public function decorate(array $row): array
     {
@@ -118,7 +128,7 @@ final class KeyService
     /**
      * Cria uma chave. Devolve a chave em TEXTO uma única vez — depois só o hash
      * existe. duration_days null = vitalício.
-     * @param array{key?:string,label?:string,owner_contact?:string,note?:string,plan_id?:?int,
+     * @param array{key?:string,label?:string,note?:string,plan_id?:?int,
      *              duration_days?:?int,max_devices?:int,max_uses?:int,created_by?:string} $in
      * @return array{id:int,key:string,row:array}
      */
@@ -144,14 +154,13 @@ final class KeyService
 
         $id = $this->db->insert(
             'INSERT INTO otm_keys
-                (key_hash, key_prefix, label, owner_contact, note, plan_id, duration_days,
-                 max_devices, max_uses, created_at, expires_at, created_by)
+                (key_hash, key_prefix, label, note, plan_id, duration_days,
+                 max_devices, max_uses, created_at, expires_at, created_by, key_sealed)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
             [
                 otm_key_hash($raw),
                 otm_key_prefix_of($raw),
                 otm_str($in['label'] ?? '', 120),
-                otm_str($in['owner_contact'] ?? '', 160),
                 otm_str($in['note'] ?? '', 500),
                 !empty($in['plan_id']) ? (int)$in['plan_id'] : null,
                 $days,
@@ -160,6 +169,7 @@ final class KeyService
                 otm_now(),
                 otm_expiry_from_days($days),
                 otm_str($in['created_by'] ?? '', 80),
+                KeyVault::seal($raw),
             ]
         );
 
@@ -172,7 +182,7 @@ final class KeyService
         $sets = [];
         $args = [];
 
-        foreach (['label' => 120, 'owner_contact' => 160, 'note' => 500] as $col => $max) {
+        foreach (['label' => 120, 'note' => 500] as $col => $max) {
             if (array_key_exists($col, $in)) { $sets[] = "$col = ?"; $args[] = otm_str((string)$in[$col], $max); }
         }
         if (array_key_exists('max_devices', $in)) { $sets[] = 'max_devices = ?'; $args[] = max(0, (int)$in['max_devices']); }
