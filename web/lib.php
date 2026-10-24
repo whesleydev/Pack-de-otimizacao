@@ -69,7 +69,7 @@ function otm_allowed_scripts(): array {
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
-        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'cool-down.sh',
+        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
         'profile-custom.sh',
     ];
@@ -133,13 +133,8 @@ function otm_choices(): array {
         ],
         'ramboost' => [
             'title' => 'Liberar RAM agora',
-            'desc'  => 'Libera a memória de verdade: encerra os apps de fundo (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps e, com root, manda o kernel soltar o pagecache. Diferente de "RAM: perfil gaming", que só muda quantos apps o sistema deixa em cache — aqui a memória é liberada na hora. O painel mostra quanto foi liberado.',
+            'desc'  => 'Libera a memória de verdade: encerra os apps de fundo (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps. Diferente de "RAM: perfil gaming", que só muda quantos apps o sistema deixa em cache — aqui a memória é liberada na hora. O painel mostra quanto foi liberado.',
             'risk'  => 'careful',
-        ],
-        'cooldown' => [
-            'title' => 'Resfriar o aparelho',
-            'desc'  => 'Use quando o celular estiver quente. Reduz o que esquenta: limita a CPU e a GPU ao clock mínimo, baixa o brilho e encerra os apps de fundo. No modo "Máximo" também desliga os núcleos extras. Desliga sozinho ao esfriar (38°C) ou em 30 min. Requer root. Reverta em "Parar resfriamento".',
-            'risk'  => 'root',
         ],
     ];
 }
@@ -262,16 +257,12 @@ function otm_actions(): array {
           'help' => 'Motor único de limpeza: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps e libera a memória na hora. Depois aplica uma suavização leve e reversível (animações mais curtas, blur off, doze mais rápido). Nada de seus dados é apagado — só cache. Para reverter a suavização, use "Clean: desfazer suavização".',
           'argv' => ['adb-tweaks.sh', 'clean']]);
     $add(['id' => 'clean.scan', 'group' => 'Desempenho', 'label' => 'Clean: ver o que dá para limpar',
-          'desc' => 'Mostra RAM, espaço e cache por app — sem alterar nada.',
-          'help' => 'Só lê o aparelho: quanto de RAM está livre, quanto espaço sobra no armazenamento e (com root) quais apps estão ocupando mais cache. Serve para você ver o que a limpeza vai liberar antes de rodar. Não altera nada.',
+          'desc' => 'Mostra RAM e espaço livre — sem alterar nada.',
+          'help' => 'Só lê o aparelho: quanto de RAM está livre, quanto espaço sobra no armazenamento. Serve para você ver o que a limpeza vai liberar antes de rodar. Não altera nada.',
           'argv' => ['adb-tweaks.sh', 'clean_scan']]);
-    $add(['id' => 'clean.deep', 'group' => 'Desempenho', 'label' => 'Clean profundo (CPU/GPU/I/O)',
-          'desc' => 'Limpeza + suavização de CPU/GPU/I-O/VM. Precisa de root.',
-          'help' => 'Faz a limpeza e vai além: coloca CPU e GPU no topo da frequência, liga o input boost no toque, afina I/O (scheduler none + read_ahead + fstrim), VM (dirty suave) e rede (BBR + fq_codel). É o que deixa o sistema liso de verdade. Precisa de root e esquenta/consome mais bateria — use com o aparelho ventilado. Reversível por completo.',
-          'argv' => ['adb-tweaks.sh', 'clean_deep'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
-    $add(['id' => 'clean.undo', 'group' => 'Desempenho', 'label' => 'Clean: desfazer suavização',
+        $add(['id' => 'clean.undo', 'group' => 'Desempenho', 'label' => 'Clean: desfazer suavização',
           'desc' => 'Desfaz os ajustes de suavização do Clean (a limpeza é pontual).',
-          'help' => 'Restaura animações, blur, doze, Wi-Fi e — se o Clean profundo foi usado — frequência de CPU/GPU, I/O, VM e rede, voltando cada valor ao original. A liberação de RAM em si não precisa ser desfeita (é pontual).',
+          'help' => 'Restaura animações, blur, doze e Wi-Fi, voltando cada valor ao original. A liberação de RAM em si não precisa ser desfeita (é pontual).',
           'argv' => ['clean.sh', 'off']]);
 
     // ----- Liberar RAM de verdade + Resfriamento -----
@@ -289,25 +280,7 @@ function otm_actions(): array {
           'desc' => 'Mostra a RAM em uso e quem está protegido. Só leitura.',
           'help' => 'Mostra quanta RAM está livre e em uso, o perfil de RAM em cache e quais apps estão protegidos no anti-relog. Tudo lido do aparelho.',
           'argv' => ['ram-boost.sh', 'status']]);
-    $add(['id' => 'cool.normal', 'group' => 'Desempenho', 'label' => 'Resfriar aparelho: normal',
-          'desc' => 'Limita CPU/GPU e baixa o brilho para esfriar. Desliga sozinho.',
-          'help' => 'Use quando o celular estiver quente. Reduz o que esquenta: prende a CPU e a GPU no clock mínimo, baixa o brilho da tela e encerra os apps de fundo. Desliga automaticamente ao esfriar (38°C) ou após 30 minutos. Requer root. Reverta em "Parar resfriamento".',
-          'choice' => 'cooldown', 'option' => 'Normal',
-          'argv' => ['cool-down.sh', 'on', 'normal'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
-    $add(['id' => 'cool.max', 'group' => 'Desempenho', 'label' => 'Resfriar aparelho: máximo',
-          'desc' => 'Igual ao normal e ainda desliga os núcleos extras.',
-          'help' => 'A versão mais forte: além de tudo do normal, desliga os núcleos de CPU extras para reduzir ainda mais o calor. O aparelho fica mais lento enquanto está ligado — é o preço de esfriar rápido. Desliga sozinho ao esfriar. Requer root.',
-          'choice' => 'cooldown', 'option' => 'Máximo',
-          'argv' => ['cool-down.sh', 'on', 'max'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
-    $add(['id' => 'cool.off', 'group' => 'Desempenho', 'label' => 'Parar resfriamento',
-          'desc' => 'Desliga o modo resfriamento e volta tudo ao normal.',
-          'help' => 'Desfaz o modo resfriamento: devolve os limites de CPU/GPU, os núcleos e o brilho ao que eram antes. Use quando o aparelho já esfriou.',
-          'argv' => ['cool-down.sh', 'off'], 'risk' => 'root']);
-    $add(['id' => 'cool.status', 'group' => 'Desempenho', 'label' => 'Ver temperatura',
-          'desc' => 'Mostra a temperatura e se o resfriamento está ligado. Só leitura.',
-          'help' => 'Mostra a temperatura atual do aparelho (lida das zonas térmicas), se o modo resfriamento está ligado e os limites de clock atuais. Só leitura.',
-          'argv' => ['cool-down.sh', 'status']]);
-
+                
     // ----- Renderizador -----
     $add(['id' => 'gpu', 'group' => 'Display & Touch', 'label' => 'Aplicar conjunto GPU',
           'desc' => 'Renderizador + força GPU + remove desfoques.',
@@ -559,52 +532,11 @@ function otm_actions(): array {
           'help' => 'Detalha o app escolhido: quantos processos tem, quanto de RAM está usando, a prioridade (nice) e o oom_score. Tudo lido do aparelho. Só leitura.',
           'argv' => ['proc-mgr.sh', 'info', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
-    $add(['id' => 'proc.ram', 'group' => 'Processos', 'label' => 'Limitar RAM do app',
-          'desc' => 'Impõe um teto de memória ao app (root; 0 = sem limite).',
-          'help' => 'Define um limite máximo de RAM para o app escolhido. Quando ele passa do teto, o sistema libera memória em vez de deixar o aparelho travar. Use 0 para tirar o limite. Só funciona com root.',
-          'argv' => ['proc-mgr.sh', 'ram', '{pkg}', '{mb}'],
-          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
-                       ['name' => 'mb', 'type' => 'int', 'label' => 'Limite (MB, 0 = sem)', 'min' => 0, 'max' => 8192, 'default' => 0]],
-          'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'proc.cpu', 'group' => 'Processos', 'label' => 'Priorizar CPU do app',
-          'desc' => 'Coloca o app num grupo de CPU (topo/visível/fundo).',
-          'help' => 'Coloca o app num grupo de CPU: "top-app" recebe mais tempo de processador (bom para o jogo em foco), "background" fica com menos (bom para o que pode esperar). Só funciona com root.',
-          'argv' => ['proc-mgr.sh', 'cpu', '{pkg}', '{group}'],
-          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
-                       ['name' => 'group', 'type' => 'enum', 'label' => 'Grupo',
-                        'options' => ['top-app', 'foreground', 'background'], 'default' => 'top-app']],
-          'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'proc.renice', 'group' => 'Processos', 'label' => 'Mudar prioridade (nice)',
-          'desc' => 'Ajusta a prioridade do app (-20 forte .. 19 fraco).',
-          'help' => 'Muda a prioridade do app em relação aos outros. Número menor = mais forte (recebe CPU antes); número maior = mais fraco. Use -5 a -10 para dar força a um jogo. Só funciona com root.',
-          'argv' => ['proc-mgr.sh', 'renice', '{pkg}', '{nice}'],
-          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App'],
-                       ['name' => 'nice', 'type' => 'int', 'label' => 'nice', 'min' => -20, 'max' => 19, 'default' => -5]],
-          'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'proc.freeze', 'group' => 'Processos', 'label' => 'Congelar um app agora',
-          'desc' => 'Pausa o app na hora (SIGSTOP), sem desinstalar.',
-          'help' => 'Congela o app imediatamente: ele para de usar CPU e RAM, mas continua instalado e volta ao normal quando você descongelar. Bom para tirar algo pesado do caminho. Só funciona com root.',
-          'argv' => ['proc-mgr.sh', 'freeze', '{pkg}'],
-          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']],
-          'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'proc.unfreeze', 'group' => 'Processos', 'label' => 'Descongelar um app',
-          'desc' => 'Volta o app congelado a rodar normalmente.',
-          'help' => 'Descongela o app que você pausou antes, devolvendo ele ao funcionamento normal.',
-          'argv' => ['proc-mgr.sh', 'unfreeze', '{pkg}'],
-          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
-    $add(['id' => 'proc.status', 'group' => 'Processos', 'label' => 'Ver limites aplicados',
-          'desc' => 'Lista os limites/prioridades/congelamentos ativos.',
-          'help' => 'Mostra tudo o que está aplicado agora: limites de RAM, grupos de CPU, prioridades e apps congelados. Só leitura.',
-          'argv' => ['proc-mgr.sh', 'status']]);
-    $add(['id' => 'proc.restore', 'group' => 'Processos', 'label' => 'Remover limites (voltar ao normal)',
-          'desc' => 'Descongela tudo e zera prioridades e limites.',
-          'help' => 'Remove todos os limites de RAM, grupos de CPU, prioridades e congela tudo de volta. Deixa o aparelho no padrão. Só funciona com root.',
-          'argv' => ['proc-mgr.sh', 'restore'], 'risk' => 'root', 'confirm' => true]);
-
+                            
     // ----- Manter vivo (anti-relog) -----
     $add(['id' => 'keep.on', 'group' => 'Processos', 'label' => 'Manter app vivo (não relogar)',
           'desc' => 'Impede o app de fechar e pedir login de novo ao reabrir.',
-          'help' => 'Quando você sai de um app, o Android pode matá-lo para liberar memória — ao voltar, ele abre do zero e pede login outra vez. Aqui o app escolhido fica protegido: isento do modo espera (Doze), liberado em segundo plano e wake lock, no balde ativo de standby e fora do congelador. Requer Shizuku/ADB ou root. Reverta em "Deixar de manter o app".',
+          'help' => 'Quando você sai de um app, o Android pode matá-lo para liberar memória — ao voltar, ele abre do zero e pede login outra vez. Aqui o app escolhido fica protegido: isento do modo espera (Doze), liberado em segundo plano e wake lock, no balde ativo de standby e fora do congelador. Requer Shizuku/ADB. Reverta em "Deixar de manter o app".',
           'argv' => ['keep-alive.sh', 'on', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']],
           'risk' => 'careful']);
@@ -661,81 +593,20 @@ function otm_actions(): array {
           'help' => 'Traz de volta todos os apps que o debloat desativou, deixando o sistema como estava antes.',
           'argv' => ['debloat.sh', 'off'], 'timeout' => 180]);
 
-    // ----- Otimizações profundas (root) -----
-    $deep = [
-        'freq'    => ['Frequência CPU/GPU', 'Segura clocks altos para não cair em jogo.', 'Mantém a CPU e a GPU em frequências mais altas por mais tempo, evitando quedas de desempenho no meio da partida. Só funciona com root.'],
-        'io'      => ['I/O + memória', 'Ajusta leitura/escrita e faz fstrim.', 'Otimiza a forma como o sistema lê e grava dados (scheduler de I/O) e roda o fstrim, que mantém o armazenamento rápido.'],
-        'mem'     => ['Memória (MGLRU/zRAM/KSM)', 'Gerência de memória mais eficiente.', 'Ajusta o gerenciamento de memória do kernel (reciclagem de páginas, compressão e deduplicação). Mais RAM útil e menos travadas.'],
-        'net'     => ['Rede BBR + fq_codel', 'Congestionamento moderno: menos lag de rede.', 'Troca o controle de congestionamento da rede pelo BBR e a fila pelo fq_codel. Resultado: menos picos de ping em jogos online.'],
-        'latency' => ['Reduzir latência (vsync)', 'Ajusta o SurfaceFlinger para menos atraso.', 'Mexe no SurfaceFlinger para reduzir o atraso entre o toque e o que aparece na tela. Sensação de resposta mais imediata.'],
-    ];
-    foreach ($deep as $k => $v) {
-        $add(['id' => "deep.$k", 'group' => 'Desempenho', 'label' => $v[0],
-              'desc' => $v[1], 'help' => $v[2] . ' Requer root e pede confirmação.',
-              'argv' => ['deep-tune.sh', $k, 'on'], 'risk' => 'root', 'confirm' => true]);
-        $add(['id' => "deep.$k.off", 'group' => 'Desempenho', 'label' => $v[0] . ' — desligar',
-              'desc' => 'Reverte este módulo profundo.',
-              'help' => 'Desliga só este ajuste profundo, deixando os outros como estão.',
-              'argv' => ['deep-tune.sh', $k, 'off'], 'risk' => 'root']);
-    }
-    $add(['id' => 'deep.gaming', 'group' => 'Desempenho', 'label' => 'MODO JOGO TURBO',
-          'desc' => 'Liga todas as otimizações profundas de uma vez.',
-          'help' => 'Ativa de uma vez frequência, I/O, memória, rede e latência. É o "turbo" completo para jogar. Requer root. Desfaça com "Reverter TUDO" ou módulo por módulo.',
-          'argv' => ['deep-tune.sh', 'gaming', 'on'], 'risk' => 'root', 'confirm' => true, 'timeout' => 180]);
-    $add(['id' => 'deep.thermal', 'group' => 'Desempenho', 'label' => 'Ajustar limite térmico',
-          'desc' => 'Deixa esquentar mais para segurar o clock (tem trava automática).',
-          'help' => 'Sobe o limite de temperatura em que o aparelho começa a reduzir o desempenho. Isso segura o clock por mais tempo, mas o aparelho esquenta mais. Há uma trava automática de segurança.',
-          'argv' => ['deep-tune.sh', 'thermal', 'on'], 'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'deep.detect', 'group' => 'Desempenho', 'label' => 'Detectar hardware',
+            $add(['id' => 'deep.detect', 'group' => 'Desempenho', 'label' => 'Detectar hardware',
           'desc' => 'Mostra CPU, GPU e kernel com recomendações.',
           'help' => 'Lê os dados de hardware do aparelho e sugere quais ajustes profundos fazem sentido. Só informa, não muda nada.',
           'argv' => ['deep-tune.sh', 'detect']]);
 
-    // ----- Extremos (root) — knobs que quase ninguém conhece -----
-    $ext = [
-        'vm'     => ['VM / kernel de memória', 'Menos engasgo de I/O e apps que reabrem rápido.',
-                     'Ajusta o gerenciador de memória do kernel: pressão de cache, escrita suja e reserva mínima. Efeito: menos microtravadas ao abrir/voltar de apps. Knob pouco conhecido, ganho constante.'],
-        'sched'  => ['Escalonador / EAS', 'Menos "pulos" de clock e resposta mais imediata.',
-                     'Mexe em como o kernel distribui as tarefas e acorda núcleos, além de dar boost ao app em foco (schedtune). Sensação de interface mais responsiva.'],
-        'gpu'    => ['GPU extrema (KGSL/Mali)', 'Trava a GPU no topo e desliga economia dela.',
-                     'Trava o clock da GPU no máximo e desliga o throttling/idle da GPU (Adreno/KGSL ou Mali/devfreq). É o ajuste que mais segura o FPS em jogo — e que quase ninguém aplica. Esquenta mais.'],
-        'cores'  => ['Núcleos sempre ligados', 'Evita o atraso de "acordar" núcleo.',
-                     'Desliga o hotplug/core_ctl e mantém todos os núcleos ligados. Reduz o atraso de acordar núcleo no meio da ação. Custa bateria.'],
-        'input'  => ['Input / touch boost', 'Sobe a CPU no instante do toque.',
-                     'Liga o boost de CPU no toque (input boost). É o que dá a sensação de resposta instantânea. Knobs variam por fabricante.'],
-        'idle'   => ['CPU idle (menu)', 'Desliga o idle profundo para acordar rápido.',
-                     'Troca o governor de idle e desliga os estados de idle mais profundos. Acorda mais rápido (menos latência), gasta mais bateria.'],
-        'net2'   => ['Rede avançada 2 (BBR2)', 'Menos lag de rede em jogo online.',
-                     'Além do BBR: tenta BBR2, desliga slow-start após ocioso, liga MTU probing e reaproveita conexões. Menos picos de ping.'],
-        'zram'   => ['zRAM avançada (zstd)', 'Mais RAM efetiva trocando CPU por memória.',
-                     'Troca a compressão da memória para zstd e ajusta o swappiness. Mais RAM efetiva; usa um pouco mais de CPU.'],
-        'kernel' => ['Kernel: tirar overhead', 'Desliga rastreamento/debug do kernel.',
-                     'Desliga tracing e debug do kernel e sobe limites do sistema (arquivos, backlog). Ganho pequeno e constante.'],
-        'dalvik' => ['Dalvik / ART (heaps)', 'Heaps maiores para jogos, menos GC no meio.',
-                     'Aumenta os heaps da máquina virtual e a compilação em modo speed. Ajuda apps grandes (jogos) a não sofrerem GC no meio do uso.'],
-    ];
-    foreach ($ext as $k => $v) {
-        $add(['id' => "ext.$k", 'group' => 'Desempenho', 'label' => $v[0],
-              'desc' => $v[1], 'help' => $v[2] . ' Requer root. Reversível em "' . $v[0] . ' — desligar".',
-              'argv' => ['deep-tune.sh', $k, 'on'], 'risk' => 'root', 'confirm' => true]);
-        $add(['id' => "ext.$k.off", 'group' => 'Desempenho', 'label' => $v[0] . ' — desligar',
-              'desc' => 'Reverte só este ajuste extremo.',
-              'help' => 'Desliga apenas este ajuste extremo, mantendo os outros como estão.',
-              'argv' => ['deep-tune.sh', $k, 'off'], 'risk' => 'root']);
-    }
     $add(['id' => 'ext.display', 'group' => 'Display & Touch', 'label' => 'Display / HWUI (props)',
-          'desc' => 'Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa. SEM root.',
-          'help' => 'Ajusta props "debug.*" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Não precisa de root e deixa a rolagem mais lisa.',
+          'desc' => 'Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa.',
+          'help' => 'Ajusta props "debug.*" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Deixa a rolagem mais lisa.',
           'argv' => ['deep-tune.sh', 'display', 'on']]);
     $add(['id' => 'ext.display.off', 'group' => 'Display & Touch', 'label' => 'Display / HWUI — desligar',
           'desc' => 'Reverte as props de display.',
           'help' => 'Restaura as props de display/HWUI ao valor anterior.',
           'argv' => ['deep-tune.sh', 'display', 'off']]);
-    $add(['id' => 'ext.turbo', 'group' => 'Desempenho', 'label' => 'MODO EXTREMO (tudo)',
-          'desc' => 'Turbo + TODOS os ajustes avançados de uma vez. Esquenta muito.',
-          'help' => 'Liga o modo turbo e mais todos os knobs avançados: VM, escalonador, GPU, núcleos, input, idle, rede2, zRAM, kernel, display e dalvik. É o máximo de desempenho que o pack entrega. Esquenta MUITO e consome bateria — use com o aparelho ventilado. Reverte em "Reverter TUDO".',
-          'argv' => ['deep-tune.sh', 'extreme'], 'risk' => 'root', 'confirm' => true, 'timeout' => 300]);
-    $add(['id' => 'ext.dexopt', 'group' => 'Desempenho', 'label' => 'Recompilar apps (dexopt)',
+        $add(['id' => 'ext.dexopt', 'group' => 'Desempenho', 'label' => 'Recompilar apps (dexopt)',
           'desc' => 'Compila os apps antecipadamente (AOT). Demora, mas reduz engasgo.',
           'help' => 'Recompila todos os apps em modo speed (AOT). A primeira abertura fica mais fluida e some o engasgo do compilador em segundo plano. Demora vários minutos e esquenta; roda melhor com o celular na tomada.',
           'argv' => ['deep-tune.sh', 'dexopt', 'run'], 'timeout' => 900, 'risk' => 'careful', 'confirm' => true]);
@@ -834,31 +705,7 @@ function otm_actions(): array {
           'params' => [['name' => 'hz', 'type' => 'enum', 'label' => 'Taxa (Hz)',
                         'options' => ['60', '90', '120', '144'], 'default' => '120']],
           'risk' => 'careful']);
-    $add(['id' => 'turbo.audio', 'group' => 'Display & Touch', 'label' => 'Áudio de baixa latência',
-          'desc' => 'Reduz o buffer de áudio: ouve passos/tiros mais cedo (root).',
-          'help' => 'Reduz o buffer de áudio e liga o modo de baixa latência. Em jogos como o Free Fire, ouvir o passo do inimigo alguns milissegundos mais cedo pode decidir a briga. Requer root e reiniciar o jogo.',
-          'argv' => ['turbo.sh', 'audio', 'on'], 'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'turbo.audio_off', 'group' => 'Display & Touch', 'label' => 'Áudio de baixa latência — desligar',
-          'desc' => 'Volta o áudio ao padrão.',
-          'help' => 'Desfaz o ajuste de áudio de baixa latência, voltando ao buffer padrão do Android.',
-          'argv' => ['turbo.sh', 'audio', 'off'], 'risk' => 'root']);
-    $add(['id' => 'turbo.mem_compact', 'group' => 'Desempenho', 'label' => 'Compactar memória (sem matar apps)',
-          'desc' => 'Recupera RAM compactando páginas ociosas em vez de encerrar apps (root).',
-          'help' => 'Em vez de "matar" apps em segundo plano (que o Android reabre e gasta mais CPU), força o kernel a compactar as páginas ociosas da memória. Recupera RAM sem encerrar nada. Requer root.',
-          'argv' => ['turbo.sh', 'mem_compact', 'on'], 'risk' => 'root', 'confirm' => true]);
-    $add(['id' => 'turbo.mem_compact_off', 'group' => 'Desempenho', 'label' => 'Compactação de memória — desligar',
-          'desc' => 'Volta a compactação ao padrão do kernel.',
-          'help' => 'Desliga a compactação proativa de memória, voltando ao comportamento padrão.',
-          'argv' => ['turbo.sh', 'mem_compact', 'off'], 'risk' => 'root']);
-    $add(['id' => 'turbo.boot', 'group' => 'Sistema', 'label' => 'Persistir no boot (ativo no boot)',
-          'desc' => 'Reaplica os ajustes aplicados sempre que o aparelho reinicia (root).',
-          'help' => 'Muitos ajustes se perdem quando você reinicia o celular. Aqui o pack instala um reaplicador no boot (Magisk service.d ou init.d) que reaplica tudo o que você ligou. Requer root. Veja o que está salvo e remova em "Persistir no boot: desligar".',
-          'argv' => ['turbo.sh', 'boot', 'on'], 'risk' => 'root', 'confirm' => true, 'timeout' => 120]);
-    $add(['id' => 'turbo.boot_off', 'group' => 'Sistema', 'label' => 'Persistir no boot: desligar',
-          'desc' => 'Remove o reaplicador de boot.',
-          'help' => 'Remove a persistência no boot. Os ajustes deixam de ser reaplicados quando o aparelho reinicia.',
-          'argv' => ['turbo.sh', 'boot', 'off'], 'risk' => 'root']);
-    $add(['id' => 'turbo.perfmode_on', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: ligar',
+                            $add(['id' => 'turbo.perfmode_on', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: ligar',
           'desc' => 'Força o aparelho a priorizar desempenho.',
           'help' => 'Trava o aparelho em modo de desempenho (não reduz clocks por bateria). Mais FPS sustentado, mais calor e mais consumo. Reverte em "desligar".',
           'argv' => ['turbo.sh', 'perfmode', 'on'], 'risk' => 'careful']);
@@ -977,14 +824,10 @@ function otm_actions(): array {
           'desc' => 'Salva o relatório do aparelho num arquivo.',
           'help' => 'Gera um arquivo com o perfil completo do aparelho. Útil para guardar ou compartilhar ao pedir ajuda.',
           'argv' => ['device-profile.sh', 'save']]);
-    $add(['id' => 'diag.deep_detect', 'group' => 'Sistema', 'label' => 'Detectar hardware (root)',
+    $add(['id' => 'diag.deep_detect', 'group' => 'Sistema', 'label' => 'Detectar hardware',
           'desc' => 'Mostra CPU, GPU, kernel e recomendações.',
-          'help' => 'Versão aprofundada da detecção, com detalhes de CPU/GPU e sugestões de tuning. Só leitura.',
+          'help' => 'Versão aprofundada da detecção, com detalhes de CPU, GPU, kernel e zonas térmicas. Só leitura.',
           'argv' => ['deep-tune.sh', 'detect']]);
-    $add(['id' => 'diag.thermal', 'group' => 'Sistema', 'label' => 'Ver temperatura atual',
-          'desc' => 'Lê a temperatura do aparelho agora.',
-          'help' => 'Mostra a temperatura atual (quando o aparelho expõe esse sensor). Bom para ver se o ajuste térmico passou do ponto.',
-          'argv' => ['deep-tune.sh', 'thermal', 'temp']]);
     $add(['id' => 'diag.dns', 'group' => 'Sistema', 'label' => 'Ver DNS atual',
           'desc' => 'Mostra qual perfil de DNS está ativo agora.',
           'help' => 'Confere se o DNS privado está ligado e qual servidor está em uso.',
@@ -1062,14 +905,14 @@ function otm_actions(): array {
 
     // ----- Perfil personalizado: o painel monta as opções e manda ligadas -----
     $add(['id' => 'profile.custom', 'group' => 'Geral', 'label' => 'Perfil personalizado',
-          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza, resfriamento.',
-          'help' => 'Abre um menu onde você liga só o que quiser. Cada recurso é independente: animações (0x/0.5x), limite de apps em 2º plano (RAM), taxa de atualização da tela, perfil de toque, telemetria, limpeza de cache/RAM, hibernar apps de fundo e resfriamento. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
+          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza.',
+          'help' => 'Abre um menu onde você liga só o que quiser. Cada recurso é independente: animações (0x/0.5x), limite de apps em 2º plano (RAM), taxa de atualização da tela, perfil de toque, telemetria, limpeza de cache/RAM e hibernar apps de fundo. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
           'argv' => [], 'ui' => 'customprofile']);
     $add(['id' => 'profile.custom.apply', 'group' => 'Geral', 'label' => 'Aplicar perfil personalizado',
           'desc' => 'Liga os recursos escolhidos no menu do perfil personalizado.',
           'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso.',
           'argv' => ['profile-custom.sh', 'apply', '{anim}', '{ram}', '{hz}', '{touch}',
-                     '{telemetry}', '{clean}', '{hibernate}', '{cool}'],
+                     '{telemetry}', '{clean}', '{hibernate}'],
           'params' => [
               ['name' => 'anim', 'type' => 'enum', 'label' => 'Animações', 'options' => ['normal', 'half', 'off'], 'default' => 'normal'],
               ['name' => 'ram', 'type' => 'enum', 'label' => 'RAM', 'options' => ['padrao', 'gaming', 'batata'], 'default' => 'padrao'],
@@ -1078,7 +921,6 @@ function otm_actions(): array {
               ['name' => 'telemetry', 'type' => 'enum', 'label' => 'Telemetria', 'options' => ['on', 'off'], 'default' => 'on'],
               ['name' => 'clean', 'type' => 'enum', 'label' => 'Limpeza', 'options' => ['off', 'fundo', 'suave', 'normal'], 'default' => 'off'],
               ['name' => 'hibernate', 'type' => 'enum', 'label' => 'Hibernar apps', 'options' => ['off', 'on'], 'default' => 'off'],
-              ['name' => 'cool', 'type' => 'enum', 'label' => 'Resfriamento', 'options' => ['off', 'on'], 'default' => 'off'],
           ],
           'confirm' => true, 'risk' => 'careful', 'timeout' => 300]);
     $add(['id' => 'profile.custom.off', 'group' => 'Geral', 'label' => 'Perfil personalizado: desligar',

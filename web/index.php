@@ -77,8 +77,6 @@ $CPROF = [
      'opts' => [['on', 'Ligada'], ['off', 'Desligada']]],
     ['k' => 'hibernate', 't' => 'Hibernar apps',    's' => 'Suspende os apps de fundo para ganhar RAM.',
      'opts' => [['off', 'Não'], ['on', 'Sim']]],
-    ['k' => 'cool',      't' => 'Resfriamento',     's' => 'Reduz o aquecimento enquanto joga.',
-     'opts' => [['off', 'Não'], ['on', 'Sim']]],
 ];
 $CPROF_DEFAULT = [];
 foreach ($CPROF as $c) { $CPROF_DEFAULT[$c['k']] = $c['opts'][0][0]; }
@@ -691,6 +689,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="name">Painel<small>Otimizações</small></div>
   <div class="grow"></div>
   <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
+  <button class="iconbtn" id="btnLogs" aria-label="Ver o histórico de logs" title="Logs"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
 </header>
 
@@ -757,13 +756,6 @@ body.drawer .scrim{opacity:1;visibility:visible}
         </div>
       </section>
 
-      <!-- Sorteio de Cargo Especial (1 use per phone, "Em breve") -->
-      <div class="panelbox mt-16 giveaway-card" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
-        <h3>Sorteio de Cargo Especial</h3>
-        <p class="sub">Participe para concorrer a um cargo exclusivo no Discord / servidor. Apenas 1 uso por aparelho.</p>
-        <button class="btn primary" id="giveawayBtn" onclick="tryGiveaway()" style="margin-top: 10px;">Em breve</button>
-      </div>
-
       <!-- GPU Thermal Profile Card (.config-gpu-card) -->
       <div class="panelbox mt-16 config-gpu-card" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
         <h3>Perfil Térmico da GPU (.config-gpu-card)</h3>
@@ -819,15 +811,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <button class="btn" onclick="runActionById('turbo.refresh_max')" style="width:100%;">Ativar 90Hz/120Hz</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">4. Modo Econômico & Resfriamento</h4>
-            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Ideal para quando o celular está quente após horas de jogo ou bateria abaixo de 25%.</p>
+            <h4 style="margin:0 0 8px; color:var(--accent);">4. Modo Econômico</h4>
+            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Ideal para quando a bateria está abaixo de 25% ou o celular esquentou após horas de jogo.</p>
             <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
               <li>Taxa de atualização em 60Hz estável</li>
               <li>Economia inteligente de energia</li>
               <li>Desativação de serviços desnecessários</li>
-              <li>Redução da temperatura do SoC</li>
+              <li>Menos atividade em segundo plano</li>
             </ul>
-            <button class="btn" onclick="runActionById('cool-down')" style="width:100%;">Ativar Resfriamento</button>
+            <button class="btn" onclick="runActionById('refresh.60')" style="width:100%;">Ativar Modo Econômico</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">5. Personalizado</h4>
@@ -1414,20 +1406,6 @@ function go(g, push){
 }
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
 const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Painel", false); };
-
-function tryGiveaway() {
-  if (localStorage.getItem('otm_giveaway_used')) {
-    alert('Você já participou do sorteio neste aparelho! Apenas 1 uso permitido.');
-    return;
-  }
-  localStorage.setItem('otm_giveaway_used', '1');
-  const btn = document.getElementById('giveawayBtn');
-  if (btn) {
-    btn.textContent = 'Participando (Em breve)';
-    btn.disabled = true;
-  }
-  alert('Inscrição no sorteio de cargo especial registrada! (Em breve)');
-}
 
 function setGpuThermal(mode) {
   toast('Perfil térmico GPU alterado para: ' + mode, 'ok');
