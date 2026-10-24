@@ -408,8 +408,16 @@ t_panel_db() {
     local dbf="$TMP/painel.sqlite"
     rm -f "$dbf"*
     # banco local (sem rede): o mesmo código que roda no Turso
+    # O número de migrations cresce com o tempo — confere que TODAS as .sql
+    # foram aplicadas, sem fixar a contagem (que quebra a cada migration nova).
+    local nmig
+    nmig="$(ls "$ROOT"/panel/database/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')"
     if OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/migrate.php" > "$TMP/mig" 2>&1; then
-        grep -q '5 migration' "$TMP/mig" && ok "migrações aplicam no banco" || bad "migrações incompletas"
+        if grep -q "pronto — ${nmig} migration" "$TMP/mig"; then
+            ok "migrações aplicam no banco ($nmig)"
+        else
+            bad "migrações incompletas (esperava $nmig): $(head -1 "$TMP/mig")"
+        fi
     else
         bad "migrações falharam: $(head -1 "$TMP/mig")"
         return 0
@@ -459,6 +467,51 @@ t_panel_db() {
     assert_contains "$TMP/ks" "DOIS_OK"     "duas primeiras entradas passam"
     assert_contains "$TMP/ks" "LIMITE_OK"   "terceiro aparelho é barrado"
     assert_contains "$TMP/ks" "REVOGADA_OK" "chave revogada é recusada"
+
+    # cofre (KeyVault): a chave fica cifrada e o painel consegue reexibi-la
+    local vk
+    vk="$(php -r 'require $argv[1]."/src/bootstrap.php"; echo KeyVault::generate();' "$ROOT/panel" 2>/dev/null)"
+    if [ -n "$vk" ]; then ok "cofre gera chave"; else bad "cofre não gerou chave"; fi
+
+    # ida e volta + adulteração recusada (mesma chave simétrica)
+    OTM_VAULT_KEY="$vk" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $s = KeyVault::seal("00-TEST-ABCD-EFGH");
+        echo (KeyVault::open($s) === "00-TEST-ABCD-EFGH" ? "IDA_VOLTA_OK " : "FALHOU ");
+        echo (KeyVault::open(substr($s, 0, -2) . "XX") === "" ? "ADULTERADO_OK " : "ACEITOU_ADULTERADO ");
+        echo (KeyVault::open("") === "" ? "VAZIO_OK" : "VAZIO_FALHOU");
+    ' "$ROOT/panel" > "$TMP/vault" 2>&1
+    assert_contains "$TMP/vault" "IDA_VOLTA_OK"    "cofre abre o que cifrou"
+    assert_contains "$TMP/vault" "ADULTERADO_OK"   "cofre recusa texto adulterado"
+    assert_contains "$TMP/vault" "VAZIO_OK"        "cofre recusa vazio"
+
+    # sem a chave certa, o que foi cifrado não abre (o cofre é a fronteira)
+    OTM_VAULT_KEY="$(php -r 'echo base64_encode(random_bytes(32));')" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        echo (KeyVault::open($argv[2]) === "" ? "OUTRA_CHAVE_OK" : "ABRIU_COM_OUTRA");
+    ' "$ROOT/panel" "$(OTM_VAULT_KEY="$vk" php -r 'require $argv[1]."/src/bootstrap.php"; echo KeyVault::seal("00-TEST-ABCD-EFGH");' "$ROOT/panel" 2>/dev/null)" > "$TMP/vault2" 2>&1
+    assert_contains "$TMP/vault2" "OUTRA_CHAVE_OK" "cofre não abre com chave diferente"
+
+    # criar chave com cofre ligado guarda o texto cifrado (não em claro)
+    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Cofre" --json \
+        > "$TMP/kv" 2>&1
+    local kvk
+    kvk="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/kv" 2>/dev/null)"
+    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $db = otm_db(); $ks = new KeyService($db);
+        $row = $db->one("select * from otm_keys where key_hash = ?", [otm_key_hash($argv[2])]);
+        echo ($ks->plaintext($row) === otm_key_normalize($argv[2]) ? "REEXIBE_OK " : "NAO_REEXIBE ");
+        echo (str_contains((string)$row["key_sealed"], $argv[2]) ? "CLARO_NO_BANCO" : "CIFRADO_OK");
+    ' "$ROOT/panel" "$kvk" > "$TMP/kvread" 2>&1
+    assert_contains "$TMP/kvread" "REEXIBE_OK"   "painel reexibe a chave pelo cofre"
+    assert_contains "$TMP/kvread" "CIFRADO_OK"   "chave fica cifrada no banco"
+
+    # adopt: guarda no cofre uma chave criada antes dele (só se o hash bater)
+    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" adopt "$k" > "$TMP/adopt" 2>&1
+    assert_contains "$TMP/adopt" "guardada no cofre" "adopt guarda chave existente"
+    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" adopt "00-AAAA-BBBB-CCCC" > "$TMP/adopt2" 2>&1
+    assert_contains "$TMP/adopt2" "nenhuma chave"    "adopt recusa chave que não existe"
 
     # endpoint HTTP de validação, servido de verdade
     local port=8123

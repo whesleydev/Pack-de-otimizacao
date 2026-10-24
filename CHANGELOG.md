@@ -5,6 +5,31 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+- **Sorteio de cargo removido.** O card *Sorteio de Cargo Especial* (e o `tryGiveaway`)
+  saiu do painel web e do app — não fazia parte do pack.
+
+- **Chave visível e copiável.** Antes a chave só existia como hash e não havia como
+  reexibi-la. Agora o painel guarda o texto num **cofre cifrado** (`KeyVault`, sodium,
+  formato `v1:<base64>`) e mostra a chave com botão de copiar na lista, no detalhe e na
+  criação. O banco continua guardando só o hash; o texto vai cifrado em `key_sealed`.
+  A chave do cofre vive em `panel/config/vault.php` (fora do git) — gere com
+  `sh main.sh web vault keygen` e **guarde backup**. Chaves criadas antes do cofre podem
+  ser adotadas com `php panel/bin/key.php adopt 00-XXXX-XXXX-XXXX` (só se o texto bater
+  com o hash gravado).
+
+- **Endereço do painel no app.** O `PANEL_URL` vinha vazio, então o app só validava
+  contra a lista local e a chave nunca era conferida no banco. Agora `sh main.sh web build`
+  grava `otmPanelUrl`/`otmSyncToken`/`otmLicensePub` em `local.properties` (fora do git) e
+  o build lê de lá; e a tela da chave tem o link **⚙ Servidor** para corrigir a URL sem
+  recompilar.
+
+- **Saudação no app.** O cabeçalho mostra *Olá, <nome>* com o nome do dono da licença
+  (vem no bilhete assinado, funciona offline).
+
+- **Campo "Contato" removido.** Saiu das telas (novo/editar/ver/lista), do CLI, do CSV e
+  da busca — o nome da chave já identifica o cliente. As colunas antigas no banco ficam
+  como estão (sem migração destrutiva).
+
 - **Licença offline assinada (Ed25519).** O app guarda no aparelho um bilhete assinado
   (`OTM1.<payload>.<assinatura>`) com a validade da chave e um prazo de uso sem internet.
   A assinatura é feita no servidor com a chave privada (`panel/config/license.php`, fora do

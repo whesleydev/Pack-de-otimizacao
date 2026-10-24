@@ -109,12 +109,12 @@ Estrutura:
 
 ```
 panel/
-  bin/          CLIs: admin.php, key.php, migrate.php, license.php
-  config/       config.php, turso.php (segredo, fora do git), license.php (idem), local.php
-  database/     migrations/*.sql (0001..0005)
+  bin/          CLIs: admin.php, key.php, migrate.php, license.php, vault.php, buildprops.php
+  config/       config.php, turso.php (segredo, fora do git), license.php (idem), vault.php (idem), local.php
+  database/     migrations/*.sql (0001..0006)
   public/       páginas (login, index, keys, key_view, plans, events, audit, settings, admins, export)
   public/api/   validate.php (o app chama), hashes.php (sync offline)
-  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), KeyService, Auth, Audit, License, Helpers
+  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), KeyService, KeyVault, Auth, Audit, License, Helpers
 ```
 
 Regras:
@@ -123,7 +123,16 @@ Regras:
   senão, se o Turso estiver configurado → Turso; senão → SQLite. `KeyService`/`Auth`/`Audit`
   não sabem a diferença. **Nunca** use type hint de `Turso` em código novo — use `OtmDb`.
 - **Só o hash vai para o banco** (`key_hash` = SHA-256 da chave normalizada). A chave em
-  texto aparece uma única vez, na criação. Nunca grave a chave em claro.
+  texto **nunca** é gravada em claro: quando precisa ser reexibida (botão copiar no painel,
+  comando `show`), fica no **cofre** (`key_sealed`), cifrada com sodium (`KeyVault`,
+  formato `v1:<base64>`). Sem o cofre configurado, o texto não existe — só o hash.
+- **O cofre é a fronteira.** A chave simétrica vem de `panel/config/vault.php` (fora do
+  git) ou de `OTM_VAULT_KEY` (env tem prioridade, igual ao Turso). Gere com
+  `sh main.sh web vault keygen`. Perder essa chave = perder as chaves em texto (os
+  hashes continuam válidos para o app). Faça backup do `vault.php`.
+- **Adotar chave antiga:** chaves criadas antes do cofre não têm texto guardado. Para
+  reexibir, `php panel/bin/key.php adopt 00-XXXX-XXXX-XXXX` — só funciona se o texto
+  bater com o hash já gravado (ninguém "adota" uma chave que não é aquela).
 - **Formato da chave: `00-XXXX-XXXX-XXXX`** (`OTM_PREFIX = '00'` em `src/Helpers.php`),
   igual no painel, no `KeyGate.kt` e no `web/keys.php`. Cuidado: `00` também é caractere
   válido do alfabeto, então `otm_key_normalize()` só remove o prefixo quando sobra corpo
@@ -205,11 +214,28 @@ Comandos:
 ```sh
 sh main.sh web migrate                     # aplica as migrations (Turso ou SQLite)
 sh main.sh web admin add whesley --role owner
-sh main.sh web key new "Cliente"           # cria uma chave (aparece uma vez)
+sh main.sh web key new "Cliente"           # cria uma chave (mostra o texto p/ copiar)
 sh main.sh web key list                    # id, prefixo, nome, situação, expira
 sh main.sh web key sync                    # atualiza assets/panel/keys.json p/ o APK
+sh main.sh web vault keygen                # cria a chave do cofre (reexibir chaves)
+sh main.sh web build                       # grava a URL do painel no app (local.properties)
 OTM_LOCAL_DB=/tmp/painel.sqlite php panel/bin/migrate.php   # roda no SQLite local (sem rede)
 ```
+
+### Endereço do painel no app (`PANEL_URL`)
+
+O app só valida a chave no banco se souber onde está o painel. São dois caminhos:
+
+1. **Embutido no build** (recomendado): `sh main.sh web build` escreve `otmPanelUrl`,
+   `otmSyncToken` e `otmLicensePub` em `local.properties` (fora do git); o
+   `app/build.gradle.kts` lê de lá. `-PotmPanelUrl=...` na linha de comando ainda vence.
+2. **Em tempo de execução**: na tela da chave do app, o link **⚙ Servidor** guarda a URL
+   em `SharedPreferences` (via `KeyGate.setApiUrl`). A URL gravada tem prioridade sobre a
+   do build, então dá para corrigir sem recompilar.
+
+Sem URL nenhuma, o app cai no modo offline (só `keys.json`) e a chave **nunca** é
+conferida no banco — foi a causa do "não conecta". A URL não leva `/index.php` nem `/api`:
+o app completa com `/api/validate.php`.
 
 `index.html` é o site público (um só arquivo, sem dependências): explica os 4 níveis, os
 apps, os plugins/módulos e tem uma **área de comandos** com busca e botão de copiar.
