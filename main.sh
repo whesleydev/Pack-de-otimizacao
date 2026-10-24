@@ -312,6 +312,20 @@ case "$1" in
                     *) printf '  Uso: sh main.sh web key new [nome]|list|revoke <id>|show <id>|extend <id> <dias>|restore <id>|plans|sync|count\n' ;;
                 esac ;;
             migrate)  panel_ready && php "$PANEL_DIR/bin/migrate.php" ;;
+            vault)
+                case "$3" in
+                    keygen) panel_ready && php "$PANEL_DIR/bin/vault.php" keygen ;;
+                    status) php "$PANEL_DIR/bin/vault.php" status ;;
+                    *) printf '  Uso: sh main.sh web vault keygen|status\n' ;;
+                esac ;;
+            adopt)    panel_ready && php "$PANEL_DIR/bin/key.php" adopt "$4" ;;
+            build)
+                # Preenche local.properties (fora do git) com o endereço do
+                # painel e a chave pública da licença, para o APK conectar.
+                panel_ready || exit 1
+                url="${3:-$(web_url)}"
+                php "$PANEL_DIR/bin/buildprops.php" --url "$url" ;;
+            props)    panel_ready && php "$PANEL_DIR/bin/buildprops.php" --show ;;
             admin)
                 panel_ready || exit 1
                 case "$3" in
@@ -342,6 +356,10 @@ case "$1" in
         printf '   web key sync    copia só os hashes para o app (assets/panel/keys.json)\n'
         printf '   web admin add   cria/atualiza um administrador do painel\n'
         printf '   web migrate     aplica as migrações do banco (Turso)\n'
+        printf '   web vault       cria/checa a chave do cofre (reexibir chaves)\n'
+        printf '   web adopt       guarda no cofre uma chave que já existe\n'
+        printf '   web build       grava a URL do painel no app (local.properties)\n'
+        printf '   web props       mostra o que o build do app vai usar\n'
         printf '   web logout      encerra a sessão local do painel\n'
         printf '   baixar [dir]    baixa os recursos full do pack\n'
         printf '   status          status geral (PHP/ADB/modo/web)\n' ;;
