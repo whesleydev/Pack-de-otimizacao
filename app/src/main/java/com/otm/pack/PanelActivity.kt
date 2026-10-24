@@ -287,10 +287,6 @@ class PanelActivity : AppCompatActivity() {
             setOnClickListener { submitKey() }
         }
         box.addView(keySubmitBtn)
-        box.addView(Button(this).apply {
-            text = "Ver o painel sem conectar"
-            setOnClickListener { this@PanelActivity.overlay.visibility = View.GONE }
-        })
         return box
     }
 
@@ -362,10 +358,6 @@ class PanelActivity : AppCompatActivity() {
                 pendingAfterConnect = { this@PanelActivity.overlay.visibility = View.GONE }
                 askConnect()
             }
-        })
-        box.addView(Button(this).apply {
-            text = "Ver o painel sem conectar"
-            setOnClickListener { this@PanelActivity.overlay.visibility = View.GONE }
         })
         box.addView(Button(this).apply {
             text = "Trocar chave"

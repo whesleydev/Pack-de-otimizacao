@@ -17,6 +17,8 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   (revogar, estender, bloquear aparelho).
 
 ### Alterado
+- **Áudio de pareamento só diz o pareamento.** O som de conexão falava "pareamento feito com
+  sucesso, faça login no sistema". Ficou só "pareamento feito com sucesso".
 - **Visual do painel refeito com cara de sistema legado.** Saiu o tema escuro moderno e
   entrou o cinza clássico de janela: cantos retos, tabelas com grade completa (estilo
   planilha), fonte de sistema pequena e densa, botões com bisel e barra de título azul.
@@ -31,6 +33,9 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   sai vazia e é preenchida pelo sync do painel (`php panel/bin/key.php sync`).
 
 ### Removido
+- **A opção "ver o painel sem conectar".** Não existe mais o atalho (na tela da chave e na
+  de conexão) que abria o painel sem validar a chave e sem conectar. Para usar o pack é
+  preciso a chave válida e a conexão (Shizuku/ADB).
 - Planos de demonstração semeados pela migração `0005_plans.sql`.
 - Chave de teste embutida em `app/src/main/assets/panel/keys.json`.
 
