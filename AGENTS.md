@@ -142,6 +142,25 @@ Regras:
   status no rodapé mostrando versão, banco em uso (`otm_db_label()`) e a hora. Ao mexer
   no CSS, mantenha as classes que as páginas usam (`.grid`, `.card`, `.btn`, `.tag`,
   `.frm`, `.dl`, `.bar`, `.pager`) e o modo estreito (`@media max-width: 760px`).
+- **Tema claro/escuro no painel**: as cores saem de variáveis CSS em `:root` e
+  `:root[data-theme="dark"]` (`admin.css`). O `layout.php` (e `login.php`) traz um
+  script no `<head>` que aplica o tema antes da pintura, lendo `localStorage['otm-theme']`;
+  sem escolha, vale `prefers-color-scheme`. O botão `#otmThemeBtn` só alterna o atributo
+  `data-theme` no `<html>` e grava a escolha. Não coloque cores fixas nas páginas: use as
+  variáveis, senão o modo escuro fica pela metade.
+- **Exclusão no painel**: as ações destrutivas passam por `otm_require_write()` e CSRF,
+  usam `otm_action_button(..., 'btn danger sm', 'Confirma?')` e sempre registram na
+  auditoria. `keys.php` (apagar chave), `events.php` (apagar tentativa / limpar antigas /
+  tudo), `audit.php` (limpar antigas / tudo, só dono) e `admins.php` (apagar admin, com
+  trava contra apagar a si mesmo ou o último dono ativo). Ao apagar admin, remova também
+  as sessões (`otm_admin_sessions`).
+- **Cuidado ao testar exclusão contra o banco real**: sem `OTM_LOCAL_DB`, o painel grava
+  no **Turso** (produção). Nunca aponte um teste destrutivo para lá. Prefira um SQLite
+  temporário (`OTM_LOCAL_DB=/tmp/x.sqlite`) ou crie um alvo descartável. Se apagar algo
+  por engano, `Audit` e os backups em `/tmp/otm-backup/` ajudam a reconstruir.
+- **A suíte `tests/run.sh` sobe o painel na porta fixa 8123.** Se uma execução anterior
+  morrer sem matar o `php -S`, a próxima falha em cascata (endpoint/hashes/login). Antes
+  de rodar, verifique `ps aux | grep '[p]hp -S'` e mate o servidor órfão da 8123.
 - **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
   nunca o vê: quem fala com o banco é o painel, via `api/validate.php`.
 - `api/validate.php` só aceita **POST** (405 caso contrário), tem freio por IP (429) e
