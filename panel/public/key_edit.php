@@ -21,7 +21,6 @@ $plans = $db->all('SELECT id, name FROM otm_plans ORDER BY sort_order');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $keys->update($id, [
         'label'         => otm_post('label'),
-        'owner_contact' => otm_post('owner_contact'),
         'note'          => otm_post('note'),
         'plan_id'       => otm_int($_POST['plan_id'] ?? 0) ?: null,
         'max_devices'   => max(0, otm_int($_POST['max_devices'] ?? 1)),
@@ -46,10 +45,6 @@ require __DIR__ . '/../src/layout.php';
     <div class="fld">
       <label for="label">Nome / cliente</label>
       <input id="label" name="label" type="text" maxlength="120" value="<?= otm_e((string)$k['label']) ?>">
-    </div>
-    <div class="fld">
-      <label for="owner_contact">Contato</label>
-      <input id="owner_contact" name="owner_contact" type="text" maxlength="160" value="<?= otm_e((string)$k['owner_contact']) ?>">
     </div>
   </div>
 

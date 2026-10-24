@@ -3,7 +3,7 @@
 //  export.php - Baixa a lista de chaves em CSV (para planilha/backup).
 //
 //  NÃO exporta o hash nem a chave em texto: só o que é seguro guardar
-//  (prefixo, nome, contato, datas, situação).
+//  (prefixo, nome, plano, datas, situação).
 // =============================================================================
 
 declare(strict_types=1);
@@ -30,11 +30,11 @@ header('X-Content-Type-Options: nosniff');
 
 $out = fopen('php://output', 'w');
 fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM: Excel abre com acento certo
-fputcsv($out, ['id', 'prefixo', 'nome', 'contato', 'plano', 'situacao', 'criada', 'expira',
+fputcsv($out, ['id', 'prefixo', 'nome', 'plano', 'situacao', 'criada', 'expira',
                'dias_restantes', 'aparelhos', 'max_aparelhos', 'usos', 'max_usos', 'ultimo_uso', 'observacao'], ';');
 foreach ($res['rows'] as $k) {
     fputcsv($out, [
-        (int)$k['id'], (string)$k['key_prefix'], (string)$k['label'], (string)$k['owner_contact'],
+        (int)$k['id'], (string)$k['key_prefix'], (string)$k['label'],
         (string)($k['plan_name'] ?? ''), (string)$k['status'],
         otm_fmt_dt($k['created_at']), ($k['expires_at'] ? otm_fmt_dt((string)$k['expires_at']) : 'nunca'),
         ($k['days_left'] === null ? '' : (int)$k['days_left']),

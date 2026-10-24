@@ -28,7 +28,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $in = [
                 'key'           => otm_post('key'),
                 'label'         => otm_post('label'),
-                'owner_contact' => otm_post('owner_contact'),
                 'note'          => otm_post('note'),
                 'plan_id'       => $pid,
                 'duration_days' => $p['duration_days'] === null ? null : (int)$p['duration_days'],
@@ -42,7 +41,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $in = [
             'key'           => otm_post('key'),
             'label'         => otm_post('label'),
-            'owner_contact' => otm_post('owner_contact'),
             'note'          => otm_post('note'),
             'plan_id'       => otm_int($_POST['plan_id'] ?? 0) ?: null,
             'duration_days' => in_array($daysRaw, ['', 'vitalicio', 'never'], true) ? null : max(0, (int)$daysRaw),
@@ -74,9 +72,10 @@ require __DIR__ . '/../src/layout.php';
 <?php if ($erro !== ''): ?><?= otm_msg('err', otm_e($erro)) ?><?php endif; ?>
 
 <?php if ($criada): $r = $criada['row']; ?>
-  <div class="keybox">
-    <div class="k"><?= otm_e($criada['key']) ?></div>
-    <div class="w">⚠ Anote agora. Esta chave não é mostrada de novo — no banco fica só o hash.</div>
+  <?= otm_keybox((string)$criada['key'], (string)$r['key_prefix']) ?>
+  <div class="w" style="color:var(--warn);font-size:11px;margin:-6px 0 12px">
+    Guarde também uma cópia: o painel reexibe esta chave pelo cofre, mas se o
+    cofre for perdido o texto não volta.
   </div>
   <table class="grid" style="max-width:760px">
     <tr><th>ID</th><th>Vigência</th><th>Aparelhos</th><th>Usos</th><th>Nome</th></tr>
@@ -103,10 +102,6 @@ require __DIR__ . '/../src/layout.php';
       <div class="fld">
         <label for="label">Nome / cliente</label>
         <input id="label" name="label" type="text" maxlength="120" placeholder="Ex.: João Silva" required>
-      </div>
-      <div class="fld">
-        <label for="owner_contact">Contato</label>
-        <input id="owner_contact" name="owner_contact" type="text" maxlength="160" placeholder="telefone ou e-mail">
       </div>
     </div>
 

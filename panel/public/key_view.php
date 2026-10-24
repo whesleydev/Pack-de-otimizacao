@@ -73,6 +73,10 @@ require __DIR__ . '/../src/layout.php';
 
 <?= otm_flash() ?>
 
+<?php $plain = $keys->plaintext($k); ?>
+<h2>Chave para copiar</h2>
+<?= otm_keybox($plain, (string)$k['key_prefix']) ?>
+
 <div class="actions" style="margin-bottom:16px">
   <a class="btn ghost" href="keys.php">← voltar à lista</a>
   <?php if ($auth->canWrite()): ?>
@@ -93,7 +97,6 @@ require __DIR__ . '/../src/layout.php';
       <dt>ID</dt><dd class="mono"><?= (int)$k['id'] ?></dd>
       <dt>Prefixo</dt><dd class="mono"><?= otm_e((string)$k['key_prefix']) ?></dd>
       <dt>Nome</dt><dd><?= otm_e((string)($k['label'] ?: '—')) ?></dd>
-      <dt>Contato</dt><dd><?= otm_e((string)($k['owner_contact'] ?: '—')) ?></dd>
       <dt>Plano</dt><dd><?= otm_e((string)($k['plan_name'] ?: '—')) ?></dd>
       <dt>Situação</dt><dd><?= otm_status_tag((string)$k['status']) ?></dd>
       <dt>Criada em</dt><dd><?= otm_e(otm_fmt_dt($k['created_at'])) ?></dd>

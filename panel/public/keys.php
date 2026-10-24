@@ -71,7 +71,7 @@ require __DIR__ . '/../src/layout.php';
 <?= otm_flash() ?>
 
 <form class="bar" method="get" action="keys.php">
-  <div class="fld"><label>Buscar</label><input type="text" name="q" value="<?= otm_e($q) ?>" placeholder="nome, contato, prefixo…"></div>
+  <div class="fld"><label>Buscar</label><input type="text" name="q" value="<?= otm_e($q) ?>" placeholder="nome, observação, prefixo…"></div>
   <div class="fld"><label>Situação</label>
     <select name="status">
       <?php foreach (['' => 'todas', 'active' => 'ativas', 'expired' => 'expiradas',
@@ -104,7 +104,7 @@ require __DIR__ . '/../src/layout.php';
 
 <table class="grid">
   <tr>
-    <th>Prefixo</th><th>Nome</th><th>Contato</th><th>Situação</th><th>Expira</th>
+    <th>Prefixo</th><th>Nome</th><th>Chave</th><th>Situação</th><th>Expira</th>
     <th>Aparelhos</th><th>Usos</th><th>Último uso</th><th>Ações</th>
   </tr>
   <?php if (!$res['rows']): ?>
@@ -114,7 +114,15 @@ require __DIR__ . '/../src/layout.php';
       <td class="mono"><a href="key_view.php?id=<?= (int)$k['id'] ?>"><?= otm_e((string)$k['key_prefix']) ?></a></td>
       <td><?= otm_e((string)($k['label'] ?: '—')) ?>
           <?php if (!empty($k['plan_name'])): ?><br><span class="muted"><?= otm_e((string)$k['plan_name']) ?></span><?php endif; ?></td>
-      <td class="muted"><?= otm_e((string)($k['owner_contact'] ?: '—')) ?></td>
+      <td class="mono">
+        <?php $pl = $keys->plaintext($k); ?>
+        <?php if ($pl !== ''): ?>
+          <span class="kmini" id="kl<?= (int)$k['id'] ?>"><?= otm_e($pl) ?></span>
+          <button type="button" class="btn ghost sm" onclick="otmCopyKey('kl<?= (int)$k['id'] ?>', this)">copiar</button>
+        <?php else: ?>
+          <span class="muted" title="Chave anterior ao cofre: só o hash existe">não guardada</span>
+        <?php endif; ?>
+      </td>
       <td><?= otm_status_tag((string)$k['status']) ?></td>
       <td class="nowrap">
         <?= $k['expires_at'] ? otm_e(otm_fmt_dt((string)$k['expires_at'], 'd/m/Y')) : '<span class="muted">nunca</span>' ?>

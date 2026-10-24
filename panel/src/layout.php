@@ -102,6 +102,40 @@ if (!function_exists('otm_layout_head')) {
     paint();
   });
 })();
+
+// Copiar a chave para a área de transferência. Usa a API moderna quando o
+// navegador permite (contexto seguro) e cai no execCommand quando não.
+function otmCopyKey(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var txt = el.textContent || '';
+  var done = function () {
+    if (!btn) return;
+    var old = btn.textContent;
+    btn.textContent = 'copiado!';
+    btn.disabled = true;
+    setTimeout(function () { btn.textContent = old; btn.disabled = false; }, 1400);
+  };
+  var fallback = function () {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      done();
+    } catch (e) { window.prompt('Copie a chave:', txt); }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(done, fallback);
+  } else {
+    fallback();
+  }
+}
 </script>
 </body>
 </html>
@@ -127,6 +161,30 @@ if (!function_exists('otm_layout_head')) {
             'revoked' => 'revogada', 'exhausted' => 'esgotada',
         ][$status] ?? $status;
         return '<span class="tag ' . otm_e($status) . '">' . otm_e($label) . '</span>';
+    }
+
+    /**
+     * Bloco com a chave em texto e botão de copiar.
+     *
+     * A chave vem do cofre (KeyVault). Quando o cofre está desligado ou a chave
+     * é anterior a ele, o texto não existe mais: mostramos o aviso em vez de um
+     * campo vazio, para não parecer que o painel quebrou.
+     */
+    function otm_keybox(string $plain, string $prefix = ''): string
+    {
+        if ($plain === '') {
+            return '<div class="keybox off"><div class="k muted">— chave não guardada —</div>'
+                . '<div class="w">Esta chave foi criada antes do cofre ou o cofre está desligado '
+                . '(<span class="mono">php panel/bin/vault.php keygen</span>). Só o hash existe; '
+                . 'não há como exibir o texto. Gere uma chave nova.</div></div>';
+        }
+        $id = 'kb' . substr(sha1($plain), 0, 8);
+        return '<div class="keybox">'
+            . '<div class="k" id="' . $id . '">' . otm_e($plain) . '</div>'
+            . '<div class="kbrow">'
+            . '<button type="button" class="btn sm" onclick="otmCopyKey(\'' . $id . '\', this)">copiar chave</button>'
+            . ($prefix !== '' ? '<span class="muted mono">' . otm_e($prefix) . '</span>' : '')
+            . '</div></div>';
     }
 
     /** Botão de ação com confirmação (POST). */
