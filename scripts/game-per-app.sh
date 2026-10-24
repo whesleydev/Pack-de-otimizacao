@@ -22,7 +22,9 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin game-per-app
 otm_v_reset
+
 
 # jogos conhecidos (só para o comando "list")
 JOGOS="com.dts.freefireth:Free Fire

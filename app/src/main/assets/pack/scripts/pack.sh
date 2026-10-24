@@ -14,7 +14,7 @@
 #         dns <perfil|menu> | modules <run|list|info|menu> <nome> |
 #         device | freeze | unfreeze | gameclean <on|off|status> |
 #         keep <on|off|status|list|restore> | ram <boost|status> |
-#         cool <on|off|status> | <grupo do adb-tweaks> | test | build
+#         <grupo do adb-tweaks> | test | build
 #
 #  Tudo que aplica é reversível. Estado em ~/.packotm/ (nunca versionado).
 # =============================================================================
@@ -49,10 +49,10 @@ show_status() {
     printf '\n  %s◆%s  %sSTATUS DO PACK%s\n' "$C_A" "$C_R" "$C_A" "$C_R"
     printf '  %s──────────────────────────────────────%s\n' "$C_D" "$C_R"
     printf '   modo de execução : %s%s%s\n' "$C_G" "$RUN_MODE" "$C_R"
-    if sh_ok; then
-        printf '   privilégio       : %sroot/shell OK%s\n' "$C_G" "$C_R"
+    if have_shell; then
+        printf '   privilégio       : %sshell OK%s\n' "$C_G" "$C_R"
     else
-        printf '   privilégio       : %ssem shell (níveis 1-2 ainda funcionam)%s\n' "$C_Y" "$C_R"
+        printf '   privilégio       : %ssem shell (nível 1 ainda funciona)%s\n' "$C_Y" "$C_R"
     fi
     printf '   aparelho (SoC)   : %s\n' "$(soc_nome)"
     printf '   versão do pack   : %s\n' "$(cat "$ROOT/VERSION" 2>/dev/null || echo '?')"
@@ -108,7 +108,6 @@ dispatch() {
         gameclean|gclean) sh "$DIR/game-clean.sh" "$@" ;;
         keep)     sh "$DIR/keep-alive.sh" "$@" ;;
         ram|ramboost) sh "$DIR/ram-boost.sh" "$@" ;;
-        cool|cooldown) sh "$DIR/cool-down.sh" "$@" ;;
         bench)    sh "$DIR/bench.sh" "$@" ;;
         device)   sh "$DIR/device-profile.sh" "$@" ;;
         dns)      sh "$DIR/dns.sh" "$@" ;;
@@ -125,7 +124,7 @@ dispatch() {
 
         # grupos do adb-tweaks (nível 2)
         perf|perf_max|gpu|net|net_reset|wifi|battery|battery_off|game|ff|ff_open|\
-        clean|clean_scan|clean_deep|mem|dnd|dnd_off|screen|fluidez|game_tune|\
+        clean|clean_scan|mem|dnd|dnd_off|screen|fluidez|game_tune|\
         obscure|mobile_net|notif|window_tweaks)
             sh "$DIR/adb-tweaks.sh" "$acao" "$@" ;;
 
@@ -142,7 +141,6 @@ menu() {
             "$C_A" "$C_R" "$C_A" "$C_R" "$C_D" "$C_R"
         printf '  %s──────────────────────────────────────────────%s\n' "$C_D" "$C_R"
         printf '  modo %s%s%s' "$C_G" "$RUN_MODE" "$C_R"
-        sh_ok && printf ' · %sroot OK%s' "$C_G" "$C_R" || printf ' · %ssem root%s' "$C_Y" "$C_R"
         printf ' · snapshots: %s\n' "$(snap_count)"
 
         printf '\n  %sRÁPIDO%s\n' "$C_A" "$C_R"
@@ -160,28 +158,23 @@ menu() {
         printf '   %s20%s Tela / refresh           %s21%s Notificações / DND\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s22%s Congelar apps            %s23%s Descongelar apps\n' "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s24%s %sGame Clean%s (jogo limpo)   %s25%s Anti-relog (manter vivo)\n' "$C_A" "$C_R" "$C_G" "$C_R" "$C_A" "$C_R"
-        printf '   %s26%s %sLiberar RAM agora%s         %s27%s %sResfriar aparelho%s\n' "$C_A" "$C_R" "$C_G" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s26%s %sLiberar RAM agora%s\n' "$C_A" "$C_R" "$C_G" "$C_R"
 
-        printf '\n  %sDEBLOAT / PROFUNDAS (root opcional)%s\n' "$C_A" "$C_R"
+        printf '\n  %sDEBLOAT / PROFUNDAS%s\n' "$C_A" "$C_R"
         printf '   %s30%s Debloat (perfis)         %s31%s Debloat - reverter\n' "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s32%s Frequência CPU/GPU       %s33%s I/O + memória\n' "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s34%s Rede BBR                 %s35%s Latência\n' "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s36%s ANGLE/Vulkan por jogo    %s37%s Limite térmico %s(⚠️)%s\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_Y" "$C_R"
-        printf '   %s38%s MODO JOGO TURBO          %s39%s Detectar hardware\n' "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s36%s ANGLE/Vulkan por jogo    %s39%s Detectar hardware\n' "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s38%s MODO JOGO                %s112%s Recompilar (dexopt)\n' "$C_A" "$C_R" "$C_A" "$C_R"
+        printf '   %s110%s Display/HWUI\n' "$C_A" "$C_R"
 
         printf '\n  %sTOQUE / FREE FIRE%s\n' "$C_A" "$C_R"
         printf '   %s40%s balanced   %s41%s headshot   %s42%s spray\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s43%s sniper     %s44%s speed      %s45%s custom\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s46%s Restaurar toque          %s50%s Tuning por jogo (FPS)\n' "$C_A" "$C_R" "$C_A" "$C_R"
 
-        printf '\n  %sEXTREMOS / POUCO CONHECIDOS%s\n' "$C_A" "$C_R"
-        printf '   %s101%s VM/kernel mem  %s102%s Escalonador/EAS  %s103%s GPU extrema\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s104%s Núcleos sempre  %s105%s Input/touch boost  %s106%s CPU idle\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s107%s Rede avançada2  %s108%s zRAM zstd  %s109%s Kernel overhead\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s110%s Display/HWUI     %s111%s Dalvik/ART  %s112%s Recompilar (dexopt)\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
-        printf '   %s120%s %s⚡ MODO EXTREMO (TUDO de uma vez)%s\n' "$C_A" "$C_R" "$C_RD" "$C_R"
+        printf '\n  %sAVANÇADO%s\n' "$C_A" "$C_R"
         printf '   %s121%s Ajustes obscuros  %s122%s Rede móvel  %s123%s Notificações\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_A" "$C_R"
         printf '   %s124%s Janelas/imersivo\n' "$C_A" "$C_R"
+
 
         printf '\n  %sMÓDULOS / PLUGINS (da pasta)%s\n' "$C_A" "$C_R"
         printf '   %s80%s Executar módulo/plugin (lista + roda)\n' "$C_A" "$C_R"
@@ -224,21 +217,12 @@ menu() {
                 sh "$DIR/keep-alive.sh" on "${kp:-com.dts.freefireth}" ;;
             26) printf '  modo (normal/max) [normal]: '; read -r rm
                 sh "$DIR/ram-boost.sh" boost "${rm:-normal}" ;;
-            27) printf '  modo (normal/max) [normal]: '; read -r cm
-                sh "$DIR/cool-down.sh" on "${cm:-normal}" ;;
             30) printf '  perfil (leve/medio/pesado) [medio]: '; read -r dp
                 sh "$DIR/debloat.sh" on "${dp:-medio}" ;;
             31) sh "$DIR/debloat.sh" off ;;
-            32) printf '  on/off [on]: '; read -r a; sh "$DIR/deep-tune.sh" freq "${a:-on}" ;;
-            33) printf '  io/mem on/off [on]: '; read -r a b
-                case "$a" in io|mem) sh "$DIR/deep-tune.sh" "$a" "${b:-on}" ;; *) warn "use: io on | mem on" ;; esac ;;
-            34) printf '  on/off [on]: '; read -r a; sh "$DIR/deep-tune.sh" net "${a:-on}" ;;
-            35) printf '  on/off [on]: '; read -r a; sh "$DIR/deep-tune.sh" latency "${a:-on}" ;;
             36) printf '  ação (add/remove/list/reset): '; read -r a
                 printf '  pacote do jogo (ex com.dts.freefireth): '; read -r gp
                 sh "$DIR/deep-tune.sh" angle "$a" "$gp" ;;
-            37) printf '  on/off/temp [temp]: '; read -r a
-                THERMAL_OK=1 sh "$DIR/deep-tune.sh" thermal "${a:-temp}" ;;
             38) printf '  ligar (on) ou desligar (off)? [on]: '; read -r a
                 printf '  pacote do jogo (opcional): '; read -r gp
                 sh "$DIR/deep-tune.sh" gaming "${a:-on}" "$gp" ;;
@@ -250,18 +234,12 @@ menu() {
             44) sh "$DIR/ff-touch.sh" speed ;;
             45) do_touch_custom ;;
             46) sh "$DIR/ff-touch.sh" restore ;;
-            101|102|103|104|105|106|107|108|109|110|111)  # módulos extremos (root)
-                case "$op" in
-                    101) m=vm ;; 102) m=sched ;; 103) m=gpu ;; 104) m=cores ;;
-                    105) m=input ;; 106) m=idle ;; 107) m=net2 ;; 108) m=zram ;;
-                    109) m=kernel ;; 110) m=display ;; 111) m=dalvik ;;
-                esac
-                printf '  on/off [on]: '; read -r a
-                sh "$DIR/deep-tune.sh" "$m" "${a:-on}" ;;
+            110) printf '  on/off [on]: '; read -r a
+                sh "$DIR/deep-tune.sh" display "${a:-on}" ;;
+            80) sh "$DIR/modules.sh" menu ;;
+            81) sh "$DIR/modules.sh" list ;;
             112) printf '  run (recompilar) ou status [status]: '; read -r a
                 sh "$DIR/deep-tune.sh" dexopt "${a:-status}" ;;
-            120) warn "liga TUDO e esquenta muito."
-                confirm "aplicar o MODO EXTREMO agora?" && THERMAL_OK=1 sh "$DIR/deep-tune.sh" extreme ;;
             121) sh "$DIR/adb-tweaks.sh" obscure ;;
             122) sh "$DIR/adb-tweaks.sh" mobile_net ;;
             123) sh "$DIR/adb-tweaks.sh" notif ;;
@@ -272,8 +250,6 @@ menu() {
                     fps|balanced|max) sh "$DIR/game-per-app.sh" apply "$gp" "$gv" ;;
                     *) sh "$DIR/game-per-app.sh" custom "$gp" "$gv" ;;
                 esac ;;
-            80) sh "$DIR/modules.sh" menu ;;
-            81) sh "$DIR/modules.sh" list ;;
             60) sh "$DIR/snapshot.sh" save ;;
             61) sh "$DIR/snapshot.sh" list ;;
             62) sh "$DIR/snapshot.sh" restore latest ;;
@@ -303,7 +279,7 @@ case "$1" in
         printf '   game ...       apply|custom|list|show|mode|reset\n'
         printf '   dns ...        menu|list|status|<perfil>|custom <host>|off\n'
         printf '   modules ...    list|info <nome>|run <nome>|actions <nome>|menu\n'
-        printf '   perf|perf_max|gpu|net|wifi|battery|game|ff|clean|clean_scan|clean_deep|mem|dnd|screen|fluidez\n'
+        printf '   perf|perf_max|gpu|net|wifi|battery|game|ff|clean|clean_scan|mem|dnd|screen|fluidez\n'
         printf '   freeze|unfreeze|device|bench|test|build\n' ;;
     *)
         if ! dispatch "$@"; then

@@ -14,7 +14,6 @@
 #     telemetry=on|off         desliga logs/telemetria e scans
 #     clean=off|fundo|suave|normal  limpeza de RAM/cache + suavização
 #     hibernate=on|off         hiberna os apps de fundo
-#     cool=on|off              resfriamento térmico
 #
 #  Uso:
 #     profile-custom.sh show                    # mostra a configuração salva
@@ -44,7 +43,7 @@ PC_A=0; PC_C=0; PC_F=0
 # --- valores padrão (tudo desligado) ------------------------------------------
 pc_defaults() {
     PC_ANIM=normal; PC_RAM=padrao; PC_HZ=off; PC_TOUCH=none
-    PC_TELEMETRY=on; PC_CLEAN=off; PC_HIBERNATE=off; PC_COOL=off
+    PC_TELEMETRY=on; PC_CLEAN=off; PC_HIBERNATE=off
 }
 
 # --- lê a configuração salva por cima dos padrões ------------------------------
@@ -62,7 +61,6 @@ pc_load() {
             telemetry) PC_TELEMETRY="$_v" ;;
             clean)     PC_CLEAN="$_v" ;;
             hibernate) PC_HIBERNATE="$_v" ;;
-            cool)      PC_COOL="$_v" ;;
         esac
     done < "$PC_CFG"
 }
@@ -77,7 +75,6 @@ pc_valid() {
         telemetry) case "$2" in on|off) return 0 ;; esac ;;
         clean)     case "$2" in off|fundo|suave|normal) return 0 ;; esac ;;
         hibernate) case "$2" in on|off) return 0 ;; esac ;;
-        cool)      case "$2" in on|off) return 0 ;; esac ;;
     esac
     return 1
 }
@@ -151,7 +148,7 @@ pc_set_all() {
 # chave=valor. Omitir um argumento mantém o que já estava salvo.
 pc_set_pos() {
     _i=1
-    for _k in anim ram hz touch telemetry clean hibernate cool; do
+    for _k in anim ram hz touch telemetry clean hibernate; do
         eval "_v=\${$_i:-}"
         if [ -n "$_v" ]; then
             if pc_valid "$_k" "$_v"; then pc_save "$_k" "$_v"
@@ -211,12 +208,6 @@ pc_apply() {
         off) ;;
     esac
 
-    # resfriamento
-    case "$PC_COOL" in
-        on) pc_run cool-down.sh on; _n=$((_n+1)) ;;
-        off) ;;
-    esac
-
     if [ "$_n" = "0" ]; then
         warn "nenhum recurso ligado — use 'profile-custom.sh set <chave> <valor>'"
         return 1
@@ -240,7 +231,6 @@ pc_show() {
     printf '   %-10s %s\n' "telemetry" "$PC_TELEMETRY"
     printf '   %-10s %s\n' "clean"     "$PC_CLEAN"
     printf '   %-10s %s\n' "hibernate" "$PC_HIBERNATE"
-    printf '   %-10s %s\n' "cool"      "$PC_COOL"
     printf '\n  %sAplicar:%s profile-custom.sh apply\n' "$C_A" "$C_R"
     printf '  %sReverter:%s profile-custom.sh off\n\n' "$C_A" "$C_R"
 }
@@ -266,7 +256,7 @@ case "$acao" in
 
     apply|on)
         # O painel manda tudo numa chamada só: os 8 valores na ordem fixa
-        # (anim ram hz touch telemetry clean hibernate cool). Também aceita
+        # (anim ram hz touch telemetry clean hibernate). Também aceita
         # "apply k=v ..." e "apply" sem nada (usa o que já está salvo).
         if [ $# -gt 0 ]; then
             case "$1" in

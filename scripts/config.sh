@@ -54,7 +54,7 @@ do_show() {
     printf '   adb     : %s\n' "$(cfg_get OTM_ADB_SERIAL)"
     printf '   rish    : %s\n' "$(cfg_get OTM_RISH)"
     printf '   detectado agora : %s%s%s\n' "$C_A" "$RUN_MODE" "$C_R"
-    printf '   privilégio      : %s\n' "$(sh_ok && echo 'root' || (have_shell && echo 'shell (Shizuku/ADB)' || echo 'nenhum (só local)'))"
+    printf '   privilégio      : %s\n' "$(have_shell && echo 'shell (Shizuku/ADB)' || echo 'nenhum (só local)')"
     printf '   adb no PATH     : %s\n' "$(have adb && echo sim || echo não)"
     printf '   rish no PATH    : %s\n' "$(have rish && echo sim || echo não)"
     echo
@@ -86,12 +86,12 @@ do_test() {
     if [ -n "$ser" ]; then
         case "$ser" in *:*) have adb && _with_timeout 8 adb connect "$ser" >/dev/null 2>&1 ;; esac
     fi
-    # (re)detecta com a config carregada
+    # (re)detecta com a config carregada (mesma ordem do common.sh)
     RUN_MODE=""
     if [ -n "$OTM_MODE" ]; then RUN_MODE="$OTM_MODE"
+    elif [ "$(id -u 2>/dev/null)" = "0" ] || [ "$(id -u 2>/dev/null)" = "2000" ]; then RUN_MODE=direct
     elif _rish_works; then RUN_MODE=rish
     elif _adb_works; then RUN_MODE=adb
-    elif _su_works; then RUN_MODE=su
     else RUN_MODE=local; fi
 
     ok=1
@@ -107,11 +107,7 @@ do_test() {
         # prova real: lê um setting e tenta escrever um setting de teste
         probe="$(sh_get 'settings get global window_animation_scale')"
         printf '   leitura settings : %s\n' "${probe:-?}"
-        if sh_ok; then
-            printf '   %s✓%s privilégio de shell (root) confirmado\n' "$C_G" "$C_R"
-        else
-            printf '   %s✓%s privilégio de shell (Shizuku/ADB) confirmado\n' "$C_G" "$C_R"
-        fi
+        printf '   %s✓%s privilégio de shell (Shizuku/ADB) confirmado\n' "$C_G" "$C_R"
     else
         ok=0
         printf '   %s✗%s sem privilégio de shell: o pack vai rodar em modo local\n' "$C_RD" "$C_R"

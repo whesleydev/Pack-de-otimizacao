@@ -17,6 +17,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin adb-tweaks      # reversão própria: `restore_all` ainda percorre todas
 otm_v_reset
 
 # -----------------------------------------------------------------------------
@@ -123,7 +124,7 @@ net() {
     # fica sem internet). Quem quiser trocar usa a categoria "DNS e rede".
     bkp_set global private_dns_specifier one.one.one.one
     bkp_set global wifi_scan_always_enabled 0
-    if [ "$RUN_MODE" = "adb" ] || [ "$RUN_MODE" = "su" ] || [ "$RUN_MODE" = "rish" ]; then
+    if [ "$RUN_MODE" = "adb" ] || [ "$RUN_MODE" = "rish" ]; then
         sh_run "setprop net.tcp.buffersize.default 4096,87380,524288,4096,16384,110208" >/dev/null
         sh_run "setprop net.tcp.buffersize.wifi 524288,1048576,2097152,262144,524288,1048576" >/dev/null
         sh_run "setprop net.tcp.buffersize.lte 524288,1048576,2097152,262144,524288,1048576" >/dev/null
@@ -329,7 +330,7 @@ freeze_whitelist_list() {
 
 unfreeze_apps() {
     say "Descongelando todos"
-    if sh_ok; then
+    if have_shell; then
         lista=$(sh_get "pm list packages -u -3" | sed 's/^package://')
         for a in $lista; do
             sh_run "pm unsuspend --user 0 $a" >/dev/null
@@ -337,7 +338,7 @@ unfreeze_apps() {
         done
         sh_run "settings put global cached_apps_freezer disabled" >/dev/null
     else
-        warn "sem root/shell, use o Brevent para descongelar"
+        warn "sem shell (Shizuku/ADB), use o Brevent para descongelar"
     fi
     : > "$ST/frozen"
     say "pronto"
@@ -436,20 +437,13 @@ mem() {
             bkp_set global activity_manager_constants max_cached_processes=32,max_phantom_processes=2147483647
             ;;
     esac
-    # libera de verdade: encerra apps de fundo, poda cache e solta pagecache (root)
+    # libera de verdade: encerra apps de fundo e poda o cache
     if have_shell; then
         k="$(otm_bg_kill com.dts.freefireth com.dts.freefiremax)"
         say "$k app(s) de fundo encerrado(s)"
         otm_cache_trim >/dev/null 2>&1
         sh_run "am kill-all" >/dev/null 2>&1
-        otm_drop_caches
         sh_run "sync" >/dev/null 2>&1
-    fi
-    # zram/MGLRU/KSM só com root e se o kernel aceitar
-    if sh_ok; then
-        [ -w /sys/kernel/mm/lru_gen/enabled ] && sh_run "echo 1 > /sys/kernel/mm/lru_gen/enabled" >/dev/null 2>&1
-        [ -w /sys/kernel/mm/ksm/run ] && sh_run "echo 1 > /sys/kernel/mm/ksm/run" >/dev/null 2>&1
-        sh_run "sysctl -w vm.swappiness=100" >/dev/null 2>&1
     fi
     after="$(otm_ram_livre_mb)"
     if [ -n "$before" ] && [ -n "$after" ]; then
@@ -465,9 +459,6 @@ clean() { sh "$DIR/clean.sh" now "${1:-suave}"; }
 
 # clean_scan -> só lê o que dá para liberar, sem mexer em nada.
 clean_scan() { sh "$DIR/clean.sh" scan; }
-
-# clean_deep -> limpeza + suavização profunda (CPU/GPU/IO/VM) quando há root.
-clean_deep() { sh "$DIR/clean.sh" now normal; }
 
 # --- ajustes obscuros (sem root) ----------------------------------------------
 # Junta knobs que quase ninguém conhece: animações do launcher, aviso de
@@ -527,7 +518,6 @@ game_focus() {
     sh_run "settings put secure zen_mode 3" >/dev/null 2>&1
     sh_run "settings put secure zen_mode_config_etag -1" >/dev/null 2>&1
     bkp_raw "settings put secure zen_mode 0"
-    boot_add "cmd notification set_dnd on; settings put global heads_up_notifications_enabled 0"
     say "notificações silenciadas. Reverta em 'Foco de jogo: desligar'."
 }
 
@@ -669,24 +659,20 @@ perm_all() {
 # --- restaurar tudo -----------------------------------------------------------
 restore_all() {
     say "Restaurando configurações originais"
-    if [ -s "$OFF_SH" ]; then
-        # executa os comandos de reversão guardados
-        while IFS= read -r c; do
-            [ -z "$c" ] && continue
-            case "$c" in '#'*) continue ;; esac
-            sh_run "$c" >/dev/null
-        done < "$OFF_SH"
-    fi
+    # percorre TODOS os escopos de reversão (adb-tweaks, clean, dns, debloat, ...)
+    for f in $(otm_undo_files); do
+        otm_undo_run "$f"
+    done
     sh_run "settings put global cached_apps_freezer disabled" >/dev/null
     sh_run "dumpsys deviceidle unforce" >/dev/null
-    rm -f "$MARK" "$OFF_SH"
+    otm_undo_clear
     say "restaurado"
 }
 
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan clean_deep obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

@@ -67,13 +67,10 @@ O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
   app, speed-profile/speed), `dexopt-bg` (bg-dexopt-job), `standby` (App Standby Buckets),
   `hibernate` (estilo Hail: force-stop + set-inactive), `killbg`, `phantom on|off`
   (Phantom Process Killer), `trim` (cmd package trim-caches), `refresh`,
-  `refresh_fixed` (trava min=peak numa taxa), `audio on|off` (buffer de áudio baixo,
-  root), `mem_compact on|off` (compacta RAM sem matar apps, root), `boot on|off`
-  (reaplicador no boot via Magisk service.d/init.d, root), `perfmode`
-  (modo desempenho fixo) e `telemetry on|off` (logpersist + scans sempre-disponível).
-  Tudo registra reversão em `~/.packotm/off.sh` (revertido por `pack.sh restore`).
-  A persistência no boot usa `boot_add`/`boot_install` (helpers em `common.sh`):
-  os ajustes que se perdem no reboot chamam `boot_add` com a linha de reaplicação.
+  `refresh_fixed` (trava min=peak numa taxa), `perfmode` (modo desempenho fixo) e
+  `telemetry on|off` (logpersist + scans sempre-disponível).
+  Tudo registra reversão no escopo próprio (`~/.packotm/undo/turbo.sh`), revertido por
+  `pack.sh restore` / `adb-tweaks.sh restore_all`.
 - `scripts/debloat.sh preview <perfil>` — mostra o que o perfil faria com selo de risco
   por app (SAFE/CAUTION/DANGEROUS), sem alterar nada. Classificação em `risk_of`.
 - `scripts/dns.sh bench` — mede a latência de cada perfil de DNS (não altera nada).
@@ -242,7 +239,16 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 - Shell POSIX (`#!/system/bin/sh`); roda em Android, então evite bashisms.
 - Transporte por `scripts/common.sh`: `OTM_MODE=adb|usb|rish|su|local` (auto-detectado).
   `usb` = `adb shell` no 1º aparelho do cabo (sem parear); `adb` = endereço fixo `OTM_ADB_SERIAL`.
+  Quando o processo **já nasce privilegiado** (o app roda os scripts pelo Shizuku/ADB, uid
+  2000, e não há `rish`/`adb` no PATH) a detecção devolve `RUN_MODE=direct` — é o modo que
+  faz o botão "Clean Phone" funcionar. Sem isso o pack se dizia "sem shell" e recusava tudo.
 - Reversão das otimizações profundas em `~/.packotm/deep/off.sh` (formato `<tag>\t<comando>`).
+- Reversão das ações do dia a dia é **por escopo**: cada script chama `scope_begin <nome>`
+  e grava em `~/.packotm/undo/<nome>.sh` (o escopo padrão segue em `~/.packotm/off.sh`).
+  As linhas de reversão são **condicionais** (`[ "$(settings get ...)" = "<o que apliquei>" ] && ...`),
+  então desfazer uma ação não apaga o que outra aplicou depois na mesma chave. O valor
+  original do aparelho fica em `~/.packotm/origins` e é ele que `restore_all` restaura.
+  `adb-tweaks.sh restore_all` percorre todos os escopos (`otm_undo_files`) e limpa tudo.
 - Estado local nunca versionado (`~/.packotm`, `00 Otimizações/Plugins AxManager/**/state/`, `releases/*.zip`).
 - CI em `.github/workflows/build.yml`: sintaxe + shellcheck + testes + segredos; release
   por tag `v*` publica `SHA256SUMS.txt` e usa `CHANGELOG.md` como corpo.
@@ -296,10 +302,20 @@ nativa além do necessário para conectar e rodar os comandos.
   caminho.
 - O catálogo do painel vem de `assets/panel/actions.json`, gerado de
   `web/lib.php` por `scratch/gen_actions.php` (regera após mexer nas ações).
+  O mesmo script também reescreve o objeto `ACTIONS` embutido no painel, então
+  `php scratch/gen_actions.php app/src/main/assets/panel/actions.json
+  app/src/main/assets/panel/index.html` mantém catálogo e HTML do app em sincronia.
   O painel do app é o HTML do PHP já renderizado (`scratch/render_panel.php` →
   `scratch/panel.html` → `scratch/build_panel.py`); ao mexer em
   `index.php`/`lib.php`, os dois painéis (`web/index.php` e
   `assets/panel/index.html`) precisam ficar em sincronia (o CSS/JS é o mesmo).
+- Os scripts de `scripts/` são a fonte da verdade; o app embarca uma **cópia
+  versionada** em `app/src/main/assets/pack/scripts` (task Gradle `syncPackAssets`
+  no `preBuild`, que usa `Sync` para remover sobras). Como o espelho vai para o
+  git, ele não se atualiza sozinho fora do Gradle: ao mexer em `scripts/`, rode
+  `cp scripts/*.sh app/src/main/assets/pack/scripts/` (e apague os removidos). O
+  teste `t_pack_scripts_mirror` em `tests/run.sh` compara os dois diretórios e
+  confere que todo `argv[0]` de ação existe no espelho.
 - **Opções lado a lado** (`otm_choices()` em `lib.php`): ações com `'choice' =>
   'renderer'` (renderizador), `'renderapp'` (driver gráfico por app), `'refresh'`
   (taxa de atualização), `'dns_fast'` (DNS rápido) ou `'touchprofile'` (perfis de
@@ -370,8 +386,8 @@ nativa além do necessário para conectar e rodar os comandos.
   gaming (`max_cached_processes=8`), chama `keep-alive.sh on <pkg> jogo`, isenta
   do Doze, liga Game Mode performance + driver, silencia heads-up/bolhas + Não
   Perturbe e corta telemetria/scans. O modo `max` também encerra apps de mídia/chat
-  conhecidos (`GC_EXTRA`). `off [pkg]` desfaz (usa o `off.sh` de `bkp_set`/`bkp_raw`
-  e o `keep-alive.sh off`) e `status [pkg]` lê tudo de volta. Estado em
+  conhecidos (`GC_EXTRA`). `off [pkg]` desfaz (usa o escopo próprio `~/.packotm/undo/game-clean.sh`
+  de `bkp_set`/`bkp_raw` e o `keep-alive.sh off`) e `status [pkg]` lê tudo de volta. Estado em
   `$ST/gameclean/applied`. Categoria **Apps e jogos** (grupo de escolha `gameclean`).
 - **Liberar RAM** (`scripts/ram-boost.sh`, na whitelist do `lib.php`): libera memória
   de verdade (ação pontual, nada a reverter). `boost [normal|max]` encerra os apps de
@@ -381,28 +397,19 @@ nativa além do necessário para conectar e rodar os comandos.
   `/proc/meminfo`). O modo `max` também encerra apps de mídia/chat (`RB_EXTRA`).
   `status` mostra RAM livre/total, o perfil de cache e quem está protegido. Exige
   shell (`require_shell`). Categoria **Desempenho** (grupo de escolha `ramboost`).
-- **Modo resfriamento** (`scripts/cool-down.sh`, na whitelist do `lib.php`): baixa a
-  temperatura. `on [normal|max]` prende a CPU e a GPU no clock mínimo (`co_cpu_cool`/
-  `co_gpu_cool`), baixa o brilho e encerra o fundo; `max` também desliga os núcleos
-  extras (`co_cores_off`). Um vigia em segundo plano desliga sozinho ao esfriar
-  (`CO_TARGET`, padrão 38°C) ou após `CO_MAXMIN` minutos (padrão 30) — nos testes,
-  `OTM_COOL_NOWATCH=1` pula o vigia. Reversão própria em `$ST/cooldown/off.sh`
-  (`co_write`/`co_set` guardam o valor original); `off` desfaz e `status` mostra
-  temperatura + estado. Requer root. Categoria **Desempenho** (grupo de escolha
-  `cooldown`).
 - **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
   limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
   por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`
   poupando o jogo/protegidos, poda cache com `otm_cache_trim`, `am kill-all` e
   `otm_drop_caches`); `now suave` (padrão) soma a suavização **sem root** (animações
   0x, `disable_window_blurs`, `accessibility_reduce_transparency`, doze mais rápido,
-  sem scan Wi-Fi); `now normal` soma a suavização profunda de CPU/GPU/I-O/VM delegando
-  ao `deep-tune.sh` (`freq`/`gpu`/`mem`/`sched`/`input`/`io`/`vm`/`net2`), só com root.
-  `status` mostra o estado; `off` desfaz a suavização (settings do `off.sh` + os
-  módulos do deep-tune). Estado em `$ST/clean/applied`. O `clean`/`clean_scan`/
-  `clean_deep` do `adb-tweaks.sh` delegam para cá (o antigo `clean` inline e o grupo
-  `aot` foram removidos). Categoria **Desempenho** (`clean`, `clean.scan`,
-  `clean.deep`, `clean.undo`).
+  sem scan Wi-Fi). Só existem essas duas fases: `fundo` e `suave` (a antiga `normal`,
+  que exigia root, foi removida).
+  `status` mostra o estado; `off` desfaz a suavização (settings do escopo próprio
+  `~/.packotm/undo/clean.sh` + os módulos do deep-tune). Estado em `$ST/clean/applied`.
+  O `clean`/`clean_scan` do `adb-tweaks.sh` delegam para cá (o antigo `clean` inline e o grupo `aot` foram
+  removidos; o `clean.deep` saiu junto com as ações root). Categoria **Desempenho**
+  (`clean`, `clean.scan`, `clean.undo`).
 - Configurações do painel (engrenagem): permissões, tema, cor de destaque, fonte,
   DPI e som ficam em `localStorage` (`otm-theme`/`otm-accent`/`otm-font`/
   `otm-scale`/`otm-sound`) e são aplicados antes do resto do JS (`initAppearance`).

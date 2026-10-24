@@ -16,7 +16,9 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin ff-touch
 otm_v_reset
+
 
 # aplica um conjunto de parâmetros de toque
 _apply() {

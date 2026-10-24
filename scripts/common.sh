@@ -2,10 +2,11 @@
 # =============================================================================
 #  common.sh - Biblioteca compartilhada do Pack de Otimização
 #  Detecta automaticamente como executar comandos privilegiados:
-#    1) adb shell   (PC -> celular, depuração USB ou sem fio)
-#    2) rish        (Shizuku, roda direto no celular)
-#    3) su -c       (root / Magisk / KernelSU / APatch)
-#    4) sh -c       (shell local, sem privilégio)
+#    1) direct      (o processo JÁ é shell/root: é o caso do app via Shizuku)
+#    2) adb shell   (PC -> celular, depuração USB ou sem fio)
+#    3) rish        (Shizuku, rodando de fora do app)
+#    4) su -c       (root / Magisk / KernelSU / APatch)
+#    5) sh -c       (shell local, sem privilégio)
 #  Todos os scripts fazem ". ./common.sh" e usam sh_run / sh_get.
 #  Variável de override: OTM_MODE=adb|usb|rish|su|local
 #  (usb = adb no 1º aparelho do cabo; adb = endereço fixo OTM_ADB_SERIAL)
@@ -32,12 +33,6 @@ _with_timeout() {
 }
 
 _otm_rish() { [ -n "$OTM_RISH" ] && printf '%s' "$OTM_RISH" || printf 'rish'; }
-
-_su_works() {
-    command -v su >/dev/null 2>&1 || return 1
-    [ "$(id -u 2>/dev/null)" = "0" ] && return 1        # já é root
-    [ "$(_with_timeout 3 su -c 'id -u' 2>/dev/null)" = "0" ] || return 1
-}
 
 _rish_works() {
     r="$(_otm_rish)"
@@ -73,28 +68,36 @@ _adb_works() {
 
 if [ -n "$OTM_MODE" ]; then
     RUN_MODE="$OTM_MODE"
+elif [ "$(id -u 2>/dev/null)" = "0" ]; then
+    # já somos root: nenhum wrapper é necessário, os comandos valem direto
+    RUN_MODE="direct"
+elif [ "$(id -u 2>/dev/null)" = "2000" ]; then
+    # já somos o usuário `shell` (o app roda os scripts pelo Shizuku/ADB, que
+    # abrem o processo JÁ privilegiado). Sem `rish`/`adb` no PATH o teste por
+    # binário daria "local" e o pack se recusaria a trabalhar sem motivo.
+    RUN_MODE="direct"
 elif _rish_works; then
     RUN_MODE="rish"
 elif _adb_works; then
     RUN_MODE="adb"
-elif _su_works; then
-    RUN_MODE="su"
 else
     RUN_MODE="local"
 fi
 
 # --- execução -----------------------------------------------------------------
 # _otm_shell "<cmd>" -> executa no alvo conforme o modo. Base de sh_run/sh_get.
+# `direct` = o próprio processo já tem o privilégio (Shizuku/ADB abriram o shell
+# como uid 2000, ou já somos root): roda sem wrapper.
 _otm_shell() {
     case "$RUN_MODE" in
-        adb)   if [ -n "$OTM_ADB_SERIAL" ]; then _with_timeout 20 adb -s "$OTM_ADB_SERIAL" shell "$1"
-               else _with_timeout 20 adb shell "$1"; fi ;;
-        usb)   _with_timeout 20 adb shell "$1" ;;
-        rish)  r="$(_otm_rish)"
-               if [ -x "$r" ]; then _with_timeout 20 "$r" -c "$1"
-               else _with_timeout 20 rish -c "$1"; fi ;;
-        su)    _with_timeout 20 su -c "$1" ;;
-        *)     sh -c "$1" ;;
+        adb)    if [ -n "$OTM_ADB_SERIAL" ]; then _with_timeout 20 adb -s "$OTM_ADB_SERIAL" shell "$1"
+                else _with_timeout 20 adb shell "$1"; fi ;;
+        usb)    _with_timeout 20 adb shell "$1" ;;
+        rish)   r="$(_otm_rish)"
+                if [ -x "$r" ]; then _with_timeout 20 "$r" -c "$1"
+                else _with_timeout 20 rish -c "$1"; fi ;;
+        su)     _with_timeout 20 su -c "$1" ;;
+        *)      sh -c "$1" ;;
     esac
 }
 
@@ -104,10 +107,14 @@ sh_get() { _otm_shell "$1" 2>/dev/null | tr -d '\r'; }
 sh_ok() { [ "$(sh_get 'id -u')" = "0" ]; }
 have()  { command -v "$1" >/dev/null 2>&1; }
 
-# tem privilégio de shell (root OU Shizuku/ADB), não só shell local sem poder
+# tem privilégio de shell (root OU Shizuku/ADB), não só shell local sem poder.
+# `direct` cobre o caso em que o processo já nasceu privilegiado (Shizuku/ADB).
 have_shell() {
-    [ "$RUN_MODE" != "local" ] && return 0
-    sh_ok
+    case "$RUN_MODE" in
+        local) return 1 ;;
+        direct) return 0 ;;
+        *) return 0 ;;
+    esac
 }
 
 # Exige privilégio de shell. Sem ele, avisa como habilitar (painel > Configs).
@@ -134,19 +141,69 @@ warn() { printf '  %b!%b  %s\n' "$C_Y" "$C_R" "$1"; }
 err()  { printf '  %b✕%b  %s\n' "$C_RD" "$C_R" "$1"; }
 skip() { printf '  %b·%b  %s (off)\n' "$C_D" "$C_R" "$1"; }
 
-require_root() {
-    if sh_ok; then return 0; fi
-    warn "precisa de root ($RUN_MODE). pulando."
-    return 1
-}
-
 # --- backup / restauração -----------------------------------------------------
 ST="${HOME:-/data/data/com.termux/files/home}/.packotm"
-OFF_SH="$ST/off.sh"; MARK="$ST/on"
-mkdir -p "$ST" 2>/dev/null
+UNDO_DIR="$ST/undo"
+OFF_SH="$ST/off.sh"; MARK="$ST/on"     # escopo padrão (compartilhado)
+OTM_SCOPE=""                            # vazio = escopo padrão
+mkdir -p "$ST" "$UNDO_DIR" 2>/dev/null
+
+# scope_begin <nome> -> isola a reversão deste script num arquivo próprio.
+# Sem isso, um `off` de uma função desfaz e apaga a reversão das outras: o
+# "Clean: desfazer" apagava o 0.5x do "Performance" e a reversão geral ficava
+# pela metade. Cada escopo tem seu off.sh + marcador; `restore_all` percorre todos.
+scope_begin() {
+    OTM_SCOPE="$1"
+    OFF_SH="$UNDO_DIR/$1.sh"
+    MARK="$UNDO_DIR/$1.on"
+}
+
+# otm_undo_files -> lista os arquivos de reversão existentes (todos os escopos)
+otm_undo_files() {
+    [ -s "$ST/off.sh" ] && echo "$ST/off.sh"
+    for f in "$UNDO_DIR"/*.sh; do
+        [ -s "$f" ] && echo "$f"
+    done
+}
+
+# otm_undo_run <arquivo> -> executa as linhas de reversão de um arquivo
+otm_undo_run() {
+    f="$1"; [ -s "$f" ] || return 0
+    while IFS= read -r c; do
+        [ -z "$c" ] && continue
+        case "$c" in '#'*) continue ;; esac
+        sh_run "$c" >/dev/null 2>&1
+    done < "$f"
+}
+
+# otm_undo_clear -> apaga TODAS as reversões (restauração geral)
+otm_undo_clear() {
+    rm -f "$ST/off.sh" "$ST/on" 2>/dev/null
+    rm -rf "$UNDO_DIR" 2>/dev/null
+    rm -f "$ST/origins" 2>/dev/null
+}
+
+# --- valores originais do aparelho -------------------------------------------
+# Guarda o valor que a chave tinha ANTES de qualquer ação mexer nela. Sem isso,
+# aplicar A e depois B fazia o "desfazer B" restaurar o valor que A tinha
+# deixado (o snapshot de B já nascia poluído por A).
+ORIG_FILE="$ST/origins"
+
+orig_get() {  # orig_get <tipo> <chave> -> valor original, ou __NONE__ se nunca visto
+    [ -f "$ORIG_FILE" ] || { printf '__NONE__'; return; }
+    awk -F'\t' -v t="$1" -v k="$2" '
+        $1==t && $2==k { sub(/^[^\t]*\t[^\t]*\t?/, ""); print; found=1; exit }
+        END { if (!found) printf "__NONE__" }' "$ORIG_FILE"
+}
+
+orig_set() {  # orig_set <tipo> <chave> <valor>   (vazio = não existia)
+    mkdir -p "$ST" 2>/dev/null
+    printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$ORIG_FILE"
+}
 
 bkp_begin() {
     [ -f "$MARK" ] && return 0
+    mkdir -p "$(dirname "$OFF_SH")" 2>/dev/null
     : > "$OFF_SH"
     printf '#!/system/bin/sh\n' >> "$OFF_SH"
     command touch "$MARK"
@@ -184,12 +241,23 @@ bkp_set() {
     t="$1"; k="$2"; v="$3"
     otm_v_inc apply
     old=$(sh_get "settings get $t $k")
-    # guarda só a 1ª vez: reaplicar não pode empilhar backups obsoletos
-    if ! grep -qE "^settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
-        if [ -z "$old" ] || [ "$old" = "null" ]; then
-            echo "settings delete $t $k" >> "$OFF_SH"
+    # registra o valor ORIGINAL do aparelho na 1ª vez que mexemos nesta chave
+    orig="$(orig_get "$t" "$k")"
+    if [ "$orig" = "__NONE__" ]; then
+        [ -z "$old" ] || [ "$old" = "null" ] && orig="" || orig="$old"
+        orig_set "$t" "$k" "$orig"
+    fi
+    # guarda só a 1ª vez por escopo: reaplicar não pode empilhar backups obsoletos.
+    # A reversão é CONDICIONAL: só desfaz se o valor atual ainda for o que esta
+    # ação escreveu. Sem isso, desfazer uma ação antiga apagaria o que uma ação
+    # posterior aplicou na mesma chave (as otimizações "se atropelavam").
+    if ! grep -qE "settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -z "$orig" ]; then
+            printf '[ "$(settings get %s %s)" = "%s" ] && settings delete %s %s\n' \
+                "$t" "$k" "$v" "$t" "$k" >> "$OFF_SH"
         else
-            printf "settings put %s %s %s\n" "$t" "$k" "$old" >> "$OFF_SH"
+            printf '[ "$(settings get %s %s)" = "%s" ] && settings put %s %s %s\n' \
+                "$t" "$k" "$v" "$t" "$k" "$orig" >> "$OFF_SH"
         fi
     fi
     sh_run "settings put $t $k $v" >/dev/null
@@ -221,56 +289,6 @@ prop_set() {
 
 # bkp_raw "comando de reversão" -> só registra para o restore
 bkp_raw() { echo "$1" >> "$OFF_SH"; }
-
-# --- persistência no boot -----------------------------------------------------
-# Alguns `settings`/`setprop` se perdem no reboot. Com root dá para reaplicar no
-# boot: os scripts registram a linha de aplicação em $BOOT_SH e instalamos um
-# wrapper em /data/adb/service.d (Magisk) ou /system/etc/init.d.
-BOOT_SH="$ST/boot.sh"
-
-# boot_add "comando de aplicação"  -> guarda (sem duplicar) para reaplicar no boot
-boot_add() {
-    mkdir -p "$ST" 2>/dev/null
-    touch "$BOOT_SH" 2>/dev/null
-    grep -qxF "$1" "$BOOT_SH" 2>/dev/null || echo "$1" >> "$BOOT_SH"
-}
-
-# boot_install -> instala o wrapper de boot (só com root). Reaplica $BOOT_SH.
-boot_install() {
-    require_root "persistência no boot" || return 1
-    [ -s "$BOOT_SH" ] || { warn "nada para persistir (aplique algo primeiro)"; return 1; }
-    wrapper="#!/system/bin/sh
-# gerado pelo Pack de Otimização — reaplica os ajustes no boot
-sleep 20
-[ -f '$BOOT_SH' ] && sh '$BOOT_SH' >/dev/null 2>&1"
-    svc="${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh"
-    initd="${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack"
-    if [ -d "${OTM_BOOT_DIR:-/data/adb/service.d}" ]; then
-        printf '%s\n' "$wrapper" > "$svc" 2>/dev/null && chmod 755 "$svc" 2>/dev/null
-        say "persistência no boot instalada ($svc)"
-    elif [ -d "${OTM_BOOT_INITD:-/system/etc/init.d}" ]; then
-        printf '%s\n' "$wrapper" > "$initd" 2>/dev/null && chmod 755 "$initd" 2>/dev/null
-        say "persistência no boot instalada ($initd)"
-    else
-        warn "sem /data/adb/service.d nem init.d — persistência indisponível nesta ROM"
-        return 1
-    fi
-    say "no boot, ${BOOT_SH} é reaplicado. Remova em: turbo.sh boot off"
-}
-
-boot_uninstall() {
-    rm -f "${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh" "${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack" 2>/dev/null
-    say "persistência no boot removida"
-}
-
-boot_status() {
-    if [ -f "${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh" ] || [ -f "${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack" ]; then
-        printf '  %sboot:%s ATIVO\n' "$C_A" "$C_R"
-    else
-        printf '  %sboot:%s inativo\n' "$C_A" "$C_R"
-    fi
-    printf '  %slinhas no perfil de boot:%s %s\n' "$C_A" "$C_R" "$(grep -c . "$BOOT_SH" 2>/dev/null || echo 0)"
-}
 
 # --- RAM: leitura e liberação real --------------------------------------------
 # apps que nunca devem ser encerrados por engano (a UI do sistema, o próprio pack)
@@ -305,17 +323,6 @@ otm_bg_kill() {
 otm_cache_trim() {
     out="$(sh_get 'pm trim-caches 999999999999')"
     printf '%s' "$out" | awk '/space free/{print $1; exit}'
-}
-
-# otm_drop_caches -> manda o kernel soltar pagecache/dentries/inodes (root)
-otm_drop_caches() {
-    sh_ok || return 1
-    if [ -w /proc/sys/vm/drop_caches ]; then
-        sh_run 'echo 3 > /proc/sys/vm/drop_caches' >/dev/null 2>&1
-        return 0
-    fi
-    sh_run 'sync' >/dev/null 2>&1
-    return 1
 }
 
 # otm_temp -> temperatura em °C da melhor zona disponível (vazio se não der)

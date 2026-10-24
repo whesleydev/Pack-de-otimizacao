@@ -6,8 +6,7 @@
 #  em cache), aqui a memória é liberada na hora:
 #    1) encerra os apps de 3º plano (poupa o jogo e quem você protegeu no anti-relog)
 #    2) poda o cache de todos os apps
-#    3) manda o kernel soltar o pagecache/dentries/inodes (root)
-#    4) mostra quanto de RAM foi liberado (lido de /proc/meminfo)
+#    3) mostra quanto de RAM foi liberado (lido de /proc/meminfo)
 #
 #  Uso:
 #     ram-boost.sh boost [normal|max]   # libera agora (max = mais agressivo)
@@ -59,9 +58,6 @@ cmd_boost() {
     [ -n "$f" ] && say "cache podado: $((f / 1048576))MB liberados"
 
     sh_run "am kill-all" >/dev/null 2>&1
-    if otm_drop_caches; then
-        say "pagecache/dentries soltos pelo kernel"
-    fi
     sh_run "sync" >/dev/null 2>&1
 
     after="$(otm_ram_livre_mb)"

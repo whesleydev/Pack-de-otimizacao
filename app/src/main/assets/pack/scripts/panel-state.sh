@@ -46,6 +46,5 @@ printf ',"android":"%s"' "$(_clean "$(_p ro.build.version.sdk)")"
 printf ',"gpu_driver":"%s"' "$(_clean "$(_p ro.gfx.driver.0)")"
 printf ',"dns_host":"%s"' "$(_clean "$(_g global private_dns_specifier)")"
 printf ',"mode":"%s"' "$(_clean "${RUN_MODE:-local}")"
-printf ',"root":"%s"' "$(sh_ok 2>/dev/null && echo 1 || echo 0)"
 printf '}\n'
 exit 0

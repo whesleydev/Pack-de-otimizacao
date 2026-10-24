@@ -15,8 +15,6 @@
 #    trim                   poda caches de verdade (cmd package trim-caches)
 #    refresh <max|min|auto> [hz]  trava a taxa de atualização
 #    refresh_fixed <hz>           trava a tela numa taxa fixa (60/90/120/144)
-#    audio <on|off|status>        baixa latência de áudio para jogos
-#    mem_compact <on|off|status>  compactação de memória (não mata apps)
 #    perfmode <on|off|status>     modo desempenho fixo (Android 11+)
 #    telemetry <on|off>           desliga logs/telemetria e scans "sempre disponível"
 #
@@ -25,7 +23,9 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin turbo
 otm_v_reset
+
 
 # --- ART / dexopt por app -----------------------------------------------------
 # art <pkg> [speed-profile|speed|everything] -> recompila só aquele app.
@@ -179,61 +179,8 @@ refresh_fixed() {
     bkp_begin
     bkp_set system peak_refresh_rate "$hz.0"
     bkp_set system min_refresh_rate "$hz.0"
-    boot_add "settings put system peak_refresh_rate ${hz}.0; settings put system min_refresh_rate ${hz}.0"
     say "tela travada em ${hz}Hz (frametime estável)"
     say "para voltar ao dia a dia: turbo.sh refresh auto"
-}
-
-# --- áudio de baixa latência (jogos) ------------------------------------------
-# Reduz o buffer de áudio e liga o modo de baixa latência. Ajuda a ouvir passos
-# e tiros alguns ms mais cedo. Requer root (prop de áudio global).
-audio() {
-    a="${1:-status}"
-    case "$a" in
-        on)
-            bkp_begin
-            require_root "áudio de baixa latência" || return 1
-            prop_set audio.deep_buffer.media 0
-            prop_set audio.safemedia.force 0
-            prop_set vendor.audio.deep_buffer.media 0
-            sh_run "setprop audio_hal.period_size 192" >/dev/null 2>&1
-            boot_add "setprop audio.deep_buffer.media 0; setprop audio.safemedia.force 0"
-            say "áudio de baixa latência LIGADO (reinicie o jogo)" ;;
-        off)
-            prop_set audio.deep_buffer.media 1
-            prop_set audio.safemedia.force 1
-            prop_set vendor.audio.deep_buffer.media 1
-            say "áudio de volta ao padrão" ;;
-        status|*)
-            printf '  %sáudio deep_buffer:%s %s\n' "$C_A" "$C_R" "$(sh_get 'getprop audio.deep_buffer.media')"
-            printf '  %ssafemedia.force:%s %s\n' "$C_A" "$C_R" "$(sh_get 'getprop audio.safemedia.force')" ;;
-    esac
-}
-
-# --- compactação de memória (em vez de matar apps) ----------------------------
-# Em vez de "matar" apps (o Android reabre e gasta mais CPU), força a compactação
-# de páginas ociosas e o kernel a recuperar memória sem encerrar processos.
-mem_compact() {
-    a="${1:-status}"
-    case "$a" in
-        on)
-            bkp_begin
-            require_root "compactação de memória" || return 1
-            sh_run "echo 1 > /proc/sys/vm/compact_memory" >/dev/null 2>&1
-            [ -w /proc/sys/vm/compact_unevictable_allowed ] && sh_run "echo 1 > /proc/sys/vm/compact_unevictable_allowed" >/dev/null 2>&1
-            [ -w /proc/sys/vm/compaction_proactiveness ] && sh_run "echo 20 > /proc/sys/vm/compaction_proactiveness" >/dev/null 2>&1
-            [ -w /proc/sys/vm/watermark_boost_factor ] && sh_run "echo 15000 > /proc/sys/vm/watermark_boost_factor" >/dev/null 2>&1
-            bkp_raw "echo 0 > /proc/sys/vm/compaction_proactiveness"
-            bkp_raw "echo 0 > /proc/sys/vm/watermark_boost_factor"
-            say "compactação de memória LIGADA (recupera RAM sem matar apps)" ;;
-        off)
-            sh_run "echo 0 > /proc/sys/vm/compaction_proactiveness" >/dev/null 2>&1
-            sh_run "echo 0 > /proc/sys/vm/watermark_boost_factor" >/dev/null 2>&1
-            say "compactação de volta ao padrão" ;;
-        status|*)
-            printf '  %scompactação proativa:%s %s\n' "$C_A" "$C_R" "$(sh_get 'cat /proc/sys/vm/compaction_proactiveness')"
-            printf '  %swatermark boost:%s %s\n' "$C_A" "$C_R" "$(sh_get 'cat /proc/sys/vm/watermark_boost_factor')" ;;
-    esac
 }
 
 # --- modo desempenho fixo -----------------------------------------------------
@@ -301,17 +248,13 @@ case "${1:-status}" in
     trim)       trim ;;
     refresh)    refresh "$2" "$3" ;;
     refresh_fixed) refresh_fixed "$2" ;;
-    audio)      audio "$2" ;;
-    mem_compact) mem_compact "$2" ;;
-    boot)       case "${2:-status}" in on) boot_install ;; off) boot_uninstall ;; *) boot_status ;; esac ;;
     perfmode)   perfmode "$2" ;;
     telemetry)  telemetry "$2" ;;
     *)
         printf '  uso: turbo.sh status|art <pkg> [modo]|art-all [modo]|dexopt-bg|standby <pkg> <bucket>\n'
         printf '       turbo.sh hibernate <pkg|now>|killbg|phantom on|off|status|trim\n'
         printf '       turbo.sh refresh max|min|auto|<hz>|refresh_fixed <60|90|120|144>\n'
-        printf '       turbo.sh audio on|off|status|mem_compact on|off|status\n'
-        printf '       turbo.sh boot on|off|status|perfmode on|off|status|telemetry on|off\n' ;;
+        printf '       turbo.sh perfmode on|off|status|telemetry on|off\n' ;;
 esac
 
 rc=$?

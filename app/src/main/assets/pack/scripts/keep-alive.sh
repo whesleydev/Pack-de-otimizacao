@@ -26,7 +26,9 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin keep-alive
 otm_v_reset
+
 
 KA_ST="$ST/keepalive"
 mkdir -p "$KA_ST" 2>/dev/null
@@ -111,18 +113,6 @@ cmd_on() {
     sh_run "pm unsuspend --user 0 $pkg" >/dev/null 2>&1
     sh_run "pm enable --user 0 $pkg" >/dev/null 2>&1
 
-    # 6) prioridade de memória (só com root): o sistema evita matá-lo
-    if sh_ok; then
-        if sh_run "echo -900 > /proc/\$(pidof $pkg | head -1)/oom_score_adj" >/dev/null 2>&1; then
-            bkp_raw "echo 0 > /proc/\$(pidof $pkg | head -1)/oom_score_adj"
-            otm_v_inc apply; otm_v_inc changed
-            printf '   %bOK%b prioridade de memória (root) · %s\n' "$C_G" "$C_R" "$pkg"
-        fi
-        # protege do matador de processos em background, se a ROM expõe
-        [ -w /sys/module/lowmemorykiller/parameters/minfree ] && \
-            say "dica: com root, 'Phantom Killer: ligar/desligar' também ajuda"
-    fi
-
     # 7) jogo: libera o Game Mode (opcional)
     if [ "$modo" = "jogo" ] || [ "$modo" = "game" ]; then
         sh_run "cmd game set --mode performance $pkg" >/dev/null 2>&1
@@ -144,9 +134,6 @@ cmd_off() {
     sh_run "cmd appops set $pkg START_FOREGROUND default" >/dev/null 2>&1
     sh_run "cmd appops set $pkg WAKE_LOCK default" >/dev/null 2>&1
     sh_run "am set-standby-bucket $pkg active" >/dev/null 2>&1
-    if sh_ok; then
-        sh_run "echo 0 > /proc/\$(pidof $pkg | head -1)/oom_score_adj" >/dev/null 2>&1
-    fi
     _ka_del "$pkg"
     say "pronto (o app volta a ser tratado como os outros)"
 }
@@ -194,7 +181,6 @@ cmd_restore() {
             sh_run "cmd appops set $p START_FOREGROUND default" >/dev/null 2>&1
             sh_run "cmd appops set $p WAKE_LOCK default" >/dev/null 2>&1
             sh_run "am set-standby-bucket $p active" >/dev/null 2>&1
-            sh_ok && sh_run "echo 0 > /proc/\$(pidof $p | head -1)/oom_score_adj" >/dev/null 2>&1
             printf '   %s%s%s\n' "$C_D" "$p" "$C_R"
         done < "$KA_FILE"
     fi

@@ -24,7 +24,9 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin dns
 otm_v_reset
+
 
 # --- catálogo de perfis -------------------------------------------------------
 # imprime: nome<TAB>host<TAB>descrição
@@ -97,7 +99,7 @@ dns_apply() {  # dns_apply <perfil|hostname>
         gaming)
             # latência/conexão: buffers TCP maiores + varredura de Wi-Fi off
             bkp_set global wifi_scan_always_enabled 0
-            if [ "$RUN_MODE" = "adb" ] || [ "$RUN_MODE" = "su" ] || [ "$RUN_MODE" = "rish" ]; then
+            if [ "$RUN_MODE" = "adb" ] || [ "$RUN_MODE" = "rish" ]; then
                 sh_run "setprop net.tcp.buffersize.default 4096,87380,524288,4096,16384,110208" >/dev/null
                 sh_run "setprop net.tcp.buffersize.wifi 524288,1048576,2097152,262144,524288,1048576" >/dev/null
                 sh_run "setprop net.tcp.buffersize.lte 524288,1048576,2097152,262144,524288,1048576" >/dev/null

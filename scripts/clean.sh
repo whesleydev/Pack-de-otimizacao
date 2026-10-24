@@ -7,17 +7,15 @@
 #
 #  Em vez de "matar tudo", trabalha em FASES com o que o aparelho aguenta:
 #    fundo  - só libera RAM (encerra 2º plano + poda cache). Nada persistente.
-#    suave  - fundo + suavização SEM root (animações, blur, doze leve, trim,
+#    suave  - fundo + suavização (animações, blur, doze leve, trim,
 #             rede móvel e scan Wi-Fi). Reversível.
-#    normal - suave + suavização de CPU/GPU/I-O/VM via root, QUANDO o kernel
-#             expõe os caminhos e você autoriza. Reversível.
 #
 #  Nada de número inventado: cada ajuste é lido de volta e contado
 #  (#OTM-RESULT applies/changed/failed). O que não pega aparece como falha.
 #
 #  Uso:
 #     clean.sh scan                 # só lê o que dá para limpar (não mexe)
-#     clean.sh now [fundo|suave|normal]   # limpa/suaviza (padrão: suave)
+#     clean.sh now [fundo|suave]   # limpa/suaviza (padrão: suave)
 #     clean.sh status               # o que está ativo agora
 #     clean.sh off                  # desfaz a suavização (a limpeza é pontual)
 #
@@ -26,6 +24,7 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin clean          # reversão própria: `off` não mexe no que outras ações aplicaram
 otm_v_reset
 
 CL_ST="$ST/clean"
@@ -68,13 +67,6 @@ cl_scan() {
     cp="$(cl_cached_procs)"
     [ -n "$cp" ] && printf '  %sprocessos:%s %s\n' "$C_A" "$C_R" "$cp"
 
-    # cache por app (só com root, é o que dá leitura em /data/data)
-    if sh_ok; then
-        printf '  %scache por app (top 8):%s\n' "$C_A" "$C_R"
-        du -sk /data/data/*/cache 2>/dev/null | sort -rn | head -8 | \
-            awk -v a="$C_A" -v r="$C_R" '{printf "    %s%-40s%s %sMB\n", a, $2, r, int($1/1024)}'
-    fi
-
     if [ -s "$CL_APPLIED" ]; then
         printf '  %súltima fase aplicada:%s %s\n' "$C_A" "$C_R" "$(cat "$CL_APPLIED")"
     else
@@ -87,7 +79,7 @@ cl_scan() {
 #  FASE 1 (sempre): liberar RAM de verdade - pontual, sem reverter nada
 # =============================================================================
 cl_free_ram() {
-    say "1/3  Liberando RAM (2º plano + cache)"
+    say "1/2  Liberando RAM (2º plano + cache)"
     before="$(otm_ram_livre_mb)"
     [ -n "$before" ] && say "RAM livre antes: ${before}MB"
 
@@ -105,7 +97,6 @@ cl_free_ram() {
     fi
 
     sh_run "am kill-all" >/dev/null 2>&1
-    otm_drop_caches   # só age com root; devolve não-zero em silêncio quando não dá
     sh_run "sync" >/dev/null 2>&1   # flush de buffer (não é liberação de RAM)
 
     after="$(otm_ram_livre_mb)"
@@ -115,10 +106,10 @@ cl_free_ram() {
 }
 
 # =============================================================================
-#  FASE 2 (suave+): suavização SEM root - só `settings`/`cmd`, tudo reversível
+#  FASE 2 (suave): suavização - só `settings`/`cmd`, tudo reversível
 # =============================================================================
 cl_smooth_noroot() {
-    say "2/3  Suavização (animações, blur, doze, rede) — sem root"
+    say "2/2  Suavização (animações, blur, doze, rede)"
     bkp_begin
     bkp_set global window_animation_scale 0
     bkp_set global transition_animation_scale 0
@@ -134,49 +125,18 @@ cl_smooth_noroot() {
 }
 
 # =============================================================================
-#  FASE 3 (normal): suavização profunda de CPU/GPU/IO/VM - SÓ com root
-#  Reaproveita o deep-tune.sh (mesma reversão por tag). Cada módulo checa se o
-#  kernel expõe os caminhos; o que não existe aparece como falha, não como OK.
-# =============================================================================
-cl_smooth_root() {
-    say "3/3  Suavização profunda de CPU/GPU/I-O/VM (root)"
-    # CPU/GPU no topo da frequência (deixa a UI lisa, sem engasgo)
-    sh "$DIR/deep-tune.sh" freq on >/dev/null 2>&1
-    sh "$DIR/deep-tune.sh" gpu  on >/dev/null 2>&1
-    # memória: MGLRU + KSM + swappiness + zRAM (reclaim mais suave)
-    sh "$DIR/deep-tune.sh" mem  on >/dev/null 2>&1
-    # escalonador com boost no app em foco (toque responde na hora)
-    sh "$DIR/deep-tune.sh" sched on >/dev/null 2>&1
-    # input boost no toque (CPU sobe antes do frame travar)
-    sh "$DIR/deep-tune.sh" input on >/dev/null 2>&1
-    # I/O: scheduler none + read_ahead + fstrim
-    sh "$DIR/deep-tune.sh" io   on >/dev/null 2>&1
-    # VM: dirty suave, menos picos de escrita (menos microtravada)
-    sh "$DIR/deep-tune.sh" vm   on >/dev/null 2>&1
-    # rede: BBR + fq_codel (menos bufferbloat em jogo/streaming)
-    sh "$DIR/deep-tune.sh" net2 on >/dev/null 2>&1
-    say "CPU/GPU/I-O/VM afinados — reverter: clean.sh off ou deep-tune.sh <módulo> off"
-}
-
-# =============================================================================
 #  AÇÕES
 # =============================================================================
 cmd_now() {
     fase="${1:-suave}"
-    case "$fase" in fundo|suave|normal) ;; *) err "fase inválida: $fase (fundo|suave|normal)"; return 1 ;; esac
+    case "$fase" in fundo|suave) ;; *) err "fase inválida: $fase (fundo|suave)"; return 1 ;; esac
     require_shell "limpar" || return 1
 
     printf '  %s◆%s  %sCLEAN%s  %s(%s)%s\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_D" "$fase" "$C_R"
     printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
 
     cl_free_ram
-    if [ "$fase" != "fundo" ]; then
-        cl_smooth_noroot
-        if [ "$fase" = "normal" ]; then
-            if sh_ok; then cl_smooth_root
-            else warn "fase normal pede root — aplicando só a suavização sem root"; fi
-        fi
-    fi
+    [ "$fase" != "fundo" ] && cl_smooth_noroot
 
     printf '%s\n' "$fase" > "$CL_APPLIED"
     echo
@@ -185,19 +145,14 @@ cmd_now() {
 
 cmd_off() {
     say "Desfazendo a suavização do Clean (a limpeza de RAM é pontual)"
-    # desfaz o que veio do deep-tune.sh (freq/gpu/mem/sched/input/io/vm/net2)
-    for m in freq gpu mem sched input io vm net2; do
+    # desfaz os módulos do deep-tune.sh que ainda existem (display/debloat)
+    for m in display debloat; do
         sh "$DIR/deep-tune.sh" "$m" off >/dev/null 2>&1
     done
-    # desfaz os settings do off.sh (animações, blur, doze, wifi) e limpa o estado
-    if [ -s "$OFF_SH" ]; then
-        while IFS= read -r c; do
-            [ -z "$c" ] && continue
-            case "$c" in '#'*) continue ;; esac
-            sh_run "$c" >/dev/null 2>&1
-        done < "$OFF_SH"
-        rm -f "$OFF_SH" "$MARK"
-    fi
+    # desfaz SÓ os settings que o Clean guardou (escopo próprio, não toca no
+    # que Performance/Fluidez/DNS aplicaram por fora)
+    otm_undo_run "$OFF_SH"
+    rm -f "$OFF_SH" "$MARK"
     rm -f "$CL_APPLIED" 2>/dev/null
     say "pronto (aparelho de volta ao comportamento normal)"
 }
@@ -217,10 +172,6 @@ cmd_status() {
     printf '  %sblur desligado:%s %s\n' "$C_A" "$C_R" "${bl:-—}"
     dz="$(sh_get 'settings get global device_idle_constants')"
     printf '  %sdoze:%s %s\n' "$C_A" "$C_R" "${dz:-padrão}"
-    if sh_ok; then
-        gv="$(sh_get 'cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor')"
-        printf '  %sgovernador de CPU:%s %s\n' "$C_A" "$C_R" "${gv:-—}"
-    fi
 }
 
 case "${1:-}" in

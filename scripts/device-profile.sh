@@ -74,7 +74,7 @@ report() {
     printf '   GPU:       %s\n' "$(gpu_vendor)"
     printf '   kernel:    %s\n' "$(sh_get 'uname -r')"
     printf '   RAM:       %s GB\n' "$(ram_gb)"
-    printf '   root:      %s\n' "$(sh_ok && echo sim || echo não)"
+    printf '   root:      %s\n' "não (o pack não usa root)"
     printf '   modo:      %s\n' "$RUN_MODE"
     echo
     printf '   %sMódulos recomendados%s (tendem a funcionar):\n' "$C_A" "$C_R"

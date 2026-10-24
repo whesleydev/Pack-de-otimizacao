@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # =============================================================================
 #  menu.sh - Menu unificado do Pack de Otimização
-#  Reúne comandos ADB (Brevent/Termux/Shizuku/root) e perfis de sensibilidade FF.
+#  Reúne comandos ADB (Brevent/Termux/Shizuku) e perfis de sensibilidade FF.
 #  Uso: ./menu.sh   (ou: sh menu.sh)
 # =============================================================================
 
@@ -12,7 +12,7 @@ echo
 printf '  %s◆%s  %sPACK DE OTIMIZAÇÃO%s\n' "$C_A" "$C_R" "$C_A" "$C_R"
 printf '  %s──────────────────────────────────────%s\n' "$C_D" "$C_R"
 printf '  modo de execução: %s%s%s\n' "$C_G" "$RUN_MODE" "$C_R"
-if sh_ok; then printf '  privilégio: %sroot/shell OK%s\n' "$C_G" "$C_R"; else printf '  privilégio: %ssem shell%s\n' "$C_Y" "$C_R"; fi
+if have_shell; then printf '  privilégio: %sshell OK%s\n' "$C_G" "$C_R"; else printf '  privilégio: %ssem shell%s\n' "$C_Y" "$C_R"; fi
 
 while :; do
     echo
@@ -35,36 +35,18 @@ while :; do
     printf '  %s13%s Notificações / DND'                    "$C_A" "$C_R"; echo
     printf '  %s14%s Tela / refresh'                        "$C_A" "$C_R"; echo
     printf '  %s15%s Clean (limpa RAM + suaviza)'          "$C_A" "$C_R"; echo
-    printf '  %s16%s Clean profundo (CPU/GPU/I-O, root)'    "$C_A" "$C_R"; echo
     printf '  %s17%s Salvar snapshot do estado atual'        "$C_A" "$C_R"; echo
     printf '  %s18%s Listar snapshots'                       "$C_A" "$C_R"; echo
     printf '  %s19%s Restaurar último snapshot'              "$C_A" "$C_R"; echo
     printf '  %s20%s Fluidez (animações 0, toque 0 delay, Hz max)' "$C_A" "$C_R"; echo
     printf '  %s21%s Tuning por jogo (resolução/FPS/engine)'      "$C_A" "$C_R"; echo
     printf '  %s── otimizações profundas ─────────────%s\n' "$C_D" "$C_R"
-    printf '  %s22%s ANGLE/Vulkan por jogo (sem root)'       "$C_A" "$C_R"; echo
-    printf '  %s23%s MODO JOGO TURBO (tudo junto, root)'     "$C_A" "$C_R"; echo
-    printf '  %s24%s Frequência CPU/GPU (root)'              "$C_A" "$C_R"; echo
-    printf '  %s25%s I/O + memória (MGLRU/zRAM, root)'       "$C_A" "$C_R"; echo
-    printf '  %s26%s Rede BBR (root)'                        "$C_A" "$C_R"; echo
+    printf '  %s22%s ANGLE/Vulkan por jogo'                  "$C_A" "$C_R"; echo
     printf '  %s27%s Debloat real (appops/buckets)'          "$C_A" "$C_R"; echo
     printf '  %s28%s Detectar hardware / perfil do aparelho' "$C_A" "$C_R"; echo
-    printf '  %s29%s Limite térmico (root, ⚠️ trava em 45°C)' "$C_A" "$C_R"; echo
-    printf '  %s── extremos / pouco conhecidos (root) ──%s\n' "$C_D" "$C_R"
-    printf '  %s40%s VM / kernel de memória (root)'          "$C_A" "$C_R"; echo
-    printf '  %s41%s Escalonador / EAS + schedtune (root)'   "$C_A" "$C_R"; echo
-    printf '  %s42%s GPU extrema KGSL/Mali (root)'           "$C_A" "$C_R"; echo
-    printf '  %s43%s Núcleos sempre ligados (root)'          "$C_A" "$C_R"; echo
-    printf '  %s44%s Input / touch boost (root)'             "$C_A" "$C_R"; echo
-    printf '  %s45%s CPU idle menu (root)'                   "$C_A" "$C_R"; echo
-    printf '  %s46%s Rede avançada 2 / BBR2 (root)'          "$C_A" "$C_R"; echo
-    printf '  %s47%s zRAM avançada zstd (root)'              "$C_A" "$C_R"; echo
-    printf '  %s48%s Kernel: tirar overhead (root)'          "$C_A" "$C_R"; echo
-    printf '  %s49%s Display / HWUI props (sem root)'        "$C_A" "$C_R"; echo
-    printf '  %s50%s Dalvik / ART heaps (root)'              "$C_A" "$C_R"; echo
+    printf '  %s49%s Display / HWUI props'        "$C_A" "$C_R"; echo
     printf '  %s51%s Recompilar apps (dexopt/AOT)'           "$C_A" "$C_R"; echo
-    printf '  %s52%s ⚡ MODO EXTREMO (TUDO de uma vez)'      "$C_RD" "$C_R"; echo
-    printf '  %s── avançado sem root ─────────────────%s\n' "$C_D" "$C_R"
+    printf '  %s── avançado ─────────────────────────%s\n' "$C_D" "$C_R"
     printf '  %s55%s Ajustes obscuros (standby/Doze)'        "$C_A" "$C_R"; echo
     printf '  %s56%s Rede móvel / economia de dados'         "$C_A" "$C_R"; echo
     printf '  %s57%s Menos notificações (heads-up)'          "$C_A" "$C_R"; echo
@@ -110,7 +92,6 @@ while :; do
         13) "$DIR/adb-tweaks.sh" dnd ;;
         14) "$DIR/adb-tweaks.sh" screen ;;
         15) "$DIR/adb-tweaks.sh" clean ;;
-        16) "$DIR/adb-tweaks.sh" clean_deep ;;
         17) "$DIR/snapshot.sh" save ;;
         18) "$DIR/snapshot.sh" list ;;
         19) "$DIR/snapshot.sh" restore latest ;;
@@ -128,37 +109,14 @@ while :; do
         22) printf '  ação (add/remove/list/reset) e pacote: '
             read -r a gp
             "$DIR/deep-tune.sh" angle "$a" "$gp" ;;
-        23) printf '  ligar (on) ou desligar (off)? [on] e pacote opcional: '
-            read -r a gp
-            "$DIR/deep-tune.sh" gaming "${a:-on}" "$gp" ;;
-        24) printf '  on/off [on]: '; read -r a
-            "$DIR/deep-tune.sh" freq "${a:-on}" ;;
-        25) printf '  io/mem on/off [on]: '; read -r a b
-            case "$a" in io|mem) "$DIR/deep-tune.sh" "$a" "${b:-on}" ;;
-                         *) warn "use: io on | mem on" ;; esac ;;
-        26) printf '  on/off [on]: '; read -r a
-            "$DIR/deep-tune.sh" net "${a:-on}" ;;
         27) printf '  on/off [on]: '; read -r a
             "$DIR/deep-tune.sh" debloat "${a:-on}" ;;
         28) "$DIR/deep-tune.sh" detect
             "$DIR/device-profile.sh" ;;
-        29) printf '  on/off/temp [temp]: '; read -r a
-            "$DIR/deep-tune.sh" thermal "${a:-temp}" ;;
-        40|41|42|43|44|45|46|47|48|50)  # módulos extremos (root) -> número -> nome
-            case "$op" in
-                40) m=vm ;; 41) m=sched ;; 42) m=gpu ;; 43) m=cores ;;
-                44) m=input ;; 45) m=idle ;; 46) m=net2 ;; 47) m=zram ;;
-                48) m=kernel ;; 50) m=dalvik ;;
-            esac
-            printf '  on/off [on]: '; read -r a
-            "$DIR/deep-tune.sh" "$m" "${a:-on}" ;;
         49) printf '  on/off [on]: '; read -r a
             "$DIR/deep-tune.sh" display "${a:-on}" ;;
         51) printf '  run (recompilar) ou status [status]: '; read -r a
             "$DIR/deep-tune.sh" dexopt "${a:-status}" ;;
-        52) printf '  %sIsso liga TUDO e esquenta muito. Continuar? [s/N]: %s' "$C_Y" "$C_R"; read -r r
-            case "$r" in s|S|sim|SIM|y|Y) THERMAL_OK=1 "$DIR/deep-tune.sh" extreme ;;
-                          *) warn "cancelado" ;; esac ;;
         55) "$DIR/adb-tweaks.sh" obscure ;;
         56) "$DIR/adb-tweaks.sh" mobile_net ;;
         57) "$DIR/adb-tweaks.sh" notif ;;

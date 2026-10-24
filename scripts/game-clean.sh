@@ -23,12 +23,14 @@
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin game-clean
 otm_v_reset
+
 
 GC_ST="$ST/gameclean"
 mkdir -p "$GC_ST" 2>/dev/null
 GC_ON="$GC_ST/applied"      # pacote do último clean aplicado
-GC_OFF="$ST/off.sh"         # reversões (compartilhado, desfeito por pack restore)
+GC_OFF="$OFF_SH"            # reversões no escopo próprio (game-clean)
 
 DEFAULT_PKG="com.dts.freefireth"
 
@@ -98,13 +100,6 @@ cmd_on() {
     sh_run "pm trim-caches 999999999999" >/dev/null 2>&1
     sh_run "am kill-all" >/dev/null 2>&1
     sh_run "sync" >/dev/null 2>&1
-    if sh_ok; then
-        sh_run "killall -9 dex2oat" >/dev/null 2>&1
-        sh_run "logcat -c" >/dev/null 2>&1
-        otm_drop_caches
-        [ -w /sys/kernel/mm/lru_gen/enabled ] && sh_run "echo 1 > /sys/kernel/mm/lru_gen/enabled" >/dev/null 2>&1
-        sh_run "sm fstrim" >/dev/null 2>&1
-    fi
     # perfil de RAM de jogo: menos apps em cache, mais RAM para o jogo
     bkp_set global activity_manager_constants max_cached_processes=8,max_phantom_processes=1024
     ra="$(otm_ram_livre_mb)"
@@ -148,10 +143,6 @@ cmd_on() {
     say "6/6  Cortando telemetria e scans"
     bkp_set global wifi_scan_throttle_enabled 1
     bkp_set global adaptive_battery_management_enabled 0
-    if sh_ok; then
-        bkp_set global logpersist.start 0
-        bkp_set global logpersist.loglevel 0
-    fi
     say "telemetria e scans reduzidos"
 
     # grava o pacote aplicado (para o status/off saberem quem proteger)
@@ -180,7 +171,7 @@ cmd_off() {
             case "$c" in '#'*) continue ;; esac
             sh_run "$c" >/dev/null 2>&1
         done < "$GC_OFF"
-        rm -f "$GC_OFF" "$ST/on"
+        rm -f "$GC_OFF" "$MARK"
     fi
     rm -f "$GC_ON" 2>/dev/null
     say "pronto (o jogo volta ao comportamento normal)"

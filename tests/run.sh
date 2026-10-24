@@ -149,7 +149,7 @@ t_renderer_app() {
     OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer skiavk-threaded >/dev/null 2>&1
     assert_eq "skiavk" "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" "renderer multithread usa skiavk"
     assert_eq "skiavkthreaded" "$(cat "$TMP_STORE/prop.debug.renderengine.backend" 2>/dev/null)" "renderer multithread grava o backend"
-    grep -q 'debug.renderengine.backend' "$HOME/.packotm/off.sh" && ok "renderer é reversível" || bad "renderer sem reversão"
+    grep -q 'debug.renderengine.backend' "$HOME/.packotm/undo/adb-tweaks.sh" && ok "renderer é reversível" || bad "renderer sem reversão"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
     [ -z "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" ] && ok "renderer volta ao original no restore" || bad "restore não limpou o renderer"
     # driver gráfico por app (ANGLE/nativo/padrão) — sem root
@@ -185,17 +185,17 @@ t_per_module() {
     printf '\n  # deep-tune: reverter um módulo não afeta os outros\n'
     rm -rf "$HOME/.packotm/deep"
     OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" angle add com.dts.freefireth >/dev/null 2>&1
-    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" freq off >/dev/null 2>&1
-    assert_contains "$(deep_off)" '^angle' "freq off preserva as linhas do angle"
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" debloat off >/dev/null 2>&1
+    assert_contains "$(deep_off)" '^angle' "debloat off preserva as linhas do angle"
     OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" restore >/dev/null 2>&1
 }
 
 t_extreme() {
     printf '\n  # deep-tune: módulos avançados rodam e a reversão respeita a tag\n'
     rm -rf "$HOME/.packotm/deep"
-    # todos os módulos avançados executam sem erro
-    for m in vm sched input idle net2 kernel display dalvik; do
-        OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" "$m" on >/dev/null 2>&1
+    # módulos que sobraram executam sem erro
+    for m in debloat display dexopt; do
+        OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" "$m" on >/dev/null 2>&1
         assert_eq "0" "$?" "módulo $m on roda sem erro"
     done
     # com props existentes, display/dalvik registram reversão (tag correta)
@@ -205,20 +205,16 @@ t_extreme() {
     chmod +x "$TMP/bin_prop/getprop"
     PATH="$TMP/bin_prop:$PATH" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" display on >/dev/null 2>&1
     assert_contains "$(deep_off)" '^display' "display registra reversão (com prop antiga)"
-    PATH="$TMP/bin_prop:$PATH" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" dalvik on >/dev/null 2>&1
-    assert_contains "$(deep_off)" '^dalvik' "dalvik registra reversão (com prop antiga)"
-    # reverter só o display não mexe no dalvik
-    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" display off >/dev/null 2>&1
+    # reverter só o display não mexe nas outras tags
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" angle add com.dts.freefireth >/dev/null 2>&1
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" display off >/dev/null 2>&1
     assert_not_contains "$(deep_off)" '^display' "display off remove só a tag display"
-    assert_contains "$(deep_off)" '^dalvik' "display off preserva o dalvik"
-    # o help lista os módulos novos
-    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" > "$TMP/deep_help" 2>&1
-    assert_contains "$TMP/deep_help" "vm" "help do deep-tune lista vm"
-    assert_contains "$TMP/deep_help" "extreme" "help do deep-tune lista extreme"
-    # o modo extremo liga tudo sem erro
-    THERMAL_OK=1 OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" extreme >/dev/null 2>&1
-    assert_eq "0" "$?" "gaming extreme roda sem erro"
-    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" restore >/dev/null 2>&1
+    assert_contains "$(deep_off)" '^angle' "display off preserva a tag angle"
+    # o help lista os módulos que sobraram e NÃO lista os que saíram
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" > "$TMP/deep_help" 2>&1
+    assert_contains "$TMP/deep_help" "debloat" "help do deep-tune lista debloat"
+    assert_not_contains "$TMP/deep_help" "extreme" "help do deep-tune não lista mais extreme"
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" restore >/dev/null 2>&1
 }
 
 t_adv_noroot() {
@@ -227,9 +223,9 @@ t_adv_noroot() {
     for g in obscure mobile_net notif window_tweaks; do
         OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" "$g" >/dev/null 2>&1
     done
-    assert_contains "$HOME/.packotm/off.sh" "low_memory_kill" "obscure guarda reversão"
-    assert_contains "$HOME/.packotm/off.sh" "data_saver_mode" "mobile_net guarda reversão"
-    assert_contains "$HOME/.packotm/off.sh" "heads_up_notifications_enabled" "notif guarda reversão"
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "low_memory_kill" "obscure guarda reversão"
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "data_saver_mode" "mobile_net guarda reversão"
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "heads_up_notifications_enabled" "notif guarda reversão"
     OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" list > "$TMP/adb_list" 2>&1
     assert_contains "$TMP/adb_list" "obscure" "list mostra o grupo obscure"
     assert_contains "$TMP/adb_list" "window_tweaks" "list mostra o grupo window_tweaks"
@@ -267,30 +263,23 @@ t_realverify() {
 }
 
 t_realverify_deep() {
-    printf '\n  # verificação REAL: deep-tune vm (sysctl) confirma e reporta\n'
-    rm -rf "$HOME/.packotm"; mkdir -p "$TMP/vmstore"
-    vmdir="$TMP/vmdir"; rm -rf "$vmdir"; mkdir -p "$vmdir"
-    printf '100' > "$vmdir/vfs_cache_pressure"
-    printf '10'  > "$vmdir/dirty_ratio"
-    printf '5'   > "$vmdir/dirty_background_ratio"
-    printf '3000' > "$vmdir/dirty_expire_centisecs"
-    printf '500'  > "$vmdir/dirty_writeback_centisecs"
-    printf '8192' > "$vmdir/min_free_kbytes"
-    printf '10'   > "$vmdir/watermark_scale_factor"
-    printf '1'    > "$vmdir/watermark_boost_factor"
-    printf '50'   > "$vmdir/compaction_proactiveness"
-    printf '3'    > "$vmdir/page-cluster"
-    printf '5'    > "$vmdir/stat_interval"
-    out=$(DEEP_VM_DIR="$vmdir" SYSCTL_ROOT="$vmdir" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" vm on 2>&1)
-    assert_eq "50" "$(cat "$vmdir/vfs_cache_pressure")" "vm gravou vfs_cache_pressure=50"
-    res=$(printf '%s\n' "$out" | grep '#OTM-RESULT')
-    ch=$(printf '%s' "$res" | sed -n 's/.*changed=\([0-9]*\).*/\1/p')
-    [ "${ch:-0}" -ge 1 ] && ok "vm confirmou mudança real (changed=$ch)" \
-        || bad "vm não confirmou mudança (changed=$ch)"
-    # reversão volta o valor original
-    DEEP_VM_DIR="$vmdir" SYSCTL_ROOT="$vmdir" OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" vm off >/dev/null 2>&1
-    assert_eq "100" "$(cat "$vmdir/vfs_cache_pressure")" "vm off restaura o valor original"
-    rm -rf "$HOME/.packotm" "$vmdir"
+    printf '\n  # verificação REAL: deep-tune display aplica e restaura props\n'
+    rm -rf "$HOME/.packotm"
+    mkdir -p "$TMP/bin_prop"
+    printf '#!/bin/sh\necho valor_antigo\n' > "$TMP/bin_prop/getprop"
+    chmod +x "$TMP/bin_prop/getprop"
+    out=$(PATH="$TMP/bin_prop:$PATH" OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" display on 2>&1)
+    printf '%s\n' "$out" > "$TMP/dv_out"
+    assert_contains "$TMP/dv_out" '#OTM-RESULT tag=deep:display' "display emite o resultado com a tag"
+    assert_eq "true" "$(cat "$TMP_STORE/prop.debug.hwui.use_buffer_age" 2>/dev/null)" \
+        "display aplica a prop de HWUI"
+    assert_contains "$(deep_off)" '^display' "display registra reversão das props antigas"
+    # reverter devolve o valor original
+    PATH="$TMP/bin_prop:$PATH" OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" display off >/dev/null 2>&1
+    assert_eq "valor_antigo" "$(cat "$TMP_STORE/prop.debug.hwui.use_buffer_age" 2>/dev/null)" \
+        "display off restaura a prop original"
+    assert_not_contains "$(deep_off)" '^display' "display off limpa a reversão"
+    rm -rf "$HOME/.packotm"
 }
 
 t_config() {
@@ -370,14 +359,39 @@ t_noroot_only() {
         > "$TMP/noroot" 2>&1
     assert_contains "$TMP/noroot" "DISPONIVEL" "ação de config existe no painel"
     php -r 'require "'"$ROOT"'/web/lib.php"; otm_run("config.reset",[],false);' >/dev/null 2>&1
-    # confere que a maioria das ações não pede root
+    # o pack é sem root: nenhuma ação do painel pode exigir root
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions(); $root=0;$tot=0;
              foreach ($a as $x){ $tot++; if (($x["risk"]??"")==="root") $root++; }
              echo "root=$root total=$tot\n";' > "$TMP/rootcnt" 2>&1
+    assert_contains "$TMP/rootcnt" "root=0 " "nenhuma ação do painel exige root"
     assert_contains "$TMP/rootcnt" "total=" "registro de ações contável"
     rm -rf "$HOME/.packotm"
 }
 
+
+# --- espelho dos scripts: assets/pack/scripts == scripts ----------------------
+# O Gradle sincroniza (task syncPackAssets), mas o espelho é versionado: sem este
+# teste ele volta a divergir (foi assim que cool-down.sh ficou preso no asset e
+# profile-custom.sh nunca chegou lá).
+t_pack_scripts_mirror() {
+    printf '\n  # espelho dos scripts: assets/pack/scripts == scripts\n'
+    local src="$ROOT/scripts" dst="$ROOT/app/src/main/assets/pack/scripts"
+    if ! diff -r "$src" "$dst" > "$TMP/mirror_diff" 2>&1; then
+        bad "assets/pack/scripts divergiu de scripts ($(head -1 "$TMP/mirror_diff"))"
+    else
+        ok "assets/pack/scripts é igual a scripts (sem sobras nem faltas)"
+    fi
+    # todo script que uma ação do painel chama (argv[0]) tem de existir no espelho
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             $d = "'"$ROOT"'/app/src/main/assets/pack/scripts";
+             $miss = [];
+             foreach (otm_actions() as $id => $a) {
+                 $s = $a["argv"][0] ?? "";
+                 if (substr($s, -3) === ".sh" && !is_file("$d/$s")) $miss[] = "$id->$s";
+             }
+             echo $miss ? "FALTAM: " . implode(", ", $miss) . "\n" : "OK\n";' > "$TMP/mirror_argv" 2>&1
+    assert_contains "$TMP/mirror_argv" "OK" "toda ação aponta para um script existente no espelho"
+}
 
 # --- painel novo (Turso/SQLite): chaves validadas no banco --------------------
 t_panel_db() {
@@ -818,26 +832,11 @@ t_new_features() {
     out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" refresh_fixed 75 2>&1)
     printf '%s\n' "$out" > "$TMP/nf_bad"
     assert_contains "$TMP/nf_bad" "uso:" "refresh_fixed recusa taxa inválida"
-    # áudio de baixa latência (root): deep_buffer=0 + persistência no boot
-    : > "$TMP_CMD_LOG"
-    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" audio on 2>&1)
-    printf '%s\n' "$out" > "$TMP/nf_audio"
-    assert_contains "$TMP/nf_audio" "baixa latência" "turbo audio liga o modo de baixa latência"
-    grep -q '0' "$TMP_STORE/prop.audio.deep_buffer.media" \
-        && ok "audio: deep_buffer desligado" || bad "audio: sem deep_buffer"
-    test -s "$HOME/.packotm/boot.sh" && grep -q 'audio.deep_buffer.media 0' "$HOME/.packotm/boot.sh" \
-        && ok "audio: registrado para o boot" || bad "audio: não persistiu no boot"
-    # compactação de memória (root): não mata apps
-    : > "$TMP_CMD_LOG"
-    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" mem_compact on 2>&1)
-    printf '%s\n' "$out" > "$TMP/nf_mc"
-    assert_contains "$TMP/nf_mc" "compactação" "turbo mem_compact liga a compactação"
-    grep -q 'compact_memory' "$ROOT/scripts/turbo.sh" && ok "mem_compact: usa compact_memory" || bad "mem_compact: sem compact_memory"
-    if sed -n '/^mem_compact()/,/^}/p' "$ROOT/scripts/turbo.sh" | grep -q 'kill'; then
-        bad "mem_compact não deve matar apps"
-    else
-        ok "mem_compact não mata apps"
-    fi
+    # áudio de baixa latência e compactação de memória exigiam root: saíram do pack
+    grep -q 'audio' "$ROOT/scripts/turbo.sh" && grep -q '^audio()' "$ROOT/scripts/turbo.sh" \
+        && bad "turbo ainda tem o módulo audio (root)" || ok "turbo sem o módulo audio (root)"
+    grep -q 'mem_compact' "$ROOT/scripts/turbo.sh" \
+        && bad "turbo ainda tem mem_compact (root)" || ok "turbo sem mem_compact (root)"
     # foco de jogo (DND extremo)
     : > "$TMP_CMD_LOG"
     out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_focus 2>&1)
@@ -854,32 +853,18 @@ t_new_features() {
     out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" touch_multi 9999 2>&1)
     printf '%s\n' "$out" > "$TMP/nf_multi2"
     assert_contains "$TMP/nf_multi2" "800ms" "touch_multi limita ao máximo 800ms"
-    # persistência no boot: registra e instala o wrapper (root)
-    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
-    export OTM_BOOT_DIR="$TMP/service.d"; mkdir -p "$OTM_BOOT_DIR"
-    : > "$TMP_CMD_LOG"
-    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" boot on 2>&1)
-    printf '%s\n' "$out" > "$TMP/nf_boot"
-    assert_contains "$TMP/nf_boot" "nada para persistir" "boot sem ajustes avisa"
-    # agora com um ajuste salvo, instala o wrapper de verdade
-    rm -rf "$HOME/.packotm"
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" refresh_fixed 90 >/dev/null 2>&1
-    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" boot on 2>&1)
-    printf '%s\n' "$out" > "$TMP/nf_boot2"
-    assert_contains "$TMP/nf_boot2" "instalada" "boot instala o reaplicador"
-    test -f "$OTM_BOOT_DIR/otm-pack.sh" && ok "boot: wrapper gravado em service.d" || bad "boot: sem wrapper"
-    grep -q 'boot.sh' "$OTM_BOOT_DIR/otm-pack.sh" && ok "boot: wrapper reaplica o boot.sh" || bad "boot: wrapper sem boot.sh"
-    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/turbo.sh" boot off 2>&1)
-    test ! -f "$OTM_BOOT_DIR/otm-pack.sh" && ok "boot: 'off' remove o wrapper" || bad "boot: 'off' não removeu"
-    # as ações estão registradas no painel
+    # persistência no boot exigia root (service.d/init.d): saiu do pack
+    grep -q 'boot_install\|boot_add' "$ROOT/scripts/common.sh" \
+        && bad "common ainda tem helper de boot (root)" || ok "common sem helper de boot (root)"
+    grep -q 'OTM_BOOT_DIR\|service.d\|init.d' "$ROOT/scripts/common.sh" \
+        && bad "common ainda referencia service.d/init.d" || ok "common sem service.d/init.d"
+    # as ações sem root estão registradas no painel
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-             foreach (["turbo.refresh_fixed","turbo.audio","turbo.mem_compact","game_focus",
-                       "touch.multi","turbo.boot"] as $id)
+             foreach (["turbo.refresh_fixed","game_focus","touch.multi"] as $id)
                echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/nf_reg" 2>&1
     test ! -s "$TMP/nf_reg" && ok "novas ações no registro do painel" || bad "registro: $(cat "$TMP/nf_reg")"
     grep -q '"turbo.refresh_fixed"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o refresh fixo" || bad "app: actions.json sem refresh fixo"
-    grep -q 'boot_install' "$ROOT/scripts/common.sh" && ok "common: helper de boot presente" || bad "common: sem helper de boot"
 }
 
 t_panel_state() {
@@ -955,15 +940,15 @@ t_perm_script() {
     grep -q '^appops set com.dts.freefireth RUN_ANY_IN_BACKGROUND allow$' "$TMP_CMD_LOG" \
         && ok "libera o Free Fire sempre em segundo plano" || bad "não liberou 2º plano do FF"
     # reversível: guarda os comandos de desfazer no backup
-    grep -q 'deviceidle whitelist -com.otm.pack' "$HOME/.packotm/off.sh" \
+    grep -q 'deviceidle whitelist -com.otm.pack' "$HOME/.packotm/undo/adb-tweaks.sh" \
         && ok "reversão do Doze guardada (Reverter TUDO)" || bad "sem reversão do Doze"
-    grep -q 'appops set com.otm.pack RUN_IN_BACKGROUND default' "$HOME/.packotm/off.sh" \
+    grep -q 'appops set com.otm.pack RUN_IN_BACKGROUND default' "$HOME/.packotm/undo/adb-tweaks.sh" \
         && ok "reversão do appops guardada" || bad "sem reversão do appops"
     # bateria sem economia: aplica de verdade e é reversível
     OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_battery >/dev/null 2>&1
     assert_eq "0" "$(cat "$TMP_STORE/global.low_power" 2>/dev/null)" "economia de bateria desligada"
     assert_eq "0" "$(cat "$TMP_STORE/global.app_standby_enabled" 2>/dev/null)" "App Standby desligado"
-    grep -qE 'settings (put|delete) global low_power' "$HOME/.packotm/off.sh" \
+    grep -qE 'settings (put|delete) global low_power' "$HOME/.packotm/undo/adb-tweaks.sh" \
         && ok "reversão da bateria guardada" || bad "sem reversão da bateria"
     rm -rf "$HOME/.packotm"
 }
@@ -1128,14 +1113,14 @@ t_freezer_whitelist() {
 }
 
 t_thermal_gate() {
-    printf '\n  # deep-tune: trava térmica exige confirmação explícita\n'
+    printf '\n  # deep-tune: módulos root (thermal) saíram do pack\n'
     rm -rf "$HOME/.packotm/deep"
-    # não interativo e sem THERMAL_OK: deve recusar (código != 0)
-    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" thermal on </dev/null >/dev/null 2>&1
-    assert_eq "1" "$?" "thermal on sem confirmação é recusado"
-    # com THERMAL_OK=1: prossegue (sem zonas térmicas, apenas não aplica nada)
-    THERMAL_OK=1 OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" thermal on </dev/null >/dev/null 2>&1
-    assert_eq "0" "$?" "thermal on com THERMAL_OK=1 é aceito"
+    # thermal exigia root: não é mais um módulo válido
+    OTM_MODE=su sh "$ROOT/scripts/deep-tune.sh" thermal on </dev/null > "$TMP/th_out" 2>&1
+    assert_eq "1" "$?" "thermal on é recusado (módulo root removido)"
+    assert_contains "$TMP/th_out" "desconhecido" "deep-tune avisa que thermal não existe mais"
+    grep -q 'THERMAL_OK' "$ROOT/scripts/deep-tune.sh" \
+        && bad "deep-tune ainda tem a trava térmica (root)" || ok "deep-tune sem trava térmica (root)"
 }
 
 t_secret_scanner() {
@@ -1246,11 +1231,11 @@ t_dns() {
     OTM_MODE=local OTM_NO_COLOR=1 sh "$f" list > "$TMP/dns_list" 2>&1
     assert_contains "$TMP/dns_list" "adguard" "dns list mostra perfis"
     assert_contains "$TMP/dns_list" "Bloqueio de an" "dns list descreve bloqueio de anuncios"
-    st="$HOME/.packotm"; rm -f "$st/off.sh" "$st/on"
+    st="$HOME/.packotm"; rm -rf "$st/off.sh" "$st/on" "$st/undo" "$st/origins"
     OTM_MODE=local sh "$f" adguard >/dev/null 2>&1
     [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "dns.adguard-dns.com" ] \
         && ok "dns adguard grava o hostname DoT" || bad "nao gravou o hostname"
-    grep -q "private_dns_mode" "$st/off.sh" 2>/dev/null && ok "dns registra reversao" || bad "sem reversao"
+    grep -q "private_dns_mode" "$st/undo/dns.sh" 2>/dev/null && ok "dns registra reversao" || bad "sem reversao"
     OTM_MODE=local sh "$f" off >/dev/null 2>&1
     [ "$(cat "$TMP_STORE/global.private_dns_mode" 2>/dev/null)" = "opportunistic" ] \
         && ok "dns off volta para automatico" || bad "off nao restaurou"
@@ -1280,12 +1265,12 @@ t_dns() {
                 "adguard-unfiltered:unfiltered.adguard-dns.com" \
                 "cloudflare-security:security.cloudflare-dns.com"; do
         id="${pair%%:*}"; host="${pair#*:}"
-        rm -f "$st/off.sh" "$st/on"
+        rm -rf "$st/off.sh" "$st/on" "$st/undo" "$st/origins"
         OTM_MODE=local sh "$f" "$id" >/dev/null 2>&1
         [ "$(cat "$TMP_STORE/global.private_dns_specifier" 2>/dev/null)" = "$host" ] \
             && ok "dns $id grava $host" || bad "dns $id nao gravou ($host)"
     done
-    rm -f "$st/off.sh" "$st/on"
+    rm -rf "$st/off.sh" "$st/on" "$st/undo" "$st/origins"
 }
 
 t_new_scripts() {
@@ -1317,18 +1302,16 @@ t_new_scripts() {
     assert_contains "$TMP/pm_top" "processos" "proc-mgr top lista os processos"
     OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" info com.exemplo > "$TMP/pm_info" 2>&1
     grep -q 'não está rodando\|nao esta rodando\|Processos' "$TMP/pm_info" && ok "proc-mgr info responde por app" || bad "proc-mgr info mudo"
-    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" renice com.exemplo abc > "$TMP/pm_bad" 2>&1
-    assert_contains "$TMP/pm_bad" "uso:" "proc-mgr valida nice invalido"
-    # sem root, limitar RAM/CPU precisa avisar e nao aplicar
-    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" ram com.exemplo 512 > "$TMP/pm_ram" 2>&1
-    grep -q 'root' "$TMP/pm_ram" && ok "proc-mgr ram pede root" || bad "proc-mgr ram sem aviso de root"
-    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" status > "$TMP/pm_st" 2>&1
-    assert_contains "$TMP/pm_st" "aplicados" "proc-mgr status lista o que ha"
+    # renice/ram/cpu/freeze/status/restore exigiam root: saíram do proc-mgr
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" renice com.exemplo -5 > "$TMP/pm_bad" 2>&1
+    grep -qi 'módulo desconhecido\|uso:' "$TMP/pm_bad" \
+        && ok "proc-mgr não tem mais o comando renice (root)" || bad "proc-mgr ainda aceita renice"
+    grep -q 'require_root\|cmd_renice\|cmd_freeze' "$pf" \
+        && bad "proc-mgr ainda tem código root" || ok "proc-mgr sem código root"
     # --- registro no painel + app ---
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-             foreach (["doze.on","doze.off","doze.status","proc.top","proc.info","proc.ram",
-                       "proc.cpu","proc.renice","proc.freeze","proc.unfreeze","proc.status",
-                       "proc.restore","touch.latency"] as $id)
+             foreach (["doze.on","doze.off","doze.status","proc.top","proc.info",
+                       "touch.latency"] as $id)
                echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/pm_reg" 2>&1
     test ! -s "$TMP/pm_reg" && ok "novas acoes no registro do painel" || bad "registro: $(cat "$TMP/pm_reg")"
     php -r 'require "'"$ROOT"'/web/lib.php";
@@ -1347,7 +1330,7 @@ t_new_scripts() {
         && ok "app: statsImpl presente" || bad "app: sem statsImpl"
     grep -q 'startStats' "$ROOT/web/index.php" && ok "painel: liga o polling das metricas" || bad "painel: sem startStats"
     rm -rf "$HOME/.packotm"
-    unset TMP_CMD_LOG
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
 t_modules() {
@@ -1457,10 +1440,10 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 8 ] && ok "renderiza 8 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, resfriar)" \
-            || bad "grupos de escolha: $n_choice (esperado 8)"
+        [ "$n_choice" -eq 7 ] && ok "renderiza 7 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM)" \
+            || bad "grupos de escolha: $n_choice (esperado 7)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        [ "$n_opts" -eq 28 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 2 resfriar ($n_opts)" \
+        [ "$n_opts" -eq 28 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 2 extra ($n_opts)" \
             || bad "opções lado a lado: $n_opts (esperado 28)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
@@ -1496,20 +1479,19 @@ t_web() {
                  echo "sem_help=$n\n";' > "$TMP/web_help" 2>&1
         assert_contains "$TMP/web_help" "sem_help=0" "todas as ações têm explicação (help)"
         # novas categorias extremas e sem root estão no registro e no HTML
+        # os ajustes que exigiam root (ext.gpu, ext.turbo...) saíram; sobram os sem root
         php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-                 echo isset($a["ext.gpu"])?"gpu ":"", isset($a["ext.turbo"])?"turbo ":"",
-                      isset($a["adv.obscure"])?"adv\n":"";' > "$TMP/web_ext" 2>&1
-        assert_contains "$TMP/web_ext" "gpu turbo adv" "registro cobre extremos e avançado (sem root)"
-        php -r 'require "'"$ROOT"'/web/lib.php";
-                 $r=otm_run("ext.turbo",[],false);
-                 echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_extconf" 2>&1
-        assert_contains "$TMP/web_extconf" "PEDE" "modo extremo exige confirmação"
-        # as antigas categorias root/avançado foram unificadas em "Desempenho"
+                 $root=0; foreach ($a as $x) if (($x["risk"]??"")==="root") $root++;
+                 echo isset($a["adv.obscure"])?"adv ":"", isset($a["ext.gpu"])?"gpu ":"",
+                      isset($a["ext.turbo"])?"turbo ":"", "root=$root\n";' > "$TMP/web_ext" 2>&1
+        assert_contains "$TMP/web_ext" "adv" "registro mantém os ajustes avançados sem root"
+        assert_contains "$TMP/web_ext" "root=0" "nenhuma ação do painel exige root"
+        # o modo extremo (root) saiu; as ações sem root seguem agrupadas em Desempenho
         php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-                 foreach (["ext.turbo","ext.gpu","adv.obscure"] as $id)
-                   echo ($a[$id]["group"]==="Desempenho"?"ok ":"ERRO ");
+                 foreach (["adv.obscure","ext.display","ext.dexopt"] as $id)
+                   echo (isset($a[$id]) && $a[$id]["group"]!==""?"ok ":"ERRO ");
                  echo "\n";' > "$TMP/web_cat" 2>&1
-        assert_contains "$TMP/web_cat" "ok ok ok" "root/avançado agrupados em Desempenho"
+        assert_contains "$TMP/web_cat" "ok ok ok" "ajustes sem root agrupados corretamente"
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
         [ "$n_cards" -ge 110 ] && ok "index.php renderiza os cards novos ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
@@ -1658,7 +1640,7 @@ t_keepalive() {
     grep -q '"keep-alive.sh"' "$app" && ok "app: actions.json tem o anti-relog" || bad "app: actions.json sem anti-relog"
     grep -q '"keep.on"' "$app" && ok "app: catálogo tem a ação keep.on" || bad "app: catálogo sem keep.on"
     rm -rf "$HOME/.packotm"
-    unset TMP_CMD_LOG
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
 t_gameclean() {
@@ -1771,53 +1753,6 @@ t_ramboost() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
-t_cooldown() {
-    printf '\n  # resfriamento: limita CPU/GPU, baixa brilho e é reversível\n'
-    local f="$ROOT/scripts/cool-down.sh"
-    [ -f "$f" ] && ok "scripts/cool-down.sh existe" || { bad "cool-down.sh ausente"; return; }
-    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/co_help" 2>&1
-    assert_contains "$TMP/co_help" "RESFRIAMENTO\|resfriamento" "cool-down explica o que faz sem argumento"
-    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on bogus > "$TMP/co_bad" 2>&1
-    assert_contains "$TMP/co_bad" "inválido" "cool-down recusa modo inválido"
-    # sem root: recusa (é um modo que mexe no kernel)
-    rm -rf "$HOME/.packotm"
-    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" on >/dev/null 2>&1
-    assert_eq "1" "$?" "cool-down sem root é recusado"
-    # com root: aplica brilho, grava a reversão e desliga sozinho (sem vigia nos testes)
-    rm -rf "$HOME/.packotm"
-    printf '200' > "$TMP_STORE/system.screen_brightness"
-    printf '1' > "$TMP_STORE/system.screen_brightness_mode"
-    export TMP_CMD_LOG="$TMP/co.log" TMP_AM_LOG="$TMP/co.log" TMP_PM_LOG="$TMP/co.log"
-    : > "$TMP_CMD_LOG"
-    OTM_NO_COLOR=1 OTM_MODE=su OTM_COOL_NOWATCH=1 sh "$f" on normal > "$TMP/co_on" 2>&1
-    assert_contains "$TMP_STORE/system.screen_brightness" "40" "cool-down baixa o brilho"
-    assert_contains "$TMP_STORE/system.screen_brightness_mode" "0" "cool-down tira o brilho automático"
-    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" && ok "cool-down encerra o fundo" || bad "cool-down não encerrou o fundo"
-    assert_contains "$TMP/co_on" "resfriamento ligado" "cool-down confirma que ligou"
-    [ -s "$HOME/.packotm/cooldown/off.sh" ] && ok "cool-down guarda a reversão" || bad "cool-down sem reversão"
-    # status mostra ligado
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/co_st" 2>&1
-    assert_contains "$TMP/co_st" "LIGADO" "cool-down status mostra ligado"
-    # off devolve o brilho original
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" off > "$TMP/co_off" 2>&1
-    assert_contains "$TMP_STORE/system.screen_brightness" "200" "cool-down off devolve o brilho"
-    [ -f "$HOME/.packotm/cooldown/on" ] && bad "cool-down off deixou o marcador" || ok "cool-down off limpa o marcador"
-    # registro no painel + whitelist + catálogo
-    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-             foreach (["cool.normal","cool.max","cool.off","cool.status"] as $id) echo isset($a[$id]) ? "" : "FALTA:$id ";' \
-        > "$TMP/co_reg" 2>&1
-    test ! -s "$TMP/co_reg" && ok "ações de resfriamento no registro do painel" || bad "registro: $(cat "$TMP/co_reg")"
-    php -r 'require "'"$ROOT"'/web/lib.php";
-             echo in_array("cool-down.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/co_lib" 2>&1
-    assert_contains "$TMP/co_lib" "ok" "cool-down.sh na whitelist"
-    php -r 'require "'"$ROOT"'/web/lib.php"; echo isset(otm_choices()["cooldown"]) ? "ok":"falta";' > "$TMP/co_ch" 2>&1
-    assert_contains "$TMP/co_ch" "ok" "grupo de escolha cooldown declarado"
-    grep -q '"cool-down.sh"' "$ROOT/app/src/main/assets/panel/actions.json" \
-        && ok "app: actions.json tem o Resfriar" || bad "app: actions.json sem cool-down"
-    rm -rf "$HOME/.packotm"
-    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
-}
-
 t_clean() {
     printf '\n  # clean: motor único de limpeza (fundo/suave/normal) + scan + off\n'
     local f="$ROOT/scripts/clean.sh"
@@ -1855,11 +1790,10 @@ t_clean() {
     assert_contains "$TMP_STORE/global.device_idle_constants" "light_after_inactive_to" "clean suave afina o doze"
     assert_contains "$HOME/.packotm/clean/applied" "suave" "clean grava a fase aplicada"
     assert_contains "$TMP/cl_suave" "Clean pronto" "clean conclui com o resumo"
-    # normal com root: também delega a suavização profunda (freq/gpu/...) ao deep-tune
+    # a fase 'normal' (suavização profunda root) saiu: agora só fundo|suave
     rm -rf "$HOME/.packotm"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now normal > "$TMP/cl_normal" 2>&1
-    [ -f "$HOME/.packotm/deep/on" ] && ok "clean normal aciona a suavização profunda (deep-tune)" \
-        || bad "clean normal não acionou o deep-tune"
+    assert_contains "$TMP/cl_normal" "inválida" "clean recusa a fase 'normal' (era root)"
     # status + off (desfaz a suavização)
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/cl_st" 2>&1
     assert_contains "$TMP/cl_st" "CLEAN" "clean status mostra o resumo"
@@ -1868,11 +1802,12 @@ t_clean() {
     # integração: adb-tweaks delega ao clean e expõe os grupos novos
     OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" list > "$TMP/cl_list" 2>&1
     assert_contains "$TMP/cl_list" "clean_scan" "adb-tweaks lista o grupo clean_scan"
-    assert_contains "$TMP/cl_list" "clean_deep" "adb-tweaks lista o grupo clean_deep"
+    grep -q 'clean_deep' "$TMP/cl_list" && bad "grupo clean_deep (root) ainda existe" \
+        || ok "grupo clean_deep (root) removido"
     grep -q 'aot' "$TMP/cl_list" && bad "grupo aot (root/placebo) ainda existe" || ok "grupo aot removido"
     # registro no painel + whitelist + catálogo
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-             foreach (["clean","clean.scan","clean.deep","clean.undo"] as $id) echo isset($a[$id]) ? "" : "FALTA:$id ";' \
+             foreach (["clean","clean.scan","clean.undo"] as $id) echo isset($a[$id]) ? "" : "FALTA:$id ";' \
         > "$TMP/cl_reg" 2>&1
     test ! -s "$TMP/cl_reg" && ok "ações do Clean no registro do painel" || bad "registro: $(cat "$TMP/cl_reg")"
     php -r 'require "'"$ROOT"'/web/lib.php";
@@ -1884,9 +1819,121 @@ t_clean() {
     grep -q '"clean.sh"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o Clean" || bad "app: actions.json sem clean.sh"
     grep -q '"clean.deep"' "$ROOT/app/src/main/assets/panel/actions.json" \
-        && ok "app: actions.json tem o Clean profundo" || bad "app: actions.json sem clean.deep"
+        && bad "app: actions.json ainda tem clean.deep (root)" || ok "app: actions.json sem clean.deep"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_privilege_detect() {
+    printf '\n  # privilégio: processo que já é shell (Shizuku/ADB) não pode ser recusado\n'
+    # O app roda os scripts pelo Shizuku: o processo JÁ nasce como uid 2000 e não
+    # existe `rish`/`adb` no PATH. Antes o pack se dizia "sem shell" e o botão
+    # "Clean Phone" falhava sempre, mesmo com o Shizuku conectado.
+    local ub="$TMP/uidbin"; mkdir -p "$ub"
+    printf '#!/bin/sh\necho 2000\n' > "$ub/id"; chmod +x "$ub/id"
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/pd.log" TMP_AM_LOG="$TMP/pd.log" TMP_PM_LOG="$TMP/pd.log"
+    : > "$TMP_CMD_LOG"
+    out="$(PATH="$ub:$PATH" OTM_NO_COLOR=1 sh "$ROOT/scripts/adb-tweaks.sh" clean 2>&1)"
+    printf '%s' "$out" | grep -q 'sem permissão de shell' \
+        && bad "uid 2000 (Shizuku) recusado como se não tivesse shell" \
+        || ok "uid 2000 (Shizuku/ADB) é aceito como shell"
+    grep -q 'trim-caches' "$TMP_CMD_LOG" && ok "uid 2000 realmente executa a limpeza" \
+        || bad "uid 2000 não executou a limpeza"
+    PATH="$ub:$PATH" OTM_NO_COLOR=1 sh "$ROOT/scripts/config.sh" show 2>&1 | grep -q 'direct' \
+        && ok "config.sh reporta o modo direct" || bad "config.sh não detecta o modo direct"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_undo_scope() {
+    printf '\n  # reversão por escopo: desfazer uma ação não apaga o que outra aplicou\n'
+    rm -rf "$HOME/.packotm"
+    printf '0.5' > "$TMP_STORE/global.window_animation_scale"   # valor original do aparelho
+    export TMP_CMD_LOG="$TMP/us.log"; : > "$TMP_CMD_LOG"
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/clean.sh" now suave >/dev/null 2>&1
+    assert_eq "0" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "clean zera as animações"
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/adb-tweaks.sh" perf >/dev/null 2>&1
+    assert_eq "0.5" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "performance põe 0.5x"
+    # desfazer SÓ o clean não pode tocar no que o performance aplicou
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/clean.sh" off >/dev/null 2>&1
+    assert_eq "0.5" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "clean off preserva o 0.5x do performance"
+    [ -s "$HOME/.packotm/undo/adb-tweaks.sh" ] && ok "performance mantém a própria reversão" \
+        || bad "performance perdeu a reversão"
+    # restaurar tudo volta ao valor ORIGINAL do aparelho (não ao de outra ação)
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
+    assert_eq "0.5" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "restore_all volta ao valor original do aparelho"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_undo_scopes_declared() {
+    printf '\n  # todo script que guarda reversão declara o próprio escopo\n'
+    for f in "$ROOT"/scripts/*.sh; do
+        b="$(basename "$f")"
+        [ "$b" = "common.sh" ] && continue
+        grep -q 'bkp_set\|bkp_raw' "$f" || continue
+        grep -q 'scope_begin' "$f" && ok "$b isola a reversão (scope_begin)" \
+            || bad "$b guarda reversão sem scope_begin"
+    done
+}
+
+t_no_silent_conflicts() {
+    printf '\n  # conflitos entre ações: mesma chave, valores divergentes ficam explícitos\n'
+    # Duas ações que escrevem a MESMA chave com valores diferentes se atropelam:
+    # aplicar uma depois da outra deixa o aparelho num estado misto (era a causa
+    # do "mais engasgado do que fluido"). Aqui os pares conhecidos e INTENCIONAIS
+    # ficam declarados; qualquer par novo que apareça quebra o teste.
+    local allow="
+        global activity_manager_constants
+        global animator_duration_scale
+        global transition_animation_scale
+        global window_animation_scale
+        global heads_up_notifications_enabled
+        global notification_bubbles
+        global low_power
+        global app_standby_enabled
+        global adaptive_battery_management_enabled
+        global private_dns_mode
+        global private_dns_specifier
+        global settings_enable_monitor_phantom_procs
+        global wifi_scan_always_enabled
+        global ble_scan_always_enabled
+        system peak_refresh_rate
+        system min_refresh_rate
+        system long_press_timeout
+        system multi_press_timeout
+        system pointer_speed
+    "
+    python3 - "$ROOT" "$allow" <<'PYEOF' > "$TMP/conf"
+import re,sys,glob,collections,os
+root=sys.argv[1]
+allow=set(x.strip() for x in sys.argv[2].split('\n') if x.strip())
+keys=collections.defaultdict(lambda: collections.defaultdict(set))
+for f in glob.glob(os.path.join(root,'scripts','*.sh')):
+    for ln,l in enumerate(open(f,encoding='utf-8',errors='ignore'),1):
+        m=re.search(r'bkp_set\s+(\S+)\s+(\S+)\s+(.+?)\s*$', l)
+        if not m: continue
+        ns,k,v=m.group(1),m.group(2).strip('"'),m.group(3).strip()
+        if ns.startswith('$'): continue
+        keys[ns+' '+k][os.path.basename(f)].add(v)
+for k,d in sorted(keys.items()):
+    vals=set()
+    for vs in d.values(): vals|=vs
+    if len(vals)>1 and k not in allow:
+        print("NOVO_CONFLITO", k, sorted(d))
+PYEOF
+    if [ -s "$TMP/conf" ]; then
+        bad "surgiram conflitos não declarados entre ações: $(head -1 "$TMP/conf")"
+    else
+        ok "nenhum conflito silencioso novo entre ações"
+    fi
+    # as chaves compartilhadas continuam sendo gravadas por quem deveria
+    grep -q 'window_animation_scale' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "animações seguem em adb-tweaks.sh" || bad "animações sumiram do adb-tweaks"
 }
 
 t_license() {
@@ -1928,7 +1975,11 @@ t_license() {
         echo License::verify($lease) ? "ASSINA_OK " : "ASSINA_FALHOU ";
         echo ($c["o"] !== "" && $c["g"] === 7) ? "PRAZO_OK " : "PRAZO_RUIM ";
         echo ($c["h"] === (string)$row["key_hash"]) ? "HASH_OK " : "HASH_RUIM ";
-        $bad = $lease; $bad[strlen($bad)-1] = $bad[strlen($bad)-1] === "A" ? "B" : "A";
+        // Adultera a 1ª letra da assinatura (não o último char: em base64url os
+        // bits baixos do último caractere são ignorados, e o "estragado"
+        // decodificava igual — o teste ficava intermitente).
+        $dot = strrpos($lease, "."); $bad = $lease;
+        $bad[$dot+1] = $bad[$dot+1] === "A" ? "B" : "A";
         echo License::verify($bad) ? "ADULTERADO_ACEITO " : "ADULTERADO_RECUSADO ";
     ' "$ROOT/panel" > "$TMP/licout" 2>&1
     assert_contains "$TMP/licout" "ASSINA_OK" "licença assinada confere"
@@ -1994,6 +2045,7 @@ t_config
 t_auth
 t_panel_db
 t_noroot_only
+t_pack_scripts_mirror
 t_app_login
 t_app_exec
 t_app_fixes
@@ -2022,8 +2074,11 @@ t_panel_v219
 t_keepalive
 t_gameclean
 t_ramboost
-t_cooldown
 t_clean
+t_privilege_detect
+t_undo_scope
+t_undo_scopes_declared
+t_no_silent_conflicts
 t_license
 t_pack
 
