@@ -112,12 +112,12 @@ Estrutura:
 
 ```
 panel/
-  bin/          CLIs: admin.php, key.php, migrate.php
-  config/       config.php, turso.php (segredo, fora do git), local.php
+  bin/          CLIs: admin.php, key.php, migrate.php, license.php
+  config/       config.php, turso.php (segredo, fora do git), license.php (idem), local.php
   database/     migrations/*.sql (0001..0005)
   public/       páginas (login, index, keys, key_view, plans, events, audit, settings, admins, export)
   public/api/   validate.php (o app chama), hashes.php (sync offline)
-  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), KeyService, Auth, Audit, Helpers
+  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), KeyService, Auth, Audit, License, Helpers
 ```
 
 Regras:
@@ -168,6 +168,35 @@ Regras:
   `sync_token` (guardado em `otm_settings`), senão devolve 403.
 - `bin/key.php sync --out ...` gera o `app/src/main/assets/panel/keys.json` (só hashes).
   Rode antes de gerar o APK. O `main.sh web key sync` faz o mesmo.
+
+#### Licença offline (uso sem internet, mas sem "grátis para sempre")
+
+O `keys.json` diz "esta chave existe", não "esta chave ainda vale" — por isso ele sozinho
+deixaria o app funcionar para sempre offline. O que resolve é um **bilhete assinado**
+(*lease*) que o app guarda no aparelho:
+
+- **Formato:** `OTM1.<payload_base64url>.<assinatura_base64url>`. O payload é JSON de
+  chaves curtas: `h` hash da chave, `k` id, `l` nome, `d` aparelho, `e` validade,
+  `i` emitido em, `o` fim do uso offline, `g` dias de folga, `m`/`u` usos.
+- **Assinatura Ed25519** (`panel/src/License.php` via sodium; conferida no app por
+  `License.kt` com BouncyCastle). Chave privada em `panel/config/license.php` (fora do
+  git), pública embarcada no APK (`-PotmLicensePub=...` → `BuildConfig.LICENSE_PUB`).
+  Ed25519, e não HMAC, porque num HMAC o segredo teria que viajar no APK — e aí qualquer
+  um forjaria licença só lendo o binário.
+- **Fluxo:** `api/validate.php` devolve `lease` + `offline_days` quando a chave passa.
+  `KeyGate` guarda o bilhete e, sem rede, confere sozinho (assinatura, aparelho, prazo).
+- **Anti-"grátis infinito":** o bilhete carrega o prazo (`o`). Vencido, o app tranca e
+  pede nova validação — que exige internet. O `KeyGate.sessionOk()` roda a cada abertura
+  do app (`PanelActivity`), senão o "unlocked" ficaria ligado para sempre.
+- **Anti-volta-do-relógio:** o app guarda a maior hora já vista (do `server_time` do
+  painel e do relógio local) em `PREF_MAX_SEEN`. Relógio para trás além da tolerância
+  (`CLOCK_TOLERANCE`, 1h) = adulteração, licença recusada. Sem isso bastava voltar a data.
+- **Prazo offline** é ajuste do painel (*Dias de uso offline*, `otm_settings.offline_days`,
+  padrão 7). Chave vitalícia **também** ganha prazo offline — não existe "para sempre".
+- **Comandos:** `php panel/bin/license.php keygen|show|verify|decode`. Trocar o par
+  (`keygen --force`) invalida todas as licenças já emitidas — só faça antes de distribuir.
+- Se a licença não estiver configurada (sem chave pública no APK), o app cai no modo
+  antigo (lista de hashes), sem prazo. Nada quebra.
 - Páginas do painel exigem **login de administrador** (`otm_admins`, senha com
   `password_hash`) + **CSRF**. Crie o primeiro com
   `php panel/bin/admin.php add SEU_USUARIO --role owner`.

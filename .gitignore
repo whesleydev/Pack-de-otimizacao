@@ -45,6 +45,7 @@ apps_otm.zip
 
 # credenciais locais do painel (nunca versionar)
 panel/config/turso.php
+panel/config/license.php
 panel/config/*.local.php
 
 # banco local do painel (modo offline/dev)

@@ -48,13 +48,18 @@ class PanelActivity : AppCompatActivity() {
 
         // A capa inicial depende do estado: sem chave validada ela é a tela da
         // chave; com a chave já validada, é a tela do método de conexão.
-        overlay = if (KeyGate.isUnlocked(this)) buildOverlay() else buildKeyOverlay()
+        // `sessionOk` revalida a licença guardada: se o prazo offline venceu (ou
+        // o relógio andou para trás), volta para a tela da chave em vez de deixar
+        // passar — é o que impede o uso grátis infinito.
+        overlay = if (KeyGate.sessionOk(this).ok) buildOverlay() else buildKeyOverlay()
         root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
         setContentView(root)
 
         // Fluxo de entrada: primeiro a chave, depois o método de conexão.
-        // A chave fica lembrada (SharedPreferences), então só pede na 1ª vez.
-        if (KeyGate.isUnlocked(this)) {
+        // A chave fica lembrada (SharedPreferences), mas a licença é reconferida
+        // a cada abertura (ver `sessionOk`), então o app pede a chave de novo
+        // quando o prazo offline acaba.
+        if (KeyGate.sessionOk(this).ok) {
             overlay.visibility = View.GONE
             // Já com a chave validada: se o Shizuku já está autorizado, conecta direto.
             if (shizuku.isAvailable() && shizuku.hasPermission()) {
@@ -281,6 +286,30 @@ class PanelActivity : AppCompatActivity() {
             setPadding(0, dp(8), 0, 0)
         }
         box.addView(keyError)
+        // Situação da licença guardada: mostra validade e quanto ainda dá para
+        // usar sem internet. É o que o usuário precisa saber para não ser
+        // pego de surpresa quando o prazo offline acabar.
+        val info = KeyGate.leaseInfo(this)
+        if (info != null) {
+            val now = System.currentTimeMillis() / 1000L
+            val linhas = ArrayList<String>()
+            if (info.label.isNotBlank()) linhas.add("Chave: ${info.label}")
+            if (info.expiresAt.isNotBlank()) {
+                linhas.add("Vale até ${info.expiresAt} (${License.daysUntil(info.expiresAt, now)} dia(s))")
+            } else {
+                linhas.add("Chave vitalícia")
+            }
+            if (info.offlineUntil.isNotBlank()) {
+                linhas.add("Sem internet, funciona por mais ${License.daysUntil(info.offlineUntil, now)} dia(s)")
+            }
+            box.addView(android.widget.TextView(this).apply {
+                text = linhas.joinToString("\n")
+                setTextColor(Color.parseColor("#A49D90"))
+                textSize = 12f
+                gravity = android.view.Gravity.CENTER
+                setPadding(0, dp(10), 0, 0)
+            })
+        }
         box.addView(android.widget.Space(this), lp(dp(14)))
         keySubmitBtn = Button(this).apply {
             text = "Validar chave"
@@ -369,6 +398,7 @@ class PanelActivity : AppCompatActivity() {
     /** Volta para a tela da chave (para trocar a chave já validada). */
     private fun showKeyScreen() {
         KeyGate.lock(this)
+        KeyGate.forgetLease(this) // troca de chave: a licença antiga não vale mais
         val nova = buildKeyOverlay()
         root.removeView(overlay)
         overlay = nova

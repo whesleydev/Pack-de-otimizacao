@@ -39,6 +39,11 @@ object KeyGate {
     private const val PREF_SYNC_AT = "offline_sync_at"
     private const val PREF_URL = "api_url"
     private const val PREF_SYNC_TOKEN = "sync_token"
+    private const val PREF_LEASE = "offline_lease"
+    private const val PREF_MAX_SEEN = "max_seen_epoch"
+
+    /** Tolerância de relógio (segundos) antes de acusar adulteração. */
+    private const val CLOCK_TOLERANCE = 3600L
 
     /** Resultado da verificação: o que aconteceu e o que mostrar ao usuário. */
     data class Result(
@@ -172,6 +177,12 @@ object KeyGate {
             if (ok) {
                 unlock(c)
                 rememberOffline(c, hash(raw))
+                // Licença assinada (quando o painel está configurado): guarda no
+                // aparelho para valer sem internet, com prazo. O "server_time"
+                // vira a régua: se o relógio local andar para trás, recusamos.
+                val lease = j.optString("lease", "")
+                if (lease.isNotEmpty()) saveLease(c, lease)
+                markSeen(c, License.epoch(j.optString("server_time", "")))
             }
             Result(ok, status, friendly(status, j.optString("message", "")))
         } catch (_: Throwable) {
@@ -179,20 +190,73 @@ object KeyGate {
         }
     }
 
-    /** Sem internet: confere contra a lista local de hashes ativos. */
+    /** Sem internet: confere a licença assinada guardada; senão, a lista de hashes. */
     private fun checkOffline(c: Context, raw: String): Result {
+        val h = hash(raw)
+
+        // 1) licença assinada (o caminho novo, com validade e prazo offline)
+        if (License.isConfigured()) {
+            val lease = findLease(c, h)
+            if (lease != null) return checkLease(c, lease)
+        }
+
+        // 2) lista de hashes (modo antigo, sem validade local)
         val hs = offlineHashes(c)
         if (hs.isEmpty()) {
             return Result(false, "offline_no_list",
-                "Sem internet e sem lista de chaves salva. Conecte-se uma vez para validar.",
+                "Sem internet e sem licença salva. Conecte-se uma vez para validar.",
                 offline = true)
         }
-        return if (hs.contains(hash(raw))) {
+        return if (hs.contains(h)) {
             unlock(c)
             Result(true, "offline_ok", "Chave válida (modo offline).", offline = true)
         } else {
             Result(false, "unknown", "Chave não reconhecida. Confira com quem te passou.", offline = true)
         }
+    }
+
+    /** Confere uma licença guardada: aparelho, relógio, validade e prazo offline. */
+    private fun checkLease(c: Context, cl: License.Claims): Result {
+        val now = System.currentTimeMillis() / 1000L
+
+        // Aparelho diferente: a licença é daquele aparelho, não deste.
+        if (cl.deviceId.isNotEmpty() && cl.deviceId != deviceId(c)) {
+            return Result(false, "unknown",
+                "Esta licença é de outro aparelho. Conecte-se para validar aqui.", offline = true)
+        }
+
+        // Relógio para trás: sinal de adulteração — a licença não vale.
+        val seen = prefs(c).getLong(PREF_MAX_SEEN, 0L)
+        if (seen > 0 && now < seen - CLOCK_TOLERANCE) {
+            return Result(false, "clock",
+                "A data do aparelho está errada. Ajuste o relógio e tente de novo.", offline = true)
+        }
+        markSeen(c, now)
+
+        // Prazo offline: depois disso precisa conectar de novo (não é grátis infinito).
+        val until = License.epoch(cl.offlineUntil)
+        if (until in 1 until now) {
+            val dias = cl.graceDays
+            return Result(false, "offline_expired",
+                "Sua licença precisa de internet: faz mais de $dias dia(s) da última validação. " +
+                    "Conecte-se para continuar.", offline = true)
+        }
+
+        // Validade da chave (redundante com o prazo, mas dá a mensagem certa).
+        val exp = License.epoch(cl.expiresAt)
+        if (exp in 1 until now) {
+            return Result(false, "expired", "Sua chave expirou. Fale com o suporte para renovar.", offline = true)
+        }
+
+        // Limite de usos já batido quando o servidor emitiu o bilhete.
+        if (cl.maxUses > 0 && cl.usesCount >= cl.maxUses) {
+            return Result(false, "use_limit", "Esta chave atingiu o limite de usos.", offline = true)
+        }
+
+        unlock(c)
+        val left = if (until > 0) License.daysUntil(cl.offlineUntil, now) else 0
+        val msg = if (left > 0) "Chave válida (offline por mais $left dia(s))." else "Chave válida (modo offline)."
+        return Result(true, "offline_ok", msg, offline = true)
     }
 
     private fun friendly(status: String, serverMsg: String): String = when (status) {
@@ -206,6 +270,59 @@ object KeyGate {
         "rate_limit"   -> "Muitas tentativas. Aguarde um instante e tente de novo."
         "server_error" -> "Servidor indisponível agora. Tente de novo em instantes."
         else           -> serverMsg.ifBlank { "Não consegui validar a chave agora." }
+    }
+
+    // -------------------------------------------------------------------------
+    //  licença assinada (offline com prazo)
+    // -------------------------------------------------------------------------
+
+    /** Guarda a licença assinada no aparelho. */
+    private fun saveLease(c: Context, lease: String) {
+        prefs(c).edit().putString(PREF_LEASE, lease).apply()
+    }
+
+    /** Devolve a licença guardada se ela for desta chave e a assinatura conferir. */
+    private fun findLease(c: Context, keyHash: String): License.Claims? {
+        val raw = prefs(c).getString(PREF_LEASE, "") ?: ""
+        if (raw.isEmpty()) return null
+        val cl = License.verify(raw) ?: return null
+        return if (cl.keyHash == keyHash) cl else null
+    }
+
+    /** Guarda a maior hora já vista (do servidor ou local) — trava o relógio. */
+    private fun markSeen(c: Context, epoch: Long) {
+        if (epoch <= 0) return
+        val cur = prefs(c).getLong(PREF_MAX_SEEN, 0L)
+        if (epoch > cur) prefs(c).edit().putLong(PREF_MAX_SEEN, epoch).apply()
+    }
+
+    /** Licença guardada (para mostrar na tela). Null se não houver. */
+    fun leaseInfo(c: Context): License.Claims? {
+        val raw = prefs(c).getString(PREF_LEASE, "") ?: ""
+        return if (raw.isEmpty()) null else License.verify(raw)
+    }
+
+    /** Descarta a licença guardada (troca de chave / "sair"). */
+    fun forgetLease(c: Context) {
+        prefs(c).edit().remove(PREF_LEASE).apply()
+    }
+
+    /**
+     * Revalida a entrada a cada abertura do app.
+     *
+     * Sem isto o "unlocked" ficava ligado para sempre e o prazo offline nunca
+     * valia na prática — bastava validar uma vez. Aqui, se a licença guardada
+     * venceu (ou o relógio andou para trás), o app tranca e pede para validar
+     * de novo (o que exige internet quando o prazo acabou).
+     */
+    fun sessionOk(c: Context): Result {
+        if (!isUnlocked(c)) return Result(false, "locked", "Informe a sua chave.")
+        // Sem licença configurada/guardada: mantém o comportamento antigo.
+        if (!License.isConfigured()) return Result(true, "ok", "")
+        val cl = leaseInfo(c) ?: return Result(true, "ok", "")
+        val r = checkLease(c, cl)
+        if (!r.ok) lock(c)
+        return r
     }
 
     // -------------------------------------------------------------------------

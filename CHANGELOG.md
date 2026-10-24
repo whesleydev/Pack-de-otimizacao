@@ -5,6 +5,13 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+- **Licença offline assinada (Ed25519).** O app guarda no aparelho um bilhete assinado
+  (`OTM1.<payload>.<assinatura>`) com a validade da chave e um prazo de uso sem internet.
+  A assinatura é feita no servidor com a chave privada (`panel/config/license.php`, fora do
+  git); o APK embarca só a pública. Assim o app valida offline sem poder ser burlado, e o
+  uso "grátis para sempre" não acontece: passado o prazo (ajuste *Dias de uso offline*), o
+  app exige conexão de novo. Relógio para trás é tratado como adulteração e tranca o app.
+
 ### Adicionado
 - **Painel de licenças com banco (Turso/libSQL).** O painel PHP (`panel/`) guarda as
   chaves num banco de verdade, com planos, aparelhos, histórico de tentativas e auditoria.

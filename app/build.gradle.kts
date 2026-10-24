@@ -22,6 +22,12 @@ android {
         // Segredo do endpoint de hashes (validação offline). Opcional.
         val syncToken = (project.findProperty("otmSyncToken") as String?) ?: ""
         buildConfigField("String", "SYNC_TOKEN", "\"$syncToken\"")
+        // Chave PÚBLICA Ed25519 da licença offline (base64). Gere com
+        // "php panel/bin/license.php keygen" e passe no build:
+        //   -PotmLicensePub=<chave>
+        // Vazia = o app só valida online (sem licença offline assinada).
+        val licensePub = (project.findProperty("otmLicensePub") as String?) ?: ""
+        buildConfigField("String", "LICENSE_PUB", "\"$licensePub\"")
     }
 
     signingConfigs {
@@ -96,4 +102,7 @@ dependencies {
     implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
     implementation("com.github.MuntashirAkon:sun-security-android:1.1")
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
+    // Ed25519 para conferir a licença offline (License.kt). Vem junto do
+    // bcpkix, mas declarado aqui para não depender da transitividade.
+    implementation("org.bouncycastle:bcprov-jdk15to18:1.81")
 }

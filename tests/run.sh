@@ -1889,6 +1889,74 @@ t_clean() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_license() {
+    printf '\n  # licença offline assinada (Ed25519)\n'
+    if ! command -v php >/dev/null 2>&1; then
+        printf '  [skip] php ausente: pulei os testes da licença\n'; return 0
+    fi
+    if ! php -m 2>/dev/null | grep -qi sodium; then
+        printf '  [skip] ext-sodium ausente: pulei os testes da licença\n'; return 0
+    fi
+
+    local dbf="$TMP/lic.sqlite" kf="$TMP/lic-keys.php"
+    rm -f "$dbf"* "$kf"
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/migrate.php" >/dev/null 2>&1
+    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Lic Teste" --days 30 --json > "$TMP/lick" 2>&1
+    local k
+    k="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/lick" 2>/dev/null)"
+    [ -n "$k" ] && ok "chave criada para o teste da licença" || { bad "não criei a chave da licença"; return; }
+
+    # par de chaves próprio do teste (não usa o do servidor real)
+    OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $kp = sodium_crypto_sign_keypair();
+        $pub = base64_encode(sodium_crypto_sign_publickey($kp));
+        $sec = base64_encode(sodium_crypto_sign_secretkey($kp));
+        file_put_contents($argv[2], "<?php return ".var_export(["public"=>$pub,"secret"=>$sec], true).";");
+        echo $pub;
+    ' "$ROOT/panel" "$kf" > "$TMP/licpub" 2>&1
+    local pub
+    pub="$(cat "$TMP/licpub")"
+
+    # emissão + verificação com a chave do próprio teste
+    OTM_LICENSE_PUBLIC="$pub" OTM_LICENSE_SECRET="$(php -r '$c=require $argv[1]; echo $c["secret"];' "$kf")" \
+    OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $row = otm_db()->one("SELECT * FROM otm_keys WHERE id = 1");
+        $c = License::claimsFor($row, ["device_id"=>"dev-X"], 7);
+        $lease = License::issue($c);
+        echo License::verify($lease) ? "ASSINA_OK " : "ASSINA_FALHOU ";
+        echo ($c["o"] !== "" && $c["g"] === 7) ? "PRAZO_OK " : "PRAZO_RUIM ";
+        echo ($c["h"] === (string)$row["key_hash"]) ? "HASH_OK " : "HASH_RUIM ";
+        $bad = $lease; $bad[strlen($bad)-1] = $bad[strlen($bad)-1] === "A" ? "B" : "A";
+        echo License::verify($bad) ? "ADULTERADO_ACEITO " : "ADULTERADO_RECUSADO ";
+    ' "$ROOT/panel" > "$TMP/licout" 2>&1
+    assert_contains "$TMP/licout" "ASSINA_OK" "licença assinada confere"
+    assert_contains "$TMP/licout" "PRAZO_OK" "licença carrega o prazo offline"
+    assert_contains "$TMP/licout" "HASH_OK" "licença amarra o hash da chave"
+    assert_contains "$TMP/licout" "ADULTERADO_RECUSADO" "licença adulterada é recusada"
+
+    # chave vitalícia ainda ganha prazo offline (não é "grátis para sempre")
+    OTM_LICENSE_PUBLIC="$pub" OTM_LICENSE_SECRET="$(php -r '$c=require $argv[1]; echo $c["secret"];' "$kf")" \
+    OTM_LOCAL_DB="$dbf" php -r '
+        require $argv[1]."/src/bootstrap.php";
+        $row = otm_db()->one("SELECT * FROM otm_keys WHERE id = 1");
+        $row["expires_at"] = null; $row["max_uses"] = 0;
+        $c = License::claimsFor($row, [], 7);
+        echo ($c["e"] === "" && $c["o"] !== "") ? "VITALICIO_COM_PRAZO" : "VITALICIO_SEM_PRAZO";
+    ' "$ROOT/panel" > "$TMP/licv" 2>&1
+    assert_contains "$TMP/licv" "VITALICIO_COM_PRAZO" "chave vitalícia ainda expira offline"
+
+    # o CLI de licença: keygen + decode (fora do config/ de verdade)
+    OTM_LICENSE_FILE="$TMP/lic-keygen.php" OTM_LOCAL_DB="$dbf" \
+        php "$ROOT/panel/bin/license.php" keygen --force > "$TMP/lickg" 2>&1
+    assert_contains "$TMP/lickg" "par Ed25519 criado" "license.php keygen cria o par"
+    assert_contains "$TMP/lickg" "chave pública" "keygen mostra a chave pública"
+
+    # hashes.php não pode vazar a chave em texto
+    assert_not_contains "$TMP/licout" "$k" "licença não carrega a chave em texto"
+}
+
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
     f="$ROOT/scripts/pack.sh"
@@ -1956,6 +2024,7 @@ t_gameclean
 t_ramboost
 t_cooldown
 t_clean
+t_license
 t_pack
 
 printf '\n  --------------------------------------------------\n'

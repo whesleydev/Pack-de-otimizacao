@@ -15,6 +15,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'default_days'    => (string)otm_int($_POST['default_days'] ?? 30),
         'default_devices' => (string)otm_int($_POST['default_devices'] ?? 1),
         'require_device'  => otm_int($_POST['require_device'] ?? 0) ? '1' : '0',
+        'offline_days'    => (string)max(1, otm_int($_POST['offline_days'] ?? 7)),
     ];
     // O segredo de sincronização só muda quando o campo vem preenchido: assim
     // salvar os outros ajustes não apaga o segredo sem querer.
@@ -66,6 +67,12 @@ require __DIR__ . '/../src/layout.php';
             <option value="0"<?= ($cfg['require_device'] ?? '1') === '0' ? ' selected' : '' ?>>não</option>
           </select>
           <span class="hint">o app manda o id do aparelho na validação</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="fld narrow"><label>Dias de uso offline</label>
+          <input type="number" name="offline_days" min="1" value="<?= otm_e($cfg['offline_days'] ?? '7') ?>">
+          <span class="hint">por quantos dias o app aceita a licença sem internet desde a última validação. Passou disso, precisa conectar de novo.</span>
         </div>
       </div>
       <div class="row">

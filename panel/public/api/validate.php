@@ -65,7 +65,7 @@ try {
         'app_version' => (string)($in['app'] ?? $in['app_version'] ?? ''),
     ], $ip);
 
-    otm_json([
+    $out = [
         'ok'         => $res['ok'],
         'result'     => $res['result'],
         'message'    => $res['message'],
@@ -73,7 +73,29 @@ try {
         'expires_at' => $res['expires_at'],
         'days_left'  => $res['days_left'],
         'server_time' => otm_now(),
-    ]);
+    ];
+
+    // Licença offline assinada: o app guarda e confere sozinho quando estiver
+    // sem internet. Só sai quando a chave passou; se a licença não estiver
+    // configurada, o app segue com o modo offline antigo (lista de hashes).
+    if ($res['ok']) {
+        try {
+            $cfg   = [];
+            foreach ($db->all('SELECT key, value FROM otm_settings') as $r) $cfg[(string)$r['key']] = (string)$r['value'];
+            $grace = max(1, (int)($cfg['offline_days'] ?? 7));
+            $row   = $db->one('SELECT * FROM otm_keys WHERE id = ?', [(int)$res['key_id']]);
+            if ($row) {
+                $out['lease'] = License::issue(License::claimsFor($row, [
+                    'device_id' => (string)($in['device_id'] ?? ''),
+                ], $grace));
+                $out['offline_days'] = $grace;
+            }
+        } catch (Throwable $e) {
+            error_log('[otm lease] ' . $e->getMessage()); // sem licença: o app usa o offline antigo
+        }
+    }
+
+    otm_json($out);
 } catch (Throwable $e) {
     error_log('[otm validate] ' . $e->getMessage());
     otm_json(['ok' => false, 'result' => 'server_error',
