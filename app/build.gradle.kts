@@ -1,7 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Segredos de build (endereço do painel, token de sync, chave pública da
+// licença) podem vir de local.properties — que NÃO vai para o git — em vez de
+// flags na linha de comando. A flag -P ainda tem prioridade quando passada.
+val otmLocal = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.isFile) f.inputStream().use { load(it) }
+}
+fun otmProp(name: String, fallback: String): String =
+    (project.findProperty(name) as String?) ?: otmLocal.getProperty(name) ?: fallback
 
 android {
     namespace = "com.otm.pack"
@@ -11,22 +23,20 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 51
-        versionName = "2.29.0"
+        versionCode = 52
+        versionName = "2.30.0"
 
         // Endereço do painel que valida a chave no banco (Turso). Pode ser
-        // trocado em tempo de execução (ajustes do app) sem recompilar.
-        // Sobrescreva no build com: -PotmPanelUrl=https://seu-painel
-        val panelUrl = (project.findProperty("otmPanelUrl") as String?) ?: ""
+        // trocado em tempo de execução (tela da chave → Servidor) sem recompilar.
+        // Defina em local.properties: otmPanelUrl=https://seu-painel
+        val panelUrl = otmProp("otmPanelUrl", "")
         buildConfigField("String", "PANEL_URL", "\"$panelUrl\"")
         // Segredo do endpoint de hashes (validação offline). Opcional.
-        val syncToken = (project.findProperty("otmSyncToken") as String?) ?: ""
+        val syncToken = otmProp("otmSyncToken", "")
         buildConfigField("String", "SYNC_TOKEN", "\"$syncToken\"")
         // Chave PÚBLICA Ed25519 da licença offline (base64). Gere com
-        // "php panel/bin/license.php keygen" e passe no build:
-        //   -PotmLicensePub=<chave>
-        // Vazia = o app só valida online (sem licença offline assinada).
-        val licensePub = (project.findProperty("otmLicensePub") as String?) ?: ""
+        // "php panel/bin/license.php keygen". Vazia = o app só valida online.
+        val licensePub = otmProp("otmLicensePub", "")
         buildConfigField("String", "LICENSE_PUB", "\"$licensePub\"")
     }
 

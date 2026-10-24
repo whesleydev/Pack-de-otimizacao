@@ -30,6 +30,7 @@ class PanelActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var overlay: View
     private lateinit var keyInput: android.widget.EditText
+    private lateinit var serverInput: android.widget.EditText
     private lateinit var keyError: android.widget.TextView
     private var keySubmitBtn: Button? = null
     private val shizuku = ShizukuRunner()
@@ -122,10 +123,27 @@ class PanelActivity : AppCompatActivity() {
 
     /** Garante os botões do app no cabeçalho do painel (após cada carga). */
     private fun injectHeaderButtons(view: WebView) {
+        // Nome do dono da licença: vem no bilhete assinado (label). Serve para
+        // cumprimentar ("Olá, Fulano") sem precisar de rede — já está guardado.
+        val nome = KeyGate.leaseInfo(this)?.label?.trim().orEmpty()
         val js = """
             (function(){
               var t = document.querySelector('header');
-              if (!t || document.getElementById('otmConnect')) return;
+              if (!t) return;
+              var nome = ${jsString(nome)};
+              var g = document.getElementById('otmHello');
+              if (nome && !g) {
+                g = document.createElement('div');
+                g.id = 'otmHello';
+                g.className = 'name';
+                g.textContent = 'Olá, ' + nome;
+                var nm = t.querySelector('.name');
+                if (nm && nm.parentNode) nm.parentNode.insertBefore(g, nm.nextSibling);
+                else t.appendChild(g);
+              } else if (nome && g) {
+                g.textContent = 'Olá, ' + nome;
+              }
+              if (document.getElementById('otmConnect')) return;
               var b = document.createElement('button');
               b.className = 'iconbtn'; b.id = 'otmConnect'; b.title = 'Conectar (Shizuku/ADB)';
               b.textContent = 'Conectar';
@@ -316,6 +334,48 @@ class PanelActivity : AppCompatActivity() {
             setOnClickListener { submitKey() }
         }
         box.addView(keySubmitBtn)
+
+        // Endereço do painel. Sem isto o app só valida contra a lista local
+        // (keys.json) e a chave nunca é conferida no banco — foi o que fez a
+        // chave "não conectar". Fica escondido atrás de um link discreto para
+        // não confundir quem só quer digitar a chave.
+        box.addView(android.widget.Space(this), lp(dp(10)))
+        val serverBox = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            visibility = if (KeyGate.getApiUrl(this@PanelActivity).isEmpty()) View.VISIBLE else View.GONE
+        }
+        val srvToggle = android.widget.TextView(this).apply {
+            text = "⚙ Servidor"
+            setTextColor(Color.parseColor("#8A8377"))
+            textSize = 12f
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, dp(6), 0, dp(6))
+            setOnClickListener { serverBox.visibility = if (serverBox.visibility == View.GONE) View.VISIBLE else View.GONE }
+        }
+        box.addView(srvToggle)
+        serverInput = android.widget.EditText(this).apply {
+            hint = "https://seu-painel.exemplo"
+            setText(KeyGate.getApiUrl(this@PanelActivity))
+            setTextColor(Color.parseColor("#F3EFE7"))
+            setHintTextColor(Color.parseColor("#A49D90"))
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_URI
+            setSingleLine(true)
+            setBackgroundColor(Color.parseColor("#1A1815"))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+        serverBox.addView(serverInput)
+        serverBox.addView(Button(this).apply {
+            text = "Salvar servidor"
+            setOnClickListener {
+                val u = serverInput.text.toString().trim()
+                KeyGate.setApiUrl(this@PanelActivity, u)
+                keyError.text = if (u.isEmpty()) "Servidor limpo: o app só valida offline." else "Servidor salvo: $u"
+                keyError.setTextColor(Color.parseColor("#8AC98A"))
+                keyError.visibility = View.VISIBLE
+            }
+        })
+        box.addView(serverBox)
         return box
     }
 
@@ -326,6 +386,7 @@ class PanelActivity : AppCompatActivity() {
      */
     private fun submitKey() {
         val typed = keyInput.text.toString().trim()
+        keyError.setTextColor(Color.parseColor("#FF6B5E"))
         if (!KeyGate.wellFormed(typed)) {
             sound.play("credenciais_incorretas.mp3")
             keyError.text = "Formato inválido. Use 00-XXXX-XXXX-XXXX."
