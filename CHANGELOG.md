@@ -15,6 +15,14 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Clicar na chave abre o detalhe.** Na lista de chaves a linha inteira leva ao
   `key_view.php`, com os dados, os aparelhos vistos e o histórico — e as ações
   (revogar, estender, bloquear aparelho).
+- **Apagar de verdade no painel.** A lista de chaves tem o botão *apagar* (além de
+  revogar). Em *Tentativas* dá para apagar uma linha, limpar as mais antigas ou todo o
+  histórico; em *Auditoria*, o dono limpa registros antigos ou tudo; e em
+  *Administradores* dá para apagar um admin (com travas: ninguém apaga a si mesmo nem
+  o último dono ativo).
+- **Modo escuro no painel.** Botão 🌙 na barra do topo (e na tela de login) alterna
+  claro/escuro; a escolha fica no navegador e, sem escolha, o tema do sistema decide.
+  O CSS passou a usar variáveis de tema.
 
 ### Alterado
 - **Áudio de pareamento só diz o pareamento.** O som de conexão falava "pareamento feito com

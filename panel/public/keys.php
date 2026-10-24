@@ -137,6 +137,8 @@ require __DIR__ . '/../src/layout.php';
             <?php endif; ?>
             <?= otm_action_button('keys.php', ['id' => $k['id'], 'act' => 'extend', 'days' => 30], '+30d',
                                   'btn ghost sm', 'Estender ' . $k['key_prefix'] . ' em 30 dias?') ?>
+            <?= otm_action_button('keys.php', ['id' => $k['id'], 'act' => 'rm'], 'apagar',
+                                  'btn danger sm', 'Apagar ' . $k['key_prefix'] . ' de vez? Não dá para desfazer.') ?>
           <?php endif; ?>
         </div>
       </td>

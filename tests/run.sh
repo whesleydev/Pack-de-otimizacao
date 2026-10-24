@@ -508,6 +508,44 @@ t_panel_db() {
             # export CSV responde planilha
             curl -s -b "$cj" -o "$TMP/x.csv" -w '%{content_type}' "http://127.0.0.1:$port/export.php" > "$TMP/ct" 2>&1
             assert_contains "$TMP/ct" "csv" "export devolve CSV"
+
+            # --- apagar chave pela lista (novo botão da coluna Ações) --------
+            curl -s -b "$cj" "http://127.0.0.1:$port/keys.php" > "$TMP/klist" 2>&1
+            assert_contains "$TMP/klist" 'value="rm"' "lista de chaves tem o botão apagar"
+            assert_contains "$TMP/klist" 'otmThemeBtn' "barra do painel tem o botão de tema"
+            local csfrk
+            csfrk="$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$TMP/klist" | head -1)"
+            [ -n "$csfrk" ] || csfrk="$csrf"
+            # cria uma chave descartável e apaga pelo painel
+            OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Descartavel" --json \
+                > "$TMP/kthrow" 2>&1
+            local kid
+            kid="$(OTM_LOCAL_DB="$dbf" php -r '
+                require $argv[1]."/src/bootstrap.php";
+                echo (string)otm_db()->scalar("SELECT id FROM otm_keys WHERE label = ?", ["Descartavel"]);
+            ' "$ROOT/panel" 2>/dev/null)"
+            if [ -n "$kid" ]; then
+                curl -s -b "$cj" -o /dev/null \
+                    -d "id=$kid&act=rm&_csrf=$csfrk" "http://127.0.0.1:$port/keys.php" >/dev/null 2>&1
+                OTM_LOCAL_DB="$dbf" php -r '
+                    require $argv[1]."/src/bootstrap.php";
+                    echo (int)otm_db()->scalar("SELECT COUNT(*) FROM otm_keys WHERE id = ?", [(int)$argv[2]]) === 0 ? "APAGOU" : "FICOU";
+                ' "$ROOT/panel" "$kid" > "$TMP/kdel" 2>&1
+                assert_contains "$TMP/kdel" "APAGOU" "botão apagar remove a chave do banco"
+            else
+                bad "não criei a chave descartável para o teste de apagar"
+            fi
+
+            # --- limpeza de tentativas e auditoria ---------------------------
+            curl -s -b "$cj" "http://127.0.0.1:$port/events.php" > "$TMP/evpg" 2>&1
+            assert_contains "$TMP/evpg" 'value="clear_all"' "tentativas têm o botão apagar tudo"
+            curl -s -b "$cj" "http://127.0.0.1:$port/audit.php" > "$TMP/aupg" 2>&1
+            assert_contains "$TMP/aupg" 'value="clear"' "auditoria tem o botão apagar tudo"
+
+            # --- modo escuro: CSS e script de alternância --------------------
+            curl -s "http://127.0.0.1:$port/assets/admin.css" > "$TMP/css" 2>&1
+            assert_contains "$TMP/css" 'data-theme="dark"' "CSS traz o tema escuro"
+            assert_contains "$TMP/aupg" 'otm-theme' "layout grava a escolha do tema"
         else
             bad "não consegui o token CSRF da tela de login"
         fi

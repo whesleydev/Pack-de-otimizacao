@@ -62,6 +62,30 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $audit->log('admin.sessions.kill', 'admin', (string)$id, 'encerrou sessões', $me);
         otm_redirect('admins.php?ok=' . urlencode('Sessões encerradas.'));
     }
+
+    if ($act === 'rm' && $id > 0) {
+        if ($id === (int)$me['id']) {
+            otm_redirect('admins.php?erro=' . urlencode('Você não pode apagar a si mesmo.'));
+        }
+        $alvo = $db->one('SELECT * FROM otm_admins WHERE id = ?', [$id]);
+        if (!$alvo) {
+            otm_redirect('admins.php?erro=' . urlencode('Administrador não encontrado.'));
+        }
+        // Nunca deixar o painel sem dono: se for o último owner ativo, barra.
+        if ((string)$alvo['role'] === 'owner') {
+            $outros = (int)$db->scalar(
+                'SELECT COUNT(*) FROM otm_admins WHERE role = ? AND is_active = 1 AND id <> ?',
+                ['owner', $id]
+            );
+            if ($outros === 0) {
+                otm_redirect('admins.php?erro=' . urlencode('Este é o último dono. Promova outro antes de apagar.'));
+            }
+        }
+        $db->run('DELETE FROM otm_admin_sessions WHERE admin_id = ?', [$id]);
+        $db->run('DELETE FROM otm_admins WHERE id = ?', [$id]);
+        $audit->log('admin.delete', 'admin', (string)$id, 'apagou admin ' . $alvo['username'], $me);
+        otm_redirect('admins.php?ok=' . urlencode('Administrador apagado.'));
+    }
 }
 
 $admins = $db->all('SELECT * FROM otm_admins ORDER BY id');
@@ -98,6 +122,10 @@ require __DIR__ . '/../src/layout.php';
           <div class="actions">
             <?= otm_action_button('admins.php', ['id' => $a['id'], 'act' => 'toggle'], (int)$a['is_active'] === 1 ? 'desativar' : 'ativar') ?>
             <?= otm_action_button('admins.php', ['id' => $a['id'], 'act' => 'kill_sessions'], 'derrubar sessões') ?>
+            <?php if ((int)$a['id'] !== (int)$me['id']): ?>
+              <?= otm_action_button('admins.php', ['id' => $a['id'], 'act' => 'rm'], 'apagar',
+                                    'btn danger sm', 'Apagar o admin ' . $a['username'] . '? Não dá para desfazer.') ?>
+            <?php endif; ?>
           </div>
         <?php endif; ?>
       </td>

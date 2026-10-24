@@ -48,4 +48,18 @@ final class Audit
     {
         return (int)$this->db->scalar('SELECT COUNT(*) FROM otm_audit');
     }
+
+    /** Apaga registros antigos (mais de N dias). Devolve quantos sobraram. */
+    public function prune(int $days): int
+    {
+        $limite = gmdate('Y-m-d H:i:s', time() - max(1, $days) * 86400);
+        $this->db->run('DELETE FROM otm_audit WHERE created_at < ?', [$limite]);
+        return $this->count();
+    }
+
+    /** Apaga tudo (usado quando o log fica grande demais). */
+    public function clear(): void
+    {
+        $this->db->run('DELETE FROM otm_audit');
+    }
 }

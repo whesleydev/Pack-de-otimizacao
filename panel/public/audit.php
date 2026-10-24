@@ -6,7 +6,27 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../src/guard.php';
-otm_require_login();
+$me = otm_require_login();
+
+// Limpeza do log: só o dono, e a própria limpeza fica registrada.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    otm_require_write();
+    if (!$auth->isOwner()) {
+        otm_redirect('audit.php?erro=' . urlencode('Só o dono (owner) pode limpar a auditoria.'));
+    }
+    $act = otm_post('act');
+    if ($act === 'prune') {
+        $dias = max(1, otm_int($_POST['days'] ?? 90));
+        $audit->log('audit.prune', 'audit', '', "apagou registros com mais de $dias dia(s)", $me);
+        $restou = $audit->prune($dias);
+        otm_redirect('audit.php?ok=' . urlencode("Registros com mais de $dias dia(s) apagados ($restou no total)."));
+    }
+    if ($act === 'clear') {
+        $audit->clear();
+        $audit->log('audit.clear', 'audit', '', 'apagou toda a auditoria', $me);
+        otm_redirect('audit.php?ok=' . urlencode('Auditoria apagada.'));
+    }
+}
 
 $page = max(1, otm_int($_GET['p'] ?? 1));
 $per  = 60;
@@ -20,6 +40,21 @@ require __DIR__ . '/../src/layout.php';
 
 <h1>Auditoria</h1>
 <div class="sub"><?= $total ?> ação(ões) registrada(s).</div>
+
+<?= otm_flash() ?>
+
+<?php if ($auth->isOwner()): ?>
+  <form class="bar" method="post" action="audit.php">
+    <input type="hidden" name="_csrf" value="<?= otm_e($auth->csrf()) ?>">
+    <div class="fld narrow"><label>Apagar mais antigos que</label>
+      <input type="number" name="days" min="1" value="90"></div>
+    <div class="fld"><label>&nbsp;</label>
+      <button class="btn ghost" type="submit" name="act" value="prune">apagar antigos</button></div>
+    <div class="fld"><label>&nbsp;</label>
+      <button class="btn danger" type="submit" name="act" value="clear"
+              onclick="return confirm('Apagar TODA a auditoria? Não dá para desfazer.')">apagar tudo</button></div>
+  </form>
+<?php endif; ?>
 
 <table class="grid">
   <tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Alvo</th><th>Detalhe</th><th>IP</th></tr>

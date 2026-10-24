@@ -51,6 +51,16 @@ $semAdmin = $auth->countAdmins() === 0;
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entrar · Painel 00deUdia</title>
 <link rel="stylesheet" href="assets/admin.css">
+<script>
+// Aplica o tema antes de pintar (mesma lógica do layout).
+(function () {
+  try {
+    var t = localStorage.getItem('otm-theme');
+    if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 <div class="login-wrap">
@@ -74,7 +84,29 @@ $semAdmin = $auth->countAdmins() === 0;
       <input id="password" name="password" type="password" autocomplete="current-password" required>
     </div>
     <button class="btn" type="submit">entrar</button>
+    <div class="theme-row">
+      <button class="btn ghost sm" type="button" id="otmThemeBtn" title="Alternar tema claro/escuro">🌙 tema</button>
+    </div>
   </form>
 </div>
+<script>
+(function () {
+  var btn = document.getElementById('otmThemeBtn');
+  if (!btn) return;
+  var isDark = function () { return document.documentElement.getAttribute('data-theme') === 'dark'; };
+  var paint = function () { btn.textContent = isDark() ? '☀️ tema' : '🌙 tema'; };
+  paint();
+  btn.addEventListener('click', function () {
+    if (isDark()) {
+      document.documentElement.removeAttribute('data-theme');
+      try { localStorage.setItem('otm-theme', 'light'); } catch (e) {}
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      try { localStorage.setItem('otm-theme', 'dark'); } catch (e) {}
+    }
+    paint();
+  });
+})();
+</script>
 </body>
 </html>

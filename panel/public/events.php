@@ -6,12 +6,36 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../src/guard.php';
-otm_require_login();
+$me = otm_require_login();
 
 $result = otm_get('result');
 $q      = otm_get('q');
 $page   = max(1, otm_int($_GET['p'] ?? 1));
 $per    = 50;
+
+// --- ações (POST) -------------------------------------------------------------
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    otm_require_write();
+    $act = otm_post('act');
+    if ($act === 'clear_days') {
+        $dias = max(1, otm_int($_POST['days'] ?? 30));
+        $limite = gmdate('Y-m-d H:i:s', time() - $dias * 86400);
+        $db->run('DELETE FROM otm_key_events WHERE created_at < ?', [$limite]);
+        $audit->log('event.clear', 'event', '', "apagou tentativas com mais de $dias dia(s)", $me);
+        otm_redirect('events.php?ok=' . urlencode("Tentativas com mais de $dias dia(s) apagadas."));
+    }
+    if ($act === 'clear_all') {
+        $db->run('DELETE FROM otm_key_events');
+        $audit->log('event.clear', 'event', '', 'apagou todas as tentativas', $me);
+        otm_redirect('events.php?ok=' . urlencode('Histórico de tentativas apagado.'));
+    }
+    if ($act === 'rm' && otm_int($_POST['id'] ?? 0) > 0) {
+        $eid = otm_int($_POST['id']);
+        $db->run('DELETE FROM otm_key_events WHERE id = ?', [$eid]);
+        $audit->log('event.delete', 'event', (string)$eid, 'apagou tentativa', $me);
+        otm_redirect('events.php?ok=' . urlencode('Tentativa apagada.'));
+    }
+}
 
 $where = [];
 $args  = [];
@@ -50,13 +74,28 @@ require __DIR__ . '/../src/layout.php';
     </select>
   </div>
   <div class="fld"><label>&nbsp;</label><button class="btn" type="submit">filtrar</button></div>
-  <div class="fld"><label>&nbsp;</label><a class="btn ghost" href="events.php">limpar</a></div>
+  <div class="fld"><label>&nbsp;</label><a class="btn ghost" href="events.php">limpar filtros</a></div>
 </form>
 
+<?= otm_flash() ?>
+
+<?php if ($auth->canWrite()): ?>
+  <form class="bar" method="post" action="events.php">
+    <input type="hidden" name="_csrf" value="<?= otm_e($auth->csrf()) ?>">
+    <div class="fld narrow"><label>Apagar mais antigas que</label>
+      <input type="number" name="days" min="1" value="30"></div>
+    <div class="fld"><label>&nbsp;</label>
+      <button class="btn ghost" type="submit" name="act" value="clear_days">apagar antigas</button></div>
+    <div class="fld"><label>&nbsp;</label>
+      <button class="btn danger" type="submit" name="act" value="clear_all"
+              onclick="return confirm('Apagar TODO o histórico de tentativas? Não dá para desfazer.')">apagar tudo</button></div>
+  </form>
+<?php endif; ?>
+
 <table class="grid">
-  <tr><th>Quando</th><th>Chave</th><th>Nome</th><th>Resultado</th><th>Aparelho</th><th>Modelo</th><th>App</th><th>IP</th><th>Detalhe</th></tr>
+  <tr><th>Quando</th><th>Chave</th><th>Nome</th><th>Resultado</th><th>Aparelho</th><th>Modelo</th><th>App</th><th>IP</th><th>Detalhe</th><?php if ($auth->canWrite()): ?><th></th><?php endif; ?></tr>
   <?php if (!$rows): ?>
-    <tr><td class="empty" colspan="9">Nenhuma tentativa registrada.</td></tr>
+    <tr><td class="empty" colspan="<?= $auth->canWrite() ? 10 : 9 ?>">Nenhuma tentativa registrada.</td></tr>
   <?php else: foreach ($rows as $e): ?>
     <tr>
       <td class="nowrap mono"><?= otm_e(otm_fmt_dt($e['created_at'])) ?></td>
@@ -68,6 +107,10 @@ require __DIR__ . '/../src/layout.php';
       <td class="muted"><?= otm_e((string)($e['app_version'] ?: '—')) ?></td>
       <td class="mono"><?= otm_e((string)$e['ip']) ?></td>
       <td class="muted"><?= otm_e((string)$e['detail']) ?></td>
+      <?php if ($auth->canWrite()): ?>
+        <td class="nowrap"><?= otm_action_button('events.php', ['id' => $e['id'], 'act' => 'rm'], 'apagar',
+                                                'btn danger sm', 'Apagar esta tentativa?') ?></td>
+      <?php endif; ?>
     </tr>
   <?php endforeach; endif; ?>
 </table>

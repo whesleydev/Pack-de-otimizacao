@@ -28,6 +28,17 @@ if (!function_exists('otm_layout_head')) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= otm_e($title) ?> · Painel 00deUdia</title>
 <link rel="stylesheet" href="assets/admin.css">
+<script>
+// Aplica o tema antes da página pintar (evita o "flash" branco). A escolha
+// fica em localStorage; sem escolha, o tema do sistema decide.
+(function () {
+  try {
+    var t = localStorage.getItem('otm-theme');
+    if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 <div class="topbar">
@@ -36,6 +47,7 @@ if (!function_exists('otm_layout_head')) {
   <span class="who">usuário: <b><?= otm_e((string)($admin['username'] ?? '')) ?></b>
     <span class="tag <?= otm_e($role) ?>"><?= otm_e($role) ?></span>
   </span>
+  <button class="btn themebtn" type="button" id="otmThemeBtn" title="Alternar tema claro/escuro">🌙</button>
   <form method="post" action="logout.php" style="margin:0">
     <input type="hidden" name="_csrf" value="<?= otm_e((string)$csrf) ?>">
     <button class="btn ghost sm" type="submit">sair</button>
@@ -71,6 +83,26 @@ if (!function_exists('otm_layout_head')) {
   <span class="spacer"></span>
   <span class="muted"><?= otm_e(date('d/m/Y H:i')) ?></span>
 </div>
+<script>
+// Botão de tema: alterna claro/escuro e guarda a escolha no navegador.
+(function () {
+  var btn = document.getElementById('otmThemeBtn');
+  if (!btn) return;
+  var isDark = function () { return document.documentElement.getAttribute('data-theme') === 'dark'; };
+  var paint = function () { btn.textContent = isDark() ? '☀️' : '🌙'; };
+  paint();
+  btn.addEventListener('click', function () {
+    if (isDark()) {
+      document.documentElement.removeAttribute('data-theme');
+      try { localStorage.setItem('otm-theme', 'light'); } catch (e) {}
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      try { localStorage.setItem('otm-theme', 'dark'); } catch (e) {}
+    }
+    paint();
+  });
+})();
+</script>
 </body>
 </html>
 <?php
