@@ -220,6 +220,10 @@ game() {
     sh_run "cmd game set --mode performance com.dts.freefireth" >/dev/null
     sh_run "cmd game set --mode performance com.dts.freefiremax" >/dev/null
     sh_run "cmd game set --downscale-factor 1 com.dts.freefireth" >/dev/null
+    # o jogo escolhido no modo gamer também entra (FF MAX, CODM, Minecraft...)
+    gp="$(game_pkg_saved 2>/dev/null)"
+    [ -n "$gp" ] && _valid_game_pkg "$gp" \
+        && sh_run "cmd game set --mode performance $gp" >/dev/null 2>&1
     say "game mode performance aplicado"
 }
 
@@ -245,6 +249,50 @@ ff_open() {
     sh_run "am start -n com.dts.freefireth/com.dts.freefireth.FFMainActivity" >/dev/null \
         || sh_run "am start -n com.dts.freefiremax/com.dts.freefireth.FFMainActivity" >/dev/null
     say "launch enviado"
+}
+
+# --- jogo do modo gamer: o usuário escolhe qual jogo abre ---------------------
+# Antes o "modo gamer" abria sempre o Free Fire. Quem usa FF MAX, CODM ou
+# Minecraft não tinha como mudar. A escolha fica salva e vale para as próximas
+# vezes (o painel manda o pacote; sem pacote, usa o último salvo).
+GAME_ST="$ST/game"
+mkdir -p "$GAME_ST" 2>/dev/null
+GAME_PKG_FILE="$GAME_ST/pkg"
+GAME_PKG_DEFAULT="com.dts.freefireth"
+
+game_pkg_saved() { [ -f "$GAME_PKG_FILE" ] && head -1 "$GAME_PKG_FILE" 2>/dev/null; }
+game_pkg_save()  { printf '%s\n' "$1" > "$GAME_PKG_FILE" 2>/dev/null; }
+
+_valid_game_pkg() {
+    case "$1" in
+        ''|*[!A-Za-z0-9._]*) return 1 ;;
+        *.*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# abre o app pelo pacote, sem depender de saber a Activity de cada jogo
+game_launch() {
+    pkg="$1"
+    act="$(sh_get "cmd package resolve-activity --brief $pkg" 2>/dev/null | tail -1)"
+    case "$act" in
+        */*) sh_run "am start -n $act" >/dev/null 2>&1 ;;
+        *)   sh_run "monkey -p $pkg -c android.intent.category.LAUNCHER 1" >/dev/null 2>&1 ;;
+    esac
+}
+
+game_open() {
+    # game_open [pkg]  -> define (se informado) e abre o jogo do modo gamer
+    pkg="$1"
+    [ -z "$pkg" ] && pkg="$(game_pkg_saved)"
+    [ -z "$pkg" ] && pkg="$GAME_PKG_DEFAULT"
+    _valid_game_pkg "$pkg" || { err "pacote inválido: '$pkg'"; return 1; }
+    game_pkg_save "$pkg"
+    bkp_begin
+    say "Modo gamer: $pkg"
+    sh_run "cmd game set --mode performance $pkg" >/dev/null 2>&1
+    game_launch "$pkg"
+    say "launch enviado ($pkg)"
 }
 
 # --- freezer de apps (funciona no Brevent!) -----------------------------------
@@ -672,7 +720,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

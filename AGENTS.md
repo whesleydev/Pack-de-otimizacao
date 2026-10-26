@@ -334,6 +334,16 @@ nativa além do necessário para conectar e rodar os comandos.
   conhecidos (`GC_EXTRA`). `off [pkg]` desfaz (usa o escopo próprio `~/.packotm/undo/game-clean.sh`
   de `bkp_set`/`bkp_raw` e o `keep-alive.sh off`) e `status [pkg]` lê tudo de volta. Estado em
   `$ST/gameclean/applied`. Categoria **Apps e jogos** (grupo de escolha `gameclean`).
+- **Jogo do modo gamer** (`adb-tweaks.sh game_open [pkg]`): o "modo gamer" abria
+  sempre o Free Fire. Agora o usuário escolhe o jogo (FF, FF MAX, CODM, Minecraft,
+  qualquer instalado) pelo seletor de apps da Home; o pacote fica salvo em
+  `$ST/game/pkg` e vale nas próximas vezes. `game_open` aplica Game Mode
+  performance no jogo escolhido e abre por `cmd package resolve-activity` (com
+  `monkey` de reserva), sem depender da Activity de cada jogo. Sem argumento usa o
+  salvo (padrão `com.dts.freefireth`); pacote inválido é recusado. `game()` também
+  cobre o jogo escolhido. `ff_open` segue existindo (abre o Free Fire fixo).
+  Ação `game_open` no `lib.php` (param `pkg` opcional, tipo `pkg`) e o card da Home
+  usa `runGameHome()` — não `runActionById('ff_open')`.
 - **Liberar RAM** (`scripts/ram-boost.sh`, na whitelist do `lib.php`): libera memória
   de verdade (ação pontual, nada a reverter). `boost [normal|max]` encerra os apps de
   3º plano via `otm_bg_kill` (poupa o jogo e os protegidos no anti-relog), poda o cache

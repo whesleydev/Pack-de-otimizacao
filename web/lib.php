@@ -856,6 +856,11 @@ function otm_actions(): array {
           'desc' => 'Abre o jogo (útil depois de aplicar os ajustes).',
           'help' => 'Manda o Free Fire abrir. Use depois de aplicar touch/modo de jogo para já entrar otimizado.',
           'argv' => ['adb-tweaks.sh', 'ff_open']]);
+    $add(['id' => 'game_open', 'group' => 'Display & Touch', 'label' => 'Abrir o meu jogo (modo gamer)',
+          'desc' => 'Abre o jogo que você escolher — FF, FF MAX, CODM, Minecraft, o que for.',
+          'help' => 'Escolha o jogo e ele vira o "jogo do modo gamer": o pack aplica o modo de jogo em performance nele e abre. A escolha fica salva — da próxima vez é só tocar de novo. Serve para qualquer jogo instalado, não só Free Fire.',
+          'argv' => ['adb-tweaks.sh', 'game_open', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'Jogo', 'optional' => true]]]);
 
     // ----- Configs: como o pack fala com o Android (sem root) -----
     $add(['id' => 'config.set', 'group' => 'Sistema', 'label' => 'Definir conexão do pack',

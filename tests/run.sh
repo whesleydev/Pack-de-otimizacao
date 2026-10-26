@@ -38,6 +38,12 @@ EOF
 [ -n "$TMP_AM_LOG" ] && echo "$*" >> "$TMP_AM_LOG"
 exit 0
 EOF
+    # monkey: usado para abrir um app sem saber a Activity (registra igual ao am)
+    cat > "$TMP/bin/monkey" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_AM_LOG" ] && echo "$*" >> "$TMP_AM_LOG"
+exit 0
+EOF
     # pm: registra chamadas e simula `pm list packages`
     cat > "$TMP/bin/pm" <<'EOF'
 #!/bin/sh
@@ -761,6 +767,134 @@ t_panel_state() {
         && ok "app: actions.json tem state_value" || bad "app: actions.json sem state_value"
     grep -q '"state_match": "touch:110,350,0,4"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem state_match do toque" || bad "app: actions.json sem state_match"
+}
+
+t_panel_stats() {
+    printf '\n  # consumo REAL do aparelho (panel-stats.sh): CPU medida, não inventada\n'
+    # CPU: o uso vem de /proc/stat (busy/total), NÃO de loadavg/ncores — que não é
+    # porcentagem e dava número absurdo (ex.: carga 27.63 com 8 núcleos = "345%").
+    grep -q 'cpu_uso_pct' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: mede o uso da CPU (/proc/stat)" || bad "stats: sem cpu_uso_pct"
+    grep -q 'proc/stat' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: lê /proc/stat para a CPU" || bad "stats: não lê /proc/stat"
+    grep -q 'load1 / nc\|load / nc' "$ROOT/web/index.php" \
+        && bad "painel: ainda calcula CPU% a partir da carga média" \
+        || ok "painel: CPU% não vem mais da carga média"
+    grep -q 'load / nc\|load1 / nc' "$ROOT/app/src/main/assets/panel/index.html" \
+        && bad "app: ainda calcula CPU% a partir da carga média" \
+        || ok "app: CPU% não vem mais da carga média"
+    # a carga média continua exibida, mas como carga (não como %)
+    grep -q '"carga " + load.toFixed(2)' "$ROOT/web/index.php" \
+        && ok "painel: mostra a carga média como carga" || bad "painel: carga média sumiu"
+    # bateria: status é texto, não o código cru do dumpsys (1..5)
+    grep -q 'bat_status="Descarregando"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: traduz o status da bateria para texto" || bad "stats: status da bateria cru"
+    # refresh: emite a taxa travada, senão o rodapé "taxa travada (fixa)" é código morto
+    grep -q '"refresh_peak"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: emite a taxa travada (refresh_peak)" || bad "stats: sem refresh_peak"
+    # JSON válido com os campos novos
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-stats.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/ps_out"
+    php -r '$j=json_decode(file_get_contents($argv[1]),true);
+             echo is_array($j) && array_key_exists("cpu_uso_pct",$j) && array_key_exists("refresh_peak",$j)
+                  ? "OK" : "RUIM";' "$TMP/ps_out" > "$TMP/ps_json" 2>&1
+    assert_contains "$TMP/ps_json" "OK" "stats: JSON válido com cpu_uso_pct e refresh_peak"
+    # o valor medido é porcentagem plausível (0..100), nunca algo como 345
+    cpu=$(php -r '$j=json_decode(file_get_contents($argv[1]),true);
+             $v=$j["cpu_uso_pct"]??"";
+             echo ($v!=="" && (int)$v>=0 && (int)$v<=100) ? "OK" : "FORA";' "$TMP/ps_out" 2>&1)
+    [ "$cpu" = "OK" ] && ok "stats: uso da CPU entre 0 e 100%" || bad "stats: uso da CPU fora de 0..100 ($cpu)"
+    # o painel (app e web) e o espelho estão alinhados
+    grep -q 'cpu_uso_pct' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: painel lê cpu_uso_pct" || bad "app: painel sem cpu_uso_pct"
+    grep -q 'cpu_uso_pct' "$ROOT/web/index.php" \
+        && ok "web: painel lê cpu_uso_pct" || bad "web: painel sem cpu_uso_pct"
+    # "ramf" está em dois elementos; querySelector só pega o 1º e o rodapé do card
+    # ficava travado em "—". Tem de preencher todos.
+    grep -q "querySelectorAll('\[data-stat=\"ramf\"\]')" "$ROOT/web/index.php" \
+        && ok "web: preenche os dois ramf (chip e rodapé)" || bad "web: rodapé da RAM travado em —"
+    grep -q "querySelectorAll('\[data-stat=\"ramf\"\]')" "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: preenche os dois ramf (chip e rodapé)" || bad "app: rodapé da RAM travado em —"
+    # nenhum outro data-stat duplicado no HTML (seletor pegaria só o primeiro)
+    for f in "$ROOT/web/index.php" "$ROOT/app/src/main/assets/panel/index.html"; do
+        php -r '$h=file_get_contents($argv[1]);
+                 preg_match_all("/data-stat=\"([a-z]+)\"/", $h, $m, PREG_OFFSET_CAPTURE);
+                 $seen=[];
+                 foreach ($m[1] as $i=>$kv){ $k=$kv[0]; $line=substr($h, strrpos(substr($h,0,$kv[1]),"\n")+1);
+                   if (strpos($line,"querySelector")!==false) continue;
+                   if (isset($seen[$k])) echo "DUP:$k "; else $seen[$k]=1; }
+                 echo "FIM";' "$f" > "$TMP/dup_$(basename "$f")" 2>&1
+        grep -q 'FIM$' "$TMP/dup_$(basename "$f")" && ! grep -q 'DUP:' "$TMP/dup_$(basename "$f")" \
+            && ok "sem data-stat duplicado em $(basename "$f")" \
+            || bad "data-stat duplicado em $(basename "$f"): $(cat "$TMP/dup_$(basename "$f")")"
+    done
+    # taxa travada só quando peak == min (o sistema deixa peak=120/min=60 no adaptativo)
+    grep -q 'refresh_peak" != "$refresh_min' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: só marca travada quando peak == min" || bad "stats: marcaria adaptativo como travado"
+    st2=$(mktemp -d); b2=$(mktemp -d)
+    printf '#!/bin/sh\ncase "$1" in\n get) cat "$TMP_STORE/$2.$3" 2>/dev/null ;;\nesac\nexit 0\n' > "$b2/settings"
+    chmod +x "$b2/settings"
+    printf '60.0' > "$st2/system.min_refresh_rate"; printf '120.0' > "$st2/system.peak_refresh_rate"
+    PATH="$b2:$PATH" TMP_STORE="$st2" OTM_NO_COLOR=1 sh "$ROOT/scripts/panel-stats.sh" > "$TMP/rp_auto" 2>&1
+    grep -q '"refresh_peak":""' "$TMP/rp_auto" \
+        && ok "stats: adaptativo (60/120) não vira 'travada'" || bad "stats: adaptativo marcado como travado"
+    printf '90.0' > "$st2/system.min_refresh_rate"; printf '90.0' > "$st2/system.peak_refresh_rate"
+    PATH="$b2:$PATH" TMP_STORE="$st2" OTM_NO_COLOR=1 sh "$ROOT/scripts/panel-stats.sh" > "$TMP/rp_lock" 2>&1
+    grep -q '"refresh_peak":"90.0"' "$TMP/rp_lock" \
+        && ok "stats: travado (90/90) reporta a taxa" || bad "stats: travado não reportado"
+    rm -rf "$st2" "$b2"
+}
+
+t_game_open() {
+    printf '\n  # modo gamer: o usuário escolhe QUAL jogo abre (não só Free Fire)\n'
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/game.log"; : > "$TMP_CMD_LOG"
+    export TMP_AM_LOG="$TMP/game.am"; : > "$TMP_AM_LOG"
+    # o grupo existe e está registrado
+    grep -q ' game_open ' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "game_open registrado nos grupos" || bad "game_open fora dos grupos"
+    # escolher um jogo que NÃO é Free Fire: aplica performance e abre o escolhido
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_open com.mojang.minecraftpe \
+        > "$TMP/game_out" 2>&1
+    grep -q '^game set --mode performance com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "aplica Game Mode no jogo escolhido" || bad "não aplicou no jogo escolhido"
+    grep -q 'com.mojang.minecraftpe' "$TMP_AM_LOG" \
+        && ok "abre o jogo escolhido (Minecraft)" || bad "não abriu o jogo escolhido"
+    assert_eq "com.mojang.minecraftpe" "$(cat "$HOME/.packotm/game/pkg" 2>/dev/null)" \
+        "guarda a escolha para as próximas vezes"
+    # sem argumento, reusa o jogo salvo (não volta para o Free Fire)
+    : > "$TMP_CMD_LOG"; : > "$TMP_AM_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_open > /dev/null 2>&1
+    grep -q '^game set --mode performance com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "sem argumento usa o jogo salvo" || bad "sem argumento não usou o salvo"
+    grep -q 'com.mojang.minecraftpe' "$TMP_AM_LOG" \
+        && ok "sem argumento abre o jogo salvo" || bad "sem argumento abriu outro jogo"
+    # pacote inválido é recusado (nada de injetar comando no am/cmd)
+    : > "$TMP_CMD_LOG"; : > "$TMP_AM_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_open 'foo;rm -rf /' > /dev/null 2>&1
+    [ -s "$TMP_CMD_LOG" ] || [ -s "$TMP_AM_LOG" ] \
+        && bad "pacote inválido foi executado" || ok "pacote inválido é recusado"
+    # o Game Mode geral também cobre o jogo escolhido
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game > /dev/null 2>&1
+    grep -q '^game set --mode performance com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "Game Mode geral inclui o jogo escolhido" || bad "Game Mode geral ignora o escolhido"
+    # o painel oferece a escolha: ação com parâmetro pkg + card na Home
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("game_open");
+             echo $a ? ($a["argv"][1] . " " . ($a["params"][0]["type"] ?? "") . " "
+                        . (($a["params"][0]["optional"] ?? false) ? "opcional" : "obrigatorio")) : "AUSENTE";' \
+        > "$TMP/game_lib" 2>&1
+    assert_contains "$TMP/game_lib" "game_open pkg opcional" "lib: ação game_open com escolha de jogo"
+    for f in "$ROOT/web/index.php" "$ROOT/app/src/main/assets/panel/index.html"; do
+        grep -q "runGameHome" "$f" && grep -q 'home-game-pkg' "$f" \
+            && ok "$(basename "$f"): Home tem seletor de jogo" \
+            || bad "$(basename "$f"): Home sem seletor de jogo"
+        grep -q "runActionById('ff_open')" "$f" \
+            && bad "$(basename "$f"): Home ainda abre Free Fire fixo" \
+            || ok "$(basename "$f"): Home não fixa o Free Fire"
+    done
+    grep -q '"game_open"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "app: catálogo tem game_open" || bad "app: catálogo sem game_open"
 }
 
 t_perm_script() {
@@ -1817,6 +1951,8 @@ t_app_exec
 t_app_fixes
 t_new_features
 t_panel_state
+t_panel_stats
+t_game_open
 t_perm_script
 t_perm_actions
 t_personalization

@@ -790,7 +790,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <button class="btn" onclick="runActionById('clean')" style="width:100%;">Ativar Modo Batata</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm); border: 1.5px solid var(--accent);">
-            <h4 style="margin:0 0 8px; color:var(--accent);">2. Modo Competitivo (Free Fire / CODM) — Recomendado</h4>
+            <h4 style="margin:0 0 8px; color:var(--accent);">2. Modo Competitivo (Free Fire / CODM / FF MAX) — Recomendado</h4>
             <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Equilíbrio perfeito de latência de toque ultra baixa, prioridade total na CPU e bloqueio de interferências.</p>
             <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
               <li>Driver de jogo ativado no App</li>
@@ -798,7 +798,13 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Sensibilidade e velocidade de ponteiro no máximo</li>
               <li>Não Perturbe ativado para evitar notificações</li>
             </ul>
-            <button class="btn primary" onclick="runActionById('ff_open')" style="width:100%;">Ativar Competitivo</button>
+            <div class="fields">
+              <div class="field wide">
+                <label for="home-game-pkg">Qual jogo abrir</label>
+                <?= otm_pkg_picker('home-game-pkg', 'pkg') ?>
+              </div>
+            </div>
+            <button class="btn primary" onclick="runGameHome(this)" style="width:100%;">Ativar Competitivo</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">3. Modo 90Hz / 120Hz Ultra Fluido</h4>
@@ -1782,7 +1788,7 @@ function closeAppPicker(){ const m = document.getElementById("appModal"); if (m)
 
 /* ---- HOME: métricas reais do aparelho (RAM, CPU, bateria, tela) ------------- */
 let STATS = {}, statsTimer = null, statsBusy = false, statsAt = 0;
-const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
+const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","cpu_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
 const has = v => v !== undefined && v !== null && String(v) !== "";
 const num = v => { const n = parseFloat(v); return (v === "" || v === null || v === undefined || isNaN(n)) ? null : n; };
 function setBar(m, pct, cls){ const i = m && m.querySelector("i"); if (i) i.style.width = Math.max(0, Math.min(100, pct)) + "%"; if (m){ m.className = "m" + (cls ? " " + cls : ""); } }
@@ -1797,16 +1803,17 @@ function renderStats(){
   if (ramV) ramV.innerHTML = ramUse === null ? "—" : ramUse + "<small>% em uso</small>";
   if (ramUse !== null) setBar(document.querySelector('[data-m="ram"]'), ramUse, ramUse >= 90 ? "b" : ramUse >= 75 ? "w" : "g");
   else setBar(document.querySelector('[data-m="ram"]'), 0, "");
-  const ramF = document.querySelector('[data-stat="ramf"]');
-  if (ramF) ramF.textContent = (free !== null && tot !== null)
+  // "ramf" existe em dois lugares (chip do hero e rodapé do card); querySelector
+  // só pegava o primeiro e o rodapé ficava travado em "—". Preenche os dois.
+  const ramTxt = (free !== null && tot !== null)
     ? fmtGB(free) + " livres de " + fmtGB(tot)
     : (tot !== null ? "total " + fmtGB(tot) : "o aparelho não informou");
-  // CPU (carga média / nº de núcleos = uso estimado)
-  const load = num(S.load1), nc = num(S.ncores);
-  const cpuPct = (load !== null && nc) ? Math.round(load / nc * 100) : null;
+  document.querySelectorAll('[data-stat="ramf"]').forEach(el => { el.textContent = ramTxt; });
+  // CPU (uso real medido pelo script; a carga média vai no rodapé, não como %)
+  const cpuUse = num(S.cpu_uso_pct), load = num(S.load1), nc = num(S.ncores);
   const cpuV = document.querySelector('[data-stat="cpu"]');
-  if (cpuV) cpuV.innerHTML = cpuPct === null ? "—" : cpuPct + "<small>%</small>";
-  setBar(document.querySelector('[data-m="cpu"]'), cpuPct === null ? 0 : cpuPct, cpuPct >= 90 ? "b" : cpuPct >= 70 ? "w" : "g");
+  if (cpuV) cpuV.innerHTML = cpuUse === null ? "—" : cpuUse + "<small>%</small>";
+  setBar(document.querySelector('[data-m="cpu"]'), cpuUse === null ? 0 : cpuUse, cpuUse === null ? "" : cpuUse >= 90 ? "b" : cpuUse >= 70 ? "w" : "g");
   const cpuF = document.querySelector('[data-stat="cpuf"]');
   if (cpuF){
     const parts = [];
@@ -1903,6 +1910,14 @@ function runActionById(id){
   const card = document.querySelector('.card[data-id="' + id + '"]');
   if (a.confirm){ pending = card || { dataset:{id:id}, querySelector:()=>null, classList:{contains:()=>false} }; run(card); }
   else doRun(a, {}, false, null);
+}
+/* modo gamer da tela inicial: abre o jogo ESCOLHIDO (não fixo no Free Fire) */
+function runGameHome(btn){
+  const a = ACTIONS["game_open"]; if (!a) return;
+  const inp = btn.closest(".card")?.querySelector('input[data-p="pkg"]');
+  const pkg = inp ? inp.value.trim() : "";
+  if (!pkg){ toast("Escolha o jogo primeiro", "bad"); return; }
+  doRun(a, { pkg }, false, btn);
 }
 document.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => runActionById(b.dataset.qa));
 
