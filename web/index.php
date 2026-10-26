@@ -1176,7 +1176,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><div>
           <b>Notificações</b><span>Mostrar o aviso do pack e o andamento das ações.</span></div></div>
         <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="8" width="17" height="8" rx="2"/><path d="M22 11v2"/><path d="M5.5 11h6"/></svg></span><div>
-          <b>Bateria sem restrição</b><span>Sem isso o Android adormece o app e as otimizações param sozinhas.</span></div></div>
+          <b>Bateria sem restrição</b><span>Do próprio app do pack: sem isso o Android o adormece e as otimizações param sozinhas. É o diálogo do sistema.</span></div></div>
         <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 2 7 13h6l-1 9 10-11h-6l1-9Z"/></svg></span><div>
           <b>Rodar em segundo plano</b><span>Mantém o pack ativo quando a tela apaga ou você troca de app.</span></div></div>
         <div class="perm"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.2 2.9 7.9 7 9 4.1-1.1 7-4.8 7-9V6l-7-3Z"/></svg></span><div>
@@ -1188,7 +1188,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
       </div>
       <div class="set-actions">
         <button class="btn primary" id="setPermApp" type="button">Conceder ao app do pack</button>
-        <button class="btn" id="setPermFF" type="button">Ao Free Fire</button>
+        <button class="btn" id="setPermFF" type="button">Aos Free Fire</button>
+        <button class="btn" id="setPermGame" type="button">Ao meu jogo</button>
         <button class="btn" id="setPermBattery" type="button">Bateria sem economia</button>
         <button class="btn" id="setPermUsage" type="button">Acesso a dados de uso</button>
       </div>
@@ -1378,9 +1379,11 @@ document.querySelectorAll("#setAccent .sw").forEach(b => b.onclick = () => setAc
 document.querySelectorAll("#setFont .seg-btn").forEach(b => b.onclick = () => setFont(b.dataset.font));
 document.getElementById("setScale").oninput = e => setScale(parseInt(e.target.value, 10));
 document.getElementById("setSound").onchange = e => setSound(e.target.checked);
-const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(id === "setPermApp" ? "perm.app" : id === "setPermFF" ? "perm.ff" : "perm.battery", label); };
+const PERM_ACTION = { setPermApp: "perm.app", setPermFF: "perm.ff", setPermGame: "perm.game", setPermBattery: "perm.battery" };
+const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(PERM_ACTION[id], label); };
 permBtn("setPermApp", "Permissões do app do pack");
-permBtn("setPermFF", "Permissões do Free Fire");
+permBtn("setPermFF", "Permissões dos Free Fire");
+permBtn("setPermGame", "Permissões do meu jogo");
 permBtn("setPermBattery", "Bateria sem economia");
 /* Acesso a dados de uso: não é um script, é uma tela do sistema. No app vira
    OTM.call("usage"); no site, avisa que só funciona no celular. */

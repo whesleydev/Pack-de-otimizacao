@@ -29,12 +29,38 @@ object PackAssets {
     fun ensureExtracted(context: Context, assetRoot: String): File {
         val dest = File(context.filesDir, assetRoot)
         val stamp = File(dest, STAMP)
-        if (stamp.exists()) return dest
+        val want = stampFor(context, assetRoot)
+        if (stamp.exists() && stamp.readText() == want) return dest
         dest.deleteRecursively()
         dest.mkdirs()
         copyAssetDir(context, assetRoot, dest)
-        stamp.writeText("ok")
+        stamp.writeText(want)
         return dest
+    }
+
+    private fun hex(bytes: ByteArray): String =
+        bytes.joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+
+    /**
+     * Selo pelo CONTEÚDO dos assets, não pelo versionName. Dois APKs com a mesma
+     * versão (o 2.30.0 republicado, por exemplo) tinham o mesmo selo e o app
+     * achava que a cópia estava em dia — o aparelho seguia rodando script velho,
+     * sem as ações novas. Com o hash, qualquer mudança força a recópia.
+     */
+    private fun stampFor(context: Context, assetRoot: String): String {
+        val md = java.security.MessageDigest.getInstance("SHA-1")
+        md.update(BuildConfig.VERSION_NAME.toByteArray())
+        fun walk(path: String) {
+            val children = context.assets.list(path).orEmpty().sorted()
+            if (children.isEmpty()) {
+                md.update(path.toByteArray())
+                md.update(context.assets.open(path).use { it.readBytes() })
+                return
+            }
+            for (child in children) walk("$path/$child")
+        }
+        walk(assetRoot)
+        return hex(md.digest())
     }
 
     /**
@@ -46,10 +72,10 @@ object PackAssets {
      */
     fun ensureShellCopy(context: Context, runner: ShellRunner?): String? {
         val r = runner ?: return null
-        val version = BuildConfig.VERSION_NAME
+        val want = stampFor(context, "$ASSET_ROOT/scripts")
         kotlinx.coroutines.runBlocking {
             val stamp = r.exec("cat '$EXEC_DIR/$STAMP' 2>/dev/null")
-            if (stamp.stdout.trim() == version) return@runBlocking
+            if (stamp.stdout.trim() == want) return@runBlocking
 
             r.exec("rm -rf '$EXEC_DIR' && mkdir -p '$EXEC_DIR/scripts'")
             for (name in context.assets.list("$ASSET_ROOT/scripts").orEmpty()) {
@@ -60,7 +86,7 @@ object PackAssets {
             val versionTxt = context.assets.open("$ASSET_ROOT/VERSION")
                 .use { it.readBytes().toString(Charsets.UTF_8) }
             r.writeFile("$EXEC_DIR/VERSION", versionTxt)
-            r.exec("chmod -R 755 '$EXEC_DIR' && printf '%s' '$version' > '$EXEC_DIR/$STAMP'")
+            r.exec("chmod -R 755 '$EXEC_DIR' && printf '%s' '$want' > '$EXEC_DIR/$STAMP'")
         }
         return EXEC_DIR
     }

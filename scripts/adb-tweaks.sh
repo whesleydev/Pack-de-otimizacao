@@ -698,9 +698,24 @@ perm_battery() {
     say "economia de bateria e App Standby desligados"
 }
 
+# Libera o jogo escolhido no modo gamer (o mesmo pacote de `game_open`), em vez
+# de fixar o Free Fire: quem joga CODM/Minecraft precisa da mesma isenção.
+perm_game() {
+    pkg="$1"
+    [ -z "$pkg" ] && pkg="$(game_pkg_saved)"
+    [ -z "$pkg" ] && pkg="$GAME_PKG_DEFAULT"
+    _valid_game_pkg "$pkg" || { err "pacote inválido: '$pkg'"; return 1; }
+    case "$pkg" in
+        com.dts.freefireth|com.dts.freefiremax) perm_ff; return 0 ;;
+    esac
+    bkp_begin
+    say "Permissões do meu jogo ($pkg)"
+    perm_pkg "$pkg"
+}
 perm_all() {
     perm_app; echo
     perm_ff; echo
+    perm_game; echo
     perm_battery
 }
 
@@ -720,7 +735,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

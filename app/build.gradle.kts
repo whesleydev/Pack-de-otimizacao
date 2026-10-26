@@ -12,8 +12,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 52
-        versionName = "2.30.0"
+        versionCode = 53
+        versionName = "2.30.1"
     }
 
     signingConfigs {
@@ -58,19 +58,32 @@ android {
 // uma cópia em assets/pack/scripts (é o que PackAssets.ensureShellCopy leva para
 // /data/local/tmp/otm-pack no aparelho). Sem este sync o asset ficava preso numa
 // versão antiga e o app rodava script velho. Sync (não Copy) para remover sobras.
-val packScriptsDir = rootProject.file("../scripts")
+// O caminho é relativo à RAIZ do projeto (rootProject), não ao módulo: antes era
+// "../scripts", que não existia, e o `onlyIf` pulava o sync em silêncio — o APK
+// saía com os scripts velhos e o aparelho não tinha as ações novas.
+val packScriptsDir = rootProject.file("scripts")
+val packVersionFile = rootProject.file("VERSION")
 val syncPackAssets by tasks.registering(Sync::class) {
     onlyIf { packScriptsDir.isDirectory }
     from(packScriptsDir) { exclude("**/.git/**", "**/*.log") }
     into(layout.projectDirectory.dir("src/main/assets/pack/scripts"))
 }
 val syncPackVersion by tasks.registering(Copy::class) {
-    val v = rootProject.file("../VERSION")
-    onlyIf { v.isFile }
-    from(v)
+    onlyIf { packVersionFile.isFile }
+    from(packVersionFile)
     into(layout.projectDirectory.dir("src/main/assets/pack"))
 }
-tasks.named("preBuild") { dependsOn(syncPackAssets, syncPackVersion) }
+// O sync tem `onlyIf` para o Sync nunca esvaziar o asset se a fonte sumir; em
+// troca, aqui o build falha alto em vez de gerar um APK com scripts velhos.
+val checkPackSource by tasks.registering {
+    doFirst {
+        require(packScriptsDir.isDirectory) {
+            "fonte da verdade ausente: $packScriptsDir — o APK sairia com scripts velhos"
+        }
+        require(packVersionFile.isFile) { "VERSION ausente: $packVersionFile" }
+    }
+}
+tasks.named("preBuild") { dependsOn(checkPackSource, syncPackAssets, syncPackVersion) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")

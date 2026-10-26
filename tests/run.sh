@@ -897,6 +897,62 @@ t_game_open() {
         && ok "app: catálogo tem game_open" || bad "app: catálogo sem game_open"
 }
 
+t_pack_stamp() {
+    printf '\n  # selo dos scripts: repõe quando o CONTEÚDO muda (mesmo versionName)\n'
+    local src="$ROOT/app/src/main/java/com/otm/pack/PackAssets.kt"
+    # a causa do "grupo desconhecido: game_open": o selo era só o versionName, então
+    # um APK republicado com a MESMA versão não recopiava os scripts no aparelho.
+    grep -q 'stampFor' "$src" && ok "selo calculado do conteúdo (stampFor)" \
+        || bad "selo ainda é só o versionName (script velho no aparelho)"
+    grep -q 'MessageDigest' "$src" && ok "selo usa hash dos assets" || bad "selo sem hash"
+    grep -q "stamp.readText() == want" "$src" \
+        && ok "recopia quando o hash muda" || bad "não compara o hash"
+    # o sync do build precisa achar a fonte da verdade (antes apontava p/ ../scripts)
+    local g="$ROOT/app/build.gradle.kts"
+    grep -q 'rootProject.file("../scripts")' "$g" \
+        && bad "sync ainda aponta p/ ../scripts (inexistente)" \
+        || ok "sync usa caminho válido para scripts"
+    grep -q 'checkPackSource' "$g" \
+        && ok "build falha alto se a fonte sumir" || bad "build pularia o sync em silêncio"
+}
+
+t_perm_game() {
+    printf '\n  # permissões: o jogo escolhido, não só o Free Fire\n'
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/perm2.log"; : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_open com.mojang.minecraftpe \
+        > /dev/null 2>&1
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_game > /dev/null 2>&1
+    grep -q '^appops set com.mojang.minecraftpe RUN_IN_BACKGROUND allow$' "$TMP_CMD_LOG" \
+        && ok "perm_game libera o jogo escolhido" || bad "perm_game não liberou o jogo escolhido"
+    grep -q '^deviceidle whitelist +com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "perm_game isenta o jogo escolhido do Doze" || bad "sem isenção do Doze"
+    # sem escolha salva, cai no Free Fire (compatível com antes)
+    rm -rf "$HOME/.packotm"; : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_game > /dev/null 2>&1
+    grep -q '^deviceidle whitelist +com.dts.freefireth$' "$TMP_CMD_LOG" \
+        && ok "perm_game sem escolha usa o Free Fire" || bad "perm_game sem escolha falhou"
+    # perm_all cobre o jogo escolhido também
+    rm -rf "$HOME/.packotm"; : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_open com.mojang.minecraftpe \
+        > /dev/null 2>&1
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" perm_all > /dev/null 2>&1
+    grep -q '^deviceidle whitelist +com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "perm_all inclui o jogo escolhido" || bad "perm_all ignora o jogo escolhido"
+    # painel: a ação existe e a engrenagem tem o botão
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("perm.game");
+             echo $a ? ($a["argv"][1] . " " . ($a["params"][0]["type"] ?? "")) : "AUSENTE";' \
+        > "$TMP/permg" 2>&1
+    assert_contains "$TMP/permg" "perm_game pkg" "lib: ação perm.game com escolha de jogo"
+    grep -q 'id="setPermGame"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: engrenagem tem 'Ao meu jogo'" || bad "app: sem botão do meu jogo"
+    grep -q '"perm.game"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "app: catálogo tem perm.game" || bad "app: catálogo sem perm.game"
+    rm -rf "$HOME/.packotm"
+}
+
 t_perm_script() {
     printf '\n  # permissões/segundo plano: Doze, appops e bateria (sem root)\n'
     rm -rf "$HOME/.packotm"
@@ -1953,6 +2009,8 @@ t_new_features
 t_panel_state
 t_panel_stats
 t_game_open
+t_pack_stamp
+t_perm_game
 t_perm_script
 t_perm_actions
 t_personalization

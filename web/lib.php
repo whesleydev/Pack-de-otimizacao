@@ -889,13 +889,19 @@ function otm_actions(): array {
           'desc' => 'Libera o app do pack para rodar em segundo plano, sem restrição de bateria e fora do Doze.',
           'help' => 'Sem isso o Android adormece o app do pack: as otimizações param sozinhas, o som não toca e o acesso cai. Aqui o app entra na lista de isenção do Doze, ganha permissão de rodar em segundo plano e de manter a CPU acordada. Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_app'], 'timeout' => 120]);
-    $add(['id' => 'perm.ff', 'group' => 'Sistema', 'label' => 'Permitir o Free Fire',
-          'desc' => 'Libera o Free Fire para rodar em segundo plano sem ser congelado.',
-          'help' => 'Impede o sistema de congelar o Free Fire quando você troca de app ou a tela apaga — evita o jogo fechar no meio da partida. Também tira a restrição de bateria. Reversível em "Reverter TUDO".',
+    $add(['id' => 'perm.ff', 'group' => 'Sistema', 'label' => 'Permitir os Free Fire',
+          'desc' => 'Libera o Free Fire e o Free Fire MAX para rodar em segundo plano sem serem congelados.',
+          'help' => 'Impede o sistema de congelar o Free Fire e o Free Fire MAX quando você troca de app ou a tela apaga — evita o jogo fechar no meio da partida. Também tira a restrição de bateria. Se o seu jogo é outro (CODM, Minecraft...), use "Permitir o meu jogo". Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_ff'], 'timeout' => 120]);
+    $add(['id' => 'perm.game', 'group' => 'Sistema', 'label' => 'Permitir o meu jogo',
+          'desc' => 'Libera o jogo escolhido no modo gamer (o mesmo do botão da Home).',
+          'help' => 'Aplica ao jogo escolhido no modo gamer a mesma isenção do Free Fire: fora do Doze, sem restrição de bateria e livre para rodar em segundo plano — assim ele não fecha quando você troca de app. Escolha o jogo na Home, em "Modo Competitivo". Reversível em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'perm_game', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'Jogo', 'optional' => true]],
+          'timeout' => 120]);
     $add(['id' => 'perm.battery', 'group' => 'Sistema', 'label' => 'Bateria sem economia agressiva',
-          'desc' => 'Desliga o modo de economia, o App Standby e a gestão adaptativa de bateria.',
-          'help' => 'Desliga a economia de bateria que corta o desempenho e o App Standby (que suspende apps em segundo plano). É o que deixa o pack e o jogo "acordados". Reversível em "Reverter TUDO".',
+          'desc' => 'Desliga a economia de energia e o App Standby (global, não só para um app).',
+          'help' => 'Isto é global do aparelho, não é permissão de um app: desliga o modo de economia de energia (low_power), a gestão adaptativa de bateria e o App Standby (que suspende apps em segundo plano). É o que deixa o pack e o jogo "acordados" sem o sistema cortar o desempenho. NÃO use no dia a dia se você prioriza duração de bateria. Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_battery'], 'timeout' => 120]);
     $add(['id' => 'perm.all', 'group' => 'Sistema', 'label' => 'Aplicar todas as permissões',
           'desc' => 'App do pack + Free Fire + bateria, de uma vez.',
