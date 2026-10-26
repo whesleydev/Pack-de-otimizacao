@@ -1,6 +1,0 @@
-<?php
-// Copie para config/vault.php (ou use: php panel/bin/vault.php keygen).
-// A chave abaixo é um EXEMPLO — não use esta em produção.
-return [
-    'key' => 'SUBSTITUA-POR-php-panel-bin-vault.php-keygen',
-];

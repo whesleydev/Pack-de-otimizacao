@@ -6,7 +6,7 @@
 //    1) desenvolvimento e testes sem internet (nenhuma chamada de rede);
 //    2) quem prefere rodar o painel com um arquivo .sqlite em vez do Turso.
 //
-//  O código do painel (KeyService, Auth, Audit…) não sabe qual dos dois está
+//  O código do painel (Auth, Audit…) não sabe qual dos dois está
 //  embaixo: chama all/one/scalar/run/insert e pronto. Trocar de banco é só
 //  mudar a configuração, não o código.
 //

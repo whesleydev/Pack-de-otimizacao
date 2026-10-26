@@ -468,12 +468,12 @@ const OTM_INJECTION = `
   window.OTM = {
     __isWebBridge: true,
     call: function(kind, payload, cbId) {
-      if (kind === "key") {
-        playAudioFile("key_validada_com_sucesso.mp3");
+      if (kind === "login") {
+        playAudioFile("login_feito_com_sucesso.mp3");
         window.__otmResolve && window.__otmResolve(cbId, JSON.stringify({ ok: true }));
         return;
       }
-      if (kind === "key_fail") {
+      if (kind === "login_fail") {
         playAudioFile("credenciais_incorretas.mp3");
         window.__otmResolve && window.__otmResolve(cbId, JSON.stringify({ ok: false }));
         return;
@@ -564,6 +564,15 @@ const OTM_INJECTION = `
         guiaLink.innerHTML = "📖 Guia Brevent";
         top.insertBefore(guiaLink, top.children[top.children.length - 1]);
       }
+
+      // Logout handler
+      const sair = document.getElementById("btnSair");
+      if (sair) {
+        sair.onclick = () => {
+          localStorage.removeItem("otm_session");
+          location.replace("login.html");
+        };
+      }
     }
   });
 })();
@@ -577,7 +586,7 @@ const server = http.createServer(async (req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-OTM-Key');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-OTM-Token');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -855,6 +864,16 @@ const server = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(content);
+      return;
+    }
+  }
+
+  // login.html
+  if (pathname === '/login.html') {
+    const loginPath = path.join(ROOT_DIR, 'public/login.html');
+    if (fs.existsSync(loginPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      fs.createReadStream(loginPath).pipe(res);
       return;
     }
   }

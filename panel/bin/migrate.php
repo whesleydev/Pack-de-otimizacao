@@ -54,8 +54,7 @@ sort($files, SORT_STRING);
 
 if ($fresh) {
     // Ordem inversa para respeitar dependências (FK).
-    $tables = ['otm_key_events', 'otm_key_devices', 'otm_keys', 'otm_plans',
-               'otm_settings', 'otm_audit', 'otm_admin_sessions', 'otm_login_attempts', 'otm_admins'];
+    $tables = ['otm_settings', 'otm_audit', 'otm_admin_sessions', 'otm_login_attempts', 'otm_admins'];
     foreach ($tables as $t) $db->run("DROP TABLE IF EXISTS $t");
     $db->run('DELETE FROM otm_migrations');
     $applied = [];

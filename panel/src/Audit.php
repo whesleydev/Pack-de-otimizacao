@@ -2,9 +2,9 @@
 // =============================================================================
 //  Audit.php - Registro de quem fez o quê no painel.
 //
-//  Toda ação que muda algo (criar/revogar/editar chave, mexer em plano,
+//  Toda ação que muda algo (mexer em administrador, ajuste,
 //  login…) deixa uma linha em otm_audit. É o que permite responder "quem
-//  revogou a chave do cliente?" semanas depois.
+//  mudou esse ajuste?" semanas depois.
 // =============================================================================
 
 declare(strict_types=1);

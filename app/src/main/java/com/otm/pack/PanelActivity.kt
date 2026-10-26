@@ -27,12 +27,7 @@ import rikka.shizuku.Shizuku
 class PanelActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
-    private lateinit var root: FrameLayout
     private lateinit var overlay: View
-    private lateinit var keyInput: android.widget.EditText
-    private lateinit var serverInput: android.widget.EditText
-    private lateinit var keyError: android.widget.TextView
-    private var keySubmitBtn: Button? = null
     private val shizuku = ShizukuRunner()
     private val sound by lazy { SoundPlayer(applicationContext) }
     private var runner: ShellRunner? = null
@@ -43,34 +38,17 @@ class PanelActivity : AppCompatActivity() {
         window.statusBarColor = Color.parseColor("#0D0C0A")
 
         val root = FrameLayout(this)
-        this.root = root
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(MATCH, MATCH))
 
-        // A capa inicial depende do estado: sem chave validada ela é a tela da
-        // chave; com a chave já validada, é a tela do método de conexão.
-        // `sessionOk` revalida a licença guardada: se o prazo offline venceu (ou
-        // o relógio andou para trás), volta para a tela da chave em vez de deixar
-        // passar — é o que impede o uso grátis infinito.
-        overlay = if (KeyGate.sessionOk(this).ok) buildOverlay() else buildKeyOverlay()
+        overlay = buildOverlay()
         root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
         setContentView(root)
 
-        // Fluxo de entrada: primeiro a chave, depois o método de conexão.
-        // A chave fica lembrada (SharedPreferences), mas a licença é reconferida
-        // a cada abertura (ver `sessionOk`), então o app pede a chave de novo
-        // quando o prazo offline acaba.
-        if (KeyGate.sessionOk(this).ok) {
+        // Se o Shizuku já está autorizado, conecta direto e esconde a capa.
+        if (shizuku.isAvailable() && shizuku.hasPermission()) {
+            runner = shizuku
             overlay.visibility = View.GONE
-            // Já com a chave validada: se o Shizuku já está autorizado, conecta direto.
-            if (shizuku.isAvailable() && shizuku.hasPermission()) {
-                runner = shizuku
-            } else {
-                pendingAfterConnect = null
-                askConnect()
-            }
-        } else {
-            overlay.visibility = View.VISIBLE
         }
 
         Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
@@ -85,7 +63,7 @@ class PanelActivity : AppCompatActivity() {
         }
 
         setupWeb()
-        web.loadUrl("file:///android_asset/panel/index.html")
+        web.loadUrl("file:///android_asset/panel/login.html")
         Permissions.ensureChannel(applicationContext)
         Permissions.askOnce(this)
     }
@@ -123,26 +101,10 @@ class PanelActivity : AppCompatActivity() {
 
     /** Garante os botões do app no cabeçalho do painel (após cada carga). */
     private fun injectHeaderButtons(view: WebView) {
-        // Nome do dono da licença: vem no bilhete assinado (label). Serve para
-        // cumprimentar ("Olá, Fulano") sem precisar de rede — já está guardado.
-        val nome = KeyGate.leaseInfo(this)?.label?.trim().orEmpty()
         val js = """
             (function(){
               var t = document.querySelector('header');
               if (!t) return;
-              var nome = ${jsString(nome)};
-              var g = document.getElementById('otmHello');
-              if (nome && !g) {
-                g = document.createElement('div');
-                g.id = 'otmHello';
-                g.className = 'name';
-                g.textContent = 'Olá, ' + nome;
-                var nm = t.querySelector('.name');
-                if (nm && nm.parentNode) nm.parentNode.insertBefore(g, nm.nextSibling);
-                else t.appendChild(g);
-              } else if (nome && g) {
-                g.textContent = 'Olá, ' + nome;
-              }
               if (document.getElementById('otmConnect')) return;
               var b = document.createElement('button');
               b.className = 'iconbtn'; b.id = 'otmConnect'; b.title = 'Conectar (Shizuku/ADB)';
@@ -163,6 +125,8 @@ class PanelActivity : AppCompatActivity() {
             if (on) sound.play("ativando.mp3")
             sound.muted
         },
+        onLogin = { sound.play("login_feito_com_sucesso.mp3") },
+        onLoginFail = { sound.play("credenciais_incorretas.mp3") },
         onActionSound = { file -> sound.play(file) },
         onRunDone = { group, ok ->
             val what = if (group.isBlank()) "Ação" else group
@@ -254,176 +218,6 @@ class PanelActivity : AppCompatActivity() {
         web.reload()
     }
 
-    // ---- sobreposição: chave de acesso ---------------------------------------
-
-    /**
-     * Primeira tela: pede a chave de acesso. Só depois de validar é que o app
-     * segue para o método de conexão — é o mesmo acesso por chave do painel web,
-     * com a validação feita aqui (hashes em `assets/panel/keys.json`).
-     */
-    private fun buildKeyOverlay(): View {
-        val box = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#0D0C0A"))
-            setPadding(dp(28), dp(28), dp(28), dp(28))
-        }
-        box.addView(android.widget.TextView(this).apply {
-            text = "00deUdia Otimizações"
-            setTextColor(Color.parseColor("#FF6A2B"))
-            textSize = 22f
-            gravity = android.view.Gravity.CENTER
-        })
-        box.addView(android.widget.TextView(this).apply {
-            text = "Digite a sua chave de acesso (00-XXXX-XXXX-XXXX)."
-            setTextColor(Color.parseColor("#F3EFE7"))
-            textSize = 14f
-            gravity = android.view.Gravity.CENTER
-            setPadding(0, dp(10), 0, dp(14))
-        })
-        keyInput = android.widget.EditText(this).apply {
-            hint = "00-XXXX-XXXX-XXXX"
-            setTextColor(Color.parseColor("#F3EFE7"))
-            setHintTextColor(Color.parseColor("#A49D90"))
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-            setSingleLine(true)
-            setBackgroundColor(Color.parseColor("#1A1815"))
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-        }
-        box.addView(
-            keyInput,
-            android.widget.LinearLayout.LayoutParams(
-                MATCH, android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-        keyError = android.widget.TextView(this).apply {
-            setTextColor(Color.parseColor("#FF6B5E"))
-            textSize = 12.5f
-            visibility = View.GONE
-            setPadding(0, dp(8), 0, 0)
-        }
-        box.addView(keyError)
-        // Situação da licença guardada: mostra validade e quanto ainda dá para
-        // usar sem internet. É o que o usuário precisa saber para não ser
-        // pego de surpresa quando o prazo offline acabar.
-        val info = KeyGate.leaseInfo(this)
-        if (info != null) {
-            val now = System.currentTimeMillis() / 1000L
-            val linhas = ArrayList<String>()
-            if (info.label.isNotBlank()) linhas.add("Chave: ${info.label}")
-            if (info.expiresAt.isNotBlank()) {
-                linhas.add("Vale até ${info.expiresAt} (${License.daysUntil(info.expiresAt, now)} dia(s))")
-            } else {
-                linhas.add("Chave vitalícia")
-            }
-            if (info.offlineUntil.isNotBlank()) {
-                linhas.add("Sem internet, funciona por mais ${License.daysUntil(info.offlineUntil, now)} dia(s)")
-            }
-            box.addView(android.widget.TextView(this).apply {
-                text = linhas.joinToString("\n")
-                setTextColor(Color.parseColor("#A49D90"))
-                textSize = 12f
-                gravity = android.view.Gravity.CENTER
-                setPadding(0, dp(10), 0, 0)
-            })
-        }
-        box.addView(android.widget.Space(this), lp(dp(14)))
-        keySubmitBtn = Button(this).apply {
-            text = "Validar chave"
-            setOnClickListener { submitKey() }
-        }
-        box.addView(keySubmitBtn)
-
-        // Endereço do painel. Sem isto o app só valida contra a lista local
-        // (keys.json) e a chave nunca é conferida no banco — foi o que fez a
-        // chave "não conectar". Fica escondido atrás de um link discreto para
-        // não confundir quem só quer digitar a chave.
-        box.addView(android.widget.Space(this), lp(dp(10)))
-        val serverBox = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            visibility = if (KeyGate.getApiUrl(this@PanelActivity).isEmpty()) View.VISIBLE else View.GONE
-        }
-        val srvToggle = android.widget.TextView(this).apply {
-            text = "⚙ Servidor"
-            setTextColor(Color.parseColor("#8A8377"))
-            textSize = 12f
-            gravity = android.view.Gravity.CENTER
-            setPadding(0, dp(6), 0, dp(6))
-            setOnClickListener { serverBox.visibility = if (serverBox.visibility == View.GONE) View.VISIBLE else View.GONE }
-        }
-        box.addView(srvToggle)
-        serverInput = android.widget.EditText(this).apply {
-            hint = "https://seu-painel.exemplo"
-            setText(KeyGate.getApiUrl(this@PanelActivity))
-            setTextColor(Color.parseColor("#F3EFE7"))
-            setHintTextColor(Color.parseColor("#A49D90"))
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                android.text.InputType.TYPE_TEXT_VARIATION_URI
-            setSingleLine(true)
-            setBackgroundColor(Color.parseColor("#1A1815"))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-        serverBox.addView(serverInput)
-        serverBox.addView(Button(this).apply {
-            text = "Salvar servidor"
-            setOnClickListener {
-                val u = serverInput.text.toString().trim()
-                KeyGate.setApiUrl(this@PanelActivity, u)
-                keyError.text = if (u.isEmpty()) "Servidor limpo: o app só valida offline." else "Servidor salvo: $u"
-                keyError.setTextColor(Color.parseColor("#8AC98A"))
-                keyError.visibility = View.VISIBLE
-            }
-        })
-        box.addView(serverBox)
-        return box
-    }
-
-    /**
-     * Valida a chave digitada. A checagem fala com o painel (banco), então roda
-     * fora da thread da tela — nada de travar o app esperando a rede. Acerta →
-     * som de sucesso e vai para a conexão; erra → explica o motivo.
-     */
-    private fun submitKey() {
-        val typed = keyInput.text.toString().trim()
-        keyError.setTextColor(Color.parseColor("#FF6B5E"))
-        if (!KeyGate.wellFormed(typed)) {
-            sound.play("credenciais_incorretas.mp3")
-            keyError.text = "Formato inválido. Use 00-XXXX-XXXX-XXXX."
-            keyError.visibility = View.VISIBLE
-            return
-        }
-
-        keyError.visibility = View.GONE
-        val btn = keySubmitBtn
-        btn?.isEnabled = false
-        btn?.text = "Validando…"
-
-        lifecycleScope.launch {
-            val res = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                KeyGate.check(this@PanelActivity, typed)
-            }
-            btn?.isEnabled = true
-            btn?.text = "Validar chave"
-
-            if (res.ok) {
-                sound.play("key_validada_com_sucesso.mp3")
-                // Em segundo plano, atualiza a lista de chaves para o modo offline.
-                lifecycleScope.launch {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        KeyGate.syncOffline(this@PanelActivity)
-                    }
-                }
-                overlay.visibility = View.GONE
-                askConnect()
-            } else {
-                sound.play("credenciais_incorretas.mp3")
-                keyError.text = res.message
-                keyError.visibility = View.VISIBLE
-            }
-        }
-    }
-
     // ---- sobreposição: método de conexão -------------------------------------
 
     private fun buildOverlay(): View {
@@ -449,22 +243,7 @@ class PanelActivity : AppCompatActivity() {
                 askConnect()
             }
         })
-        box.addView(Button(this).apply {
-            text = "Trocar chave"
-            setOnClickListener { showKeyScreen() }
-        })
         return box
-    }
-
-    /** Volta para a tela da chave (para trocar a chave já validada). */
-    private fun showKeyScreen() {
-        KeyGate.lock(this)
-        KeyGate.forgetLease(this) // troca de chave: a licença antiga não vale mais
-        val nova = buildKeyOverlay()
-        root.removeView(overlay)
-        overlay = nova
-        root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
-        overlay.visibility = View.VISIBLE
     }
 
     // ---- utilidades ----------------------------------------------------------

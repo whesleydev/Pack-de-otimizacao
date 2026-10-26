@@ -6,7 +6,7 @@
 //      require __DIR__ . '/../src/guard.php';
 //
 //  O guard: sobe a sessão, exige login, valida CSRF nos POST e entrega
-//  $auth / $db / $keys / $audit / $admin já prontos para a página usar.
+//  $auth / $db / $audit / $admin já prontos para a página usar.
 // =============================================================================
 
 declare(strict_types=1);
@@ -18,7 +18,6 @@ otm_session_start();
 $db    = otm_db();
 $auth  = new Auth($db);
 $audit = new Audit($db);
-$keys  = new KeyService($db);
 
 $admin = $auth->user();
 

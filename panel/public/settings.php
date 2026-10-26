@@ -11,16 +11,8 @@ $me = otm_require_login();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     otm_require_write();
     $pares = [
-        'brand_name'      => otm_post('brand_name'),
-        'default_days'    => (string)otm_int($_POST['default_days'] ?? 30),
-        'default_devices' => (string)otm_int($_POST['default_devices'] ?? 1),
-        'require_device'  => otm_int($_POST['require_device'] ?? 0) ? '1' : '0',
-        'offline_days'    => (string)max(1, otm_int($_POST['offline_days'] ?? 7)),
+        'brand_name' => otm_post('brand_name'),
     ];
-    // O segredo de sincronização só muda quando o campo vem preenchido: assim
-    // salvar os outros ajustes não apaga o segredo sem querer.
-    $sync = otm_post('sync_token');
-    if ($sync !== '') $pares['sync_token'] = $sync;
     foreach ($pares as $k => $v) {
         $db->run('INSERT INTO otm_settings (key, value, updated_at) VALUES (?,?,?)
                   ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
@@ -43,7 +35,7 @@ require __DIR__ . '/../src/layout.php';
 ?>
 
 <h1>Ajustes</h1>
-<div class="sub">Padrões usados ao criar chaves e informações da conexão com o banco.</div>
+<div class="sub">Informações da conexão com o banco e ajustes do painel.</div>
 
 <?= otm_flash() ?>
 
@@ -55,36 +47,6 @@ require __DIR__ . '/../src/layout.php';
       <div class="row">
         <div class="fld"><label>Nome da marca</label>
           <input type="text" name="brand_name" value="<?= otm_e($cfg['brand_name'] ?? '00deUdia Otimizações') ?>"></div>
-      </div>
-      <div class="row">
-        <div class="fld narrow"><label>Dias padrão</label>
-          <input type="number" name="default_days" min="0" value="<?= otm_e($cfg['default_days'] ?? '30') ?>"></div>
-        <div class="fld narrow"><label>Aparelhos padrão</label>
-          <input type="number" name="default_devices" min="0" value="<?= otm_e($cfg['default_devices'] ?? '1') ?>"></div>
-        <div class="fld narrow"><label>Exigir aparelho</label>
-          <select name="require_device">
-            <option value="1"<?= ($cfg['require_device'] ?? '1') === '1' ? ' selected' : '' ?>>sim</option>
-            <option value="0"<?= ($cfg['require_device'] ?? '1') === '0' ? ' selected' : '' ?>>não</option>
-          </select>
-          <span class="hint">o app manda o id do aparelho na validação</span>
-        </div>
-      </div>
-      <div class="row">
-        <div class="fld narrow"><label>Dias de uso offline</label>
-          <input type="number" name="offline_days" min="1" value="<?= otm_e($cfg['offline_days'] ?? '7') ?>">
-          <span class="hint">por quantos dias o app aceita a licença sem internet desde a última validação. Passou disso, precisa conectar de novo.</span>
-        </div>
-      </div>
-      <div class="row">
-        <div class="fld">
-          <label>Segredo de sincronização (validação offline)</label>
-          <input type="text" name="sync_token" value="<?= otm_e($cfg['sync_token'] ?? '') ?>"
-                 placeholder="deixe vazio para não mudar" autocomplete="off">
-          <span class="hint">
-            o app usa esse segredo em <span class="mono">api/hashes.php</span> para baixar a lista de
-            chaves ativas e validar sem internet. Deixe vazio e o endpoint fica desligado.
-          </span>
-        </div>
       </div>
       <?php if ($auth->canWrite()): ?>
         <div class="actions"><button class="btn" type="submit">salvar</button></div>

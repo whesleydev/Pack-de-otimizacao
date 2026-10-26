@@ -5,79 +5,26 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
-- **Sorteio de cargo removido.** O card *Sorteio de Cargo Especial* (e o `tryGiveaway`)
-  saiu do painel web e do app — não fazia parte do pack.
-
-- **Chave visível e copiável.** Antes a chave só existia como hash e não havia como
-  reexibi-la. Agora o painel guarda o texto num **cofre cifrado** (`KeyVault`, sodium,
-  formato `v1:<base64>`) e mostra a chave com botão de copiar na lista, no detalhe e na
-  criação. O banco continua guardando só o hash; o texto vai cifrado em `key_sealed`.
-  A chave do cofre vive em `panel/config/vault.php` (fora do git) — gere com
-  `sh main.sh web vault keygen` e **guarde backup**. Chaves criadas antes do cofre podem
-  ser adotadas com `php panel/bin/key.php adopt 00-XXXX-XXXX-XXXX` (só se o texto bater
-  com o hash gravado).
-
-- **Endereço do painel no app.** O `PANEL_URL` vinha vazio, então o app só validava
-  contra a lista local e a chave nunca era conferida no banco. Agora `sh main.sh web build`
-  grava `otmPanelUrl`/`otmSyncToken`/`otmLicensePub` em `local.properties` (fora do git) e
-  o build lê de lá; e a tela da chave tem o link **⚙ Servidor** para corrigir a URL sem
-  recompilar.
-
-- **Saudação no app.** O cabeçalho mostra *Olá, <nome>* com o nome do dono da licença
-  (vem no bilhete assinado, funciona offline).
-
-- **Campo "Contato" removido.** Saiu das telas (novo/editar/ver/lista), do CLI, do CSV e
-  da busca — o nome da chave já identifica o cliente. As colunas antigas no banco ficam
-  como estão (sem migração destrutiva).
-
-- **Licença offline assinada (Ed25519).** O app guarda no aparelho um bilhete assinado
-  (`OTM1.<payload>.<assinatura>`) com a validade da chave e um prazo de uso sem internet.
-  A assinatura é feita no servidor com a chave privada (`panel/config/license.php`, fora do
-  git); o APK embarca só a pública. Assim o app valida offline sem poder ser burlado, e o
-  uso "grátis para sempre" não acontece: passado o prazo (ajuste *Dias de uso offline*), o
-  app exige conexão de novo. Relógio para trás é tratado como adulteração e tranca o app.
-
-### Adicionado
-- **Painel de licenças com banco (Turso/libSQL).** O painel PHP (`panel/`) guarda as
-  chaves num banco de verdade, com planos, aparelhos, histórico de tentativas e auditoria.
-  Antes era um arquivo JSON local; agora dá para ver e agir sobre cada chave.
-- **Chave gerada só pelo sistema.** O formulário *Nova chave* não pede mais o código: o
-  sistema gera a chave e ela aparece uma única vez para copiar. (O suporte a chave digitada
-  à mão continua no CLI, `php panel/bin/key.php new --key ...`, para migrações.)
-- **Clicar na chave abre o detalhe.** Na lista de chaves a linha inteira leva ao
-  `key_view.php`, com os dados, os aparelhos vistos e o histórico — e as ações
-  (revogar, estender, bloquear aparelho).
-- **Apagar de verdade no painel.** A lista de chaves tem o botão *apagar* (além de
-  revogar). Em *Tentativas* dá para apagar uma linha, limpar as mais antigas ou todo o
-  histórico; em *Auditoria*, o dono limpa registros antigos ou tudo; e em
-  *Administradores* dá para apagar um admin (com travas: ninguém apaga a si mesmo nem
-  o último dono ativo).
-- **Modo escuro no painel.** Botão 🌙 na barra do topo (e na tela de login) alterna
-  claro/escuro; a escolha fica no navegador e, sem escolha, o tema do sistema decide.
-  O CSS passou a usar variáveis de tema.
-
-### Alterado
-- **Áudio de pareamento só diz o pareamento.** O som de conexão falava "pareamento feito com
-  sucesso, faça login no sistema". Ficou só "pareamento feito com sucesso".
-- **Visual do painel refeito com cara de sistema legado.** Saiu o tema escuro moderno e
-  entrou o cinza clássico de janela: cantos retos, tabelas com grade completa (estilo
-  planilha), fonte de sistema pequena e densa, botões com bisel e barra de título azul.
-  O rodapé ganhou uma **barra de status** com a versão, o banco em uso (turso ou sqlite
-  local) e a hora. Continua CSS puro, sem framework, e responsivo (menu vira faixa no
-  celular).
-- **Formato da chave: `00-XXXX-XXXX-XXXX`** (antes `OTM-XXXX-XXXX-XXXX`), igual no painel,
-  no app e nos scripts. O alfabeto continua sem os caracteres ambíguos I, L, O e U.
-- **Painel começa limpo.** Não há mais planos de exemplo (`teste`, `mensal`, …) nem
-  chaves de teste no banco: os planos são criados por você, do jeito que fizer sentido.
-- O app não traz mais nenhuma chave embutida: a lista offline (`assets/panel/keys.json`)
-  sai vazia e é preenchida pelo sync do painel (`php panel/bin/key.php sync`).
+- **Sistema de chaves/licença removido.** O acesso voltou a ser **usuário e senha**,
+  no app e no painel. Saíram do projeto o `KeyGate`/`License` do app, o `KeyService`/
+  `KeyVault`/`License` do painel, o cofre, a licença offline assinada (Ed25519), a
+  geração/sincronização de chaves (`keys.json`) e os comandos `web key`/`web vault`.
+  O painel `panel/` ficou com o essencial: administradores, auditoria e ajustes.
 
 ### Removido
-- **A opção "ver o painel sem conectar".** Não existe mais o atalho (na tela da chave e na
-  de conexão) que abria o painel sem validar a chave e sem conectar. Para usar o pack é
-  preciso a chave válida e a conexão (Shizuku/ADB).
-- Planos de demonstração semeados pela migração `0005_plans.sql`.
-- Chave de teste embutida em `app/src/main/assets/panel/keys.json`.
+- **App:** `KeyGate.kt`, `License.kt`, `keys.json` e o campo de licença no
+  `build.gradle.kts`. O painel volta a abrir na tela de login (`login.html`) e o
+  `index.html` volta a ter guarda de sessão; o áudio `login_feito_com_sucesso.mp3`
+  volta a tocar no login certo.
+- **Painel (`panel/`):** `KeyService`, `KeyVault`, `License`, os CLIs `key.php`,
+  `license.php`, `vault.php`, `buildprops.php`, as páginas de chave/plano/tentativa/
+  exportação e as migrations do domínio de chaves. Sobraram `0001_admins.sql` e
+  `0002_panel.sql` (ajustes e auditoria).
+- **Painel web (`web/`):** `keys.php` e `access.php`; voltaram `auth.php` e `login.php`
+  (login por usuário e senha, senha só como hash).
+- **`main.sh`:** os comandos `web key ...`, `web vault`, `web adopt`, `web build` e
+  `web props`.
+
 
 ## [2.26.1] - 2026-10-23
 

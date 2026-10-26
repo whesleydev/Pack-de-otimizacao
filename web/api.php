@@ -2,32 +2,43 @@
 // =============================================================================
 //  api.php - Endpoint JSON do painel web.
 //  Toda ação passa por otm_run(), que valida id + parâmetros (whitelist).
-//  Protegido por token (arquivo .token na pasta web/, gerado pelo main.sh).
+//  Protegido por login (sessão do painel) ou pelo token do servidor (.token).
 // =============================================================================
 
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
-require_once __DIR__ . '/keys.php';
+require_once __DIR__ . '/auth.php';
 
 header('X-Content-Type-Options: nosniff');
 
-// --- autenticação por chave ---------------------------------------------------
-// Vale a sessão do painel (entrou com a chave) OU a chave enviada no cabeçalho
-// X-Otm-Key / em ?key=. Sem chave válida, nada executa.
-function otm_check_access(): bool {
-    // 1) sessão do painel (a chave já foi validada no acesso)
-    if (otm_key_logged_in()) return true;
+// --- autenticação -------------------------------------------------------------
+// Vale o token do servidor (.token, opcional) OU uma sessão logada
+// no painel. Sem login e sem token, nada executa.
+function otm_token_file(): string { return __DIR__ . '/.token'; }
 
-    // 2) chave enviada direto (scripts, integrações, acesso por URL)
+function otm_check_token(): bool {
+    // 1) sessão de login do painel
+    if (otm_auth_logged_in()) return true;
+
+    // 2) token do servidor (defesa em profundidade / acesso por URL com token)
+    $f = otm_token_file();
+    $expected = is_file($f) ? trim((string)file_get_contents($f)) : '';
+    if ($expected === '') return false;         // sem token: exige login
+
     $sent = '';
-    if (!empty($_SERVER['HTTP_X_OTM_KEY']))  $sent = trim((string)$_SERVER['HTTP_X_OTM_KEY']);
-    elseif (isset($_GET['key']))             $sent = trim((string)$_GET['key']);
+    if (!empty($_SERVER['HTTP_X_OTM_TOKEN'])) $sent = trim((string)$_SERVER['HTTP_X_OTM_TOKEN']);
+    elseif (isset($_GET['token']))           $sent = trim((string)$_GET['token']);
+    elseif (isset($_COOKIE['otm_token']))    $sent = trim((string)$_COOKIE['otm_token']);
 
-    return $sent !== '' && otm_key_verify($sent) !== null;
+    if ($sent !== '' && hash_equals($expected, $sent)) {
+        setcookie('otm_token', $sent, 0, '/');   // mantém a sessão do painel
+        return true;
+    }
+    return false;
 }
 
-if (!otm_check_access()) {
-    otm_json(['ok' => false, 'error' => 'acesso negado (informe uma chave válida)'], 403);
+if (!otm_check_token()) {
+    otm_json(['ok' => false, 'error' => 'acesso negado (entre no painel)'], 403);
     exit;
 }
 

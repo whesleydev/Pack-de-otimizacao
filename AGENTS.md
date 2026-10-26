@@ -87,61 +87,40 @@ O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
   ação saem prontos no HTML. O JS só troca de categoria, executa e mostra saída/modal.
   Mantenha o visual **clean**, a paleta própria e o CSS **responsivo** (gaveta no celular,
   tema claro/escuro) ao mexer.
-- `web/index.php` e `web/api.php` **exigem chave de acesso** (`web/keys.php`, sessão PHP).
-  Não há usuário nem senha. A chave tem o formato `00-XXXX-XXXX-XXXX`; o servidor guarda só o
-  **hash SHA-256** em `~/.packotm/web/keys.json` (nunca em texto puro, nunca versionado, `chmod 600`).
-  Crie com `sh main.sh web key new`, liste com `sh main.sh web key list` e revogue com
-  `sh main.sh web key revoke <id>`. A tela de entrada (`web/access.php`) usa **CSRF** (`otm_csrf`).
-  `sh main.sh web key sync` exporta só os hashes das chaves ativas para
-  `app/src/main/assets/panel/keys.json` (é o que o app usa para validar a chave offline;
-  rode antes de gerar o APK).
-- `web/api.php` aceita a **sessão do painel** ou a própria chave no cabeçalho `X-Otm-Key` / em
-  `?key=` (para scripts e integrações), e só roda scripts da lista branca `otm_allowed_scripts()`.
-  Parâmetros são validados por tipo (pkg/host/int/float/enum). Nunca passe input do usuário direto para o shell.
+- `web/index.php` e `web/api.php` **exigem login** (usuário e senha, `web/auth.php`, sessão PHP).
+  A senha é guardada só como **hash** (`password_hash`) em `~/.packotm/web/auth.json`
+  (nunca em texto puro, nunca versionado, `chmod 600`); a credencial inicial fica em
+  `OTM_DEFAULT_USER`/`OTM_DEFAULT_HASH` (`web/auth.php`). A tela de entrada (`web/login.php`)
+  usa **CSRF** (`otm_csrf`).
+- `web/api.php` aceita a **sessão do painel** ou o **token do servidor** (`web/.token`) no cabeçalho
+  `X-Otm-Token` / em `?token=` (para scripts e integrações), e só roda scripts da lista branca
+  `otm_allowed_scripts()`. Parâmetros são validados por tipo (pkg/host/int/float/enum).
+  Nunca passe input do usuário direto para o shell.
 - Ações com `confirm:true` exigem `confirm=1` no POST (o `index.php` mostra o modal).
 - `web/.token`, `web/.state/` e `web/auth.json` são **locais** (no `.gitignore` e removidos do zip).
 
-### Painel de licenças (`panel/`) — o sistema novo
+### Painel de administração (`panel/`)
 
-`panel/` é o painel de **chaves/licenças** que o app consulta para validar o acesso.
-Substitui o `web/keys.php` (que guardava `keys.json` em disco) por um banco de verdade.
-Estrutura:
+`panel/` é o painel interno da equipe, com acesso por **usuário e senha de administrador**
+guardados no banco. Estrutura:
 
 ```
 panel/
-  bin/          CLIs: admin.php, key.php, migrate.php, license.php, vault.php, buildprops.php
-  config/       config.php, turso.php (segredo, fora do git), license.php (idem), vault.php (idem), local.php
-  database/     migrations/*.sql (0001..0006)
-  public/       páginas (login, index, keys, key_view, plans, events, audit, settings, admins, export)
-  public/api/   validate.php (o app chama), hashes.php (sync offline)
-  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), KeyService, KeyVault, Auth, Audit, License, Helpers
+  bin/          CLIs: admin.php, migrate.php
+  config/       config.php, turso.php (segredo, fora do git), local.php
+  database/     migrations/*.sql (0001_admins, 0002_panel)
+  public/       páginas (login, index, audit, settings, admins, logout)
+  src/          OtmDb (contrato), Turso (remoto), Db (SQLite local), Auth, Audit, Helpers, layout
 ```
 
 Regras:
 - **Dois bancos, um código.** `OtmDb` é o contrato; `Turso` (HTTP, produção) e `Db`
   (SQLite local) implementam. `otm_db()` escolhe: `OTM_LOCAL_DB` definido → SQLite;
-  senão, se o Turso estiver configurado → Turso; senão → SQLite. `KeyService`/`Auth`/`Audit`
+  senão, se o Turso estiver configurado → Turso; senão → SQLite. `Auth`/`Audit`
   não sabem a diferença. **Nunca** use type hint de `Turso` em código novo — use `OtmDb`.
-- **Só o hash vai para o banco** (`key_hash` = SHA-256 da chave normalizada). A chave em
-  texto **nunca** é gravada em claro: quando precisa ser reexibida (botão copiar no painel,
-  comando `show`), fica no **cofre** (`key_sealed`), cifrada com sodium (`KeyVault`,
-  formato `v1:<base64>`). Sem o cofre configurado, o texto não existe — só o hash.
-- **O cofre é a fronteira.** A chave simétrica vem de `panel/config/vault.php` (fora do
-  git) ou de `OTM_VAULT_KEY` (env tem prioridade, igual ao Turso). Gere com
-  `sh main.sh web vault keygen`. Perder essa chave = perder as chaves em texto (os
-  hashes continuam válidos para o app). Faça backup do `vault.php`.
-- **Adotar chave antiga:** chaves criadas antes do cofre não têm texto guardado. Para
-  reexibir, `php panel/bin/key.php adopt 00-XXXX-XXXX-XXXX` — só funciona se o texto
-  bater com o hash já gravado (ninguém "adota" uma chave que não é aquela).
-- **Formato da chave: `00-XXXX-XXXX-XXXX`** (`OTM_PREFIX = '00'` em `src/Helpers.php`),
-  igual no painel, no `KeyGate.kt` e no `web/keys.php`. Cuidado: `00` também é caractere
-  válido do alfabeto, então `otm_key_normalize()` só remove o prefixo quando sobra corpo
-  suficiente — senão uma chave cujo corpo comece com `00` perderia dois dígitos.
-- **Chave digitada à mão é aceita** (`create(['key' => ...])`, `--key` no CLI, campo em
-  `key_new.php`). Passa pela mesma validação e é recusada se o formato for inválido ou se
-  já existir. Sem `key`, o sistema gera.
-- **O painel começa limpo**: sem planos de exemplo nem chaves de teste. A migração
-  `0005_plans.sql` só grava `otm_settings`; os planos são criados pelo usuário.
+- **A senha do admin nunca é gravada em claro**: só o `password_hash` (bcrypt/argon2 do PHP).
+  O login é feito por `Auth::login()` (`src/Auth.php`), que também grava tentativas e
+  sessões (`otm_admin_sessions`, `otm_login_attempts`) e freia por IP.
 - **Visual do painel é "sistema legado"**: cinza de janela, cantos retos, tabelas com
   grade completa, fonte de sistema pequena e densa. Tudo em `public/assets/admin.css`
   (CSS puro, sem framework). Barra de título azul no topo (`layout.php`) e barra de
@@ -156,53 +135,15 @@ Regras:
   variáveis, senão o modo escuro fica pela metade.
 - **Exclusão no painel**: as ações destrutivas passam por `otm_require_write()` e CSRF,
   usam `otm_action_button(..., 'btn danger sm', 'Confirma?')` e sempre registram na
-  auditoria. `keys.php` (apagar chave), `events.php` (apagar tentativa / limpar antigas /
-  tudo), `audit.php` (limpar antigas / tudo, só dono) e `admins.php` (apagar admin, com
+  auditoria. `audit.php` (limpar antigas / tudo, só dono) e `admins.php` (apagar admin, com
   trava contra apagar a si mesmo ou o último dono ativo). Ao apagar admin, remova também
   as sessões (`otm_admin_sessions`).
 - **Cuidado ao testar exclusão contra o banco real**: sem `OTM_LOCAL_DB`, o painel grava
   no **Turso** (produção). Nunca aponte um teste destrutivo para lá. Prefira um SQLite
   temporário (`OTM_LOCAL_DB=/tmp/x.sqlite`) ou crie um alvo descartável. Se apagar algo
   por engano, `Audit` e os backups em `/tmp/otm-backup/` ajudam a reconstruir.
-- **A suíte `tests/run.sh` sobe o painel na porta fixa 8123.** Se uma execução anterior
-  morrer sem matar o `php -S`, a próxima falha em cascata (endpoint/hashes/login). Antes
-  de rodar, verifique `ps aux | grep '[p]hp -S'` e mate o servidor órfão da 8123.
 - **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
-  nunca o vê: quem fala com o banco é o painel, via `api/validate.php`.
-- `api/validate.php` só aceita **POST** (405 caso contrário), tem freio por IP (429) e
-  responde sempre com `{ok, result, message}`. `api/hashes.php` exige o segredo
-  `sync_token` (guardado em `otm_settings`), senão devolve 403.
-- `bin/key.php sync --out ...` gera o `app/src/main/assets/panel/keys.json` (só hashes).
-  Rode antes de gerar o APK. O `main.sh web key sync` faz o mesmo.
-
-#### Licença offline (uso sem internet, mas sem "grátis para sempre")
-
-O `keys.json` diz "esta chave existe", não "esta chave ainda vale" — por isso ele sozinho
-deixaria o app funcionar para sempre offline. O que resolve é um **bilhete assinado**
-(*lease*) que o app guarda no aparelho:
-
-- **Formato:** `OTM1.<payload_base64url>.<assinatura_base64url>`. O payload é JSON de
-  chaves curtas: `h` hash da chave, `k` id, `l` nome, `d` aparelho, `e` validade,
-  `i` emitido em, `o` fim do uso offline, `g` dias de folga, `m`/`u` usos.
-- **Assinatura Ed25519** (`panel/src/License.php` via sodium; conferida no app por
-  `License.kt` com BouncyCastle). Chave privada em `panel/config/license.php` (fora do
-  git), pública embarcada no APK (`-PotmLicensePub=...` → `BuildConfig.LICENSE_PUB`).
-  Ed25519, e não HMAC, porque num HMAC o segredo teria que viajar no APK — e aí qualquer
-  um forjaria licença só lendo o binário.
-- **Fluxo:** `api/validate.php` devolve `lease` + `offline_days` quando a chave passa.
-  `KeyGate` guarda o bilhete e, sem rede, confere sozinho (assinatura, aparelho, prazo).
-- **Anti-"grátis infinito":** o bilhete carrega o prazo (`o`). Vencido, o app tranca e
-  pede nova validação — que exige internet. O `KeyGate.sessionOk()` roda a cada abertura
-  do app (`PanelActivity`), senão o "unlocked" ficaria ligado para sempre.
-- **Anti-volta-do-relógio:** o app guarda a maior hora já vista (do `server_time` do
-  painel e do relógio local) em `PREF_MAX_SEEN`. Relógio para trás além da tolerância
-  (`CLOCK_TOLERANCE`, 1h) = adulteração, licença recusada. Sem isso bastava voltar a data.
-- **Prazo offline** é ajuste do painel (*Dias de uso offline*, `otm_settings.offline_days`,
-  padrão 7). Chave vitalícia **também** ganha prazo offline — não existe "para sempre".
-- **Comandos:** `php panel/bin/license.php keygen|show|verify|decode`. Trocar o par
-  (`keygen --force`) invalida todas as licenças já emitidas — só faça antes de distribuir.
-- Se a licença não estiver configurada (sem chave pública no APK), o app cai no modo
-  antigo (lista de hashes), sem prazo. Nada quebra.
+  nunca o vê.
 - Páginas do painel exigem **login de administrador** (`otm_admins`, senha com
   `password_hash`) + **CSRF**. Crie o primeiro com
   `php panel/bin/admin.php add SEU_USUARIO --role owner`.
@@ -214,28 +155,9 @@ Comandos:
 ```sh
 sh main.sh web migrate                     # aplica as migrations (Turso ou SQLite)
 sh main.sh web admin add whesley --role owner
-sh main.sh web key new "Cliente"           # cria uma chave (mostra o texto p/ copiar)
-sh main.sh web key list                    # id, prefixo, nome, situação, expira
-sh main.sh web key sync                    # atualiza assets/panel/keys.json p/ o APK
-sh main.sh web vault keygen                # cria a chave do cofre (reexibir chaves)
-sh main.sh web build                       # grava a URL do painel no app (local.properties)
+sh main.sh web admin list
 OTM_LOCAL_DB=/tmp/painel.sqlite php panel/bin/migrate.php   # roda no SQLite local (sem rede)
 ```
-
-### Endereço do painel no app (`PANEL_URL`)
-
-O app só valida a chave no banco se souber onde está o painel. São dois caminhos:
-
-1. **Embutido no build** (recomendado): `sh main.sh web build` escreve `otmPanelUrl`,
-   `otmSyncToken` e `otmLicensePub` em `local.properties` (fora do git); o
-   `app/build.gradle.kts` lê de lá. `-PotmPanelUrl=...` na linha de comando ainda vence.
-2. **Em tempo de execução**: na tela da chave do app, o link **⚙ Servidor** guarda a URL
-   em `SharedPreferences` (via `KeyGate.setApiUrl`). A URL gravada tem prioridade sobre a
-   do build, então dá para corrigir sem recompilar.
-
-Sem URL nenhuma, o app cai no modo offline (só `keys.json`) e a chave **nunca** é
-conferida no banco — foi a causa do "não conecta". A URL não leva `/index.php` nem `/api`:
-o app completa com `/api/validate.php`.
 
 `index.html` é o site público (um só arquivo, sem dependências): explica os 4 níveis, os
 apps, os plugins/módulos e tem uma **área de comandos** com busca e botão de copiar.
@@ -252,7 +174,7 @@ sh scripts/build-pack.sh        # gera o zip único "Pack 00" completo em releas
 sh scripts/debloat.sh on medio  # debloat (leve|medio|pesado); off reverte
 sh scripts/dns.sh list          # perfis de DNS (privacidade/ads/família/gaming)
 sh scripts/modules.sh list      # lista módulos/plugins da pasta; run <nome> executa
-sh main.sh web start            # sobe o painel web (PHP) e mostra a URL (acesso com chave)
+sh main.sh web start            # sobe o painel web (PHP) e mostra a URL (acesso com login)
 sh main.sh baixar               # baixa os recursos full do pack
 sh scripts/check-secrets.sh     # falha se achar credencial
 shellcheck -S error $(find scripts "00 Otimizações/Scripts SH" "00 Otimizações/Plugins AxManager/Nossos" tests -name '*.sh')
@@ -299,16 +221,13 @@ assets do pack embutidos.
 O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.
 
-- `PanelActivity` é o launcher: carrega `assets/panel/index.html` (o painel)
-  direto numa WebView e injeta "Conectar"/"Som" no cabeçalho.
-- Entrada por chave (sem usuário e senha): a tela da chave vem **antes** do
-  método de conexão. A chave é validada localmente pelo `KeyGate` contra os
-  hashes SHA-256 em `assets/panel/keys.json` (gerado por
-  `sh main.sh web key sync`). A chave em texto nunca vai para o APK.
-- `KeyGate` falha fechado: sem lista de hashes (ou lista vazia) nada é aceito.
-  A forma canônica e o hash espelham `web/keys.php`, então digitar com espaços,
-  sem hífen ou em minúsculas dá no mesmo.
-- "Trocar chave" no cabeçalho volta para a tela da chave (`showKeyScreen()`).
+- `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de entrada)
+  numa WebView; acertando o login, carrega `assets/panel/index.html` (o painel).
+- Login por **usuário e senha**, validado localmente contra a constante `OTM_AUTH`
+  (`sha256("usuario:senha")`) em `login.html`. O painel (`index.html`) tem guarda de
+  sessão (`otm_session` no `localStorage`); o botão Sair limpa a sessão e volta ao login.
+- A ponte `OTM.call("login"|"login_fail")` só avisa o app para tocar o áudio
+  (`login_feito_com_sucesso.mp3` / `credenciais_incorretas.mp3`).
 - Áudio segue a ação, não a tela: som do grupo no início, e no fim
   `perfil-aplicado-com-sucesso.mp3` ou `erro.mp3` conforme o resultado.
 - Menu lateral do painel: `.side .panel` é `position:fixed` (trava na viewport,

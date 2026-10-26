@@ -8,9 +8,9 @@
 //
 //  Uso:
 //      $db = Turso::fromConfig();
-//      $rows = $db->all('select * from otm_keys where id = ?', [$id]);
-//      $db->run('update otm_keys set label = ? where id = ?', ['x', $id]);
-//      $id  = $db->insert('insert into otm_keys (key_hash) values (?)', [$h]);
+//      $rows = $db->all('select * from otm_admins where id = ?', [$id]);
+//      $db->run('update otm_admins set name = ? where id = ?', ['x', $id]);
+//      $id  = $db->insert('insert into otm_admins (username, password_hash) values (?, ?)', [$u, $h]);
 // =============================================================================
 
 declare(strict_types=1);

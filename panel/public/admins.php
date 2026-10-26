@@ -99,7 +99,7 @@ require __DIR__ . '/../src/layout.php';
 ?>
 
 <h1>Administradores</h1>
-<div class="sub">Quem pode entrar neste painel. O cliente final continua usando só a chave, no app.</div>
+<div class="sub">Quem pode entrar neste painel. Cada um entra com usuário e senha.</div>
 
 <?= otm_flash() ?>
 

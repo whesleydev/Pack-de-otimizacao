@@ -2,7 +2,7 @@
 // =============================================================================
 //  Auth.php - Login e sessão dos administradores do painel.
 //
-//  Aqui existe usuário e senha (diferente do cliente final, que usa chave).
+//  Aqui existe usuário e senha, guardados só como hash.
 //  A senha é guardada com password_hash (bcrypt) e conferida com
 //  password_verify. A sessão fica no banco (otm_admin_sessions) para o painel
 //  conseguir listar e derrubar acessos ativos.

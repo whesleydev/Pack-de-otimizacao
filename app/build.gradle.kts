@@ -1,19 +1,8 @@
-import java.util.Properties
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
-
-// Segredos de build (endereço do painel, token de sync, chave pública da
-// licença) podem vir de local.properties — que NÃO vai para o git — em vez de
-// flags na linha de comando. A flag -P ainda tem prioridade quando passada.
-val otmLocal = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.isFile) f.inputStream().use { load(it) }
-}
-fun otmProp(name: String, fallback: String): String =
-    (project.findProperty(name) as String?) ?: otmLocal.getProperty(name) ?: fallback
 
 android {
     namespace = "com.otm.pack"
@@ -25,19 +14,6 @@ android {
         targetSdk = 34
         versionCode = 52
         versionName = "2.30.0"
-
-        // Endereço do painel que valida a chave no banco (Turso). Pode ser
-        // trocado em tempo de execução (tela da chave → Servidor) sem recompilar.
-        // Defina em local.properties: otmPanelUrl=https://seu-painel
-        val panelUrl = otmProp("otmPanelUrl", "")
-        buildConfigField("String", "PANEL_URL", "\"$panelUrl\"")
-        // Segredo do endpoint de hashes (validação offline). Opcional.
-        val syncToken = otmProp("otmSyncToken", "")
-        buildConfigField("String", "SYNC_TOKEN", "\"$syncToken\"")
-        // Chave PÚBLICA Ed25519 da licença offline (base64). Gere com
-        // "php panel/bin/license.php keygen". Vazia = o app só valida online.
-        val licensePub = otmProp("otmLicensePub", "")
-        buildConfigField("String", "LICENSE_PUB", "\"$licensePub\"")
     }
 
     signingConfigs {
@@ -111,8 +87,7 @@ dependencies {
     // ADB por Wi-Fi (libadb-android, Apache-2.0)
     implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
     implementation("com.github.MuntashirAkon:sun-security-android:1.1")
+    // BouncyCastle: certificado autoassinado do cliente ADB (SelfSignedCert.kt).
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
-    // Ed25519 para conferir a licença offline (License.kt). Vem junto do
-    // bcpkix, mas declarado aqui para não depender da transitividade.
     implementation("org.bouncycastle:bcprov-jdk15to18:1.81")
 }

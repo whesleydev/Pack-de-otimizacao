@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+try { if (localStorage.getItem("otm_session") !== "b6cddaaf9333c33071ae824248927b5349955fbb87167a5c1ddef5afa23d1a4d") location.replace("login.html"); } catch(e){}
+</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -3904,6 +3908,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
         openConsole("Acesso atual", (m.mode ? ("modo: " + m.mode + "\n") : "") + (m.text || "(sem saída)"));
       });
     };
+    const sair = document.getElementById("btnSair");
+    if (sair) sair.onclick = () => { try { localStorage.removeItem("otm_session"); } catch(e){} location.replace("login.html"); };
     const snd = document.getElementById("otmSound");
     if (snd) {
       const paint = () => {

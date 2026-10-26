@@ -31,8 +31,6 @@ releases/*.zip.sha256
 web/.token
 web/.state/
 web/auth.json
-web/keys.json
-app/src/main/assets/panel/keys.json
 
 # estado local dos plugins
 "00 Otimizações/Plugins AxManager"/*/state/
@@ -45,8 +43,6 @@ apps_otm.zip
 
 # credenciais locais do painel (nunca versionar)
 panel/config/turso.php
-panel/config/license.php
-panel/config/vault.php
 panel/config/*.local.php
 
 # banco local do painel (modo offline/dev)

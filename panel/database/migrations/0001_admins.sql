@@ -1,9 +1,8 @@
 -- =============================================================================
 --  0004_admins.sql - Quem entra no painel de administração.
 --
---  Aqui SIM existe usuário e senha: o painel é ferramenta interna da equipe.
+--  O painel usa usuário e senha: é ferramenta interna da equipe.
 --  A senha é guardada só como hash (password_hash do PHP, bcrypt/argon2).
---  O "cliente" final continua entrando só com chave, no app.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS otm_admins (

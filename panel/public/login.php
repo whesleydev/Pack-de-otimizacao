@@ -67,7 +67,7 @@ $semAdmin = $auth->countAdmins() === 0;
   <form class="login" method="post" action="login.php">
     <input type="hidden" name="_csrf" value="<?= otm_e($auth->csrf()) ?>">
     <input type="hidden" name="next" value="<?= otm_e($next) ?>">
-    <h1>Painel de chaves</h1>
+    <h1>Painel</h1>
     <div class="sub">00deUdia Otimizações · administração</div>
 
     <?php if ($erro !== ''): ?><?= otm_msg('err', otm_e($erro)) ?><?php endif; ?>

@@ -316,38 +316,28 @@ EOF
 }
 
 t_auth() {
-    printf '\n  # acesso por chave no painel (sem usuário e senha)\n'
+    printf '\n  # login do painel (00deUdia)\n'
     if command -v php >/dev/null 2>&1; then
-        rm -f "$HOME/.packotm/web/keys.json"
-        php -r 'require "'"$ROOT"'/web/keys.php";
-                 $c=otm_key_create("teste");
-                 echo otm_key_verify($c["key"]) !== null ? "OK":"NAO";' \
-                 > "$TMP/key1" 2>&1
-        assert_contains "$TMP/key1" "OK" "chave válida entra no painel"
-        php -r 'require "'"$ROOT"'/web/keys.php";
-                 echo otm_key_verify("00-AAAA-BBBB-CCCC") === null ? "RECUSOU":"ACEITOU";' \
-                 > "$TMP/key2" 2>&1
-        assert_contains "$TMP/key2" "RECUSOU" "chave inventada é recusada"
-        php -r 'require "'"$ROOT"'/web/keys.php";
-                 $c=otm_key_create("revogar");
-                 otm_key_revoke($c["id"]);
-                 echo otm_key_verify($c["key"]) === null ? "RECUSOU":"ACEITOU";' \
-                 > "$TMP/key3" 2>&1
-        assert_contains "$TMP/key3" "RECUSOU" "chave revogada é recusada"
-        if grep -q "00-" "$HOME/.packotm/web/keys.json" 2>/dev/null; then
-            bad "chave gravada em texto puro"
+        rm -f "$HOME/.packotm/web/auth.json"
+        OTM_TEST_PASS="${OTM_TEST_PASS:-159951}"; export OTM_TEST_PASS
+        php -r 'require "'"$ROOT"'/web/auth.php";
+                 echo otm_auth_login("00deUdia",getenv("OTM_TEST_PASS")) ? "OK":"NAO";' \
+                 > "$TMP/auth1" 2>&1
+        assert_contains "$TMP/auth1" "OK" "credencial inicial do painel funciona"
+        php -r 'require "'"$ROOT"'/web/auth.php";
+                 echo otm_auth_login("00deUdia","errada") ? "ACEITOU":"RECUSOU";' > "$TMP/auth2" 2>&1
+        assert_contains "$TMP/auth2" "RECUSOU" "senha errada e recusada"
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("chefe","segredo123");
+                 echo otm_auth_login("chefe","segredo123") ? "OK":"NAO";' > "$TMP/auth3" 2>&1
+        assert_contains "$TMP/auth3" "OK" "troca de usuario/senha funciona"
+        if grep -q "segredo123" "$HOME/.packotm/web/auth.json" 2>/dev/null; then
+            bad "senha gravada em texto puro"
         else
-            ok "chave guardada com hash (nao em texto puro)"
+            ok "senha guardada com hash (nao em texto puro)"
         fi
-        # o sistema antigo de login/senha não pode ter sobrado
-        if [ -f "$ROOT/web/auth.php" ] || [ -f "$ROOT/web/login.php" ]; then
-            bad "ainda existe login/senha no projeto"
-        else
-            ok "sistema de login e senha removido"
-        fi
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_set("00deUdia",getenv("OTM_TEST_PASS"));' >/dev/null 2>&1
     else
-        printf '  [skip] php ausente: pulei testes de chave
-'
+        printf '  [skip] php ausente: pulei testes de login\n'
     fi
 }
 
@@ -395,7 +385,7 @@ t_pack_scripts_mirror() {
 
 # --- painel novo (Turso/SQLite): chaves validadas no banco --------------------
 t_panel_db() {
-    printf '\n  # painel novo: chaves e validação no banco\n'
+    printf '\n  # painel: administradores no banco\n'
     if ! command -v php >/dev/null 2>&1; then
         printf '  [skip] php ausente: pulei os testes do painel\n'
         return 0
@@ -408,8 +398,6 @@ t_panel_db() {
     local dbf="$TMP/painel.sqlite"
     rm -f "$dbf"*
     # banco local (sem rede): o mesmo código que roda no Turso
-    # O número de migrations cresce com o tempo — confere que TODAS as .sql
-    # foram aplicadas, sem fixar a contagem (que quebra a cada migration nova).
     local nmig
     nmig="$(ls "$ROOT"/panel/database/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')"
     if OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/migrate.php" > "$TMP/mig" 2>&1; then
@@ -423,262 +411,67 @@ t_panel_db() {
         return 0
     fi
 
-    # admin do painel
+    # nenhuma tabela do sistema de chaves deve existir
+    local tbl
+    tbl="$(OTM_LOCAL_DB="$dbf" php -r '
+             require $argv[1]."/src/bootstrap.php";
+             $q = "select name from sqlite_master where type = " . chr(39) . "table" . chr(39);
+             foreach (otm_db()->all($q) as $r)
+                 if (str_contains((string)$r["name"], "key")) echo $r["name"]." ";' \
+             "$ROOT/panel" 2>/dev/null)"
+    if [ -z "$tbl" ]; then ok "nenhuma tabela de chaves no banco"; else bad "sobrou tabela de chave: $tbl"; fi
+
+    # admin do painel (usuário e senha)
     if OTM_LOCAL_DB="$dbf" OTM_PASSWORD=segredo123 php "$ROOT/panel/bin/admin.php" add whesley --role owner >/dev/null 2>&1; then
         ok "admin do painel criado"
     else
         bad "não criei o admin do painel"
     fi
 
-    # cria uma chave e captura o JSON
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Cliente Teste" --days 30 --devices 2 --json \
-        > "$TMP/knew" 2>&1
-    local k
-    k="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/knew" 2>/dev/null)"
-    if [ -n "$k" ]; then ok "chave criada pelo painel ($k)"; else bad "não criei a chave: $(head -1 "$TMP/knew")"; fi
-
-    # hash guardado é o sha256 da chave (bate com o que o app calcula)
-    local h1 h2
-    h1="$(OTM_LOCAL_DB="$dbf" php -r 'require $argv[1]."/src/bootstrap.php"; echo (string)otm_db()->scalar("select key_hash from otm_keys where id=1");' "$ROOT/panel" 2>/dev/null)"
-    h2="$(printf '%s' "$k" | sha256sum | cut -d' ' -f1)"
-    assert_eq "$h1" "$h2" "hash no banco = sha256 da chave"
-
-    # a chave em texto NÃO aparece no banco
-    if OTM_LOCAL_DB="$dbf" php -r 'require $argv[1]."/src/bootstrap.php"; $r=otm_db()->all("select * from otm_keys"); echo (str_contains(json_encode($r), $argv[2]) ? "ACHOU" : "SEGURO");' \
-            "$ROOT/panel" "$k" > "$TMP/plain" 2>&1; then
-        assert_contains "$TMP/plain" "SEGURO" "chave em texto não é gravada"
-    fi
-
-    # KeyService: valida a chave com o aparelho, aplica limite e revoga
+    # o admin entra com a senha certa e a senha errada é recusada
     OTM_LOCAL_DB="$dbf" php -r '
         require $argv[1]."/src/bootstrap.php";
-        $db = otm_db(); $ks = new KeyService($db);
-        $key = json_decode(file_get_contents($argv[2]), true)["key"];
-        $a = $ks->validate($key, ["device_id"=>"dev-A","model"=>"Pixel"], "127.0.0.1");
-        $b = $ks->validate($key, ["device_id"=>"dev-B","model"=>"Moto"], "127.0.0.1");
-        $c = $ks->validate($key, ["device_id"=>"dev-C","model"=>"Xiaomi"], "127.0.0.1");
-        echo ($a["ok"] && $b["ok"] ? "DOIS_OK " : "FALHOU ");
-        echo ($c["ok"] === false && $c["result"] === "device_limit" ? "LIMITE_OK " : "SEM_LIMITE ");
-        $id = (int)$db->scalar("select id from otm_keys where key_prefix = ?", [otm_key_prefix_of($key)]);
-        $ks->revoke($id, "teste");
-        $d = $ks->validate($key, ["device_id"=>"dev-A"], "127.0.0.1");
-        echo (!$d["ok"] && $d["result"] === "revoked" ? "REVOGADA_OK" : "REVOGACAO_FALHOU");
-    ' "$ROOT/panel" "$TMP/knew" > "$TMP/ks" 2>&1
-    assert_contains "$TMP/ks" "DOIS_OK"     "duas primeiras entradas passam"
-    assert_contains "$TMP/ks" "LIMITE_OK"   "terceiro aparelho é barrado"
-    assert_contains "$TMP/ks" "REVOGADA_OK" "chave revogada é recusada"
+        $h = (string)otm_db()->scalar("select password_hash from otm_admins where username = ?", ["whesley"]);
+        echo (password_verify("segredo123", $h) ? "ENTRA " : "NAO_ENTRA ");
+        echo (!password_verify("errada", $h) ? "RECUSA" : "ACEITOU_ERRADA");
+    ' "$ROOT/panel" > "$TMP/auth" 2>&1
+    assert_contains "$TMP/auth" "ENTRA"  "admin entra com usuário e senha"
+    assert_contains "$TMP/auth" "RECUSA" "senha errada é recusada"
 
-    # cofre (KeyVault): a chave fica cifrada e o painel consegue reexibi-la
-    local vk
-    vk="$(php -r 'require $argv[1]."/src/bootstrap.php"; echo KeyVault::generate();' "$ROOT/panel" 2>/dev/null)"
-    if [ -n "$vk" ]; then ok "cofre gera chave"; else bad "cofre não gerou chave"; fi
-
-    # ida e volta + adulteração recusada (mesma chave simétrica)
-    OTM_VAULT_KEY="$vk" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        $s = KeyVault::seal("00-TEST-ABCD-EFGH");
-        echo (KeyVault::open($s) === "00-TEST-ABCD-EFGH" ? "IDA_VOLTA_OK " : "FALHOU ");
-        echo (KeyVault::open(substr($s, 0, -2) . "XX") === "" ? "ADULTERADO_OK " : "ACEITOU_ADULTERADO ");
-        echo (KeyVault::open("") === "" ? "VAZIO_OK" : "VAZIO_FALHOU");
-    ' "$ROOT/panel" > "$TMP/vault" 2>&1
-    assert_contains "$TMP/vault" "IDA_VOLTA_OK"    "cofre abre o que cifrou"
-    assert_contains "$TMP/vault" "ADULTERADO_OK"   "cofre recusa texto adulterado"
-    assert_contains "$TMP/vault" "VAZIO_OK"        "cofre recusa vazio"
-
-    # sem a chave certa, o que foi cifrado não abre (o cofre é a fronteira)
-    OTM_VAULT_KEY="$(php -r 'echo base64_encode(random_bytes(32));')" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        echo (KeyVault::open($argv[2]) === "" ? "OUTRA_CHAVE_OK" : "ABRIU_COM_OUTRA");
-    ' "$ROOT/panel" "$(OTM_VAULT_KEY="$vk" php -r 'require $argv[1]."/src/bootstrap.php"; echo KeyVault::seal("00-TEST-ABCD-EFGH");' "$ROOT/panel" 2>/dev/null)" > "$TMP/vault2" 2>&1
-    assert_contains "$TMP/vault2" "OUTRA_CHAVE_OK" "cofre não abre com chave diferente"
-
-    # criar chave com cofre ligado guarda o texto cifrado (não em claro)
-    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Cofre" --json \
-        > "$TMP/kv" 2>&1
-    local kvk
-    kvk="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/kv" 2>/dev/null)"
-    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        $db = otm_db(); $ks = new KeyService($db);
-        $row = $db->one("select * from otm_keys where key_hash = ?", [otm_key_hash($argv[2])]);
-        echo ($ks->plaintext($row) === otm_key_normalize($argv[2]) ? "REEXIBE_OK " : "NAO_REEXIBE ");
-        echo (str_contains((string)$row["key_sealed"], $argv[2]) ? "CLARO_NO_BANCO" : "CIFRADO_OK");
-    ' "$ROOT/panel" "$kvk" > "$TMP/kvread" 2>&1
-    assert_contains "$TMP/kvread" "REEXIBE_OK"   "painel reexibe a chave pelo cofre"
-    assert_contains "$TMP/kvread" "CIFRADO_OK"   "chave fica cifrada no banco"
-
-    # adopt: guarda no cofre uma chave criada antes dele (só se o hash bater)
-    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" adopt "$k" > "$TMP/adopt" 2>&1
-    assert_contains "$TMP/adopt" "guardada no cofre" "adopt guarda chave existente"
-    OTM_VAULT_KEY="$vk" OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" adopt "00-AAAA-BBBB-CCCC" > "$TMP/adopt2" 2>&1
-    assert_contains "$TMP/adopt2" "nenhuma chave"    "adopt recusa chave que não existe"
-
-    # endpoint HTTP de validação, servido de verdade
-    local port=8123
-    ( cd "$ROOT/panel/public" && OTM_LOCAL_DB="$dbf" php -S "127.0.0.1:$port" >/dev/null 2>&1 & echo $! > "$TMP/srv.pid" )
-    sleep 1
-    if command -v curl >/dev/null 2>&1; then
-        OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "HTTP" --json > "$TMP/k2" 2>&1
-        local k2
-        k2="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/k2" 2>/dev/null)"
-        curl -s -X POST -H 'Content-Type: application/json' \
-            -d "{\"key\":\"$k2\",\"device_id\":\"http-dev\"}" \
-            "http://127.0.0.1:$port/api/validate.php" > "$TMP/vok" 2>&1
-        assert_contains "$TMP/vok" '"ok":true' "endpoint: chave válida responde ok"
-
-        curl -s -X POST -H 'Content-Type: application/json' \
-            -d '{"key":"00-2222-3333-4444","device_id":"x"}' \
-            "http://127.0.0.1:$port/api/validate.php" > "$TMP/vbad" 2>&1
-        assert_contains "$TMP/vbad" '"ok":false' "endpoint: chave inexistente é recusada"
-
-        curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/api/validate.php" > "$TMP/vget" 2>&1
-        assert_contains "$TMP/vget" "405" "endpoint: GET é recusado (405)"
-
-        # hashes.php (modo offline): exige o segredo sync_token
-        curl -s "http://127.0.0.1:$port/api/hashes.php" > "$TMP/hno" 2>&1
-        assert_contains "$TMP/hno" '"ok":false' "hashes: sem segredo é negado"
-
-        OTM_LOCAL_DB="$dbf" php -r '
-            require $argv[1]."/src/bootstrap.php";
-            otm_db()->run("INSERT OR REPLACE INTO otm_settings (key, value) VALUES (?,?)", ["sync_token","tok-teste"]);
-        ' "$ROOT/panel" >/dev/null 2>&1
-        OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Offline" --json > "$TMP/k3" 2>&1
-        local k3 hh
-        k3="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/k3" 2>/dev/null)"
-        hh="$(printf '%s' "$k3" | sha256sum | cut -d' ' -f1)"
-        curl -s "http://127.0.0.1:$port/api/hashes.php?token=tok-teste" > "$TMP/hok" 2>&1
-        assert_contains "$TMP/hok" '"ok":true' "hashes: com segredo responde ok"
-        # o hash devolvido é exatamente o que o app calcula (mesma normalização)
-        if grep -q "$hh" "$TMP/hok" 2>/dev/null; then
-            ok "hashes: hash bate com o cálculo do app"
-        else
-            bad "hashes: hash não bate (app não validaria offline)"
-        fi
-        assert_not_contains "$TMP/hok" "00-" "hashes: não expõe a chave em texto"
-
-        # páginas do painel: login real (com CSRF) e todas autenticadas em 200
-        local cj="$TMP/cookies.txt"
-        rm -f "$cj"
-        local csrf
-        csrf="$(curl -s -c "$cj" "http://127.0.0.1:$port/login.php" \
-                | sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -1)"
-        if [ -n "$csrf" ]; then
-            curl -s -b "$cj" -c "$cj" -o /dev/null \
-                -d "username=whesley&password=segredo123&_csrf=$csrf" \
-                "http://127.0.0.1:$port/login.php" >/dev/null 2>&1
-            local badpg=0
-            for pg in index.php keys.php plans.php events.php audit.php settings.php admins.php key_new.php; do
-                code="$(curl -s -b "$cj" -o "$TMP/pg" -w '%{http_code}' "http://127.0.0.1:$port/$pg")"
-                [ "$code" = "200" ] && grep -q '<h1' "$TMP/pg" || { badpg=1; bad "página $pg não abriu (HTTP $code)"; }
-            done
-            [ "$badpg" = "0" ] && ok "todas as páginas do painel abrem autenticadas"
-            # export CSV responde planilha
-            curl -s -b "$cj" -o "$TMP/x.csv" -w '%{content_type}' "http://127.0.0.1:$port/export.php" > "$TMP/ct" 2>&1
-            assert_contains "$TMP/ct" "csv" "export devolve CSV"
-
-            # --- apagar chave pela lista (novo botão da coluna Ações) --------
-            curl -s -b "$cj" "http://127.0.0.1:$port/keys.php" > "$TMP/klist" 2>&1
-            assert_contains "$TMP/klist" 'value="rm"' "lista de chaves tem o botão apagar"
-            assert_contains "$TMP/klist" 'otmThemeBtn' "barra do painel tem o botão de tema"
-            local csfrk
-            csfrk="$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$TMP/klist" | head -1)"
-            [ -n "$csfrk" ] || csfrk="$csrf"
-            # cria uma chave descartável e apaga pelo painel
-            OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Descartavel" --json \
-                > "$TMP/kthrow" 2>&1
-            local kid
-            kid="$(OTM_LOCAL_DB="$dbf" php -r '
-                require $argv[1]."/src/bootstrap.php";
-                echo (string)otm_db()->scalar("SELECT id FROM otm_keys WHERE label = ?", ["Descartavel"]);
-            ' "$ROOT/panel" 2>/dev/null)"
-            if [ -n "$kid" ]; then
-                curl -s -b "$cj" -o /dev/null \
-                    -d "id=$kid&act=rm&_csrf=$csfrk" "http://127.0.0.1:$port/keys.php" >/dev/null 2>&1
-                OTM_LOCAL_DB="$dbf" php -r '
-                    require $argv[1]."/src/bootstrap.php";
-                    echo (int)otm_db()->scalar("SELECT COUNT(*) FROM otm_keys WHERE id = ?", [(int)$argv[2]]) === 0 ? "APAGOU" : "FICOU";
-                ' "$ROOT/panel" "$kid" > "$TMP/kdel" 2>&1
-                assert_contains "$TMP/kdel" "APAGOU" "botão apagar remove a chave do banco"
-            else
-                bad "não criei a chave descartável para o teste de apagar"
-            fi
-
-            # --- limpeza de tentativas e auditoria ---------------------------
-            curl -s -b "$cj" "http://127.0.0.1:$port/events.php" > "$TMP/evpg" 2>&1
-            assert_contains "$TMP/evpg" 'value="clear_all"' "tentativas têm o botão apagar tudo"
-            curl -s -b "$cj" "http://127.0.0.1:$port/audit.php" > "$TMP/aupg" 2>&1
-            assert_contains "$TMP/aupg" 'value="clear"' "auditoria tem o botão apagar tudo"
-
-            # --- modo escuro: CSS e script de alternância --------------------
-            curl -s "http://127.0.0.1:$port/assets/admin.css" > "$TMP/css" 2>&1
-            assert_contains "$TMP/css" 'data-theme="dark"' "CSS traz o tema escuro"
-            assert_contains "$TMP/aupg" 'otm-theme' "layout grava a escolha do tema"
-        else
-            bad "não consegui o token CSRF da tela de login"
-        fi
-    fi
-    kill "$(cat "$TMP/srv.pid")" 2>/dev/null
-
-    # o keys.json que vai no APK tem só hashes (64 hex), nunca a chave
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" sync --out "$TMP/keys.json" >/dev/null 2>&1
-    if grep -qE '"00-' "$TMP/keys.json" 2>/dev/null; then
-        bad "keys.json do app vazou chave em texto"
-    else
-        ok "keys.json do app tem só hashes"
-    fi
-
-    # painel limpo: sem planos de exemplo pré-cadastrados
+    # a senha não fica em texto puro no banco
     OTM_LOCAL_DB="$dbf" php -r '
         require $argv[1]."/src/bootstrap.php";
-        echo (int)otm_db()->scalar("SELECT COUNT(*) FROM otm_plans") === 0 ? "VAZIO" : "TEM_PLANO";
-    ' "$ROOT/panel" > "$TMP/noplans" 2>&1
-    assert_contains "$TMP/noplans" "VAZIO" "painel novo não traz planos de exemplo"
+        $r = otm_db()->all("select username, password_hash from otm_admins");
+        echo (str_contains(json_encode($r), "segredo123") ? "ACHOU" : "SEGURO");
+    ' "$ROOT/panel" > "$TMP/plain" 2>&1
+    assert_contains "$TMP/plain" "SEGURO" "senha não é gravada em texto puro"
 
-    # chave digitada à mão: aceita, normaliza e grava com o mesmo hash
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --key "00-ABCD-EFGH-JKMN" --label "Digitada" --json \
-        > "$TMP/ktyped" 2>&1
-    assert_contains "$TMP/ktyped" '"key":"00-ABCD-EFGH-JKMN"' "aceita chave digitada à mão"
-    local htyped
-    htyped="$(printf '%s' "00-ABCD-EFGH-JKMN" | sha256sum | cut -d' ' -f1)"
-    OTM_LOCAL_DB="$dbf" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        $n = (int)otm_db()->scalar("SELECT COUNT(*) FROM otm_keys WHERE key_hash = ?", [$argv[2]]);
-        echo $n === 1 ? "GRAVOU" : "FALTOU";
-    ' "$ROOT/panel" "$htyped" > "$TMP/htyped" 2>&1
-    assert_contains "$TMP/htyped" "GRAVOU" "chave digitada é gravada com o hash correto"
-
-    # chave digitada em formato inválido é recusada (não cria nada)
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --key "OTM-ZZZZ-YYYY-XXXX" --label "Ruim" --json \
-        > "$TMP/kbadfmt" 2>&1
-    if grep -q '"ok":true' "$TMP/kbadfmt" 2>/dev/null; then
-        bad "aceitou chave digitada em formato inválido"
+    # não sobrou nenhuma referência ao sistema de chaves no painel
+    if grep -rqs 'otm_keys\|KeyService\|KeyVault\|key_prefix' "$ROOT/panel/src" "$ROOT/panel/public"; then
+        bad "painel ainda referencia o sistema de chaves"
     else
-        ok "recusa chave digitada em formato inválido"
-    fi
-
-    # chave digitada repetida é recusada (não duplica)
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --key "00-ABCD-EFGH-JKMN" --label "Clone" --json \
-        > "$TMP/kdup" 2>&1
-    if grep -q '"ok":true' "$TMP/kdup" 2>/dev/null; then
-        bad "aceitou chave digitada duplicada"
-    else
-        ok "recusa chave digitada duplicada"
+        ok "painel sem referências ao sistema de chaves"
     fi
 }
 
 
 # --- login do app Android (painel estático) ----------------------------------
 t_app_login() {
-    printf '\n  # acesso do app (sem tela de login)\n'
+    printf '\n  # login do app (usuário e senha)\n'
     local p="$ROOT/app/src/main/assets/panel"
     [ -f "$p/index.html" ] && ok "painel do app existe" || bad "index.html do app ausente"
-    [ ! -f "$p/login.html" ] && ok "tela de login do app removida" || bad "login.html do app ainda existe"
-    grep -q 'otm_session' "$p/index.html" && bad "painel do app ainda tem guarda de sessão" \
-        || ok "painel do app sem guarda de sessão"
-    grep -q 'panel/index.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
-        && ok "PanelActivity abre o painel direto" || bad "PanelActivity não abre o painel"
+    [ -f "$p/login.html" ] && ok "tela de login do app existe" || bad "login.html do app ausente"
+    grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessão" \
+        || bad "painel do app sem guarda de sessão"
+    grep -q 'sha256' "$p/login.html" && ok "login valida usuário e senha (sha256)" \
+        || bad "login sem validação de usuário/senha"
     grep -q 'panel/login.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
-        && bad "PanelActivity ainda abre a tela de login" || ok "PanelActivity não abre login"
+        && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre login"
+    # o app não deve mais ter o sistema de chaves
+    [ ! -f "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" ] \
+        && ok "KeyGate removido do app" || bad "KeyGate ainda existe no app"
+    [ ! -f "$ROOT/app/src/main/java/com/otm/pack/License.kt" ] \
+        && ok "License removido do app" || bad "License ainda existe no app"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
@@ -757,21 +550,21 @@ t_app_fixes() {
     grep -q 'removeCallbacks(autoStop)' "$src/SoundPlayer.kt" \
         && ok "som: timer antigo é cancelado (não corta o próximo)" || bad "som: timer não cancelado"
     grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
-    # 6) acesso por chave: a chave vem antes do método de conexão
-    if grep -q 'login_feito_com_sucesso' "$src/PanelActivity.kt"; then
-        bad "som: ainda há áudio de login no app"
+    # 6) "login feito com sucesso" só toca quando o login dá certo
+    local login="$ROOT/app/src/main/assets/panel/login.html"
+    grep -q 'OTM.call("login"' "$login" && ok "login: avisa o app só no acerto" || bad "login: sem aviso de sucesso"
+    grep -q 'onLogin = { sound.play("login_feito_com_sucesso.mp3") }' "$src/PanelActivity.kt" \
+        && ok "som: sucesso ligado ao onLogin" || bad "som: sucesso não está no onLogin"
+    if grep -n 'login_feito_com_sucesso' "$src/PanelActivity.kt" | grep -qv 'onLogin'; then
+        bad "som: sucesso ainda toca fora do login"
     else
-        ok "som: sem áudio de login (sistema removido)"
+        ok "som: sucesso não toca ao conectar/ligar som"
     fi
-    test -f "$src/KeyGate.kt" && ok "chave: módulo KeyGate existe" || bad "chave: sem KeyGate.kt"
-    grep -q 'buildKeyOverlay' "$src/PanelActivity.kt" \
-        && ok "chave: tela da chave antes da conexão" || bad "chave: sem tela de chave"
-    grep -q 'askConnect()' "$src/PanelActivity.kt" && grep -q 'sound.play("key_validada_com_sucesso.mp3")' "$src/PanelActivity.kt" \
-        && ok "chave: chave certa toca 'key validada' e vai para a conexão" || bad "chave: fluxo de chave errado"
-    grep -q 'sound.play("credenciais_incorretas.mp3")' "$src/PanelActivity.kt" \
-        && ok "chave: chave errada toca 'credenciais incorretas'" || bad "chave: sem som de chave errada"
     grep -q 'if (on) sound.play("ativando.mp3")' "$src/PanelActivity.kt" \
         && ok "som: ligar som usa 'ativando'" || bad "som: ligar som com áudio errado"
+    # o app não pode mais ter o sistema de chaves
+    [ ! -f "$src/KeyGate.kt" ] && ok "chave: KeyGate removido do app" || bad "chave: KeyGate ainda existe"
+    [ ! -f "$src/License.kt" ] && ok "chave: License removido do app" || bad "chave: License ainda existe"
     # 7) áudio de pareamento (conectar) continua valendo
     test -f "$ROOT/app/src/main/assets/audio/pareamento_feito_com_sucesso.mp3" \
         && ok "áudio: pareamento presente" || bad "áudio: falta pareamento"
@@ -782,17 +575,12 @@ t_app_fixes() {
         && ok "áudio: 'perfil aplicado com sucesso' presente" || bad "áudio: falta 'perfil aplicado'"
     test -f "$ROOT/app/src/main/assets/audio/erro.mp3" \
         && ok "áudio: 'erro' presente" || bad "áudio: falta 'erro'"
-    test -f "$ROOT/app/src/main/assets/audio/key_validada_com_sucesso.mp3" \
-        && ok "áudio: 'key validada com sucesso' presente" || bad "áudio: falta 'key validada'"
-    if [ -f "$ROOT/app/src/main/assets/audio/login_feito_com_sucesso.mp3" ]; then
-        bad "áudio: login_feito_com_sucesso.mp3 ainda existe"
-    else
-        ok "áudio: login obsoleto removido"
-    fi
+    test -f "$ROOT/app/src/main/assets/audio/login_feito_com_sucesso.mp3" \
+        && ok "áudio: 'login feito com sucesso' presente" || bad "áudio: falta 'login feito'"
     grep -q 'PackCatalog.SND_OK' "$src/PackBridge.kt" && grep -q 'PackCatalog.SND_ERR' "$src/PackBridge.kt" \
         && ok "som: ação toca sucesso/erro no fim" || bad "som: sem fecho de sucesso/erro"
-    grep -q 'key_validada_com_sucesso.mp3' "$ROOT/server.js" \
-        && ok "web: ponte do site toca 'key validada'" || bad "web: ponte do site sem áudio de chave"
+    grep -q 'login_feito_com_sucesso.mp3' "$ROOT/server.js" \
+        && ok "web: ponte do site toca o áudio de login" || bad "web: ponte do site sem áudio de login"
     # 8) ícones no lugar de emojis (menos a engrenagem, que fica como está)
     if grep -qP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' "$app"; then
         bad "ícones: ainda há emoji no painel do app"
@@ -1439,18 +1227,14 @@ t_web() {
                  echo !empty($r["need_confirm"])?"PEDE":"NAO";' > "$TMP/web_conf" 2>&1
         assert_contains "$TMP/web_conf" "PEDE" "debloat exige confirmação"
         # o painel é renderizado no PHP (marca, menu e cards no HTML servido)
-        # acesso por chave: primeiro a tela de acesso, depois o painel liberado.
-        php -r 'require "'"$ROOT"'/web/keys.php";
-                 if (otm_key_active_count() === 0) otm_key_create("suite");' >/dev/null 2>&1
+        # exige login: primeiro a tela de entrada, depois o painel autenticado.
         php -r '$_SERVER["REQUEST_METHOD"]="GET"; require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_login" 2>&1
-        assert_contains "$TMP/web_login" "Entre com a sua chave de acesso" \
-            "sem chave, index.php mostra a tela de acesso"
-        grep -q 'name="csrf"' "$TMP/web_login" && ok "acesso tem token CSRF" || bad "acesso sem CSRF"
-        # chave válida libera o painel
-        php -r 'require "'"$ROOT"'/web/keys.php"; otm_key_start();
-                 $c=otm_key_create("web-test"); $_SESSION["otm_key_id"]=$c["id"];
-                 $_SERVER["REQUEST_METHOD"]="GET";
+        assert_contains "$TMP/web_login" "Entrar" "sem sessão, index.php mostra a tela de login"
+        grep -q 'name="csrf"' "$TMP/web_login" && ok "login tem token CSRF" || bad "login sem CSRF"
+        # login correto libera o painel
+        php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_start();
+                 $_SESSION["otm_user"]="00deUdia"; $_SERVER["REQUEST_METHOD"]="GET";
                  require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_html" 2>&1
         assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"
@@ -1989,77 +1773,6 @@ PYEOF
         && ok "animações seguem em adb-tweaks.sh" || bad "animações sumiram do adb-tweaks"
 }
 
-t_license() {
-    printf '\n  # licença offline assinada (Ed25519)\n'
-    if ! command -v php >/dev/null 2>&1; then
-        printf '  [skip] php ausente: pulei os testes da licença\n'; return 0
-    fi
-    if ! php -m 2>/dev/null | grep -qi sodium; then
-        printf '  [skip] ext-sodium ausente: pulei os testes da licença\n'; return 0
-    fi
-
-    local dbf="$TMP/lic.sqlite" kf="$TMP/lic-keys.php"
-    rm -f "$dbf"* "$kf"
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/migrate.php" >/dev/null 2>&1
-    OTM_LOCAL_DB="$dbf" php "$ROOT/panel/bin/key.php" new --label "Lic Teste" --days 30 --json > "$TMP/lick" 2>&1
-    local k
-    k="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo $j["key"] ?? "";' "$TMP/lick" 2>/dev/null)"
-    [ -n "$k" ] && ok "chave criada para o teste da licença" || { bad "não criei a chave da licença"; return; }
-
-    # par de chaves próprio do teste (não usa o do servidor real)
-    OTM_LOCAL_DB="$dbf" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        $kp = sodium_crypto_sign_keypair();
-        $pub = base64_encode(sodium_crypto_sign_publickey($kp));
-        $sec = base64_encode(sodium_crypto_sign_secretkey($kp));
-        file_put_contents($argv[2], "<?php return ".var_export(["public"=>$pub,"secret"=>$sec], true).";");
-        echo $pub;
-    ' "$ROOT/panel" "$kf" > "$TMP/licpub" 2>&1
-    local pub
-    pub="$(cat "$TMP/licpub")"
-
-    # emissão + verificação com a chave do próprio teste
-    OTM_LICENSE_PUBLIC="$pub" OTM_LICENSE_SECRET="$(php -r '$c=require $argv[1]; echo $c["secret"];' "$kf")" \
-    OTM_LOCAL_DB="$dbf" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        $row = otm_db()->one("SELECT * FROM otm_keys WHERE id = 1");
-        $c = License::claimsFor($row, ["device_id"=>"dev-X"], 7);
-        $lease = License::issue($c);
-        echo License::verify($lease) ? "ASSINA_OK " : "ASSINA_FALHOU ";
-        echo ($c["o"] !== "" && $c["g"] === 7) ? "PRAZO_OK " : "PRAZO_RUIM ";
-        echo ($c["h"] === (string)$row["key_hash"]) ? "HASH_OK " : "HASH_RUIM ";
-        // Adultera a 1ª letra da assinatura (não o último char: em base64url os
-        // bits baixos do último caractere são ignorados, e o "estragado"
-        // decodificava igual — o teste ficava intermitente).
-        $dot = strrpos($lease, "."); $bad = $lease;
-        $bad[$dot+1] = $bad[$dot+1] === "A" ? "B" : "A";
-        echo License::verify($bad) ? "ADULTERADO_ACEITO " : "ADULTERADO_RECUSADO ";
-    ' "$ROOT/panel" > "$TMP/licout" 2>&1
-    assert_contains "$TMP/licout" "ASSINA_OK" "licença assinada confere"
-    assert_contains "$TMP/licout" "PRAZO_OK" "licença carrega o prazo offline"
-    assert_contains "$TMP/licout" "HASH_OK" "licença amarra o hash da chave"
-    assert_contains "$TMP/licout" "ADULTERADO_RECUSADO" "licença adulterada é recusada"
-
-    # chave vitalícia ainda ganha prazo offline (não é "grátis para sempre")
-    OTM_LICENSE_PUBLIC="$pub" OTM_LICENSE_SECRET="$(php -r '$c=require $argv[1]; echo $c["secret"];' "$kf")" \
-    OTM_LOCAL_DB="$dbf" php -r '
-        require $argv[1]."/src/bootstrap.php";
-        $row = otm_db()->one("SELECT * FROM otm_keys WHERE id = 1");
-        $row["expires_at"] = null; $row["max_uses"] = 0;
-        $c = License::claimsFor($row, [], 7);
-        echo ($c["e"] === "" && $c["o"] !== "") ? "VITALICIO_COM_PRAZO" : "VITALICIO_SEM_PRAZO";
-    ' "$ROOT/panel" > "$TMP/licv" 2>&1
-    assert_contains "$TMP/licv" "VITALICIO_COM_PRAZO" "chave vitalícia ainda expira offline"
-
-    # o CLI de licença: keygen + decode (fora do config/ de verdade)
-    OTM_LICENSE_FILE="$TMP/lic-keygen.php" OTM_LOCAL_DB="$dbf" \
-        php "$ROOT/panel/bin/license.php" keygen --force > "$TMP/lickg" 2>&1
-    assert_contains "$TMP/lickg" "par Ed25519 criado" "license.php keygen cria o par"
-    assert_contains "$TMP/lickg" "chave pública" "keygen mostra a chave pública"
-
-    # hashes.php não pode vazar a chave em texto
-    assert_not_contains "$TMP/licout" "$k" "licença não carrega a chave em texto"
-}
 
 t_pack() {
     printf '\n  # pack.sh: menu-mestre (help, status, delegação)\n'
@@ -2132,7 +1845,6 @@ t_privilege_detect
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts
-t_license
 t_pack
 
 printf '\n  --------------------------------------------------\n'

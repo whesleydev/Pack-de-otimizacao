@@ -35,7 +35,7 @@ require_once OTM_PANEL_ROOT . '/config/config.php';
 
 // Classes sem namespace, nomes curtos (estilo legado): Turso, Db, Auth…
 require_once OTM_PANEL_SRC . '/OtmDb.php';
-foreach (['Turso', 'Db', 'Helpers', 'KeyService', 'KeyVault', 'Auth', 'Audit', 'Guard', 'License'] as $c) {
+foreach (['Turso', 'Db', 'Helpers', 'Auth', 'Audit', 'Guard'] as $c) {
     $f = OTM_PANEL_SRC . '/' . $c . '.php';
     if (is_file($f)) require_once $f;
 }
