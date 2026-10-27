@@ -71,7 +71,7 @@ function otm_allowed_scripts(): array {
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
-        'profile-custom.sh', 'smart-opt.sh', 'thermal-pilot.sh',
+        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh',
     ];
 }
 
@@ -719,34 +719,34 @@ function otm_actions(): array {
           'help' => 'Desliga o modo de desempenho fixo e devolve o gerenciamento de energia ao Android.',
           'argv' => ['turbo.sh', 'perfmode', 'off']]);
 
-    // ----- Piloto térmico adaptativo -----------------------------------------
-    // Segura o teto de desempenho e solta sozinho quando esquenta. É o oposto do
-    // "modo desempenho fixo" puro: lá o aparelho fica forçado até alguém lembrar
-    // de desligar; aqui quem decide é a temperatura medida.
-    $add(['id' => 'pilot.arm', 'group' => 'Desempenho', 'label' => 'Piloto térmico: ligar',
-          'desc' => 'Segura o desempenho no máximo e solta sozinho se esquentar.',
-          'help' => 'Liga o piloto térmico adaptativo. Ele segura o desempenho no máximo e fica de olho na temperatura: quando o aparelho esquenta, ele solta o teto ANTES do sistema derrubar a frequência (que é o que faz o FPS cair no meio da partida); quando esfria, segura de novo. Tem prazo máximo e solta sozinho mesmo se o app for fechado. Desligue quando quiser em "Piloto térmico: desligar".',
-          'argv' => ['thermal-pilot.sh', 'arm', '{min}'],
-          'params' => [['name' => 'min', 'type' => 'enum', 'label' => 'Tempo máximo (min)',
-                        'options' => ['10', '20', '30', '45', '60'], 'default' => '20']],
-          'risk' => 'careful', 'timeout' => 120]);
-    $add(['id' => 'pilot.disarm', 'group' => 'Desempenho', 'label' => 'Piloto térmico: desligar',
-          'desc' => 'Solta o teto e encerra o piloto.',
-          'help' => 'Desliga o piloto térmico e solta o teto de desempenho na hora, devolvendo o controle de energia ao sistema. Sempre reversível.',
-          'argv' => ['thermal-pilot.sh', 'disarm'], 'timeout' => 60]);
-    $add(['id' => 'pilot.limits', 'group' => 'Desempenho', 'label' => 'Piloto térmico: limites de temperatura',
-          'desc' => 'Define em quantos °C o piloto solta e em quantos volta.',
-          'help' => 'Ajusta os dois limites do piloto. "Soltar em" é a temperatura em que ele libera o teto para o aparelho respirar; "voltar em" é a temperatura em que ele segura de novo. A folga entre os dois (histerese) evita ficar ligando e desligando a cada leitura. Valores baixos protegem mais o aparelho; altos rendem mais FPS.',
-          'argv' => ['thermal-pilot.sh', 'limits', '{hot}', '{cool}'],
-          'params' => [['name' => 'hot', 'type' => 'enum', 'label' => 'Soltar em (°C)',
-                        'options' => ['40', '41', '42', '43', '45', '47'], 'default' => '43'],
-                       ['name' => 'cool', 'type' => 'enum', 'label' => 'Voltar em (°C)',
-                        'options' => ['35', '36', '37', '38', '39', '40'], 'default' => '38']],
-          'risk' => 'safe', 'timeout' => 60]);
-    $add(['id' => 'pilot.status', 'group' => 'Desempenho', 'label' => 'Piloto térmico: ver estado',
-          'desc' => 'Mostra temperatura, estado e histórico de ciclos.',
-          'help' => 'Mostra o estado atual do piloto: temperatura agora, se está segurando o teto ou esfriando, os limites configurados, quanto tempo resta e o histórico dos últimos ciclos. Só leitura.',
-          'argv' => ['thermal-pilot.sh', 'status'], 'timeout' => 60]);
+    // ----- Vitalidade: cuidar para durar -------------------------------------
+    // O resto do pack "tira o freio". Estas ações fazem o oposto: medem a saúde
+    // real da bateria, reduzem desgaste e avisam hábitos de carga que encurtam a
+    // vida do aparelho. Nada aqui força o celular.
+    $add(['id' => 'vital.diag', 'group' => 'Vitalidade', 'label' => 'Saúde da bateria: ver diagnóstico',
+          'desc' => 'Capacidade real, ciclos e desgaste da bateria.',
+          'help' => 'Mostra a saúde REAL da bateria: compara a capacidade atual com a de fábrica (é o número que o Android esconde), a contagem de ciclos de carga, o nível, a temperatura e uma nota de vitalidade de 0 a 100. É a diferença entre "acho que está boa" e saber. Só leitura: não muda nada no aparelho.',
+          'argv' => ['vitality.sh', 'diag'], 'timeout' => 60]);
+    $add(['id' => 'vital.care_on', 'group' => 'Vitalidade', 'label' => 'Modo longevidade: ligar',
+          'desc' => 'Reduz o desgaste: doze ativo, tela 60Hz, menos scans.',
+          'help' => 'Liga o cuidado com a durabilidade: sono profundo afinado (dorme logo após a tela apagar), tela em 60Hz (taxa alta é um dos maiores consumos contínuos) e menos varredura de Wi-Fi/Bluetooth em segundo plano. Reduz agressão em vez de forçar desempenho, então o aparelho esquenta menos e dura mais. Totalmente reversível em "Modo longevidade: desligar".',
+          'argv' => ['vitality.sh', 'care', 'on'], 'risk' => 'careful', 'timeout' => 120]);
+    $add(['id' => 'vital.care_off', 'group' => 'Vitalidade', 'label' => 'Modo longevidade: desligar',
+          'desc' => 'Volta doze, taxa da tela e scans ao padrão.',
+          'help' => 'Desliga o modo longevidade e devolve o sono profundo, a taxa de atualização e as varreduras ao padrão de fábrica. Reversível.',
+          'argv' => ['vitality.sh', 'care', 'off'], 'risk' => 'safe', 'timeout' => 60]);
+    $add(['id' => 'vital.care_status', 'group' => 'Vitalidade', 'label' => 'Modo longevidade: ver estado',
+          'desc' => 'Mostra se o modo longevidade está ligado.',
+          'help' => 'Diz se o modo longevidade está ligado ou desligado, e resume a nota de vitalidade, a saúde da bateria e a temperatura agora. Só leitura.',
+          'argv' => ['vitality.sh', 'care', 'status'], 'timeout' => 60]);
+    $add(['id' => 'vital.guard', 'group' => 'Vitalidade', 'label' => 'Guardião de carga: ver hábitos',
+          'desc' => 'Conta cargas acima de 80% e cargas com calor.',
+          'help' => 'O guardião observa seus hábitos de carga e conta o que desgasta a bateria: quantas vezes você carregou acima de 80% e quantas carregou com o aparelho quente (calor + carga é o que mais encurta a vida da célula). Ele não muda nada: só mede e avisa. Sem root não é possível limitar a carga em 80%, mas dá para saber quando você passou.',
+          'argv' => ['vitality.sh', 'guard'], 'timeout' => 60]);
+    $add(['id' => 'vital.status', 'group' => 'Vitalidade', 'label' => 'Vitalidade: resumo',
+          'desc' => 'Nota de vitalidade e situação geral do aparelho.',
+          'help' => 'Resume tudo em uma tela: nota de vitalidade, saúde da bateria, ciclos, temperatura, se o modo longevidade está ligado e o alerta atual do guardião de carga. Só leitura.',
+          'argv' => ['vitality.sh', 'status'], 'timeout' => 60]);
     $add(['id' => 'turbo.telemetry_off', 'group' => 'Desempenho', 'label' => 'Telemetria e logs: desligar',
           'desc' => 'Desliga logs persistentes e scans "sempre disponível".',
           'help' => 'Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth "sempre disponível". Menos trabalho em segundo plano e mais privacidade. Reversível em "religar".',

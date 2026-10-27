@@ -50,32 +50,24 @@ _perf="$(sh_get 'dumpsys power 2>/dev/null' | grep -o 'mIsFixedPerformanceMode=[
 case "$_perf" in true) _perf=on ;; false) _perf=off ;; *) _perf="" ;; esac
 printf ',"fixed_perf":"%s"' "$(_clean "$_perf")"
 
-# piloto térmico: um único 'tick' decide e devolve tudo. Roda antes de ler o
-# estado para o painel nunca mostrar um estado que o motor já mudou (e o prazo
-# vencido com o app fechado solta o teto aqui, na abertura do painel).
-_pout="$(sh "$DIR/thermal-pilot.sh" tick 2>/dev/null | grep '^#OTM-PILOT' | head -1)"
-_pfield() {
-    printf '%s' "$_pout" | tr ' ' '\n' | grep "^$1=" | head -1 | cut -d= -f2
+# vitalidade: um único 'tick' mede a bateria e roda o guardião. Roda antes de
+# ler o estado para o painel nunca mostrar número velho.
+_vout="$(sh "$DIR/vitality.sh" tick 2>/dev/null | grep '^#OTM-VITAL' | head -1)"
+_vfield() {
+    printf '%s' "$_vout" | tr ' ' '\n' | grep "^$1=" | head -1 | cut -d= -f2
 }
-_pst="$(_pfield state)"
-case "$_pst" in on|cooling) ;; *) _pst=off ;; esac
-printf ',"pilot_state":"%s"' "$(_clean "$_pst")"
-_pa="$(_pfield armed)"; case "$_pa" in 0|1) ;; *) _pa=0 ;; esac
-printf ',"pilot_armed":"%s"' "$_pa"
-_pleft="$(_pfield left)"
-case "$_pleft" in ''|*[!0-9]*) printf ',"pilot_left":""' ;; *)
-    printf ',"pilot_left":"%s"' "$((_pleft / 60))" ;;
-esac
-_phot="$(_pfield hot)"; case "$_phot" in ''|*[!0-9]*) _phot=43 ;; esac
-_pcool="$(_pfield cool)"; case "$_pcool" in ''|*[!0-9]*) _pcool=38 ;; esac
-printf ',"pilot_hot":"%s"' "$(_clean "$_phot")"
-printf ',"pilot_cool":"%s"' "$(_clean "$_pcool")"
-_prel="$(_pfield releases)"; case "$_prel" in ''|*[!0-9]*) _prel=0 ;; esac
-printf ',"pilot_releases":"%s"' "$(_clean "$_prel")"
-_ppeak="$(_pfield peak)"; case "$_ppeak" in ''|*[!0-9]*) _ppeak="" ;; esac
-printf ',"pilot_peak":"%s"' "$(_clean "$_ppeak")"
-_ptmp="$(_pfield temp)"; case "$_ptmp" in ''|*[!0-9]*) _ptmp="" ;; esac
-printf ',"pilot_temp":"%s"' "$(_clean "$_ptmp")"
+for _k in health cycles level temp charging score care w80 whot alert; do
+    _v="$(_vfield "$_k")"
+    case "$_k" in
+        charging) case "$_v" in 0|1|"") ;; *) _v="" ;; esac ;;
+        score|health|level|temp) case "$_v" in ''|*[!0-9]*) _v="" ;; esac ;;
+        cycles|w80|whot) case "$_v" in ''|*[!0-9]*) _v="" ;; esac ;;
+        care) case "$_v" in on|off) ;; *) _v="off" ;; esac ;;
+    esac
+    # alert vem com '_' no lugar de espaço (é uma linha só); devolve legível
+    [ "$_k" = alert ] && _v="$(printf '%s' "$_v" | tr '_' ' ')"
+    printf ',"vital_%s":"%s"' "$_k" "$(_clean "$_v")"
+done
 printf ',"mode":"%s"' "$(_clean "${RUN_MODE:-local}")"
 printf '}\n'
 exit 0

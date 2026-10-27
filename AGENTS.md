@@ -409,55 +409,66 @@ nativa além do necessário para conectar e rodar os comandos.
   roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
 
-### Piloto Térmico adaptativo (`scripts/thermal-pilot.sh`)
+### Vitalidade: cuidar para durar (`scripts/vitality.sh`)
 
-O card "Perfil de Desempenho" (que só duplicava o `turbo.perfmode_on` já existente na
-aba Desempenho) foi **substituído** pelo cockpit do Piloto Térmico (`data-pilot-card`).
+O pack inteiro "tira o freio" (mais FPS, mais desempenho) e tinha **dezenas** de ações
+de energia todas na mesma direção: `perm.battery` desliga a economia, `game.keepalive`
+tira a restrição de bateria, `doze.off` desliga o sono profundo, `keep.on` mantém app
+vivo. Nada olhava para o **longo prazo**. `vitality.sh` é o único que olha — e faz o
+oposto: mede a saúde real da bateria, reduz agressão e avisa hábitos que desgastam.
+Nada aqui força o celular.
 
-**O problema que resolve.** Forçar o desempenho máximo e "esquecer" ligado esquenta o
-aparelho. O SoC bate no limite térmico, o sistema derruba a frequência e o FPS cai
-**abaixo** do que ficaria se nada tivesse sido forçado: o ganho vira perda. O piloto
-fecha o laço — segura o teto, mede a temperatura e **solta antes do aparelho afogar**;
-quando esfria, segura de novo.
+**O dado que faltava.** O Android expõe `charge_full` (capacidade atual) e
+`charge_full_design` (de fábrica) em `/sys/class/power_supply/*/`. A razão entre os
+dois é a **saúde real** da bateria — o número que o Android esconde. O pack nunca leu
+isso. `cycle_count` (ciclos) também é lido. Leitura **em camadas**: tenta `battery`,
+`bms`, `Battery`, `main`; o que não existir devolve vazio. Se não der para ler, o
+painel diz "sem leitura" — nunca inventa número.
 
-**Arquitetura (a decisão mais importante).** Não existe processo residente nem serviço
-em segundo plano — isso é justamente o que trava aparelho. O motor é um **tick
-idempotente** (`thermal-pilot.sh tick`) chamado pelo poll de métricas que o painel já
-tem (4 s, `panel-stats.sh`). O poll é o batimento do piloto.
+**Nota de vitalidade 0..100.** Base = saúde. Penaliza ciclos (>800: −12; >400: −6) e
+calor (≥43 °C: −10; ≥40 °C: −5). Sem leitura de saúde, a nota é vazia (não existe
+nota falsa). Rótulos: excelente ≥90, saudável ≥75, atenção ≥60, desgastada ≥40,
+troque a bateria abaixo disso.
 
-**As quatro travas** (nesta ordem de prioridade):
+**Modo longevidade** (`care on`) — reduz agressão, tudo reaproveitando ajustes que o
+pack já usa, mas a favor da durabilidade: doze afinado (`device_idle_constants` +
+`deviceidle enable light/deep`), tela em **60 Hz** (`peak_refresh_rate`/
+`min_refresh_rate` — taxa alta é um dos maiores consumos contínuos), scans de
+Wi-Fi/BLE "sempre disponível" desligados e a **economia de energia do sistema
+LIGADA** (`adaptive_battery_management_enabled 1` — o pack a desligava em
+`perm_battery`). `care off` volta ao padrão. Reversão no escopo `vitality`.
 
-1. **Prazo absoluto** gravado em `~/.packotm/pilot/deadline`. Se o app morrer, o
-   processo sumir ou o poll parar, o próximo `tick`/`recover`/abertura do painel vê o
-   prazo vencido e solta o teto. É a trava final contra "aparelho preso no máximo".
-2. **Histerese** (`hot`/`cool`, padrão 43/38 °C): solta em `hot`, só volta em `cool`.
-   Sem a folga de 5 °C o aparelho ficaria piscando liga/desliga a cada leitura.
-3. **Falha segura = DESLIGADO**: sem leitura confiável (vazio, não-numérico, ou fora de
-   5..120 °C) o teto é solto. Nunca segura às cegas.
-4. **`restore_all` sempre solta**: o `arm` registra a reversão no escopo `pilot`, então
-   "Reverter TUDO" devolve o controle de energia ao sistema.
+**Guardião de carga** (`guard`, e o `tick` no poll) — não muda nada, só mede e avisa:
+conta cargas **acima de 80%** e cargas **com calor** (≥43 °C na tomada). Calor + carga
+é o que mais encurta a vida da célula. Avisa **uma vez por ciclo**: uma flag em disco
+(`f_high80`, `f_hotcharge`) só dispara de novo depois que o valor volta ao normal
+(≤75%, ≤38 °C). Sem root não dá para limitar a carga em 80% — mas dá para saber
+quando você passou.
 
-**Ações** (`lib.php`): `pilot.arm` (`risk=careful`, prazo em min), `pilot.disarm`
-(`risk=safe`), `pilot.limits` (hot/cool), `pilot.status`. `thermal-pilot.sh` está na
-whitelist do `lib.php`. Todas usam `scope_begin pilot`, então a reversão é isolada.
+**Arquitetura.** Igual à do poll do painel: **tick idempotente**, sem processo
+residente nem serviço em segundo plano (é o que trava aparelho). `panel-state.sh` e
+`panel-stats.sh` chamam `vitality.sh tick` no poll de 4 s e publicam `vital_health`,
+`vital_cycles`, `vital_temp`, `vital_score`, `vital_care`, `vital_w80`, `vital_whot`,
+`vital_alert`. O JS `renderVital()` desenha o cockpit: nota grande, selo colorido
+(bom/atenção/ruim), barra com marca em 75%, saúde/ciclos/temperatura/cargas altas.
 
-**Estado no painel.** `panel-state.sh` expõe `pilot_state`/`pilot_armed`/`pilot_temp`/
-`pilot_hot`/`pilot_cool`/`pilot_left`/`pilot_releases`/`pilot_peak`, e `panel-stats.sh`
-acrescenta os mesmos campos a partir do `tick`. O JS `renderPilot()` desenha o cockpit
-(temperatura, selo de estado, barra com a marca do limite, minutos restantes, quantas
-vezes soltou, pico da sessão). A barra vai de 30 °C à ponta quente e fica vermelha
-acima do limite, azul abaixo do `cool`.
+**Ações** (`lib.php`, grupo `Vitalidade`): `vital.diag` (só leitura), `vital.care_on`
+(`risk=careful`), `vital.care_off` (`risk=safe`), `vital.care_status`, `vital.guard`,
+`vital.status`. `vitality.sh` está na whitelist.
 
-**Cuidado ao mexer:** o cockpit usa `.btn` (ações de comando), não `.opt`. Por isso o
-teste de contagem de opções lado a lado caiu de 28 para 26 — os 2 `.opt` a menos eram
-os botões do card antigo. O handler global de `.opt` continua escopado a
-`.card-choice .opt` (ver o bug descrito abaixo, ainda válido).
+**Testes:** `t_vitality` (`tests/run.sh`) cobre o motor sem aparelho — via
+`OTM_VIT_HEALTH/CYCLES/TEMP/LEVEL/STATUS` (leituras injetadas) e `OTM_MODE=direct`.
+Verifica: nota por saúde, penalidade de ciclos e calor, ausência de nota sem leitura,
+falha segura (lixo/999% → vazio, sem erro de shell), guardião (avisa uma vez, reavisa
+no ciclo seguinte, conta), `care on` aplicando de verdade (stubs de `settings`) e
+reversível, `diag` com `applies=0` (só leitura), registro das ações, remoção do que
+forçava, e paridade web↔app do card e do JS.
 
-**Testes:** `t_pilot` (`tests/run.sh`) cobre o motor sem aparelho — via `OTM_MODE=direct`
-(simula o privilégio de shell) e `OTM_PILOT_NOW`/`OTM_PILOT_TEMP` (relógio e temperatura
-injetados). Verifica: recusa sem shell, histerese, falha segura, prazo vencido, `recover`
-idempotente, validação de limites, registro da reversão, ações/whitelist, e paridade
-web↔app do card e do JS.
+**Nota histórica:** este card substituiu o "Piloto Térmico", que **forçava** o
+desempenho máximo (`cmd power set-fixed-performance-mode-enabled true`) e só soltava
+no calor. A ideia de forçar é o oposto do que o usuário quer: um aparelho bom a longo
+prazo trabalha a favor do sistema, não briga com ele. O `thermal-pilot.sh` foi
+removido.
 
 ### Bug histórico: handler global de `.opt` (ainda vale como regra)
 

@@ -1579,8 +1579,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 10 ] && ok "index.php renderiza a home + 8 categorias + Terminal" || bad "seções: $n_sec (esperado 10)"
-        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 11 ] && ok "index.php renderiza a home + 9 categorias + Terminal" || bad "seções: $n_sec (esperado 11)"
+        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # Terminal: seção própria + campo de comando
@@ -2289,128 +2289,166 @@ t_side_fixed
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist
-t_pilot() {
-    printf '\n  # piloto térmico: motor de decisão (sem aparelho)\n'
-    local pil="$ROOT/scripts/thermal-pilot.sh"
-    local home="$TMP/pilot_home"
+t_vitality() {
+    printf '\n  # vitalidade: motor de longevidade (sem aparelho)\n'
+    local vit="$ROOT/scripts/vitality.sh"
+    local home="$TMP/vital_home"
 
     rm -rf "$home"; mkdir -p "$home"
     # OTM_MODE=direct simula o privilégio de shell (Shizuku/ADB já abriram o shell).
-    # OTM_PILOT_NOW/TEMP deixam verificar as decisões sem esperar de verdade.
+    # OTM_VIT_* injetam as leituras da bateria para verificar as decisões.
     # POSIX: nada de "${@:4}" (o dash do `sh` não entende). shift resolve.
-    pl() { _n="$1"; _t="$2"; shift 2; HOME="$home" OTM_MODE=direct OTM_PILOT_NOW="$_n" OTM_PILOT_TEMP="$_t" sh "$pil" "$@"; }
-    st() { pl "$1" "$2" tick | grep -o 'state=[a-z]*' | cut -d= -f2; }
+    vl() { _h="$1"; _c="$2"; _t="$3"; _l="$4"; _s="$5"; shift 5
+           HOME="$home" OTM_MODE=direct OTM_VIT_HEALTH="$_h" OTM_VIT_CYCLES="$_c" \
+               OTM_VIT_TEMP="$_t" OTM_VIT_LEVEL="$_l" OTM_VIT_STATUS="$_s" \
+               sh "$vit" "$@"; }
+    score() { vl "$1" "$2" "$3" "$4" "$5" score 2>/dev/null | grep -E '^[0-9]+$' | head -1; }
+    alrt()  { vl "$1" "$2" "$3" "$4" "$5" tick 2>/dev/null | grep -o 'alert=[^ ]*' | cut -d= -f2; }
 
-    # 1) sem privilégio o arm é recusado (não força nada às cegas)
-    HOME="$home" OTM_MODE=local sh "$pil" arm 20 2>&1 | grep -q 'sem permissão de shell' \
-        && ok "arm recusa sem shell (Shizuku/ADB)" || bad "arm não avisa falta de shell"
-
-    # 2) arm liga e grava o prazo absoluto
-    pl 1000 35 arm 20 >/dev/null
-    [ -f "$home/.packotm/pilot/deadline" ] && ok "arm grava o prazo absoluto em disco" \
-        || bad "arm não grava o prazo"
-    [ "$(st 1004 35)" = on ] && ok "temperatura normal: segura o teto (on)" \
-        || bad "não segurou o teto com o aparelho frio"
-
-    # 3) histerese: solta no quente, NÃO religa no morno, religa só no frio
-    [ "$(st 1008 43)" = cooling ] && ok "esquentou (43°C): solta o teto (cooling)" \
-        || bad "não soltou o teto ao esquentar"
-    [ "$(st 1012 40)" = cooling ] && ok "morno (40°C): mantém solto (sem piscar liga/desliga)" \
-        || bad "religou cedo demais (faltou histerese)"
-    [ "$(st 1016 38)" = on ] && ok "esfriou (38°C): segura de novo (on)" \
-        || bad "não retomou ao esfriar"
-
-    # 4) falha segura: leitura ruim solta o teto
-    [ "$(st 1020 abc)" = cooling ] && ok "leitura inválida: solta por segurança" \
-        || bad "não soltou com leitura inválida"
-    [ "$(st 1024 0)" = cooling ] && ok "sensor em 0°C (quebrado): solta por segurança" \
-        || bad "aceitou leitura absurda"
-    pl 1020 abc tick 2>&1 | grep -q 'Illegal' && bad "erro de shell com leitura inválida" \
+    # 1) saúde real = base da nota; sem leitura NÃO inventa número
+    [ "$(score 91 '' 35 60 discharging)" = 91 ] && ok "saúde vira a base da nota (91%)" \
+        || bad "nota não reflete a saúde"
+    [ -z "$(score '' '' '' '' '')" ] && ok "sem leitura de bateria: sem nota (não inventa)" \
+        || bad "inventou nota sem leitura"
+    [ -z "$(score abc '' '' '' '')" ] && ok "leitura inválida: sem nota" || bad "aceitou leitura inválida"
+    [ -z "$(score 999 '' '' '' '')" ] && ok "saúde absurda (999%): descartada" || bad "aceitou 999%"
+    vl abc '' '' '' '' score 2>&1 | grep -q 'Illegal' && bad "erro de shell com leitura inválida" \
         || ok "sem erro de shell com leitura inválida"
 
-    # 5) a trava final: prazo vencido solta sozinho
-    [ "$(st 99999 35)" = off ] && ok "prazo vencido: solta sozinho (off)" \
-        || bad "ficou preso depois do prazo"
+    # 2) ciclos e calor penalizam (desgaste acumulado e agressão)
+    [ "$(score 91 900 30 60 discharging)" = 79 ] && ok "muitos ciclos (900): penaliza 12" \
+        || bad "não penalizou ciclos altos"
+    [ "$(score 91 500 30 60 discharging)" = 85 ] && ok "ciclos médios (500): penaliza 6" \
+        || bad "não penalizou ciclos médios"
+    [ "$(score 91 100 45 60 discharging)" = 81 ] && ok "calor (45°C): penaliza 10" \
+        || bad "não penalizou o calor"
 
-    # 6) recover é a rede de segurança barata (não lê sensor)
-    pl 1000 35 arm 5 >/dev/null
-    pl 1300 35 recover; rc=$?
-    [ "$rc" = 1 ] && ok "recover solta o teto quando o prazo venceu" \
-        || bad "recover não soltou (rc=$rc)"
-    pl 1300 35 recover >/dev/null; rc=$?
-    [ "$rc" = 0 ] && ok "recover é idempotente (nada a fazer de novo)" \
-        || bad "recover repetiu a ação (rc=$rc)"
+    # 3) guardião: avisa carga alta UMA vez por ciclo (não fica repetindo)
+    rm -f "$home/.packotm/vitality"/f_* 2>/dev/null
+    [ -n "$(alrt 91 '' 35 85 charging)" ] && ok "carregando a 85%: avisa (acima de 80%)" \
+        || bad "não avisou carga alta"
+    [ -z "$(alrt 91 '' 35 85 charging)" ] && ok "não repete o aviso a cada leitura" \
+        || bad "ficou repetindo o aviso"
+    vl 91 '' 35 70 charging tick >/dev/null 2>&1     # desceu: limpa o aviso
+    [ -n "$(alrt 91 '' 35 85 charging)" ] && ok "novo ciclo de carga: avisa de novo" \
+        || bad "não avisou no ciclo seguinte"
+    [ -n "$(alrt 91 '' 44 50 charging)" ] && ok "carregando quente (44°C): avisa" \
+        || bad "não avisou calor na tomada"
+    [ -n "$(alrt 91 '' 41 50 discharging)" ] && ok "quente fora da tomada: aviso leve" \
+        || bad "não avisou aparelho quente"
+    [ -z "$(alrt 91 '' 32 50 discharging)" ] && ok "tudo normal: sem alerta" || bad "alerta falso"
 
-    # 7) limites: validação e histerese embutida
-    pl 1000 35 limits 45 40 | grep -q '45' && ok "limits aceita par válido" || bad "limits recusou par válido"
-    pl 1000 35 limits 40 45 | grep -qi 'precisa ser menor' && ok "limits recusa frio >= quente" \
-        || bad "limits aceitou frio >= quente"
-    pl 1000 35 limits 99 10 | grep -qi 'fora de' && ok "limits recusa valor absurdo" \
-        || bad "limits aceitou 99°C"
+    # 4) contadores do guardião acumulam e aparecem
+    vl 91 '' 35 85 charging tick >/dev/null 2>&1
+    vl 91 '' 35 70 charging tick >/dev/null 2>&1
+    vl 91 '' 35 85 charging tick >/dev/null 2>&1
+    vl 91 '' 35 50 discharging guard 2>/dev/null | grep -q 'cargas acima de 80%: [2-9]' \
+        && ok "guardião conta as cargas altas" || bad "guardião não contou"
 
-    # 8) arm registra a reversão: "Reverter TUDO" solta o teto
-    pl 1000 35 arm 20 >/dev/null
-    grep -q 'set-fixed-performance-mode-enabled false' "$home/.packotm/undo/pilot.sh" \
-        && ok "arm registra a reversão no escopo pilot" || bad "arm não registra reversão"
+    # 5) modo longevidade: aplica de verdade (com os stubs) e é reversível
+    local store="$TMP/store"
+    rm -f "$store"/* 2>/dev/null
+    HOME="$home" TMP_STORE="$store" PATH="$TMP/bin:$PATH" OTM_MODE=local \
+        sh "$vit" care on >/dev/null 2>&1
+    [ "$(cat "$store/system.peak_refresh_rate" 2>/dev/null)" = "60.0" ] \
+        && ok "care on: tela em 60Hz (economia real)" || bad "care não fixou 60Hz"
+    [ "$(cat "$store/global.wifi_scan_always_enabled" 2>/dev/null)" = "0" ] \
+        && ok "care on: desliga varredura de Wi-Fi" || bad "care não desligou o scan"
+    [ "$(cat "$store/global.adaptive_battery_management_enabled" 2>/dev/null)" = "1" ] \
+        && ok "care on: economia do sistema LIGADA (o pack a desligava)" \
+        || bad "care não ligou a economia do sistema"
+    grep -q 'peak_refresh_rate' "$home/.packotm/undo/vitality.sh" 2>/dev/null \
+        && ok "care registra a reversão no escopo vitality" || bad "care não registra reversão"
+    HOME="$home" TMP_STORE="$store" PATH="$TMP/bin:$PATH" OTM_MODE=local \
+        sh "$vit" care status 2>/dev/null | grep -q 'modo longevidade: on' \
+        && ok "care status reporta ligado" || bad "care status errado"
+    HOME="$home" TMP_STORE="$store" PATH="$TMP/bin:$PATH" OTM_MODE=local \
+        sh "$vit" care off >/dev/null 2>&1
+    HOME="$home" TMP_STORE="$store" PATH="$TMP/bin:$PATH" OTM_MODE=local \
+        sh "$vit" care status 2>/dev/null | grep -q 'modo longevidade: off' \
+        && ok "care off volta ao padrão" || bad "care off não voltou"
 
-    # 9) isolamento de escopo: o piloto não mexe na reversão de outros scripts
-    grep -q 'pilot' "$home/.packotm/undo/pilot.sh" 2>/dev/null || true
-    [ -f "$home/.packotm/undo/pilot.sh" ] && ok "escopo próprio (pilot.sh)" || bad "sem escopo próprio"
+    # 6) diag é SÓ LEITURA: não mexe em nada (nenhum applies)
+    out="$(vl 91 120 36 64 discharging diag 2>&1)"
+    printf '%s' "$out" | grep -q 'applies=0' && ok "diag é só leitura (applies=0)" \
+        || bad "diag mexeu no aparelho"
+    printf '%s' "$out" | grep -q 'saúde real: 91%' && ok "diag mostra a saúde real" \
+        || bad "diag não mostrou a saúde"
 
-    printf '\n  # piloto térmico: registro de ações\n'
+    printf '\n  # vitalidade: registro de ações\n'
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            $need=["pilot.arm"=>["thermal-pilot.sh","arm","{min}"],
-                   "pilot.disarm"=>["thermal-pilot.sh","disarm"],
-                   "pilot.status"=>["thermal-pilot.sh","status"]];
+            $need=["vital.diag"=>["vitality.sh","diag"],
+                   "vital.care_on"=>["vitality.sh","care","on"],
+                   "vital.care_off"=>["vitality.sh","care","off"],
+                   "vital.guard"=>["vitality.sh","guard"],
+                   "vital.status"=>["vitality.sh","status"]];
             $ok=true;
             foreach($need as $k=>$v){ if(($a[$k]["argv"] ?? null) !== $v) $ok=false; }
-            if(($a["pilot.limits"]["argv"] ?? null) !== ["thermal-pilot.sh","limits","{hot}","{cool}"]) $ok=false;
             echo $ok ? "OK" : "NAO";' | grep -q OK \
-        && ok "ações do piloto registradas com argv correto" || bad "ações do piloto erradas"
+        && ok "ações de vitalidade registradas com argv correto" || bad "ações de vitalidade erradas"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+            echo in_array("vitality.sh", otm_allowed_scripts(), true) ? "OK":"NAO";' | grep -q OK \
+        && ok "vitality.sh na whitelist" || bad "script fora da whitelist"
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            echo in_array("thermal-pilot.sh", otm_allowed_scripts(), true) ? "OK":"NAO";' | grep -q OK \
-        && ok "thermal-pilot.sh na whitelist" || bad "script fora da whitelist"
+            echo ($a["vital.care_off"]["risk"] ?? "") === "safe" ? "OK":"NAO";' | grep -q OK \
+        && ok "desligar a longevidade é risk=safe" || bad "care_off não é safe"
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            echo ($a["pilot.disarm"]["risk"] ?? "") === "safe" ? "OK":"NAO";' | grep -q OK \
-        && ok "desligar o piloto é risk=safe (sempre reversível)" || bad "disarm não é safe"
+            echo ($a["vital.diag"]["group"] ?? "") === "Vitalidade" ? "OK":"NAO";' | grep -q OK \
+        && ok "grupo Vitalidade existe" || bad "grupo Vitalidade ausente"
+    # o que forçava o aparelho saiu
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            $n=0; foreach(array_keys($a) as $k){ if(strpos($k,"pilot.")===0) $n++; }
+            echo $n===0 ? "OK":"NAO";' | grep -q OK \
+        && ok "ações do piloto (que forçava) foram removidas" || bad "sobrou ação do piloto"
+    [ -f "$ROOT/scripts/thermal-pilot.sh" ] && bad "thermal-pilot.sh ainda existe" \
+        || ok "thermal-pilot.sh removido"
 
-    printf '\n  # piloto térmico: cockpit nos dois painéis\n'
+    printf '\n  # vitalidade: cockpit nos dois painéis\n'
     local app="$ROOT/app/src/main/assets/panel/index.html"
     local web="$ROOT/web/index.php"
     for f in "$app" "$web"; do
-        grep -q 'data-pilot-card' "$f" && ok "$(basename "$f"): card do piloto existe" \
-            || bad "$(basename "$f"): sem card do piloto"
-        grep -q 'setGpuThermal' "$f" && bad "$(basename "$f"): ainda tem o stub antigo" \
-            || ok "$(basename "$f"): sem o stub antigo"
+        grep -q 'data-vital-card' "$f" && ok "$(basename "$f"): card de vitalidade existe" \
+            || bad "$(basename "$f"): sem card de vitalidade"
+        grep -q 'renderVital' "$f" && ok "$(basename "$f"): desenha o estado real" \
+            || bad "$(basename "$f"): não desenha o estado"
+        grep -q 'data-pilot-card' "$f" && bad "$(basename "$f"): ainda tem o card do piloto" \
+            || ok "$(basename "$f"): card do piloto removido"
         grep -q 'data-perfmode-card' "$f" && bad "$(basename "$f"): ainda tem o card duplicado" \
             || ok "$(basename "$f"): sem o card duplicado"
-        grep -q 'renderPilot' "$f" && ok "$(basename "$f"): desenha o estado real" \
-            || bad "$(basename "$f"): não desenha o estado"
         grep -q 'querySelectorAll(".card-choice .opt")' "$f" \
             && ok "$(basename "$f"): handler de .opt escopado" || bad "$(basename "$f"): handler global"
-        grep -q 'pilot.arm' "$f" && grep -q 'pilot.disarm' "$f" \
+        grep -q 'vital.care_on' "$f" && grep -q 'vital.guard' "$f" \
             && ok "$(basename "$f"): botões ligam a ações reais" || bad "$(basename "$f"): botões soltos"
     done
     # paridade web x app do card e do JS
     python3 - "$app" "$web" <<'PY' | grep -q IGUAIS \
-        && ok "web e app: card do piloto idêntico" || bad "web e app: card divergiu"
+        && ok "web e app: card de vitalidade idêntico" || bad "web e app: card divergiu"
 import re, sys
 def blk(p, pat):
     s = open(p, encoding='utf-8').read()
     m = re.search(pat, s)
     return re.sub(r'\s+', ' ', m.group(0)).strip() if m else None
 C = r'<div class="panelbox[^"]*config-gpu-card[\s\S]*?\n      </div>'
-J = r'/\* ---- Piloto térmico: cockpit[\s\S]*?\n\}\);\n'
+J = r'/\* ---- vitalidade: cockpit de longevidade -+\n[\s\S]*?\n\}\);\n'
 print("IGUAIS" if blk(sys.argv[1], C) and blk(sys.argv[1], C) == blk(sys.argv[2], C)
       and blk(sys.argv[1], J) == blk(sys.argv[2], J) else "DIFERENTES")
 PY
 
-    # o estado do piloto chega ao painel
-    grep -q 'pilot_state' "$ROOT/scripts/panel-state.sh" && ok "panel-state expõe pilot_state" \
-        || bad "panel-state sem pilot_state"
-    grep -q 'thermal-pilot.sh" tick' "$ROOT/scripts/panel-stats.sh" \
-        && ok "panel-stats chama o tick (batimento do piloto)" \
+    # o estado de vitalidade chega ao painel
+    PATH="$TMP/bin:$PATH" OTM_MODE=local sh "$ROOT/scripts/panel-state.sh" > "$TMP/vst" 2>/dev/null
+    python3 - "$TMP/vst" <<'PY' | grep -q OK \
+        && ok "panel-state emite os campos de vitalidade" || bad "panel-state sem campos de vitalidade"
+import json, sys
+d = json.load(open(sys.argv[1]))
+need = ["vital_health","vital_cycles","vital_temp","vital_score","vital_care","vital_w80","vital_alert"]
+print("OK" if all(k in d for k in need) else "NAO")
+PY
+    grep -q 'vitality.sh" tick' "$ROOT/scripts/panel-stats.sh" \
+        && ok "panel-stats chama o tick (batimento do guardião)" \
         || bad "panel-stats não chama o tick"
+    # o espelho do app bate com scripts/
+    cmp -s "$ROOT/scripts/vitality.sh" "$ROOT/app/src/main/assets/pack/scripts/vitality.sh" \
+        && ok "vitality.sh espelhado no app" || bad "espelho do vitality.sh divergiu"
 }
 
 t_thermal_gate
@@ -2434,7 +2472,7 @@ t_privilege_detect
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts
-t_pilot
+t_vitality
 t_pack
 
 printf '\n  --------------------------------------------------\n'
