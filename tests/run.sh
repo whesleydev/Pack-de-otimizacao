@@ -1380,6 +1380,26 @@ EOF
     assert_contains "$TMP/dbl_m" "universal" "marcas lista os alvos"
     assert_contains "$TMP/dbl_m" "deste aparelho" "marcas mostra a marca detectada"
     rm -rf "$st"
+
+    # nenhum card de debloat pode estar duplicado nos paineis (ja aconteceu:
+    # o card de previa ficou duplicado no index.html do app)
+    dup=$(grep -o 'data-id="debloat\.[a-z.]*"' "$ROOT/app/src/main/assets/panel/index.html" \
+          | sort | uniq -d | head -3)
+    [ -z "$dup" ] && ok "app: sem card de debloat duplicado" || bad "app: card duplicado: $dup"
+    dup=$(grep -oE "'id' => 'debloat\.[a-z.]*'" "$ROOT/web/lib.php" | sort | uniq -d | head -3)
+    [ -z "$dup" ] && ok "web: sem acao de debloat duplicada" || bad "web: acao duplicada: $dup"
+    # os dois paineis tem o mesmo conjunto de cards de debloat.
+    # compara o web RENDERIZADO (os perfis leve/medio/pesado sao montados no PHP)
+    php -r 'require "web/auth.php"; otm_auth_login("00deUdia","159951");
+            ob_start(); include "web/index.php"; file_put_contents($argv[1], ob_get_clean());' \
+        "$TMP/dbl_web.html" 2>/dev/null
+    wa=$(grep -o 'data-id="debloat\.[a-z.]*"' "$TMP/dbl_web.html" | sed 's/data-id="//; s/"$//' | sort -u)
+    aa=$(grep -o 'data-id="debloat\.[a-z.]*"' "$ROOT/app/src/main/assets/panel/index.html" | sed 's/data-id="//; s/"$//' | sort -u)
+    if [ -n "$wa" ] && [ "$wa" = "$aa" ]; then
+        ok "web e app tem os mesmos $(printf '%s\n' "$aa" | grep -c .) cards de debloat"
+    else
+        bad "cards de debloat divergem entre web e app"
+    fi
 }
 
 t_dns() {
