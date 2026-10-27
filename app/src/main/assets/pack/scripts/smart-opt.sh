@@ -14,6 +14,7 @@
 #  expõe aparece como "—" e a decisão cai no valor seguro.
 #
 #  Uso:
+#     smart-opt.sh auto               # FAZ TUDO: lê, decide e otimiza sob medida
 #     smart-opt.sh analyze            # relatório completo (não altera nada)
 #     smart-opt.sh plan [perfil]      # o que seria aplicado e por quê
 #     smart-opt.sh apply [perfil]     # aplica
@@ -231,8 +232,21 @@ cmd_analyze() {
     printf '  %snota%s          %s/100\n' "$C_A" "$C_R" "$SCORE"
     printf '  %sperfil sugerido%s %s\n' "$C_A" "$C_R" "$(auto_profile)"
     printf '  %sperfil aplicado%s %s\n' "$C_A" "$C_R" "$(cat "$SO_LAST" 2>/dev/null || echo 'nenhum')"
+    [ -n "$SO_SILENT_NEXT" ] || {
+        echo
+        printf '  %spróximo passo:%s smart-opt.sh plan  (ver as decisões)\n' "$C_A" "$C_R"
+    }
+}
+
+# =============================================================================
+#  3b) AUTO - o comando único: lê, decide e aplica tudo de uma vez
+# =============================================================================
+cmd_auto() {
+    SO_SILENT_NEXT=1
+    cmd_analyze
     echo
-    printf '  %spróximo passo:%s smart-opt.sh plan  (ver as decisões)\n' "$C_A" "$C_R"
+    printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
+    cmd_apply auto || return 1
 }
 
 tier_label() {
@@ -528,6 +542,7 @@ cmd_restore() {
 #  RUNNER
 # =============================================================================
 case "${1:-}" in
+    auto)    cmd_auto ;;
     analyze) cmd_analyze ;;
     plan)    shift; cmd_plan "$1" ;;
     apply)   shift; cmd_apply "$1" ;;

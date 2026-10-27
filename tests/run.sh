@@ -1850,35 +1850,58 @@ t_smart_opt() {
     assert_contains "$TMP/so_rs" "original" "restore avisa que voltou ao original"
     [ -f "$HOME/.packotm/smart/last" ] && bad "restore não limpou o perfil" \
         || ok "restore limpa o perfil aplicado"
+    # auto: o comando unico faz analise + aplicacao numa tacada
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/so3.log" TMP_AM_LOG="$TMP/so3.log"; : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_auto1" 2>&1
+    assert_contains "$TMP/so_auto1" "análise" "auto comeca pela analise do aparelho"
+    assert_contains "$TMP/so_auto1" "nota" "auto mostra a nota"
+    assert_contains "$TMP/so_auto1" "otimização aplicada" "auto aplica em seguida"
+    [ -n "$(cat "$HOME/.packotm/smart/last" 2>/dev/null)" ] \
+        && ok "auto grava o perfil aplicado" || bad "auto nao gravou o perfil"
     # a escolha do jogo muda o perfil automático para "jogo"
     mkdir -p "$HOME/.packotm/game"; echo "com.dts.freefireth" > "$HOME/.packotm/game/pkg"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan auto > "$TMP/so_auto" 2>&1
     assert_contains "$TMP/so_auto" "(perfil jogo)" "com jogo escolhido, o perfil auto vira jogo"
     # registro no painel + whitelist + catálogo do app
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             echo isset($a["smart.auto"]) ? "" : "FALTA:smart.auto";' > "$TMP/so_reg" 2>&1
+    test ! -s "$TMP/so_reg" && ok "otimizador no registro do painel (acao unica)" || bad "registro: $(cat "$TMP/so_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
              foreach (["smart.analyze","smart.plan","smart.apply","smart.status"] as $id)
-               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/so_reg" 2>&1
-    test ! -s "$TMP/so_reg" && ok "otimizador no registro do painel" || bad "registro: $(cat "$TMP/so_reg")"
+               if (isset($a[$id])) echo "SOBROU:$id ";' > "$TMP/so_reg2" 2>&1
+    test ! -s "$TMP/so_reg2" && ok "as 4 acoes antigas sairam do registro" || bad "sobraram: $(cat "$TMP/so_reg2")"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.auto");
+             echo $a["argv"][0]." ".$a["argv"][1];' > "$TMP/so_arg" 2>&1
+    assert_contains "$TMP/so_arg" "smart-opt.sh auto" "a acao unica roda o comando auto"
     php -r 'require "'"$ROOT"'/web/lib.php";
              echo in_array("smart-opt.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/so_lib" 2>&1
     assert_contains "$TMP/so_lib" "ok" "smart-opt.sh na whitelist"
-    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.apply");
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.auto");
              echo ($a && ($a["risk"]??"")==="careful" && !empty($a["confirm"])) ? "cuidado" : "?";' \
         > "$TMP/so_risk" 2>&1
     assert_contains "$TMP/so_risk" "cuidado" "aplicar o otimizador é 'cuidado' e pede confirmação"
-    grep -q '"smart.apply"' "$ROOT/app/src/main/assets/panel/actions.json" \
+    grep -q '"smart.auto"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o otimizador" || bad "app: actions.json sem o otimizador"
-    grep -q 'data-id="smart.apply"' "$ROOT/app/src/main/assets/panel/index.html" \
+    grep -q 'data-id="smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "app: card do otimizador no painel" || bad "app: painel sem o card do otimizador"
-    # o painel do app precisa do objeto ACTIONS com as ações novas (senão o card fica mudo)
-    grep -q '"smart.apply"' "$ROOT/app/src/main/assets/panel/index.html" \
+    # o painel do app precisa do objeto ACTIONS com a ação nova (senão o card fica mudo)
+    grep -q '"smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "app: ACTIONS embutido tem o otimizador" || bad "app: ACTIONS sem o otimizador"
+    # nome único pedido: "Otimizador inteligente" (sem sufixo de sub-ação)
+    grep -q '<h3>Otimizador inteligente</h3>' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: nome unico \"Otimizador inteligente\"" || bad "app: nome do card mudou"
+    grep -q 'data-qa="smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && grep -q 'data-qa="smart.auto"' "$ROOT/web/index.php" \
+        && ok "botao unico na Home dos dois paineis" || bad "botao da Home divergiu"
     # o script novo precisa estar no espelho do app
     [ -f "$ROOT/app/src/main/assets/pack/scripts/smart-opt.sh" ] \
         && ok "espelho: smart-opt.sh presente" || bad "espelho: smart-opt.sh ausente"
     # pack.sh delega
     OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/pack.sh" smart plan auto > "$TMP/so_pack" 2>&1
     assert_contains "$TMP/so_pack" "PLANO DO OTIMIZADOR" "pack.sh delega para smart-opt.sh"
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/pack.sh" smart > "$TMP/so_pack2" 2>&1
+    assert_contains "$TMP/so_pack2" "OTIMIZADOR INTELIGENTE" "pack.sh smart (sem arg) faz tudo"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }

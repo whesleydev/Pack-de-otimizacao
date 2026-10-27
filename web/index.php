@@ -913,9 +913,9 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <h3>Comece por aqui</h3>
           <p class="sub">As ações mais usadas, com um toque.</p>
           <div class="qa">
-            <button type="button" data-qa="smart.analyze">
+            <button type="button" data-qa="smart.auto">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
-              <span class="tx">Otimizador Inteligente<small>Analisa o aparelho e otimiza</small></span></button>
+              <span class="tx">Otimizador inteligente<small>Analisa e otimiza o seu celular</small></span></button>
             <button type="button" data-qa="snapshot_save">
               <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
               <span class="tx">Salvar snapshot<small>Ponto de retorno seguro</small></span></button>

@@ -366,7 +366,9 @@ nativa além do necessário para conectar e rodar os comandos.
   shell (`require_shell`). Categoria **Desempenho** (grupo de escolha `ramboost`).
 - **Otimizador Inteligente** (`scripts/smart-opt.sh`, na whitelist do `lib.php`):
   em vez de aplicar o mesmo pacote para todo aparelho, ele **lê o aparelho de ponta
-  a ponta** e decide item por item. Ações: `analyze` (relatório só-leitura: modelo,
+  a ponta** e decide item por item. O comando principal é **`auto`** — é ele que a
+  ação do painel (**"Otimizador inteligente"**, `smart.auto`) roda: lê, decide e
+  aplica tudo numa tacada. Ações: `auto` (faz tudo), `analyze` (relatório só-leitura: modelo,
   Android/API/kernel, família de SoC, GPU, núcleos e frequência de pico, RAM, taxa de
   tela suportada, armazenamento, térmico, bateria, zram, governor, MGLRU, BBR, apps de
   usuário — e uma **nota 0..100** + classe `topo|alto|medio|entrada`), `plan [perfil]`
@@ -381,9 +383,10 @@ nativa além do necessário para conectar e rodar os comandos.
   aos módulos já testados (`adb-tweaks perf/perf_max/renderer/doze/game_keepalive/
   game_focus`, `turbo refresh_fixed`, `deep-tune debloat`, `clean now`) e depois **lê
   de volta** alguns ajustes (`so_verify`) para o painel não achar que "nada mudou"
-  (`#OTM-RESULT`). Perfil aplicado em `$ST/smart/last`. Categoria **Geral**
-  (`smart.analyze`, `smart.plan`, `smart.apply`, `smart.status`) + botão na Home.
-  `pack.sh smart <acao>` delega.
+  (`#OTM-RESULT`). Perfil aplicado em `$ST/smart/last`. Categoria **Geral**: uma
+  **ação única**, `smart.auto` ("Otimizador inteligente"), mais um botão de mesmo
+  nome na Home dos dois painéis. `pack.sh smart [<acao>]` delega (sem argumento
+  roda `auto`).
 - **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
   limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
   por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`
