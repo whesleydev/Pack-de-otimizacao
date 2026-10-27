@@ -1678,14 +1678,14 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 7 ] && ok "renderiza 7 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM)" \
-            || bad "grupos de escolha: $n_choice (esperado 7)"
+        [ "$n_choice" -eq 8 ] && ok "renderiza 8 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos)" \
+            || bad "grupos de escolha: $n_choice (esperado 8)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
         # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
         # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
         # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
-        [ "$n_opts" -eq 28 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 2 perfil ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 28)"
+        [ "$n_opts" -eq 32 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 perfil ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 32)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"

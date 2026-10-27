@@ -1714,6 +1714,9 @@ function applyState(){
         + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
     } else if (key === "dns_host" && STATE.dns_host){
       txt = "Em uso agora: " + (active || STATE.dns_host);
+    } else if (key === "proc_limit" && STATE.proc_limit){
+      txt = "No aparelho: " + STATE.proc_limit
+        + (String(STATE.proc_limit) === "padrão" ? " (o sistema decide)" : " apps em segundo plano");
     } else if (key === "refresh_peak"){
       const rp = stateNum(STATE.refresh_peak), rc = stateNum(STATE.refresh_hz);
       if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz";

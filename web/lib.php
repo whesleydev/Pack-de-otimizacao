@@ -131,6 +131,12 @@ function otm_choices(): array {
             'risk'  => 'careful',
             'app'   => true,
         ],
+        'proclimit' => [
+            'title' => 'Limite de processos em segundo plano',
+            'desc'  => 'Quantos apps o sistema pode manter na memória ao mesmo tempo (o mesmo "Limite de processos em segundo plano" das Opções do desenvolvedor). Menos apps = mais RAM e CPU para o jogo; mais apps = multitarefa mais fluida no dia a dia. O painel lê de volta o valor que está valendo de verdade — não só o que foi escrito.',
+            'state' => 'proc_limit',
+            'risk'  => 'careful',
+        ],
         'ramboost' => [
             'title' => 'Liberar RAM agora',
             'desc'  => 'Libera a memória de verdade: encerra os apps de fundo (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps. Diferente de "RAM: perfil gaming", que só muda quantos apps o sistema deixa em cache — aqui a memória é liberada na hora. O painel mostra quanto foi liberado.',
@@ -269,18 +275,22 @@ function otm_actions(): array {
     $add(['id' => 'proc.limit.4', 'group' => 'Processos', 'label' => 'Limite de processos: 4 (jogo)',
           'desc' => 'Só 4 apps em segundo plano: mais RAM e CPU para o jogo.',
           'help' => 'Limita o aparelho a manter apenas 4 apps em segundo plano. Sobra mais memória e processador para o jogo, que é o que mais importa em partida. O valor é escrito onde o Android 10+ realmente lê e conferido na hora. Reverta em "Limite de processos: padrão".',
+          'choice' => 'proclimit', 'option' => '4 (jogo)', 'state_value' => '4',
           'argv' => ['adb-tweaks.sh', 'proc_limit', '4'], 'confirm' => true, 'risk' => 'careful']);
     $add(['id' => 'proc.limit.8', 'group' => 'Processos', 'label' => 'Limite de processos: 8 (equilíbrio)',
           'desc' => 'Oito apps em segundo plano: equilíbrio entre jogar e multitarefa.',
           'help' => 'Deixa o sistema manter 8 apps em segundo plano: bom meio-termo entre liberar RAM para o jogo e ainda conseguir alternar entre apps sem eles recarregarem. Reverta em "Limite de processos: padrão".',
+          'choice' => 'proclimit', 'option' => '8 (equilíbrio)', 'state_value' => '8',
           'argv' => ['adb-tweaks.sh', 'proc_limit', '8'], 'risk' => 'careful']);
     $add(['id' => 'proc.limit.32', 'group' => 'Processos', 'label' => 'Limite de processos: 32 (multitarefa)',
           'desc' => 'Muitos apps em segundo plano: prioriza o dia a dia.',
           'help' => 'Deixa o sistema manter até 32 apps em segundo plano. Alternar entre apps fica instantâneo, mas sobra menos RAM para o jogo. É o padrão de fábrica do Android. Reverta em "Limite de processos: padrão".',
+          'choice' => 'proclimit', 'option' => '32 (multitarefa)', 'state_value' => '32',
           'argv' => ['adb-tweaks.sh', 'proc_limit', '32'], 'risk' => 'careful']);
     $add(['id' => 'proc.limit.off', 'group' => 'Processos', 'label' => 'Limite de processos: padrão',
           'desc' => 'Devolve a decisão ao sistema (automático).',
           'help' => 'Apaga o limite que o pack escreveu e devolve a decisão ao Android (que passa a calcular sozinho conforme a memória). Use se algum app parou de ficar aberto em segundo plano.',
+          'choice' => 'proclimit', 'option' => 'Padrão (automático)', 'state_value' => 'padrão',
           'argv' => ['adb-tweaks.sh', 'proc_limit', 'padrao']]);
 
     // ----- Gerador de sensi (só leitura: calcula para o SEU aparelho) -----
@@ -669,7 +679,7 @@ function otm_actions(): array {
           'argv' => ['deep-tune.sh', 'detect']]);
 
     $add(['id' => 'ext.display', 'group' => 'Display & Touch', 'label' => 'Display / HWUI (props)',
-          'desc' => 'Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa.',
+          'desc' => 'Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa. SEM root.',
           'help' => 'Ajusta props "debug.*" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Deixa a rolagem mais lisa.',
           'argv' => ['deep-tune.sh', 'display', 'on']]);
     $add(['id' => 'ext.display.off', 'group' => 'Display & Touch', 'label' => 'Display / HWUI — desligar',
