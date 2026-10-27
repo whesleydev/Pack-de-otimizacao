@@ -312,6 +312,18 @@ nativa além do necessário para conectar e rodar os comandos.
   abre o painel `#logspanel` e busca `log_all` (histórico **completo**, sem
   truncar) em vez de `log` (últimas 40). No app, `logAllImpl()`; no site,
   `otm_log_all()`. O botão "Histórico" foi unificado em Logs.
+- **Armadilhas do painel (já custaram bug).** Duas coisas que o CSS/JS do painel
+  não perdoa, porque o HTML é gerado (`web/index.php` → `scratch/`):
+  (1) **CSS não pode depender de `.card-choice`** para layout de `.opts`: nem todo
+  card de opções tem essa classe (o de Perfil de Desempenho não tem), e o cartão
+  empilha os botões. Use `.opts{display:flex...}` solto. O teste em `t_vitality`
+  acusa se voltar a `.card-choice .opts`.
+  (2) **Handler de botão que ignora `a.confirm`**: `data-vital-go` chamava
+  `doRun(a, {}, false, b)` com `false` fixo, então a única ação com `confirm`
+  (`vital.optimize`) pulava o modal e o `runImpl` do Android respondia "esta ação
+  pede confirmação". O certo é abrir o modal (`askConfirm`) quando `a.confirm` e
+  deixar o `runPending` reexecutar com `confirmed=true`. Ao mexer em `web/index.php`,
+  replique em `assets/panel/index.html` (os dois têm o mesmo CSS/JS).
 - **Taxa de atualização (Hz).** Cartão de escolha com 60/90/120/Automático
   (`refresh.60`/`refresh.90`/`refresh.120`/`refresh.auto` → `turbo.sh refresh_fixed
   <hz>` / `turbo.sh refresh auto`). A home mostra **"Taxa de tela"**: a taxa travada
