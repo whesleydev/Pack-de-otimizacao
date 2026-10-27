@@ -2286,6 +2286,69 @@ t_side_fixed
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist
+t_gpu_card() {
+    printf '\n  # card de Perfil de Desempenho: clicável e ligado a ação real\n'
+    local app="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local state="$ROOT/scripts/panel-state.sh"
+
+    # o card deixou de ser um stub que só mostrava toast
+    for f in "$app" "$web"; do
+        grep -q 'setGpuThermal' "$f" && bad "$(basename "$f"): ainda tem setGpuThermal (stub)" \
+            || ok "$(basename "$f"): sem o stub setGpuThermal"
+        grep -q 'classList.add(\"active\")' "$f" && bad "$(basename "$f"): usa .active (classe inexistente no CSS)" \
+            || ok "$(basename "$f"): não depende da classe .active"
+        # botões do card usam aria-pressed, que o CSS de fato estiliza
+        grep -q 'data-perfmode="on"' "$f" && grep -q 'data-perfmode="off"' "$f" \
+            && ok "$(basename "$f"): card tem as opções Desempenho/Equilibrado" \
+            || bad "$(basename "$f"): card sem as duas opções"
+        grep -q 'data-perfmode-card' "$f" && ok "$(basename "$f"): card identificável (data-perfmode-card)" \
+            || bad "$(basename "$f"): card sem marcador"
+    done
+
+    # o handler global de .opt agora é escopado: não sobrescreve mais o clique
+    # dos botões que têm handler próprio (era essa a causa de não responder)
+    for f in "$app" "$web"; do
+        grep -q 'querySelectorAll(".card-choice .opt")' "$f" \
+            && ok "$(basename "$f"): handler de .opt escopado a .card-choice" \
+            || bad "$(basename "$f"): handler de .opt ainda pega .opt fora do grupo"
+        grep -q 'document.querySelectorAll(".opt").forEach' "$f" \
+            && bad "$(basename "$f"): handler global de .opt ainda existe" \
+            || ok "$(basename "$f"): sem handler global de .opt"
+    done
+
+    # ligado a ação REAL, reversível e sem root
+    grep -q 'turbo.perfmode_on' "$app" && grep -q 'turbo.perfmode_off' "$app" \
+        && ok "app: card chama as ações turbo.perfmode_*" || bad "app: card sem ação real"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            $on=$a["turbo.perfmode_on"]["argv"] ?? []; $off=$a["turbo.perfmode_off"]["argv"] ?? [];
+            if ($on === ["turbo.sh","perfmode","on"] && $off === ["turbo.sh","perfmode","off"]) echo "OK";' \
+        | grep -q OK && ok "registro: perfmode on/off existe e é reversível" \
+        || bad "registro: perfmode on/off ausente ou errado"
+
+    # estado real exposto pelo painel (mIsFixedPerformanceMode -> on/off)
+    grep -q 'mIsFixedPerformanceMode' "$state" && ok "panel-state: lê o modo desempenho fixo" \
+        || bad "panel-state: não lê o modo desempenho fixo"
+    grep -q '"fixed_perf"' "$state" && ok "panel-state: expõe fixed_perf" \
+        || bad "panel-state: sem fixed_perf"
+    for f in "$app" "$web"; do
+        grep -q 'applyPerfmode' "$f" && ok "$(basename "$f"): sincroniza a opção em uso" \
+            || bad "$(basename "$f"): não sincroniza a opção em uso"
+    done
+
+    # paridade web x app: o mesmo card, sem divergir no visual
+    python3 - "$app" "$web" <<'PY' | grep -q IGUAIS \
+        && ok "web e app: card idêntico (paridade)" || bad "web e app: card divergiu"
+import re, sys
+def card(p):
+    s = open(p, encoding='utf-8').read()
+    m = re.search(r'<div class="panelbox[^"]*config-gpu-card[\s\S]*?\n      </div>', s)
+    return re.sub(r'\s+', ' ', m.group(0)).strip() if m else None
+a, w = card(sys.argv[1]), card(sys.argv[2])
+print("IGUAIS" if a and a == w else "DIFERENTES")
+PY
+}
+
 t_thermal_gate
 t_secret_scanner
 t_site_html
@@ -2307,6 +2370,7 @@ t_privilege_detect
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts
+t_gpu_card
 t_pack
 
 printf '\n  --------------------------------------------------\n'

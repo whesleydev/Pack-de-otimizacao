@@ -408,6 +408,29 @@ nativa além do necessário para conectar e rodar os comandos.
   nome na Home dos dois painéis. `pack.sh smart [<acao>]` delega (sem argumento
   roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
+
+### Card "Perfil de Desempenho" (antes "Perfil Térmico da GPU")
+
+Card dos painéis (`data-perfmode-card`, nos dois `index`) que fixa o desempenho no
+máximo ou devolve a decisão ao sistema. Fica na Home, logo abaixo do bloco de limpeza.
+
+- Ações reais: `turbo.perfmode_on` / `turbo.perfmode_off` (`turbo.sh perfmode on|off`,
+  `cmd power set-fixed-performance-mode-enabled`). Sem root e reversível.
+- Estado real: `scripts/panel-state.sh` lê `mIsFixedPerformanceMode` do `dumpsys power`
+  e publica `fixed_perf` (`on`/`off`/`""`). O JS (`applyPerfmode`) marca a opção em uso
+  com `aria-pressed` e escreve o aviso em `[data-now]`.
+
+Dois cuidados que já causaram bug aqui:
+
+1. **Nunca use `document.querySelectorAll(".opt")` para ligar cliques.** O card usa
+   `.opt` só para o visual; o handler global precisa ser escopado a `.card-choice .opt`,
+   senão sobrescreve o `onclick` dos botões que têm handler próprio (o card ficou
+   "morto" assim: o clique não chamava nada).
+2. **Não marque a opção em uso com `classList.add("active")`.** Não existe CSS para
+   `.active`; o visual de selecionado é o `aria-pressed="true"`, que o CSS de fato
+   estiliza. Botão que só mostra `toast()` e não chama `doRun` é enfeite.
+
+Teste de regressão: `t_gpu_card` (`tests/run.sh`).
 - **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
   limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
   por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`

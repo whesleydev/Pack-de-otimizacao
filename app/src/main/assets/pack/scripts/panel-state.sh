@@ -45,6 +45,10 @@ printf ',"device":"%s"' "$(_clean "$(_p ro.product.model)")"
 printf ',"android":"%s"' "$(_clean "$(_p ro.build.version.sdk)")"
 printf ',"gpu_driver":"%s"' "$(_clean "$(_p ro.gfx.driver.0)")"
 printf ',"dns_host":"%s"' "$(_clean "$(_g global private_dns_specifier)")"
+# modo desempenho fixo (turbo.sh perfmode): true/false -> on/off
+_perf="$(sh_get 'dumpsys power 2>/dev/null' | grep -o 'mIsFixedPerformanceMode=[a-zA-Z]*' | head -1 | cut -d= -f2)"
+case "$_perf" in true) _perf=on ;; false) _perf=off ;; *) _perf="" ;; esac
+printf ',"fixed_perf":"%s"' "$(_clean "$_perf")"
 printf ',"mode":"%s"' "$(_clean "${RUN_MODE:-local}")"
 printf '}\n'
 exit 0

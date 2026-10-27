@@ -758,20 +758,21 @@ body.drawer .scrim{opacity:1;visibility:visible}
         </div>
       </section>
 
-      <!-- GPU Thermal Profile Card (.config-gpu-card) -->
-      <div class="panelbox mt-16 config-gpu-card" style="border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--glass-card);">
-        <h3>Perfil Térmico da GPU (.config-gpu-card)</h3>
-        <p class="sub">Alterne rapidamente entre Desempenho e Equilibrado para o controle térmico da GPU.</p>
-        <div class="opts" role="group" aria-label="Perfil Térmico GPU" style="display: flex; gap: 8px; margin-top: 10px;">
-          <button class="opt" type="button" id="gpuPerfBtn" onclick="setGpuThermal('performance')" style="flex:1; padding: 10px; border-radius: var(--r-sm); background: var(--glass); border: 1px solid var(--line); cursor: pointer;">
-            <span class="opt-t" style="font-weight:700; display:block;">Desempenho</span>
-            <span class="opt-s" style="font-size:0.8em; color:var(--muted);">Máx FPS</span>
+      <!-- Perfil de desempenho fixo (Desempenho x Equilibrado) -->
+      <div class="panelbox config-gpu-card" data-perfmode-card style="margin-top:16px;">
+        <h3>Perfil de Desempenho</h3>
+        <p class="sub">Fixa o desempenho no máximo ou deixa o sistema equilibrar sozinho. Vale para o aparelho todo.</p>
+        <div class="opts" role="group" aria-label="Perfil de desempenho">
+          <button class="opt" type="button" data-perfmode="on" aria-pressed="false">
+            <span class="opt-t">Desempenho</span>
+            <span class="opt-s" data-label="Máx FPS">Máx FPS</span>
           </button>
-          <button class="opt" type="button" id="gpuBalBtn" onclick="setGpuThermal('balanced')" style="flex:1; padding: 10px; border-radius: var(--r-sm); background: var(--glass); border: 1px solid var(--line); cursor: pointer;">
-            <span class="opt-t" style="font-weight:700; display:block;">Equilibrado</span>
-            <span class="opt-s" style="font-size:0.8em; color:var(--muted);">Estável</span>
+          <button class="opt" type="button" data-perfmode="off" aria-pressed="false">
+            <span class="opt-t">Equilibrado</span>
+            <span class="opt-s" data-label="Estável">Estável</span>
           </button>
         </div>
+        <div class="now" data-now hidden></div>
       </div>
 
       <!-- Game Lab & Perfis -->
@@ -1425,16 +1426,6 @@ function go(g, push){
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
 const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Painel", false); };
 
-function setGpuThermal(mode) {
-  toast('Perfil térmico GPU alterado para: ' + mode, 'ok');
-  document.querySelectorAll('.config-gpu-card .opt').forEach(b => b.classList.remove('active'));
-  if (mode === 'performance') {
-    const el = document.getElementById('gpuPerfBtn'); if (el) el.classList.add('active');
-  } else {
-    const el = document.getElementById('gpuBalBtn'); if (el) el.classList.add('active');
-  }
-}
-
 /* gaveta */
 $("#burger").onclick = () => { document.body.classList.add("drawer"); $("#burger").setAttribute("aria-expanded","true"); };
 $("#scrim").onclick = $("#sideClose").onclick = () => { document.body.classList.remove("drawer"); $("#burger").setAttribute("aria-expanded","false"); };
@@ -1547,7 +1538,32 @@ async function doRun(a, params, confirmed, btn){
   setBusy(false, btn);
 }
 document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.closest(".card")));
-document.querySelectorAll(".opt").forEach(b => b.onclick = () => selectOption(b));
+/* só opções de grupo de escolha: um .opt fora de .card-choice tem handler próprio */
+document.querySelectorAll(".card-choice .opt").forEach(b => b.onclick = () => selectOption(b));
+
+/* ---- Perfil de Desempenho (turbo.sh perfmode) ------------------------------ */
+function applyPerfmode(){
+  const card = document.querySelector("[data-perfmode-card]"); if (!card) return;
+  const v = String((STATE && STATE.fixed_perf) || "").toLowerCase();
+  const on = v === "on", known = v !== "";
+  card.querySelectorAll("[data-perfmode]").forEach(b => {
+    const active = known && (b.dataset.perfmode === "on") === on;
+    b.setAttribute("aria-pressed", active ? "true" : "false");
+    const s = b.querySelector(".opt-s");
+    if (s) s.textContent = active ? "Em uso" : (s.dataset.label || "Selecionar");
+  });
+  const now = card.querySelector("[data-now]");
+  if (now){
+    const txt = !known ? "" : (on ? "Em uso agora: desempenho fixo (mais FPS, esquenta mais)"
+                                  : "Em uso agora: equilibrado (o sistema decide)");
+    now.textContent = txt; now.hidden = !txt;
+  }
+}
+document.querySelectorAll("[data-perfmode]").forEach(b => b.onclick = () => {
+  const a = ACTIONS[b.dataset.perfmode === "on" ? "turbo.perfmode_on" : "turbo.perfmode_off"];
+  if (!a){ toast("Ação indisponível", "bad"); return; }
+  Promise.resolve(doRun(a, {}, false, b)).then(applyPerfmode);
+});
 
 /* ---- estado real do aparelho (renderizador em uso, toque, refresh) ---------- */
 let STATE = {};
@@ -1601,6 +1617,7 @@ function applyState(){
     const v = stateNum(STATE[range.dataset.state]);
     if (v !== null) setSliderValue(range, v);
   });
+  applyPerfmode();
 }
 function setSliderValue(range, val){
   const sl = range.closest(".slider"); if (!sl) return;
