@@ -845,6 +845,61 @@ t_panel_stats() {
     rm -rf "$st2" "$b2"
 }
 
+t_game_keepalive() {
+    printf '\n  # modo gamer: sem restricao de bateria, no maximo 4 processos, anti-relog\n'
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/gk_cmd.log"; : > "$TMP_CMD_LOG"
+    export TMP_AM_LOG="$TMP/gk_am.log"; : > "$TMP_AM_LOG"
+    # escolhe um jogo que NAO e Free Fire e abre pelo modo gamer
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_open com.mojang.minecraftpe \
+        > "$TMP/gk_open" 2>&1
+    # 1) sem restricao de bateria: fora do Doze + livre em 2o plano
+    grep -q '^deviceidle whitelist +com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "game_open tira o jogo do Doze (bateria sem restricao)" || bad "game_open nao isentou do Doze"
+    grep -q '^appops set com.mojang.minecraftpe RUN_ANY_IN_BACKGROUND allow$' "$TMP_CMD_LOG" \
+        && ok "game_open libera o jogo sempre em 2o plano" || bad "sem 2o plano do jogo"
+    grep -q '^appops set com.mojang.minecraftpe WAKE_LOCK allow$' "$TMP_CMD_LOG" \
+        && ok "game_open libera wake lock do jogo" || bad "sem wake lock do jogo"
+    # 2) no maximo 4 apps em 2o plano (o "no maximo 4 processos")
+    assert_contains "$TMP_STORE/global.activity_manager_constants" "max_cached_processes=4" \
+        "game_open limita a 4 apps em 2o plano"
+    # 3) balde ativo + fora do congelador
+    grep -q 'set-standby-bucket com.mojang.minecraftpe active' "$TMP_AM_LOG" \
+        && ok "game_open poe o jogo no balde ativo" || bad "sem balde ativo"
+    assert_contains "$TMP_STORE/global.cached_apps_freezer" "disabled" "game_open tira do congelador"
+    # 4) anti-relog completo (keep-alive) foi acionado
+    grep -q 'com.mojang.minecraftpe' "$HOME/.packotm/keepalive/apps" \
+        && ok "game_open registra o jogo no anti-relog" || bad "jogo fora do anti-relog"
+    # 5) continua abrindo o jogo escolhido, em performance
+    grep -q '^game set --mode performance com.mojang.minecraftpe$' "$TMP_CMD_LOG" \
+        && ok "game_open aplica Game Mode performance" || bad "sem Game Mode"
+    grep -q 'com.mojang.minecraftpe' "$TMP_AM_LOG" \
+        && ok "game_open abre o jogo escolhido" || bad "nao abriu o jogo"
+    # 6) mescla: nao apaga as outras constantes do aparelho
+    printf 'max_phantom_processes=1024' > "$TMP_STORE/global.activity_manager_constants"
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_keepalive com.mojang.minecraftpe \
+        > /dev/null 2>&1
+    c="$(cat "$TMP_STORE/global.activity_manager_constants")"
+    case "$c" in *max_cached_processes=4*) ok "am_set define o limite de 4";; *) bad "am_set sem limite ($c)";; esac
+    case "$c" in *max_phantom_processes=1024*) ok "am_set preserva as constantes ja existentes";; *) bad "am_set apagou constante ($c)";; esac
+    # 7) pacote invalido e recusado
+    : > "$TMP_CMD_LOG"; : > "$TMP_AM_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" game_keepalive 'foo;rm -rf /' > /dev/null 2>&1
+    [ -s "$TMP_CMD_LOG" ] || [ -s "$TMP_AM_LOG" ] \
+        && bad "game_keepalive executou pacote invalido" || ok "game_keepalive recusa pacote invalido"
+    # 8) grupo registrado + acao no painel
+    grep -q ' game_keepalive ' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "game_keepalive registrado nos grupos" || bad "game_keepalive fora dos grupos"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("game.keepalive");
+             echo $a ? ($a["argv"][1] . " " . ($a["params"][0]["type"] ?? "")) : "AUSENTE";' \
+        > "$TMP/gkl" 2>&1
+    assert_contains "$TMP/gkl" "game_keepalive pkg" "lib: acao game.keepalive com escolha de jogo"
+    grep -q '"game.keepalive"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "app: catalogo tem game.keepalive" || bad "app: catalogo sem game.keepalive"
+    rm -rf "$HOME/.packotm"
+}
+
 t_game_open() {
     printf '\n  # modo gamer: o usuário escolhe QUAL jogo abre (não só Free Fire)\n'
     rm -rf "$HOME/.packotm"
@@ -2008,6 +2063,7 @@ t_app_fixes
 t_new_features
 t_panel_state
 t_panel_stats
+t_game_keepalive
 t_game_open
 t_pack_stamp
 t_perm_game

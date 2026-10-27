@@ -2835,7 +2835,7 @@
         "group": "Display & Touch",
         "label": "Abrir o meu jogo (modo gamer)",
         "desc": "Abre o jogo que você escolher — FF, FF MAX, CODM, Minecraft, o que for.",
-        "help": "Escolha o jogo e ele vira o \"jogo do modo gamer\": o pack aplica o modo de jogo em performance nele e abre. A escolha fica salva — da próxima vez é só tocar de novo. Serve para qualquer jogo instalado, não só Free Fire.",
+        "help": "Escolha o jogo e ele vira o \"jogo do modo gamer\". O pack deixa o jogo SEM RESTRIÇÃO de bateria, limita o aparelho a no máximo 4 apps em segundo plano (mais RAM livre para o jogo), tira o jogo do congelador e liga o anti-relog — assim ele não fecha e não volta para a tela de login quando você troca de app. Depois abre o jogo já em performance. A escolha fica salva: da próxima vez é só tocar de novo. Serve para qualquer jogo instalado, não só Free Fire.",
         "argv": [
             "adb-tweaks.sh",
             "game_open",
@@ -2851,6 +2851,28 @@
         ],
         "confirm": false,
         "risk": "safe"
+    },
+    {
+        "id": "game.keepalive",
+        "group": "Display & Touch",
+        "label": "Meu jogo: bateria sem restrição + anti-relog",
+        "desc": "Sem restrição de bateria, no máximo 4 apps em 2º plano e sem relogar.",
+        "help": "Aplica só a proteção anti-relog ao jogo escolhido no modo gamer, sem abrir o jogo. Deixa ele SEM RESTRIÇÃO de bateria (fora do Doze e livre em segundo plano), limita o aparelho a no máximo 4 apps em segundo plano para sobrar RAM ao jogo, põe no balde ativo de standby, tira do congelador e, com root, sobe a prioridade de memória dos processos. É o ajuste que evita o jogo fechar e pedir login de novo no meio da partida. Reverta em \"Deixar de manter o app\" ou \"Reverter TUDO\".",
+        "argv": [
+            "adb-tweaks.sh",
+            "game_keepalive",
+            "{pkg}"
+        ],
+        "params": [
+            {
+                "name": "pkg",
+                "type": "pkg",
+                "label": "Jogo",
+                "optional": true
+            }
+        ],
+        "risk": "careful",
+        "confirm": false
     },
     {
         "id": "config.set",

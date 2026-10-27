@@ -290,6 +290,25 @@ prop_set() {
 # bkp_raw "comando de reversão" -> só registra para o restore
 bkp_raw() { echo "$1" >> "$OFF_SH"; }
 
+# --- ActivityManager constants ------------------------------------------------
+# am_constants_merge <k=v> [k=v...] -> string de activity_manager_constants com as
+# chaves atualizadas, PRESERVANDO as que já estavam lá. O `settings put` nessa
+# chave substitui a string inteira: gravar só "max_cached_processes=4" apagava o
+# max_phantom_processes e qualquer outro ajuste já presente no aparelho.
+am_constants_merge() {
+    cur="$(sh_get 'settings get global activity_manager_constants')"
+    case "$cur" in '' | null) cur="" ;; esac
+    for kv in "$@"; do
+        k="${kv%%=*}"
+        rest="$(printf '%s' "$cur" | tr ',' '\n' | grep -v "^$k=" | tr '\n' ',' | sed 's/,$//')"
+        cur="${rest:+$rest,}$kv"
+    done
+    printf '%s' "$cur"
+}
+
+# am_set <k=v> [k=v...] -> aplica as constantes mesclando com o que já existe
+am_set() { bkp_set global activity_manager_constants "$(am_constants_merge "$@")"; }
+
 # --- RAM: leitura e liberação real --------------------------------------------
 # apps que nunca devem ser encerrados por engano (a UI do sistema, o próprio pack)
 OTM_SYS_KEEP="android com.android.systemui com.android.launcher3 com.google.android.apps.nexuslauncher com.android.settings com.otm.pack com.termux"

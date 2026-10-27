@@ -321,8 +321,9 @@ nativa além do necessário para conectar e rodar os comandos.
   app/jogo de "relogar" (abrir do zero e pedir login) ao ser morto em segundo
   plano. `on <pkg> [jogo]` isenta do Doze, libera `RUN_IN_BACKGROUND`/
   `RUN_ANY_IN_BACKGROUND`/`START_FOREGROUND`/`WAKE_LOCK`, põe no balde `active`,
-  tira do congelador/cache freezer e (com root) baixa o `oom_score_adj`; `off
-  <pkg>` desfaz; `status <pkg>` lê tudo de volta; `list` e `restore` gerenciam a
+  tira do congelador/cache freezer e, com root, sobe a prioridade de memória dos
+  processos (`ka_oom_prio`, `oom_score_adj=-900`, com a reversão guardada por PID);
+  `off <pkg>` desfaz; `status <pkg>` lê tudo de volta; `list` e `restore` gerenciam a
   lista guardada em `$ST/keepalive/apps`. Usa `ka_run`/`bkp_raw` (reversível) e
   `require_shell` (sem Shizuku/ADB/root avisa e não aplica). Categoria **Processos**.
 - **Game Clean** (`scripts/game-clean.sh`, na whitelist do `lib.php`): junta o
@@ -337,13 +338,24 @@ nativa além do necessário para conectar e rodar os comandos.
 - **Jogo do modo gamer** (`adb-tweaks.sh game_open [pkg]`): o "modo gamer" abria
   sempre o Free Fire. Agora o usuário escolhe o jogo (FF, FF MAX, CODM, Minecraft,
   qualquer instalado) pelo seletor de apps da Home; o pacote fica salvo em
-  `$ST/game/pkg` e vale nas próximas vezes. `game_open` aplica Game Mode
-  performance no jogo escolhido e abre por `cmd package resolve-activity` (com
-  `monkey` de reserva), sem depender da Activity de cada jogo. Sem argumento usa o
-  salvo (padrão `com.dts.freefireth`); pacote inválido é recusado. `game()` também
-  cobre o jogo escolhido. `ff_open` segue existindo (abre o Free Fire fixo).
-  Ação `game_open` no `lib.php` (param `pkg` opcional, tipo `pkg`) e o card da Home
-  usa `runGameHome()` — não `runActionById('ff_open')`.
+  `$ST/game/pkg` e vale nas próximas vezes. `game_open` chama `game_keepalive` e
+  depois abre o jogo por `cmd package resolve-activity` (com `monkey` de reserva),
+  sem depender da Activity de cada jogo. Sem argumento usa o salvo (padrão
+  `com.dts.freefireth`); pacote inválido é recusado. `game()` também cobre o jogo
+  escolhido. `ff_open` segue existindo (abre o Free Fire fixo).
+- **Anti-relog do modo gamer** (`adb-tweaks.sh game_keepalive [pkg]`, grupo próprio
+  e ação `game.keepalive` no `lib.php`): junta o que impede o jogo de relogar.
+  Deixa o jogo **sem restrição de bateria** (`perm_pkg`: Doze, 2º plano, wake lock),
+  limita o aparelho a **no máximo 4 apps em 2º plano** (`am_set max_cached_processes=4`),
+  põe no balde `active`, desliga o `cached_apps_freezer`, chama `keep-alive.sh on
+  <pkg> jogo` e liga o Game Mode performance. `game_open` e `game()` usam essa
+  função, então o ajuste vem junto. Card da Home usa `runGameHome()` — não
+  `runActionById('ff_open')`.
+- **Constantes do ActivityManager** (`common.sh am_constants_merge`/`am_set`):
+  `settings put global activity_manager_constants` substitui a string inteira.
+  Gravar só `max_cached_processes=4` apagava o `max_phantom_processes` e outros
+  ajustes. `am_set` mescla com o que já existe (preserva as demais chaves e
+  atualiza só as informadas); `perf`, `mem` e `game-clean` passaram a usá-lo.
 - **Liberar RAM** (`scripts/ram-boost.sh`, na whitelist do `lib.php`): libera memória
   de verdade (ação pontual, nada a reverter). `boost [normal|max]` encerra os apps de
   3º plano via `otm_bg_kill` (poupa o jogo e os protegidos no anti-relog), poda o cache

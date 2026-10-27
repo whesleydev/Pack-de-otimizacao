@@ -794,7 +794,9 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Equilíbrio perfeito de latência de toque ultra baixa, prioridade total na CPU e bloqueio de interferências.</p>
             <ul style="font-size:0.82em; padding-left:16px; margin:0 0 12px; color:var(--muted);">
               <li>Driver de jogo ativado no App</li>
-              <li>Bateria do jogo em 'Sem Restrições'</li>
+              <li>Jogo sem restrição de bateria</li>
+              <li>No máximo 4 apps em 2º plano (mais RAM p/ o jogo)</li>
+              <li>Anti-relog: não fecha nem volta ao login</li>
               <li>Sensibilidade e velocidade de ponteiro no máximo</li>
               <li>Não Perturbe ativado para evitar notificações</li>
             </ul>

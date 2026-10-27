@@ -101,7 +101,7 @@ cmd_on() {
     sh_run "am kill-all" >/dev/null 2>&1
     sh_run "sync" >/dev/null 2>&1
     # perfil de RAM de jogo: menos apps em cache, mais RAM para o jogo
-    bkp_set global activity_manager_constants max_cached_processes=8,max_phantom_processes=1024
+    am_set max_cached_processes=8,max_phantom_processes=1024
     ra="$(otm_ram_livre_mb)"
     if [ -n "$rb" ] && [ -n "$ra" ]; then
         say "cache/dexopt podados · RAM livre: ${rb}MB → ${ra}MB (+$((ra - rb))MB)"

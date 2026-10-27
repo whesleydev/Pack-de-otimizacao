@@ -72,6 +72,28 @@ ka_run() {
     fi
 }
 
+# Sobe a prioridade de memória dos processos do app/jogo: -1000 é "não mate por
+# memória" (adj negativo). Lê o valor antigo de cada PID e guarda a reversão.
+ka_oom_prio() {
+    pkg="$1"
+    n=0
+    for p in $(sh_get "pidof $pkg" | tr ' ' '\n'); do
+        case "$p" in '' | *[!0-9]*) continue ;; esac
+        old="$(sh_get "cat /proc/$p/oom_score_adj 2>/dev/null")"
+        case "$old" in '' | *[!0-9-]*) continue ;; esac
+        bkp_raw "echo $old > /proc/$p/oom_score_adj 2>/dev/null"
+        sh_run "echo -900 > /proc/$p/oom_score_adj" >/dev/null 2>&1
+        now="$(sh_get "cat /proc/$p/oom_score_adj 2>/dev/null")"
+        [ "$now" = "-900" ] && n=$((n + 1))
+    done
+    if [ "$n" -gt 0 ]; then
+        otm_v_inc apply; otm_v_inc changed
+        printf '   %bOK%b prioridade de memória (oom) · %s processo(s)\n' "$C_G" "$C_R" "$n"
+    else
+        printf '   %b·%b prioridade de memória (oom): %s não está rodando\n' "$C_D" "$C_R" "$pkg"
+    fi
+}
+
 cmd_on() {
     pkg="$1"; modo="$2"
     _valid_pkg "$pkg" || { err "pacote inválido: '$pkg'"; return 1; }
@@ -112,6 +134,16 @@ cmd_on() {
     fi
     sh_run "pm unsuspend --user 0 $pkg" >/dev/null 2>&1
     sh_run "pm enable --user 0 $pkg" >/dev/null 2>&1
+
+    # 6b) o sistema não mata por engano: sobe a prioridade de memória dos
+    # processos do app/jogo (oom_score_adj). Sem isso o LMK pode escolher o
+    # jogo quando falta RAM — é uma das causas do relog em partida.
+    # Só com root: /proc/<pid>/oom_score_adj não é gravável por shell comum.
+    if sh_ok; then
+        ka_oom_prio "$pkg"
+    else
+        printf '   %b·%b prioridade de memória (oom) precisa de root (pulado)\n' "$C_D" "$C_R"
+    fi
 
     # 7) jogo: libera o Game Mode (opcional)
     if [ "$modo" = "jogo" ] || [ "$modo" = "game" ]; then

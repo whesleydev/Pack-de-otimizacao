@@ -34,7 +34,7 @@ perf() {
     bkp_set global force_gpu_rendering 1
     bkp_set global disable_window_blurs 1
     bkp_set global accessibility_reduce_transparency 1
-    bkp_set global activity_manager_constants max_cached_processes=32
+    am_set max_cached_processes=32
     sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
     say "animações 0.5x, GPU forçada, blur off"
 }
@@ -222,8 +222,9 @@ game() {
     sh_run "cmd game set --downscale-factor 1 com.dts.freefireth" >/dev/null
     # o jogo escolhido no modo gamer também entra (FF MAX, CODM, Minecraft...)
     gp="$(game_pkg_saved 2>/dev/null)"
-    [ -n "$gp" ] && _valid_game_pkg "$gp" \
-        && sh_run "cmd game set --mode performance $gp" >/dev/null 2>&1
+    if [ -n "$gp" ] && _valid_game_pkg "$gp"; then
+        game_keepalive "$gp"
+    fi
     say "game mode performance aplicado"
 }
 
@@ -281,6 +282,40 @@ game_launch() {
     esac
 }
 
+# Junta o que impede o jogo de "relogar" (fechar e voltar na tela de login)
+# quando o Android precisa de memória:
+#   1) o jogo fica SEM RESTRIÇÃO de bateria: fora do Doze, livre em 2º plano;
+#   2) o aparelho passa a manter no MÁXIMO 4 apps em 2º plano — menos apps em
+#      cache sobrando = mais RAM para o jogo não ser morto;
+#   3) o jogo vai para o balde ativo de standby e não é congelado;
+#   4) proteção completa (Doze, wake lock e, com root, prioridade de memória).
+game_keepalive() {
+    pkg="$1"
+    _valid_game_pkg "$pkg" || { err "pacote inválido: '$pkg'"; return 1; }
+    say "Anti-relog do jogo ($pkg)"
+
+    # 1) bateria sem restrição + 2º plano + isenção do Doze
+    perm_pkg "$pkg"
+
+    # 2) no máximo 4 apps em 2º plano. Mescla com o que já existe: gravar a
+    #    string inteira apagaria o max_phantom_processes e outros ajustes.
+    am_set max_cached_processes=4
+
+    # 3) o jogo não é rebaixado de balde nem congelado pelo sistema
+    sh_run "am set-standby-bucket $pkg active" >/dev/null 2>&1
+    sh_run "settings put global cached_apps_freezer disabled" >/dev/null 2>&1
+
+    # 4) proteção completa (Doze, wake lock, congelador e oom com root)
+    if have_shell; then
+        sh "$DIR/keep-alive.sh" on "$pkg" jogo >/dev/null 2>&1 \
+            && say "jogo protegido: não fecha em 2º plano" \
+            || warn "proteção extra não aplicada (veja keep-alive.sh)"
+    fi
+
+    sh_run "cmd game set --mode performance $pkg" >/dev/null 2>&1
+    say "bateria sem restrição · no máximo 4 apps em 2º plano · anti-relog ligado"
+}
+
 game_open() {
     # game_open [pkg]  -> define (se informado) e abre o jogo do modo gamer
     pkg="$1"
@@ -290,7 +325,7 @@ game_open() {
     game_pkg_save "$pkg"
     bkp_begin
     say "Modo gamer: $pkg"
-    sh_run "cmd game set --mode performance $pkg" >/dev/null 2>&1
+    game_keepalive "$pkg"
     game_launch "$pkg"
     say "launch enviado ($pkg)"
 }
@@ -478,11 +513,11 @@ mem() {
     case "$perfil" in
         gaming)
             say "RAM - perfil GAMING (mais RAM livre)"
-            bkp_set global activity_manager_constants max_cached_processes=8,max_phantom_processes=1024
+            am_set max_cached_processes=8,max_phantom_processes=1024
             ;;
         *)
             say "RAM - perfil PADRÃO (multitarefa)"
-            bkp_set global activity_manager_constants max_cached_processes=32,max_phantom_processes=2147483647
+            am_set max_cached_processes=32,max_phantom_processes=2147483647
             ;;
     esac
     # libera de verdade: encerra apps de fundo e poda o cache
@@ -735,7 +770,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all game_keepalive restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
