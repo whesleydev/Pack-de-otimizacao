@@ -163,21 +163,23 @@ cmd_diag() {
 #  care - modo longevidade. Reduz agressão em vez de forçar desempenho.
 #  Reaproveita exatamente os ajustes que o pack já usa, mas na direção de durar.
 # -----------------------------------------------------------------------------
-cmd_care() {
-    a="${1:-status}"
-    case "$a" in
+# _care_apply <on|off>: aplica de verdade, SEM imprimir. Quem chama decide a saida.
+# O botao unico "Otimizar saude do telefone" reaproveita exatamente o mesmo ajuste,
+# sem duplicar codigo e sem risco de divergir do care.
+_care_apply() {
+    case "$1" in
         on)
             bkp_begin
-            say "modo longevidade: reduzindo agressão"
+            say "modo longevidade: reduzindo agressao"
             # 1) sono profundo afinado (o mesmo ajuste do pack, aqui a favor da bateria)
             bkp_set global device_idle_constants \
                 "light_after_inactive_to=60000,light_pre_idle_to=60000,inactive_to=120000,sensing_to=0,locating_to=0,idle_after_idle_to_ms=60000,idle_to=300000,min_time_to_alarm=60000"
             sh_run "dumpsys deviceidle enable light" >/dev/null 2>&1
             sh_run "dumpsys deviceidle enable deep" >/dev/null 2>&1
-            # 2) tela em 60Hz: taxa alta é um dos maiores consumos contínuos
+            # 2) tela em 60Hz: taxa alta e um dos maiores consumos continuos
             bkp_set system peak_refresh_rate 60.0
             bkp_set system min_refresh_rate 60.0
-            # 3) menos varredura de rádio em segundo plano
+            # 3) menos varredura de radio em segundo plano
             bkp_set global wifi_scan_always_enabled 0
             bkp_set global ble_scan_always_enabled 0
             # 4) a economia de energia do sistema VOLTA a funcionar (o pack a desligava)
@@ -194,9 +196,15 @@ cmd_care() {
             bkp_set global ble_scan_always_enabled 1
             bkp_set global adaptive_battery_management_enabled 1
             printf '%s' "off" > "$VIT_ST/care" 2>/dev/null
-            say "sono profundo e varreduras de volta ao padrão"
+            say "sono profundo e varreduras de volta ao padrao"
             ;;
-        status|*)
+    esac
+}
+
+cmd_care() {
+    case "${1:-status}" in
+        on|off) _care_apply "$1" ;;
+        *)
             st="$(cat "$VIT_ST/care" 2>/dev/null)"
             case "$st" in on|off) ;; *) st="off" ;; esac
             printf '  %smodo longevidade:%s %s\n' "$C_A" "$C_R" "$st"
@@ -318,7 +326,21 @@ cmd_status() {
     print_machine
 }
 
+# -----------------------------------------------------------------------------
+#  optimize - o botao unico "Otimizar saude do telefone".
+#  Liga o modo longevidade e mostra o diagnostico na mesma tela: um toque so para
+#  cuidar do aparelho. Nada e forcado; so reduz agressao e revela a saude real.
+# -----------------------------------------------------------------------------
+cmd_optimize() {
+    read_battery
+    say "otimizando a saude do telefone"
+    _care_apply on
+    printf '\n'
+    cmd_diag
+}
+
 case "${1:-status}" in
+    optimize) cmd_optimize ;;
     diag)   cmd_diag ;;
     score)  read_battery; vital_score; printf '\n' ;;
     care)   cmd_care "$2" ;;

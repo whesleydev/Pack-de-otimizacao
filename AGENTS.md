@@ -452,9 +452,15 @@ residente nem serviço em segundo plano (é o que trava aparelho). `panel-state.
 `vital_alert`. O JS `renderVital()` desenha o cockpit: nota grande, selo colorido
 (bom/atenção/ruim), barra com marca em 75%, saúde/ciclos/temperatura/cargas altas.
 
-**Ações** (`lib.php`, grupo `Vitalidade`): `vital.diag` (só leitura), `vital.care_on`
-(`risk=careful`), `vital.care_off` (`risk=safe`), `vital.care_status`, `vital.guard`,
-`vital.status`. `vitality.sh` está na whitelist.
+**Ações** (`lib.php`, grupo `Vitalidade`): `vital.optimize` (o botão único "Otimizar
+saúde do telefone": liga o cuidado e mostra o diagnóstico numa tela só; `careful` +
+confirmação), `vital.diag` (só leitura), `vital.care_on` (`careful`), `vital.care_off`
+(`safe`), `vital.care_status`, `vital.guard`, `vital.status`. `vitality.sh` está na
+whitelist.
+
+**Uma só linha de resultado.** `vital.optimize` reaproveita `_care_apply` (o mesmo
+código do `care on`, sem duplicar) e chama `cmd_diag`, mas o `#OTM-RESULT` sai UMA
+vez, no fim do script — o painel lê a primeira e o `grep -c` do teste trava isso.
 
 **Testes:** `t_vitality` (`tests/run.sh`) cobre o motor sem aparelho — via
 `OTM_VIT_HEALTH/CYCLES/TEMP/LEVEL/STATUS` (leituras injetadas) e `OTM_MODE=direct`.
@@ -464,11 +470,12 @@ no ciclo seguinte, conta), `care on` aplicando de verdade (stubs de `settings`) 
 reversível, `diag` com `applies=0` (só leitura), registro das ações, remoção do que
 forçava, e paridade web↔app do card e do JS.
 
-**Nota histórica:** este card substituiu o "Piloto Térmico", que **forçava** o
-desempenho máximo (`cmd power set-fixed-performance-mode-enabled true`) e só soltava
-no calor. A ideia de forçar é o oposto do que o usuário quer: um aparelho bom a longo
-prazo trabalha a favor do sistema, não briga com ele. O `thermal-pilot.sh` foi
-removido.
+**Relação com o Perfil de Desempenho:** são cards SEPARADOS e independentes.
+O card "Perfil de Desempenho" (`data-perfmode-card`, ações `turbo.perfmode_on/off`)
+continua existindo e é para quem QUER o máximo (mais FPS, esquenta mais). O card
+"Saúde do telefone" (`data-vital-card`, grupo `Vitalidade`) é o oposto: cuida para
+durar. Nenhum dos dois substitui o outro — e **nada do pack original pode ser
+removido** (há guarda de regressão em `t_vitality`).
 
 ### Bug histórico: handler global de `.opt` (ainda vale como regra)
 

@@ -723,6 +723,10 @@ function otm_actions(): array {
     // O resto do pack "tira o freio". Estas ações fazem o oposto: medem a saúde
     // real da bateria, reduzem desgaste e avisam hábitos de carga que encurtam a
     // vida do aparelho. Nada aqui força o celular.
+    $add(['id' => 'vital.optimize', 'group' => 'Vitalidade', 'label' => 'Otimizar saúde do telefone',
+          'desc' => 'Um toque: liga o cuidado e mostra a saúde real da bateria.',
+          'help' => 'O botão único do cuidado. Liga o modo longevidade (sono profundo afinado, tela em 60 Hz, menos varredura em segundo plano e a economia de energia do sistema de volta) e, na mesma tela, mostra a saúde REAL da bateria: capacidade atual contra a de fábrica, ciclos, temperatura e uma nota de 0 a 100. É para durar mais, não para forçar. Reversível em "Modo longevidade: desligar".',
+          'argv' => ['vitality.sh', 'optimize'], 'risk' => 'careful', 'confirm' => true, 'timeout' => 180]);
     $add(['id' => 'vital.diag', 'group' => 'Vitalidade', 'label' => 'Saúde da bateria: ver diagnóstico',
           'desc' => 'Capacidade real, ciclos e desgaste da bateria.',
           'help' => 'Mostra a saúde REAL da bateria: compara a capacidade atual com a de fábrica (é o número que o Android esconde), a contagem de ciclos de carga, o nível, a temperatura e uma nota de vitalidade de 0 a 100. É a diferença entre "acho que está boa" e saber. Só leitura: não muda nada no aparelho.',

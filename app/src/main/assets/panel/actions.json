@@ -2367,6 +2367,21 @@
         "risk": "safe"
     },
     {
+        "id": "vital.optimize",
+        "group": "Vitalidade",
+        "label": "Otimizar saúde do telefone",
+        "desc": "Um toque: liga o cuidado e mostra a saúde real da bateria.",
+        "help": "O botão único do cuidado. Liga o modo longevidade (sono profundo afinado, tela em 60 Hz, menos varredura em segundo plano e a economia de energia do sistema de volta) e, na mesma tela, mostra a saúde REAL da bateria: capacidade atual contra a de fábrica, ciclos, temperatura e uma nota de 0 a 100. É para durar mais, não para forçar. Reversível em \"Modo longevidade: desligar\".",
+        "argv": [
+            "vitality.sh",
+            "optimize"
+        ],
+        "risk": "careful",
+        "confirm": true,
+        "timeout": 180,
+        "params": []
+    },
+    {
         "id": "vital.diag",
         "group": "Vitalidade",
         "label": "Saúde da bateria: ver diagnóstico",

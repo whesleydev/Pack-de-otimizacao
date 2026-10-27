@@ -1620,8 +1620,8 @@ t_web() {
         # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
         # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
         # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
-        [ "$n_opts" -eq 26 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 26)"
+        [ "$n_opts" -eq 28 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 2 perfil ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 28)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -2368,7 +2368,24 @@ t_vitality() {
         sh "$vit" care status 2>/dev/null | grep -q 'modo longevidade: off' \
         && ok "care off volta ao padrão" || bad "care off não voltou"
 
-    # 6) diag é SÓ LEITURA: não mexe em nada (nenhum applies)
+    # 6) optimize: o botao unico liga o cuidado E mostra o diagnostico
+    rm -f "$home/.packotm/vitality/care" "$store"/* 2>/dev/null
+    out="$(HOME="$home" TMP_STORE="$store" PATH="$TMP/bin:$PATH" OTM_MODE=local \
+        OTM_VIT_HEALTH=88 OTM_VIT_CYCLES=210 OTM_VIT_LEVEL=57 OTM_VIT_TEMP=35 OTM_VIT_STATUS=discharging \
+        sh "$vit" optimize 2>&1)"
+    printf '%s' "$out" | grep -q 'saúde real: 88%' && ok "optimize mostra a saúde real" \
+        || bad "optimize não mostrou a saúde"
+    printf '%s' "$out" | grep -q 'nota de vitalidade: 88/100' && ok "optimize mostra a nota" \
+        || bad "optimize não mostrou a nota"
+    [ "$(cat "$store/system.peak_refresh_rate" 2>/dev/null)" = "60.0" ] \
+        && ok "optimize ligou o modo longevidade (60Hz)" || bad "optimize não ligou o cuidado"
+    [ "$(printf '%s' "$out" | grep -c '^#OTM-RESULT')" = 1 ] \
+        && ok "optimize emite UMA linha de resultado (painel lê a primeira)" \
+        || bad "optimize emite resultado duplicado"
+    printf '%s' "$out" | grep -q '#OTM-VITAL' && ok "optimize publica o estado de vitalidade" \
+        || bad "optimize sem linha #OTM-VITAL"
+
+    # 7) diag é SÓ LEITURA: não mexe em nada (nenhum applies)
     out="$(vl 91 120 36 64 discharging diag 2>&1)"
     printf '%s' "$out" | grep -q 'applies=0' && ok "diag é só leitura (applies=0)" \
         || bad "diag mexeu no aparelho"
@@ -2395,13 +2412,29 @@ t_vitality() {
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
             echo ($a["vital.diag"]["group"] ?? "") === "Vitalidade" ? "OK":"NAO";' | grep -q OK \
         && ok "grupo Vitalidade existe" || bad "grupo Vitalidade ausente"
-    # o que forçava o aparelho saiu
+    # GUARDA DE REGRESSÃO: o que já existia NÃO pode sumir (o usuário foi claro:
+    # "não é pra remover nada"). Se alguém tirar, o teste acusa.
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            $need=["turbo.perfmode_on","turbo.perfmode_off","apply","smart.auto",
+                   "restore_all","game.keepalive","perm.battery","debloat.app.uninstall",
+                   "profile.custom.apply","dns.cloudflare"];
+            $falt=[];
+            foreach($need as $k){ if(!isset($a[$k])) $falt[]=$k; }
+            echo $falt ? "FALTA: ".implode(",",$falt) : "OK";' | grep -q OK \
+        && ok "nada do pack original foi removido (pack, perfis, debloat, DNS...)" \
+        || bad "alguma ação original do pack sumiu"
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
             $n=0; foreach(array_keys($a) as $k){ if(strpos($k,"pilot.")===0) $n++; }
             echo $n===0 ? "OK":"NAO";' | grep -q OK \
-        && ok "ações do piloto (que forçava) foram removidas" || bad "sobrou ação do piloto"
+        && ok "não existe mais ação de piloto forçado" || bad "sobrou ação de piloto"
     [ -f "$ROOT/scripts/thermal-pilot.sh" ] && bad "thermal-pilot.sh ainda existe" \
-        || ok "thermal-pilot.sh removido"
+        || ok "thermal-pilot.sh removido (forçava o aparelho)"
+    # vital.optimize: o botão único de saúde existe e é careful+confirm
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            $v=$a["vital.optimize"] ?? null;
+            echo ($v && $v["argv"]===["vitality.sh","optimize"] && $v["risk"]==="careful" && !empty($v["confirm"])) ? "OK":"NAO";' \
+        | grep -q OK && ok "vital.optimize registrado (careful + confirmação)" \
+        || bad "vital.optimize errado"
 
     printf '\n  # vitalidade: cockpit nos dois painéis\n'
     local app="$ROOT/app/src/main/assets/panel/index.html"
@@ -2411,10 +2444,12 @@ t_vitality() {
             || bad "$(basename "$f"): sem card de vitalidade"
         grep -q 'renderVital' "$f" && ok "$(basename "$f"): desenha o estado real" \
             || bad "$(basename "$f"): não desenha o estado"
-        grep -q 'data-pilot-card' "$f" && bad "$(basename "$f"): ainda tem o card do piloto" \
-            || ok "$(basename "$f"): card do piloto removido"
-        grep -q 'data-perfmode-card' "$f" && bad "$(basename "$f"): ainda tem o card duplicado" \
-            || ok "$(basename "$f"): sem o card duplicado"
+        grep -q 'data-perfmode-card' "$f" && ok "$(basename "$f"): card Perfil de Desempenho presente" \
+            || bad "$(basename "$f"): REMOVIDO o card Perfil de Desempenho"
+        grep -q 'applyPerfmode' "$f" && ok "$(basename "$f"): Perfil de Desempenho responde" \
+            || bad "$(basename "$f"): Perfil de Desempenho sem handler"
+        grep -q 'Otimizar saúde do telefone' "$f" && ok "$(basename "$f"): botão de saúde do telefone" \
+            || bad "$(basename "$f"): sem o botão de saúde"
         grep -q 'querySelectorAll(".card-choice .opt")' "$f" \
             && ok "$(basename "$f"): handler de .opt escopado" || bad "$(basename "$f"): handler global"
         grep -q 'vital.care_on' "$f" && grep -q 'vital.guard' "$f" \
