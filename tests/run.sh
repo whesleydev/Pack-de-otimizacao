@@ -1787,6 +1787,102 @@ t_gameclean() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_smart_opt() {
+    printf '\n  # otimizador inteligente: lê o aparelho, decide e aplica sob medida\n'
+    local f="$ROOT/scripts/smart-opt.sh"
+    [ -f "$f" ] && ok "scripts/smart-opt.sh existe" || { bad "smart-opt.sh ausente"; return; }
+    # sem argumento: explica o que faz
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" > "$TMP/so_help" 2>&1
+    assert_contains "$TMP/so_help" "Otimizador Inteligente" "smart-opt se apresenta sem argumento"
+    # perfil inválido é recusado
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" plan bogus > "$TMP/so_bad" 2>&1
+    assert_contains "$TMP/so_bad" "inválido" "smart-opt recusa perfil inválido"
+    # analyze: lê o aparelho de verdade e NÃO altera nada
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/so.log" TMP_AM_LOG="$TMP/so.log"; : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" analyze > "$TMP/so_an" 2>&1
+    assert_contains "$TMP/so_an" "nota" "analyze mostra a nota do aparelho"
+    assert_contains "$TMP/so_an" "classe" "analyze mostra a classe do aparelho"
+    assert_contains "$TMP/so_an" "RAM" "analyze mostra a RAM"
+    grep -q 'settings put\|am set\|appops' "$TMP_CMD_LOG" \
+        && bad "analyze alterou o sistema (devia ser só leitura)" \
+        || ok "analyze não altera nada (só leitura)"
+    # a classificação reage ao aparelho: RAM maior => nota não menor
+    r1="$(OTM_NO_COLOR=1 OTM_MODE=su sh "$f" analyze 2>&1 | awk '/nota/{print $2}' | tr -cd '0-9')"
+    case "$r1" in ''|*[!0-9]*) bad "nota do aparelho não é numérica ($r1)" ;; *) ok "nota numérica ($r1/100)" ;; esac
+    # plan: explica as decisões, ainda sem alterar
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan desempenho > "$TMP/so_plan" 2>&1
+    assert_contains "$TMP/so_plan" "PLANO DO OTIMIZADOR" "plan mostra o plano"
+    assert_contains "$TMP/so_plan" "renderizador" "plan explica o renderizador escolhido"
+    assert_contains "$TMP/so_plan" "RAM em cache" "plan explica a RAM escolhida"
+    assert_contains "$TMP/so_plan" "taxa de tela" "plan explica a taxa de tela"
+    grep -q 'settings put\|am set' "$TMP_CMD_LOG" \
+        && bad "plan alterou o sistema (devia ser só leitura)" \
+        || ok "plan não altera nada (só leitura)"
+    # perfis diferentes => decisões diferentes (deixa de ser "um pacote para todos")
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan bateria > "$TMP/so_bat" 2>&1
+    assert_contains "$TMP/so_bat" "60 Hz" "perfil bateria trava a tela em 60Hz"
+    mkdir -p "$HOME/.packotm/game"; echo "com.dts.freefireth" > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan jogo > "$TMP/so_jogo" 2>&1
+    assert_contains "$TMP/so_jogo" "4 apps" "perfil jogo limita a 4 apps em cache"
+    assert_contains "$TMP/so_jogo" "anti-relog" "perfil jogo menciona o anti-relog"
+    rm -rf "$HOME/.packotm/game"
+    # apply: aplica de verdade (delega aos módulos) e confirma mudança
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/so2.log" TMP_AM_LOG="$TMP/so2.log"; : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply equilibrado > "$TMP/so_ap" 2>&1
+    assert_contains "$TMP/so_ap" "otimização aplicada" "apply conclui e avisa"
+    assert_eq "equilibrado" "$(cat "$HOME/.packotm/smart/last" 2>/dev/null)" "apply grava o perfil aplicado"
+    [ -n "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" ] \
+        && ok "apply mexeu nas animações (base de performance)" || bad "apply não aplicou a base"
+    assert_contains "$TMP_STORE/global.activity_manager_constants" "max_cached_processes" \
+        "apply ajustou a RAM (activity_manager_constants)"
+    # as mudanças contam como reais para o painel (applies>0 e changed>0)
+    grep -q 'applies=0' "$TMP/so_ap" && bad "apply não contou nenhuma tentativa" \
+        || ok "apply reporta mudanças ao painel"
+    # status: mostra o que foi aplicado
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/so_st" 2>&1
+    assert_contains "$TMP/so_st" "perfil aplicado" "status mostra o perfil aplicado"
+    assert_contains "$TMP/so_st" "equilibrado" "status mostra o perfil correto"
+    # restore: desfaz e limpa o marcador
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore > "$TMP/so_rs" 2>&1
+    assert_contains "$TMP/so_rs" "original" "restore avisa que voltou ao original"
+    [ -f "$HOME/.packotm/smart/last" ] && bad "restore não limpou o perfil" \
+        || ok "restore limpa o perfil aplicado"
+    # a escolha do jogo muda o perfil automático para "jogo"
+    mkdir -p "$HOME/.packotm/game"; echo "com.dts.freefireth" > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan auto > "$TMP/so_auto" 2>&1
+    assert_contains "$TMP/so_auto" "(perfil jogo)" "com jogo escolhido, o perfil auto vira jogo"
+    # registro no painel + whitelist + catálogo do app
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["smart.analyze","smart.plan","smart.apply","smart.status"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/so_reg" 2>&1
+    test ! -s "$TMP/so_reg" && ok "otimizador no registro do painel" || bad "registro: $(cat "$TMP/so_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("smart-opt.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/so_lib" 2>&1
+    assert_contains "$TMP/so_lib" "ok" "smart-opt.sh na whitelist"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.apply");
+             echo ($a && ($a["risk"]??"")==="careful" && !empty($a["confirm"])) ? "cuidado" : "?";' \
+        > "$TMP/so_risk" 2>&1
+    assert_contains "$TMP/so_risk" "cuidado" "aplicar o otimizador é 'cuidado' e pede confirmação"
+    grep -q '"smart.apply"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o otimizador" || bad "app: actions.json sem o otimizador"
+    grep -q 'data-id="smart.apply"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: card do otimizador no painel" || bad "app: painel sem o card do otimizador"
+    # o painel do app precisa do objeto ACTIONS com as ações novas (senão o card fica mudo)
+    grep -q '"smart.apply"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: ACTIONS embutido tem o otimizador" || bad "app: ACTIONS sem o otimizador"
+    # o script novo precisa estar no espelho do app
+    [ -f "$ROOT/app/src/main/assets/pack/scripts/smart-opt.sh" ] \
+        && ok "espelho: smart-opt.sh presente" || bad "espelho: smart-opt.sh ausente"
+    # pack.sh delega
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/pack.sh" smart plan auto > "$TMP/so_pack" 2>&1
+    assert_contains "$TMP/so_pack" "PLANO DO OTIMIZADOR" "pack.sh delega para smart-opt.sh"
+    rm -rf "$HOME/.packotm"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
 t_ramboost() {
     printf '\n  # liberar RAM: encerra o fundo, poda cache e reporta o ganho\n'
     local f="$ROOT/scripts/ram-boost.sh"
@@ -2090,6 +2186,7 @@ t_panel_v219
 t_keepalive
 t_gameclean
 t_ramboost
+t_smart_opt
 t_clean
 t_privilege_detect
 t_undo_scope

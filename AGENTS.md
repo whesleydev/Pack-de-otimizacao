@@ -364,6 +364,26 @@ nativa além do necessário para conectar e rodar os comandos.
   `/proc/meminfo`). O modo `max` também encerra apps de mídia/chat (`RB_EXTRA`).
   `status` mostra RAM livre/total, o perfil de cache e quem está protegido. Exige
   shell (`require_shell`). Categoria **Desempenho** (grupo de escolha `ramboost`).
+- **Otimizador Inteligente** (`scripts/smart-opt.sh`, na whitelist do `lib.php`):
+  em vez de aplicar o mesmo pacote para todo aparelho, ele **lê o aparelho de ponta
+  a ponta** e decide item por item. Ações: `analyze` (relatório só-leitura: modelo,
+  Android/API/kernel, família de SoC, GPU, núcleos e frequência de pico, RAM, taxa de
+  tela suportada, armazenamento, térmico, bateria, zram, governor, MGLRU, BBR, apps de
+  usuário — e uma **nota 0..100** + classe `topo|alto|medio|entrada`), `plan [perfil]`
+  (mostra o que seria aplicado e o motivo, sem alterar nada), `apply [perfil]`,
+  `status` e `restore`. Perfis: `auto` (padrão; vira `jogo` se há jogo escolhido, senão
+  `desempenho` em aparelho forte e `equilibrado` no resto), `equilibrado`,
+  `desempenho`, `jogo` (liga o anti-relog no jogo salvo) e `bateria` (tela em 60Hz).
+  A decisão varia com o aparelho: apps em cache (4 no jogo, 8/16/24/32 por classe),
+  renderizador (Vulkan em API>=30 com Adreno/Mali, GL no resto), taxa de tela (a maior
+  lida; se não der para ler, fica no automático em vez de chutar), nível de debloat,
+  fase da limpeza e Phantom Process Killer (off com RAM>=6GB). A aplicação **delega**
+  aos módulos já testados (`adb-tweaks perf/perf_max/renderer/doze/game_keepalive/
+  game_focus`, `turbo refresh_fixed`, `deep-tune debloat`, `clean now`) e depois **lê
+  de volta** alguns ajustes (`so_verify`) para o painel não achar que "nada mudou"
+  (`#OTM-RESULT`). Perfil aplicado em `$ST/smart/last`. Categoria **Geral**
+  (`smart.analyze`, `smart.plan`, `smart.apply`, `smart.status`) + botão na Home.
+  `pack.sh smart <acao>` delega.
 - **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
   limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
   por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`

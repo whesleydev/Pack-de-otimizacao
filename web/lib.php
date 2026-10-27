@@ -71,7 +71,7 @@ function otm_allowed_scripts(): array {
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
-        'profile-custom.sh',
+        'profile-custom.sh', 'smart-opt.sh',
     ];
 }
 
@@ -154,6 +154,29 @@ function otm_actions(): array {
           'desc' => 'Aplica o conjunto seguro (sem root): performance, RAM, GPU, rede e jogo.',
           'help' => 'Liga de uma vez as otimizações seguras que não precisam de root: animações mais rápidas, GPU na interface, RAM ajustada, DNS/rede e modo de jogo. É o "faz tudo" para começar. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 300]);
+    $add(['id' => 'smart.analyze', 'group' => 'Geral', 'label' => 'Otimizador Inteligente: analisar',
+          'desc' => 'Lê o aparelho inteiro (CPU, GPU, RAM, tela, térmico, bateria) e mostra uma nota.',
+          'help' => 'Faz uma varredura completa do aparelho — modelo, processador, GPU, núcleos e frequência, RAM, taxa de tela suportada, armazenamento, temperatura, bateria, versão do Android e kernel — e calcula uma nota (0 a 100) e a classe do aparelho (topo, alto, intermediário ou entrada). Não altera NADA: é só diagnóstico. Use antes de otimizar para entender o que o seu aparelho é capaz.',
+          'argv' => ['smart-opt.sh', 'analyze']]);
+    $add(['id' => 'smart.plan', 'group' => 'Geral', 'label' => 'Otimizador Inteligente: ver o plano',
+          'desc' => 'Mostra exatamente o que será aplicado no SEU aparelho e o motivo.',
+          'help' => 'Monta o plano de otimização sob medida para o seu aparelho e explica cada escolha: quantos apps ficam em cache, qual renderizador, qual taxa de tela, o nível de debloat, a limpeza e o doze. Nada é aplicado — é para você conferir antes. A decisão muda conforme o aparelho: um topo de linha recebe um conjunto, um de entrada recebe outro.',
+          'argv' => ['smart-opt.sh', 'plan', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                        'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                        'default' => 'auto']]]);
+    $add(['id' => 'smart.apply', 'group' => 'Geral', 'label' => 'Otimizador Inteligente: aplicar',
+          'desc' => 'Analisa o aparelho e aplica as melhores configurações para ele.',
+          'help' => 'O "faz tudo" inteligente: lê o aparelho, decide item por item o que faz sentido para AQUELE modelo (não aplica o mesmo pacote para todos) e aplica — animações, RAM sob medida, renderizador pela GPU, taxa de tela, debloat, limpeza e doze. No perfil "jogo" também liga o anti-relog no seu jogo. Tudo reversível em "Reverter TUDO".',
+          'argv' => ['smart-opt.sh', 'apply', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                        'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                        'default' => 'auto']],
+          'risk' => 'careful', 'confirm' => true, 'timeout' => 300]);
+    $add(['id' => 'smart.status', 'group' => 'Geral', 'label' => 'Otimizador Inteligente: estado',
+          'desc' => 'Mostra o que o otimizador aplicou e como o aparelho está agora.',
+          'help' => 'Mostra a classe e a nota do aparelho, o perfil aplicado por último, a RAM em cache, o renderizador, a taxa de tela e quem está protegido no anti-relog. Só leitura.',
+          'argv' => ['smart-opt.sh', 'status']]);
     $add(['id' => 'restore_all', 'group' => 'Geral', 'label' => 'Reverter TUDO',
           'desc' => 'Desfaz níveis 2, otimizações profundas e debloat de uma vez.',
           'help' => 'Volta o aparelho ao estado de fábrica de configuração: desfaz as otimizações, as profundas (root) e o debloat. Use quando quiser "limpar" tudo o que o pack aplicou.',

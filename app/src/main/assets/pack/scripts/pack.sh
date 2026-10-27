@@ -12,7 +12,8 @@
 #  Ações: status | apply | restore | snapshot <...> | debloat <...> |
 #         deep <modulo> <on|off> | touch <perfil> | game <...> | bench <...> |
 #         dns <perfil|menu> | modules <run|list|info|menu> <nome> |
-#         device | freeze | unfreeze | gameclean <on|off|status> |
+#         device | smart <analyze|plan|apply|status|restore> |
+#         freeze | unfreeze | gameclean <on|off|status> |
 #         keep <on|off|status|list|restore> | ram <boost|status> |
 #         <grupo do adb-tweaks> | test | build
 #
@@ -110,6 +111,7 @@ dispatch() {
         ram|ramboost) sh "$DIR/ram-boost.sh" "$@" ;;
         bench)    sh "$DIR/bench.sh" "$@" ;;
         device)   sh "$DIR/device-profile.sh" "$@" ;;
+        smart)    sh "$DIR/smart-opt.sh" "$@" ;;
         dns)      sh "$DIR/dns.sh" "$@" ;;
         modules)  sh "$DIR/modules.sh" "$@" ;;
         mods)     sh "$DIR/modules.sh" "$@" ;;
