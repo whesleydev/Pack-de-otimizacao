@@ -8,7 +8,10 @@
 #     2) CLASSIFICA o aparelho (topo/alto/médio/entrada) e calcula uma NOTA;
 #     3) DECIDE item por item o que aplicar, mostrando o motivo de cada escolha;
 #     4) APLICA delegando aos módulos já testados do pack (perf, mem, renderer,
-#        refresh, debloat, clean, anti-relog) — tudo reversível.
+#        refresh, clean, anti-relog) — tudo reversível.
+#
+#  Debloat NAO faz parte daqui de proposito: remover apps de fabrica e uma decisao
+#  do usuario, com previa e reversao proprias. Fica na categoria "Debloat".
 #
 #  Nada é inventado: cada número vem de uma leitura real. O que o aparelho não
 #  expõe aparece como "—" e a decisão cai no valor seguro.
@@ -318,12 +321,6 @@ decide() {
         D_HZ=""
     fi
 
-    # debloat: aparelho modesto ganha mais com o leve; o forte pede o médio
-    case "$TIER" in
-        entrada|medio) D_DEBLOAT=leve ;;
-        *)             D_DEBLOAT=medio ;;
-    esac
-
     # limpeza: jogo/desempenho só liberam RAM; o resto suaviza também
     case "$prof" in
         desempenho|jogo) D_CLEAN=fundo ;;
@@ -392,8 +389,6 @@ cmd_plan() {
     printf '   %staxa de tela%s %s   %s\n' "$C_A" "$C_R" \
         "$([ -n "$D_HZ" ] && echo "${D_HZ} Hz" || echo 'automática')" \
         "$([ -n "$D_HZ" ] && echo 'a maior taxa que o aparelho suporta' || echo 'não deu para ler a taxa; fica no padrão')"
-    printf '   %sdebloat%s     %s   %s\n' "$C_A" "$C_R" "$D_DEBLOAT" \
-        "restringe apps de fundo (reversível)"
     printf '   %slimpeza%s     %s   %s\n' "$C_A" "$C_R" "$D_CLEAN" \
         "$([ "$D_CLEAN" = suave ] && echo 'libera RAM e suaviza' || echo 'só libera RAM (não mexe em ajustes)')"
     printf '   %sphantom%s     %s   %s\n' "$C_A" "$C_R" "$D_PHANTOM" \
@@ -471,19 +466,15 @@ cmd_apply() {
         so_step "4/7  Taxa de tela: mantida no padrão (não deu para ler)"
     fi
 
-    # 5) restringe apps de fundo (debloat) no nível certo para o aparelho
-    so_step "5/7  Debloat ($D_DEBLOAT)"
-    sh "$DIR/deep-tune.sh" debloat on >/dev/null 2>&1
-
-    # 6) limpeza e suavização / doze
-    so_step "6/7  Limpeza ($D_CLEAN)"
+    # 5) limpeza e suavização / doze
+    so_step "5/6  Limpeza ($D_CLEAN)"
     sh "$DIR/clean.sh" now "$D_CLEAN" >/dev/null 2>&1
     if [ "$D_DOZE" = on ]; then
         sh "$DIR/adb-tweaks.sh" doze on >/dev/null 2>&1
     fi
 
-    # 7) jogo: anti-relog + foco (só no perfil jogo, com jogo escolhido)
-    so_step "7/7  Jogo e proteção"
+    # 6) jogo: anti-relog + foco (só no perfil jogo, com jogo escolhido)
+    so_step "6/6  Jogo e proteção"
     if [ -n "$D_GAME" ]; then
         sh "$DIR/adb-tweaks.sh" game_keepalive "$D_GAME" >/dev/null 2>&1
         sh "$DIR/adb-tweaks.sh" game_focus >/dev/null 2>&1
@@ -532,7 +523,6 @@ cmd_restore() {
     say "Desfazendo tudo o que o pack aplicou"
     sh "$DIR/adb-tweaks.sh" restore_all >/dev/null 2>&1
     sh "$DIR/deep-tune.sh" restore >/dev/null 2>&1
-    sh "$DIR/debloat.sh" off >/dev/null 2>&1
     sh "$DIR/clean.sh" off >/dev/null 2>&1
     rm -f "$SO_LAST" 2>/dev/null
     say "aparelho de volta ao comportamento original"

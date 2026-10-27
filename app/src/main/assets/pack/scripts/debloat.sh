@@ -1,11 +1,15 @@
 #!/system/bin/sh
 # =============================================================================
 #  debloat.sh - Remove/restringe bloatware sem root (nível ADB/Shizuku).
-#  Uso: sh scripts/debloat.sh <on|off|status|list|disable|enable|uninstall|restore>
+#  Uso: sh scripts/debloat.sh <universal|marca|preview|off|status|list|...>
 #
 #  O que faz:
-#    on [perfil]   aplica um perfil (leve|medio|pesado): desativa apps de
-#                  fabricante e restringe o resto (appops + standby bucket)
+#    universal     remove o bloat que vem em qualquer aparelho (Facebook, Amazon,
+#                  Netflix, jogos e afins) — lista curada, reversivel
+#    <marca>       remove o bloat daquela marca: samsung, xiaomi, motorola,
+#                  oneplus, realme, vivo, huawei, asus, sony, lg, transsion
+#    marcas        lista as marcas disponiveis
+#    preview <alvo> mostra o que seria removido e POR QUE (nada e alterado)
 #    off           reverte TUDO que este módulo aplicou (enable + appops allow)
 #    status        mostra o que está aplicado agora
 #    list          lista apps de usuário (-3) e de sistema (-s)
@@ -23,6 +27,8 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
 otm_v_reset
+
+. "$DIR/debloat-lists.sh" 2>/dev/null || true
 
 ST2="${HOME:-/data/data/com.termux/files/home}/.packotm/debloat"
 mkdir -p "$ST2" 2>/dev/null
@@ -94,6 +100,111 @@ debloat_preview() {
     done
     printf '\n  %sLegenda:%s SAFE pode desativar · CAUTION pode quebrar algo · DANGER não mexa\n' "$C_A" "$C_R"
     printf '  %sReverter sempre:%s sh scripts/debloat.sh off\n' "$C_A" "$C_R"
+}
+
+# --- protecao: o que NUNCA pode ser tocado ------------------------------------
+# Defesa em profundidade: mesmo que um pacote perigoso escape da lista curada,
+# ele e recusado aqui. DBL_KEEP/DBL_NEVER vem de debloat-lists.sh.
+d_protected() {
+    p="$1"
+    case " $DBL_NEVER " in *" $p "*) return 0 ;; esac
+    for k in $DBL_KEEP; do
+        case "$p" in *"$k"*) return 0 ;; esac
+    done
+    return 1
+}
+
+# --- listas curadas: universal e por marca ------------------------------------
+d_list() {  # d_list <alvo> -> imprime "pacote|motivo"
+    case "$1" in
+        universal) printf '%s\n' "$DBL_UNIVERSAL" ;;
+        samsung)   printf '%s\n' "$DBL_SAMSUNG" ;;
+        xiaomi)    printf '%s\n' "$DBL_XIAOMI" ;;
+        motorola)  printf '%s\n' "$DBL_MOTOROLA" ;;
+        oneplus)   printf '%s\n' "$DBL_ONEPLUS" ;;
+        realme)    printf '%s\n' "$DBL_REALME" ;;
+        vivo)      printf '%s\n' "$DBL_VIVO" ;;
+        huawei)    printf '%s\n' "$DBL_HUAWEI" ;;
+        asus)      printf '%s\n' "$DBL_ASUS" ;;
+        sony)      printf '%s\n' "$DBL_SONY" ;;
+        lg)        printf '%s\n' "$DBL_LG" ;;
+        transsion) printf '%s\n' "$DBL_TRANSSION" ;;
+        *) return 1 ;;
+    esac
+}
+
+d_brands() { printf '%s' "universal samsung xiaomi motorola oneplus realme vivo huawei asus sony lg transsion"; }
+
+# marca deste aparelho, lida do fabricante (ro.product.manufacturer / brand)
+d_marca() {
+    m="$(sh_get 'getprop ro.product.manufacturer') $(sh_get 'getprop ro.product.brand')"
+    m="$(printf '%s' "$m" | tr 'A-Z' 'a-z')"
+    case "$m" in
+        *samsung*)              echo samsung ;;
+        *xiaomi*|*redmi*|*poco*|*blackshark*) echo xiaomi ;;
+        *motorola*|*moto*)      echo motorola ;;
+        *oneplus*|*oppo*|*realme*) echo oneplus ;;
+        *vivo*|*iqoo*)          echo vivo ;;
+        *huawei*|*honor*)       echo huawei ;;
+        *asus*)                 echo asus ;;
+        *sony*)                 echo sony ;;
+        *lge*|*"lg electronics"*) echo lg ;;
+        *tecno*|*infinix*|*itel*|*transsion*) echo transsion ;;
+        *)                      echo "" ;;
+    esac
+}
+
+# quantos pacotes da lista existem DE FATO neste aparelho
+d_installed() {  # d_installed <alvo> -> imprime so os pacotes instalados
+    d_list "$1" | while IFS= read -r linha; do
+        [ -n "$linha" ] || continue
+        p="${linha%%|*}"
+        d_protected "$p" && continue
+        sh_get "pm list packages $p" | grep -q "package:$p" && printf '%s\n' "$linha"
+    done
+}
+
+# preview: o que seria removido, com o motivo. Nada muda.
+d_preview() {
+    alvo="${1:-universal}"
+    if [ "$alvo" = "marca" ]; then alvo="$(d_marca)"; [ -n "$alvo" ] || alvo=universal; fi
+    d_list "$alvo" >/dev/null 2>&1 || { err "alvo invalido: $alvo"; printf '  alvos: %s\n' "$(d_brands)"; return 1; }
+    tot="$(d_list "$alvo" | grep -c .)"
+    printf '  %sDebloat "%s" — %s app(s) na lista%s\n' "$C_A" "$alvo" "$tot" "$C_R"
+    printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
+    printf '  %sinstalados NESTE aparelho:%s\n' "$C_A" "$C_R"
+    n=0
+    d_installed "$alvo" | while IFS= read -r linha; do
+        p="${linha%%|*}"; r="${linha#*|}"
+        printf '   %s%-52s%s %s\n' "$C_D" "$p" "$C_R" "$r"
+    done
+    n="$(d_installed "$alvo" | grep -c .)"
+    printf '\n  %s%d de %s existem aqui e serao removidos.%s\n' "$C_A" "$n" "$tot" "$C_R"
+    printf '  %sNada foi alterado. Para aplicar: debloat.sh %s%s\n' "$C_D" "$alvo" "$C_R"
+}
+
+# aplica: desinstala para o usuario (reversivel com "install-existing")
+d_apply() {
+    alvo="${1:-universal}"
+    if [ "$alvo" = "marca" ]; then alvo="$(d_marca)"; [ -n "$alvo" ] || alvo=universal; fi
+    d_list "$alvo" >/dev/null 2>&1 || { err "alvo invalido: $alvo"; return 1; }
+    say "removendo bloat ($alvo) — reversivel em \"Debloat: reverter tudo\""
+    n=0; skip=0
+    d_list "$alvo" | while IFS= read -r linha; do
+        [ -n "$linha" ] || continue
+        p="${linha%%|*}"
+        if d_protected "$p"; then
+            printf '   %sprotegido, pulei: %s%s\n' "$C_Y" "$p" "$C_R"
+            continue
+        fi
+        sh_get "pm list packages $p" | grep -q "package:$p" || continue
+        sh_run "pm uninstall -k --user 0 $p" >/dev/null 2>&1
+        d_record "cmd package install-existing $p"
+        printf '   %sremovido: %s%s\n' "$C_D" "$p" "$C_R"
+    done
+    command touch "$D_ON"
+    echo
+    say "pronto. Reverta tudo em \"Debloat: reverter tudo\" (debloat.sh off)."
 }
 
 # --- estado -------------------------------------------------------------------
@@ -200,6 +311,13 @@ debloat_status() {
 
 # --- main ---------------------------------------------------------------------
 case "${1:-status}" in
+    universal) d_apply universal ;;
+    samsung|xiaomi|motorola|oneplus|realme|vivo|huawei|asus|sony|lg|transsion)
+               d_apply "$1" ;;
+    marca)     d_apply marca ;;
+    marcas)    printf '  %smarcas:%s %s\n' "$C_A" "$C_R" "$(d_brands)"
+               printf '  %sdeste aparelho:%s %s\n' "$C_A" "$C_R" "$(d_marca)" ;;
+    preview)   d_preview "${2:-universal}" ;;
     on)        debloat_on "${2:-medio}" ;;
     off)       debloat_off ;;
     status)    debloat_status ;;
@@ -212,8 +330,10 @@ case "${1:-status}" in
     restore)   restore_app "$2" ;;
     restrict)  restrict_app "$2" ;;
     unrestrict) unrestrict_app "$2" ;;
-    *) printf '  uso: debloat.sh on [leve|medio|pesado] | off | status | list\n'
-       printf '       debloat.sh disable|enable|uninstall|restore|restrict|unrestrict <pacote>\n' ;;
+    *) printf '  uso: debloat.sh universal | <marca> | marca | marcas | preview [alvo]\n'
+       printf '       debloat.sh off | status | list\n'
+       printf '       debloat.sh disable|enable|uninstall|restore|restrict|unrestrict <pacote>\n'
+       printf '       marcas: %s\n' "$(d_brands)" ;;
 esac
 
 rc=$?

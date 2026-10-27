@@ -156,7 +156,7 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 300]);
     $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
           'desc' => 'Analisa o seu aparelho e aplica as melhores configurações para ele.',
-          'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência, RAM, taxa de tela, armazenamento, térmico, bateria, zram, Android e kernel) e calcula uma nota e a classe do aparelho. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, debloat, limpeza e doze. Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim, confere se os ajustes pegaram de verdade. É tudo reversível em "Reverter TUDO".',
+          'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência, RAM, taxa de tela, armazenamento, térmico, bateria, zram, Android e kernel) e calcula uma nota e a classe do aparelho. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, limpeza e doze. (O debloat ficou de fora de propósito: remover app de fábrica é decisão sua e mora na aba Debloat.) Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim, confere se os ajustes pegaram de verdade. É tudo reversível em "Reverter TUDO".',
           'argv' => ['smart-opt.sh', 'auto'], 'risk' => 'careful', 'confirm' => true,
           'timeout' => 420]);
     $add(['id' => 'restore_all', 'group' => 'Geral', 'label' => 'Reverter TUDO',
@@ -588,12 +588,12 @@ function otm_actions(): array {
         'pesado' => ['Pesado', 'Redes + streaming + apps extras.'],
     ];
     foreach ($debloat as $k => $v) {
-        $add(['id' => "debloat.$k", 'group' => 'Apps e jogos', 'label' => "Debloat: perfil {$v[0]}",
+        $add(['id' => "debloat.$k", 'group' => 'Debloat', 'label' => "Debloat: perfil {$v[0]}",
               'desc' => $v[1] . ' (reversível)',
               'help' => 'Debloat desativa apps de fábrica que você provavelmente não usa, liberando RAM, bateria e espaço. O perfil leve mexe só em redes sociais; o pesado mexe em mais apps. Tudo é reversível em "Debloat: reverter tudo".',
               'argv' => ['debloat.sh', 'on', $k], 'confirm' => true, 'risk' => 'careful', 'timeout' => 180]);
     }
-    $add(['id' => 'debloat.off', 'group' => 'Apps e jogos', 'label' => 'Debloat: reverter tudo',
+    $add(['id' => 'debloat.off', 'group' => 'Debloat', 'label' => 'Debloat: reverter tudo',
           'desc' => 'Reativa tudo que o debloat desativou.',
           'help' => 'Traz de volta todos os apps que o debloat desativou, deixando o sistema como estava antes.',
           'argv' => ['debloat.sh', 'off'], 'timeout' => 180]);
@@ -739,12 +739,36 @@ function otm_actions(): array {
           'risk' => 'careful']);
 
     // ----- Debloat: preview com classificação de risco -----
-    $add(['id' => 'debloat.preview', 'group' => 'Apps e jogos', 'label' => 'Prévia do debloat (com risco)',
-          'desc' => 'Mostra o que seria desativado, com selo SAFE/CAUTION/DANGER.',
-          'help' => 'Antes de aplicar, veja exatamente o que o debloat faria e o risco de cada app: SAFE (pode desativar sem medo), CAUTION (cuidado, pode quebrar algo) ou DANGEROUS (não mexa). Nada é alterado na prévia.',
-          'argv' => ['debloat.sh', 'preview', '{profile}'],
-          'params' => [['name' => 'profile', 'type' => 'enum', 'label' => 'Perfil',
-                        'options' => ['leve', 'medio', 'pesado'], 'default' => 'medio']]]);
+    $add(['id' => 'debloat.preview', 'group' => 'Debloat', 'label' => 'Prévia: ver antes de remover',
+          'desc' => 'Mostra exatamente o que seria removido, com o motivo, sem alterar nada.',
+          'help' => 'A prévia lista, pacote por pacote, o que a remoção faria e POR QUE cada app está na lista (anúncios, jogo pré-instalado, app de operadora...). Ela também mostra só o que existe de fato no SEU aparelho. Nada é alterado. Use sempre antes de remover.',
+          'argv' => ['debloat.sh', 'preview', '{alvo}'],
+          'params' => [['name' => 'alvo', 'type' => 'enum', 'label' => 'Lista',
+                        'options' => ['universal', 'marca', 'samsung', 'xiaomi', 'motorola',
+                                      'oneplus', 'realme', 'vivo', 'huawei', 'asus', 'sony',
+                                      'lg', 'transsion', 'leve', 'medio', 'pesado'],
+                        'default' => 'universal']]]);
+
+    // ----- Debloat curado: universal e por marca (listas do UAD) -----
+    $add(['id' => 'debloat.universal', 'group' => 'Debloat', 'label' => 'Debloat universal',
+          'desc' => 'Remove o bloat que vem em qualquer aparelho: Facebook, Amazon, Netflix, jogos.',
+          'help' => 'Remove apps que praticamente toda fabricante empurra e você provavelmente nunca usou: Facebook (e os serviços escondidos dele), Amazon, Netflix, LinkedIn, Booking, eBay, jogos pré-instalados e afins. A lista é curada e só contém pacotes com veredito "Recommended" do Universal Android Debloater (a base usada pela comunidade). A remoção é por usuário e reversível em "Reverter tudo". Nada essencial (câmera, galeria, telefone, mensagens, teclado, Bluetooth, Play Services) entra nesta lista.',
+          'argv' => ['debloat.sh', 'universal'], 'risk' => 'careful', 'confirm' => true, 'timeout' => 300]);
+
+    $add(['id' => 'debloat.marca', 'group' => 'Debloat', 'label' => 'Debloat da minha marca',
+          'desc' => 'Detecta a marca do aparelho e remove o bloat daquela fabricante.',
+          'help' => 'Lê o fabricante do seu aparelho (Samsung, Xiaomi, Motorola, OnePlus, Realme, Vivo, Huawei, Asus, Sony, LG, Tecno...) e aplica a lista curada daquela marca: apps de loja, telemetria, assistentes redundantes, jogos e novidades pré-instaladas. É a lista que mais libera espaço e RAM, porque o bloat de fabricante é o que mais pesa. Reversível em "Reverter tudo".',
+          'argv' => ['debloat.sh', 'marca'], 'risk' => 'careful', 'confirm' => true, 'timeout' => 300]);
+
+    $add(['id' => 'debloat.brand', 'group' => 'Debloat', 'label' => 'Debloat por marca (escolher)',
+          'desc' => 'Escolhe a marca na mão e remove o bloat dela.',
+          'help' => 'Igual ao "Debloat da minha marca", mas você escolhe qual marca usar — útil quando o aparelho é de uma submarca ou quando você quer limpar um aparelho de outra pessoa.',
+          'argv' => ['debloat.sh', '{marca}'],
+          'params' => [['name' => 'marca', 'type' => 'enum', 'label' => 'Marca',
+                        'options' => ['samsung', 'xiaomi', 'motorola', 'oneplus', 'realme',
+                                      'vivo', 'huawei', 'asus', 'sony', 'lg', 'transsion'],
+                        'default' => 'samsung']],
+          'risk' => 'careful', 'confirm' => true, 'timeout' => 300]);
 
     // ----- Wi-Fi e rede -----
     $add(['id' => 'wifi', 'group' => 'DNS e rede', 'label' => 'Ajustes de Wi-Fi',
@@ -775,32 +799,32 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'unfreeze_apps']]);
 
     // ----- Debloat por app -----
-    $add(['id' => 'debloat.app.disable', 'group' => 'Apps e jogos', 'label' => 'Desativar um app',
+    $add(['id' => 'debloat.app.disable', 'group' => 'Debloat', 'label' => 'Desativar um app',
           'desc' => 'Desativa um app específico (some da gaveta, mas fica instalado).',
           'help' => 'Desativa só o app que você escolher. Ele para de rodar e de gastar bateria, mas continua instalado. Reversível em "Reativar um app".',
           'argv' => ['debloat.sh', 'disable', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'debloat.app.enable', 'group' => 'Apps e jogos', 'label' => 'Reativar um app',
+    $add(['id' => 'debloat.app.enable', 'group' => 'Debloat', 'label' => 'Reativar um app',
           'desc' => 'Liga de novo um app que você desativou.',
           'help' => 'Traz de volta um app desativado. Ele volta a aparecer e a rodar normalmente.',
           'argv' => ['debloat.sh', 'enable', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
-    $add(['id' => 'debloat.app.uninstall', 'group' => 'Apps e jogos', 'label' => 'Desinstalar p/ o usuário',
+    $add(['id' => 'debloat.app.uninstall', 'group' => 'Debloat', 'label' => 'Desinstalar p/ o usuário',
           'desc' => 'Remove o app só para você (dá para reinstalar depois).',
           'help' => 'Desinstala o app apenas para o seu usuário — o sistema continua com a cópia e você pode reinstalar sem baixar de novo. Ótimo para tirar bloatware sem risco. Reversível em "Reinstalar app".',
           'argv' => ['debloat.sh', 'uninstall', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'debloat.app.restore', 'group' => 'Apps e jogos', 'label' => 'Reinstalar app',
+    $add(['id' => 'debloat.app.restore', 'group' => 'Debloat', 'label' => 'Reinstalar app',
           'desc' => 'Traz de volta um app que você desinstalou para o usuário.',
           'help' => 'Reinstala o app removido com "Desinstalar p/ o usuário", sem precisar baixar nada.',
           'argv' => ['debloat.sh', 'restore', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
-    $add(['id' => 'debloat.app.restrict', 'group' => 'Apps e jogos', 'label' => 'Restringir em 2º plano',
+    $add(['id' => 'debloat.app.restrict', 'group' => 'Debloat', 'label' => 'Restringir em 2º plano',
           'desc' => 'Impede o app de rodar escondido (modo restrito).',
           'help' => 'Coloca o app no modo restrito: ele não roda em segundo plano nem gasta bateria, mas continua abrindo normalmente quando você toca. Reversível em "Tirar restrição".',
           'argv' => ['debloat.sh', 'restrict', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']], 'risk' => 'careful']);
-    $add(['id' => 'debloat.app.unrestrict', 'group' => 'Apps e jogos', 'label' => 'Tirar restrição',
+    $add(['id' => 'debloat.app.unrestrict', 'group' => 'Debloat', 'label' => 'Tirar restrição',
           'desc' => 'Devolve o app ao funcionamento normal.',
           'help' => 'Remove o modo restrito do app, deixando ele rodar em segundo plano de novo.',
           'argv' => ['debloat.sh', 'unrestrict', '{pkg}'],

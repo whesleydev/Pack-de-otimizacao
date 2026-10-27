@@ -1308,6 +1308,78 @@ t_debloat() {
     grep -q 'install-existing com.exemplo' "$st/off.sh"         && ok "uninstall registra reinstall (install-existing)" || bad "uninstall não registrou reversão"
     rm -rf "$st"
     unset TMP_PM_LOG TMP_CMD_LOG
+
+    # ---- listas curadas (universal + por marca) ----
+    printf '\n  # debloat: listas curadas universal e por marca\n'
+    L="$ROOT/scripts/debloat-lists.sh"
+    [ -f "$L" ] && ok "debloat-lists.sh existe" || bad "debloat-lists.sh ausente"
+
+    # helper: imprime todos os pacotes das listas
+    # aspas em cada variavel: o motivo tem espacos, entao o for sem aspas quebraria
+    cat > "$TMP/dbl_dump.sh" <<EOF
+. "$L"
+for b in UNIVERSAL SAMSUNG XIAOMI MOTOROLA ONEPLUS REALME VIVO HUAWEI ASUS SONY LG TRANSSION; do
+    eval "printf '%s\\n' \"\\\$DBL_\$b\""
+done
+EOF
+
+    for b in UNIVERSAL SAMSUNG XIAOMI MOTOROLA ONEPLUS REALME VIVO HUAWEI ASUS SONY LG TRANSSION; do
+        n=$(sh -c ". \"$L\"; printf '%s\n' \"\$DBL_$b\" | grep -c .")
+        [ "$n" -ge 5 ] && ok "lista $b tem $n pacotes" || bad "lista $b vazia/curta ($n)"
+    done
+
+    sh "$TMP/dbl_dump.sh" > "$TMP/dbl_raw"
+    cut -d'|' -f1 "$TMP/dbl_raw" | grep . > "$TMP/dbl_all"
+    n_all=$(grep -c . "$TMP/dbl_all")
+    [ "$n_all" -gt 300 ] && ok "listas somam $n_all pacotes" || bad "listas curtas ($n_all)"
+
+    # toda linha tem motivo ("pacote|motivo")
+    sem=$(grep -vc '|' "$TMP/dbl_raw" || true)
+    [ "$sem" -eq 0 ] && ok "toda linha das listas tem motivo" || bad "$sem linha(s) sem motivo"
+
+    # SEGURANCA: nenhuma lista pode conter pacote critico
+    perigo='systemui settings providers camera gallery dialer phone telecom telephony mms sms messag contact calendar clock calculator keyboard inputmethod launcher bluetooth nfc wifi biometr fingerprint fpstouch goodix synaptics payment wallet tsm uicc esim updater installer fota accessib talkback accessory watchmanager watchon gear buds cloud backup modem mot5gmod volume vold audio codec keystore credential gms gsf vending framework drm widevine cast mirror usb stylus rro health dex samsungpay smartswitch spooler emergency security knox vpn gatekeeper'
+    vaz=0
+    for k in $perigo; do
+        if grep -qi "$k" "$TMP/dbl_all"; then vaz=1; bad "lista contem pacote critico: $k ($(grep -i "$k" "$TMP/dbl_all" | tr '\n' ' '))"; fi
+    done
+    [ "$vaz" -eq 0 ] && ok "nenhuma lista contem pacote critico (camera, telefone, sistema...)"
+
+    # protecao em tempo de execucao: recusa pacote critico mesmo se for forçado
+    cat > "$TMP/dbl_prot.sh" <<EOF
+. "$L"
+for p in com.android.systemui com.sec.android.app.camera com.android.dialer com.google.android.gms com.android.vending com.samsung.android.app.watchmanager com.motorola.motofpstouch com.motorola.mot5gmod; do
+    case " \$DBL_NEVER " in *" \$p "*) echo "NEVER:\$p"; continue ;; esac
+    for k in \$DBL_KEEP; do
+        case "\$p" in *"\$k"*) echo "KEEP:\$p"; break ;; esac
+    done
+done
+EOF
+    sh "$TMP/dbl_prot.sh" > "$TMP/dbl_prot"
+    for p in com.android.systemui com.sec.android.app.camera com.android.dialer com.google.android.gms com.android.vending com.samsung.android.app.watchmanager com.motorola.motofpstouch com.motorola.mot5gmod; do
+        grep -q ":$p$" "$TMP/dbl_prot" && ok "protege $p" || bad "nao protegeu $p"
+    done
+
+    # preview nao altera nada
+    rm -rf "$st"
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/scripts/debloat.sh" preview samsung > "$TMP/dbl_prev" 2>&1
+    assert_contains "$TMP/dbl_prev" "Nada foi alterado" "preview nao altera nada"
+    [ -f "$st/applied" ] && bad "preview marcou como aplicado" || ok "preview nao marca como aplicado"
+
+    # apply por marca: remove e registra reversao
+    rm -rf "$st"
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/scripts/debloat.sh" samsung > "$TMP/dbl_ap" 2>&1
+    assert_contains "$TMP/dbl_ap" "removido" "debloat por marca remove apps"
+    grep -q 'install-existing' "$st/off.sh" 2>/dev/null \
+        && ok "debloat por marca registra reversao" || bad "nao registrou reversao"
+    OTM_MODE=local sh "$ROOT/scripts/debloat.sh" off >/dev/null 2>&1
+    [ -f "$st/applied" ] && bad "off nao limpou" || ok "debloat por marca reverte"
+
+    # marcas: alvos + marca detectada
+    OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/scripts/debloat.sh" marcas > "$TMP/dbl_m" 2>&1
+    assert_contains "$TMP/dbl_m" "universal" "marcas lista os alvos"
+    assert_contains "$TMP/dbl_m" "deste aparelho" "marcas mostra a marca detectada"
+    rm -rf "$st"
 }
 
 t_dns() {
@@ -1487,8 +1559,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 9 ] && ok "index.php renderiza a home + 7 categorias + Terminal" || bad "seções: $n_sec (esperado 9)"
-        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 10 ] && ok "index.php renderiza a home + 8 categorias + Terminal" || bad "seções: $n_sec (esperado 10)"
+        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # Terminal: seção própria + campo de comando

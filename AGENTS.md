@@ -71,9 +71,29 @@ O `00 Otimizações/Scripts SH/run.sh` (nível 2) é só um atalho para ele.
   `telemetry on|off` (logpersist + scans sempre-disponível).
   Tudo registra reversão no escopo próprio (`~/.packotm/undo/turbo.sh`), revertido por
   `pack.sh restore` / `adb-tweaks.sh restore_all`.
-- `scripts/debloat.sh preview <perfil>` — mostra o que o perfil faria com selo de risco
-  por app (SAFE/CAUTION/DANGEROUS), sem alterar nada. Classificação em `risk_of`.
+- `scripts/debloat.sh preview [alvo]` — mostra o que seria removido, com o motivo de
+  cada pacote, e só o que existe de fato no aparelho, sem alterar nada. `alvo` pode ser
+  `universal`, uma marca (`samsung`, `xiaomi`, ...), `marca` (detecta) ou um perfil
+  (`leve|medio|pesado`). O perfil antigo mantém a classificação SAFE/CAUTION/DANGEROUS
+  em `risk_of`.
 - `scripts/dns.sh bench` — mede a latência de cada perfil de DNS (não altera nada).
+- **Debloat** (`scripts/debloat.sh` + `scripts/debloat-lists.sh`, categoria própria no
+  painel) — remove bloatware de fábrica por lista curada, sem root. `debloat-lists.sh` é
+  **só dados**: 12 listas (uma `universal` + 11 por marca: samsung, xiaomi, motorola,
+  oneplus, realme, vivo, huawei, asus, sony, lg, transsion), 433 pacotes no total, cada
+  linha no formato `pacote|motivo`. Fonte: banco do **Universal Android Debloater** (UAD,
+  `uad_lists.json`); só entram pacotes com veredito `Recommended`. Aplicação por
+  `pm uninstall -k --user 0` (reversível com `install-existing`), registrada em
+  `~/.packotm/debloat/off.sh` e revertida por `debloat.sh off` / `pack.sh restore`.
+  Subcomandos: `universal`, `<marca>`, `marca` (detecta pelo `ro.product.manufacturer`),
+  `marcas`, `preview [alvo]`. **Proteção em duas camadas**: as listas já são filtradas
+  (nunca contêm câmera, galeria, telefone, mensagens, contatos, teclado, Bluetooth, NFC,
+  Wi-Fi, launcher, SystemUI, Settings, GMS/Play, biometria, pagamento, atualização,
+  acessibilidade ou qualquer coisa marcada `Unsafe` pelo UAD) **e** `d_protected()` em
+  tempo de execução recusa qualquer pacote que case com `DBL_KEEP`/`DBL_NEVER`, mesmo que
+  escape de uma lista. Categoria **Debloat** (14 ações): universal, da minha marca, por
+  marca (escolher), prévia, perfis leve/médio/pesado, reverter tudo e as ações por app
+  (desativar, reativar, desinstalar, reinstalar, restringir, tirar restrição).
 
 `main.sh` (raiz) é a **entrada alternativa**: baixa os recursos full (`codeload` do
 GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). Não aplica
@@ -378,15 +398,16 @@ nativa além do necessário para conectar e rodar os comandos.
   `desempenho`, `jogo` (liga o anti-relog no jogo salvo) e `bateria` (tela em 60Hz).
   A decisão varia com o aparelho: apps em cache (4 no jogo, 8/16/24/32 por classe),
   renderizador (Vulkan em API>=30 com Adreno/Mali, GL no resto), taxa de tela (a maior
-  lida; se não der para ler, fica no automático em vez de chutar), nível de debloat,
-  fase da limpeza e Phantom Process Killer (off com RAM>=6GB). A aplicação **delega**
-  aos módulos já testados (`adb-tweaks perf/perf_max/renderer/doze/game_keepalive/
-  game_focus`, `turbo refresh_fixed`, `deep-tune debloat`, `clean now`) e depois **lê
+  lida; se não der para ler, fica no automático em vez de chutar), fase da limpeza e
+  Phantom Process Killer (off com RAM>=6GB). A aplicação **delega** aos módulos já
+  testados (`adb-tweaks perf/perf_max/renderer/doze/game_keepalive/game_focus`,
+  `turbo refresh_fixed`, `clean now`) e depois **lê
   de volta** alguns ajustes (`so_verify`) para o painel não achar que "nada mudou"
   (`#OTM-RESULT`). Perfil aplicado em `$ST/smart/last`. Categoria **Geral**: uma
   **ação única**, `smart.auto` ("Otimizador inteligente"), mais um botão de mesmo
   nome na Home dos dois painéis. `pack.sh smart [<acao>]` delega (sem argumento
-  roda `auto`).
+  roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
+  do usuário e tem categoria própria (ver abaixo).
 - **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
   limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
   por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`
