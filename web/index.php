@@ -55,7 +55,7 @@ $meta = [
     'DNS e rede'      => ['t' => 'DNS e rede',       's' => 'Escolha o DNS privado (30+ perfis), meça a latência e ajuste Wi-Fi e buffers TCP.'],
     'Processos'       => ['t' => 'Processos',        's' => 'Veja o que gasta RAM/CPU de verdade e limite, priorize ou congele um app.'],
     'Debloat'         => ['t' => 'Debloat',          's' => 'Remova bloatware com lista curada: universal (qualquer marca) ou por fabricante. Sempre reversível.'],
-    'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo, Game Mode e debloat (por perfil ou por app).'],
+    'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo e Game Mode. O debloat agora tem aba própria.'],
     'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],
 ];
 
