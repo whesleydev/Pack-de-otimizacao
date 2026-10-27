@@ -409,28 +409,63 @@ nativa além do necessário para conectar e rodar os comandos.
   roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
 
-### Card "Perfil de Desempenho" (antes "Perfil Térmico da GPU")
+### Piloto Térmico adaptativo (`scripts/thermal-pilot.sh`)
 
-Card dos painéis (`data-perfmode-card`, nos dois `index`) que fixa o desempenho no
-máximo ou devolve a decisão ao sistema. Fica na Home, logo abaixo do bloco de limpeza.
+O card "Perfil de Desempenho" (que só duplicava o `turbo.perfmode_on` já existente na
+aba Desempenho) foi **substituído** pelo cockpit do Piloto Térmico (`data-pilot-card`).
 
-- Ações reais: `turbo.perfmode_on` / `turbo.perfmode_off` (`turbo.sh perfmode on|off`,
-  `cmd power set-fixed-performance-mode-enabled`). Sem root e reversível.
-- Estado real: `scripts/panel-state.sh` lê `mIsFixedPerformanceMode` do `dumpsys power`
-  e publica `fixed_perf` (`on`/`off`/`""`). O JS (`applyPerfmode`) marca a opção em uso
-  com `aria-pressed` e escreve o aviso em `[data-now]`.
+**O problema que resolve.** Forçar o desempenho máximo e "esquecer" ligado esquenta o
+aparelho. O SoC bate no limite térmico, o sistema derruba a frequência e o FPS cai
+**abaixo** do que ficaria se nada tivesse sido forçado: o ganho vira perda. O piloto
+fecha o laço — segura o teto, mede a temperatura e **solta antes do aparelho afogar**;
+quando esfria, segura de novo.
 
-Dois cuidados que já causaram bug aqui:
+**Arquitetura (a decisão mais importante).** Não existe processo residente nem serviço
+em segundo plano — isso é justamente o que trava aparelho. O motor é um **tick
+idempotente** (`thermal-pilot.sh tick`) chamado pelo poll de métricas que o painel já
+tem (4 s, `panel-stats.sh`). O poll é o batimento do piloto.
 
-1. **Nunca use `document.querySelectorAll(".opt")` para ligar cliques.** O card usa
-   `.opt` só para o visual; o handler global precisa ser escopado a `.card-choice .opt`,
-   senão sobrescreve o `onclick` dos botões que têm handler próprio (o card ficou
-   "morto" assim: o clique não chamava nada).
-2. **Não marque a opção em uso com `classList.add("active")`.** Não existe CSS para
-   `.active`; o visual de selecionado é o `aria-pressed="true"`, que o CSS de fato
-   estiliza. Botão que só mostra `toast()` e não chama `doRun` é enfeite.
+**As quatro travas** (nesta ordem de prioridade):
 
-Teste de regressão: `t_gpu_card` (`tests/run.sh`).
+1. **Prazo absoluto** gravado em `~/.packotm/pilot/deadline`. Se o app morrer, o
+   processo sumir ou o poll parar, o próximo `tick`/`recover`/abertura do painel vê o
+   prazo vencido e solta o teto. É a trava final contra "aparelho preso no máximo".
+2. **Histerese** (`hot`/`cool`, padrão 43/38 °C): solta em `hot`, só volta em `cool`.
+   Sem a folga de 5 °C o aparelho ficaria piscando liga/desliga a cada leitura.
+3. **Falha segura = DESLIGADO**: sem leitura confiável (vazio, não-numérico, ou fora de
+   5..120 °C) o teto é solto. Nunca segura às cegas.
+4. **`restore_all` sempre solta**: o `arm` registra a reversão no escopo `pilot`, então
+   "Reverter TUDO" devolve o controle de energia ao sistema.
+
+**Ações** (`lib.php`): `pilot.arm` (`risk=careful`, prazo em min), `pilot.disarm`
+(`risk=safe`), `pilot.limits` (hot/cool), `pilot.status`. `thermal-pilot.sh` está na
+whitelist do `lib.php`. Todas usam `scope_begin pilot`, então a reversão é isolada.
+
+**Estado no painel.** `panel-state.sh` expõe `pilot_state`/`pilot_armed`/`pilot_temp`/
+`pilot_hot`/`pilot_cool`/`pilot_left`/`pilot_releases`/`pilot_peak`, e `panel-stats.sh`
+acrescenta os mesmos campos a partir do `tick`. O JS `renderPilot()` desenha o cockpit
+(temperatura, selo de estado, barra com a marca do limite, minutos restantes, quantas
+vezes soltou, pico da sessão). A barra vai de 30 °C à ponta quente e fica vermelha
+acima do limite, azul abaixo do `cool`.
+
+**Cuidado ao mexer:** o cockpit usa `.btn` (ações de comando), não `.opt`. Por isso o
+teste de contagem de opções lado a lado caiu de 28 para 26 — os 2 `.opt` a menos eram
+os botões do card antigo. O handler global de `.opt` continua escopado a
+`.card-choice .opt` (ver o bug descrito abaixo, ainda válido).
+
+**Testes:** `t_pilot` (`tests/run.sh`) cobre o motor sem aparelho — via `OTM_MODE=direct`
+(simula o privilégio de shell) e `OTM_PILOT_NOW`/`OTM_PILOT_TEMP` (relógio e temperatura
+injetados). Verifica: recusa sem shell, histerese, falha segura, prazo vencido, `recover`
+idempotente, validação de limites, registro da reversão, ações/whitelist, e paridade
+web↔app do card e do JS.
+
+### Bug histórico: handler global de `.opt` (ainda vale como regra)
+
+O card antigo de Perfil de Desempenho ficou "morto" porque `document.querySelectorAll(".opt")`
+ligava o clique de **todos** os `.opt` da página, sobrescrevendo o `onclick` dos que têm
+handler próprio. Regra: o handler global é escopado a `.card-choice .opt`, e o visual de
+selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão que só chama
+`toast()` e não chama `doRun` é enfeite.
 - **Clean 2.0** (`scripts/clean.sh`, na whitelist do `lib.php`): motor único de
   limpeza em fases, com verificação real. `scan` só lê (RAM, espaço em `/data`, cache
   por app com root); `now fundo` libera RAM (encerra o 2º plano via `otm_bg_kill`

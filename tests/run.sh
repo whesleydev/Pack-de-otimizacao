@@ -1617,8 +1617,11 @@ t_web() {
         [ "$n_choice" -eq 7 ] && ok "renderiza 7 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM)" \
             || bad "grupos de escolha: $n_choice (esperado 7)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        [ "$n_opts" -eq 28 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 2 extra ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 28)"
+        # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
+        # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
+        # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
+        [ "$n_opts" -eq 26 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 26)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -2286,67 +2289,128 @@ t_side_fixed
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist
-t_gpu_card() {
-    printf '\n  # card de Perfil de Desempenho: clicável e ligado a ação real\n'
+t_pilot() {
+    printf '\n  # piloto térmico: motor de decisão (sem aparelho)\n'
+    local pil="$ROOT/scripts/thermal-pilot.sh"
+    local home="$TMP/pilot_home"
+
+    rm -rf "$home"; mkdir -p "$home"
+    # OTM_MODE=direct simula o privilégio de shell (Shizuku/ADB já abriram o shell).
+    # OTM_PILOT_NOW/TEMP deixam verificar as decisões sem esperar de verdade.
+    # POSIX: nada de "${@:4}" (o dash do `sh` não entende). shift resolve.
+    pl() { _n="$1"; _t="$2"; shift 2; HOME="$home" OTM_MODE=direct OTM_PILOT_NOW="$_n" OTM_PILOT_TEMP="$_t" sh "$pil" "$@"; }
+    st() { pl "$1" "$2" tick | grep -o 'state=[a-z]*' | cut -d= -f2; }
+
+    # 1) sem privilégio o arm é recusado (não força nada às cegas)
+    HOME="$home" OTM_MODE=local sh "$pil" arm 20 2>&1 | grep -q 'sem permissão de shell' \
+        && ok "arm recusa sem shell (Shizuku/ADB)" || bad "arm não avisa falta de shell"
+
+    # 2) arm liga e grava o prazo absoluto
+    pl 1000 35 arm 20 >/dev/null
+    [ -f "$home/.packotm/pilot/deadline" ] && ok "arm grava o prazo absoluto em disco" \
+        || bad "arm não grava o prazo"
+    [ "$(st 1004 35)" = on ] && ok "temperatura normal: segura o teto (on)" \
+        || bad "não segurou o teto com o aparelho frio"
+
+    # 3) histerese: solta no quente, NÃO religa no morno, religa só no frio
+    [ "$(st 1008 43)" = cooling ] && ok "esquentou (43°C): solta o teto (cooling)" \
+        || bad "não soltou o teto ao esquentar"
+    [ "$(st 1012 40)" = cooling ] && ok "morno (40°C): mantém solto (sem piscar liga/desliga)" \
+        || bad "religou cedo demais (faltou histerese)"
+    [ "$(st 1016 38)" = on ] && ok "esfriou (38°C): segura de novo (on)" \
+        || bad "não retomou ao esfriar"
+
+    # 4) falha segura: leitura ruim solta o teto
+    [ "$(st 1020 abc)" = cooling ] && ok "leitura inválida: solta por segurança" \
+        || bad "não soltou com leitura inválida"
+    [ "$(st 1024 0)" = cooling ] && ok "sensor em 0°C (quebrado): solta por segurança" \
+        || bad "aceitou leitura absurda"
+    pl 1020 abc tick 2>&1 | grep -q 'Illegal' && bad "erro de shell com leitura inválida" \
+        || ok "sem erro de shell com leitura inválida"
+
+    # 5) a trava final: prazo vencido solta sozinho
+    [ "$(st 99999 35)" = off ] && ok "prazo vencido: solta sozinho (off)" \
+        || bad "ficou preso depois do prazo"
+
+    # 6) recover é a rede de segurança barata (não lê sensor)
+    pl 1000 35 arm 5 >/dev/null
+    pl 1300 35 recover; rc=$?
+    [ "$rc" = 1 ] && ok "recover solta o teto quando o prazo venceu" \
+        || bad "recover não soltou (rc=$rc)"
+    pl 1300 35 recover >/dev/null; rc=$?
+    [ "$rc" = 0 ] && ok "recover é idempotente (nada a fazer de novo)" \
+        || bad "recover repetiu a ação (rc=$rc)"
+
+    # 7) limites: validação e histerese embutida
+    pl 1000 35 limits 45 40 | grep -q '45' && ok "limits aceita par válido" || bad "limits recusou par válido"
+    pl 1000 35 limits 40 45 | grep -qi 'precisa ser menor' && ok "limits recusa frio >= quente" \
+        || bad "limits aceitou frio >= quente"
+    pl 1000 35 limits 99 10 | grep -qi 'fora de' && ok "limits recusa valor absurdo" \
+        || bad "limits aceitou 99°C"
+
+    # 8) arm registra a reversão: "Reverter TUDO" solta o teto
+    pl 1000 35 arm 20 >/dev/null
+    grep -q 'set-fixed-performance-mode-enabled false' "$home/.packotm/undo/pilot.sh" \
+        && ok "arm registra a reversão no escopo pilot" || bad "arm não registra reversão"
+
+    # 9) isolamento de escopo: o piloto não mexe na reversão de outros scripts
+    grep -q 'pilot' "$home/.packotm/undo/pilot.sh" 2>/dev/null || true
+    [ -f "$home/.packotm/undo/pilot.sh" ] && ok "escopo próprio (pilot.sh)" || bad "sem escopo próprio"
+
+    printf '\n  # piloto térmico: registro de ações\n'
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            $need=["pilot.arm"=>["thermal-pilot.sh","arm","{min}"],
+                   "pilot.disarm"=>["thermal-pilot.sh","disarm"],
+                   "pilot.status"=>["thermal-pilot.sh","status"]];
+            $ok=true;
+            foreach($need as $k=>$v){ if(($a[$k]["argv"] ?? null) !== $v) $ok=false; }
+            if(($a["pilot.limits"]["argv"] ?? null) !== ["thermal-pilot.sh","limits","{hot}","{cool}"]) $ok=false;
+            echo $ok ? "OK" : "NAO";' | grep -q OK \
+        && ok "ações do piloto registradas com argv correto" || bad "ações do piloto erradas"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            echo in_array("thermal-pilot.sh", otm_allowed_scripts(), true) ? "OK":"NAO";' | grep -q OK \
+        && ok "thermal-pilot.sh na whitelist" || bad "script fora da whitelist"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+            echo ($a["pilot.disarm"]["risk"] ?? "") === "safe" ? "OK":"NAO";' | grep -q OK \
+        && ok "desligar o piloto é risk=safe (sempre reversível)" || bad "disarm não é safe"
+
+    printf '\n  # piloto térmico: cockpit nos dois painéis\n'
     local app="$ROOT/app/src/main/assets/panel/index.html"
     local web="$ROOT/web/index.php"
-    local state="$ROOT/scripts/panel-state.sh"
-
-    # o card deixou de ser um stub que só mostrava toast
     for f in "$app" "$web"; do
-        grep -q 'setGpuThermal' "$f" && bad "$(basename "$f"): ainda tem setGpuThermal (stub)" \
-            || ok "$(basename "$f"): sem o stub setGpuThermal"
-        grep -q 'classList.add(\"active\")' "$f" && bad "$(basename "$f"): usa .active (classe inexistente no CSS)" \
-            || ok "$(basename "$f"): não depende da classe .active"
-        # botões do card usam aria-pressed, que o CSS de fato estiliza
-        grep -q 'data-perfmode="on"' "$f" && grep -q 'data-perfmode="off"' "$f" \
-            && ok "$(basename "$f"): card tem as opções Desempenho/Equilibrado" \
-            || bad "$(basename "$f"): card sem as duas opções"
-        grep -q 'data-perfmode-card' "$f" && ok "$(basename "$f"): card identificável (data-perfmode-card)" \
-            || bad "$(basename "$f"): card sem marcador"
-    done
-
-    # o handler global de .opt agora é escopado: não sobrescreve mais o clique
-    # dos botões que têm handler próprio (era essa a causa de não responder)
-    for f in "$app" "$web"; do
+        grep -q 'data-pilot-card' "$f" && ok "$(basename "$f"): card do piloto existe" \
+            || bad "$(basename "$f"): sem card do piloto"
+        grep -q 'setGpuThermal' "$f" && bad "$(basename "$f"): ainda tem o stub antigo" \
+            || ok "$(basename "$f"): sem o stub antigo"
+        grep -q 'data-perfmode-card' "$f" && bad "$(basename "$f"): ainda tem o card duplicado" \
+            || ok "$(basename "$f"): sem o card duplicado"
+        grep -q 'renderPilot' "$f" && ok "$(basename "$f"): desenha o estado real" \
+            || bad "$(basename "$f"): não desenha o estado"
         grep -q 'querySelectorAll(".card-choice .opt")' "$f" \
-            && ok "$(basename "$f"): handler de .opt escopado a .card-choice" \
-            || bad "$(basename "$f"): handler de .opt ainda pega .opt fora do grupo"
-        grep -q 'document.querySelectorAll(".opt").forEach' "$f" \
-            && bad "$(basename "$f"): handler global de .opt ainda existe" \
-            || ok "$(basename "$f"): sem handler global de .opt"
+            && ok "$(basename "$f"): handler de .opt escopado" || bad "$(basename "$f"): handler global"
+        grep -q 'pilot.arm' "$f" && grep -q 'pilot.disarm' "$f" \
+            && ok "$(basename "$f"): botões ligam a ações reais" || bad "$(basename "$f"): botões soltos"
     done
-
-    # ligado a ação REAL, reversível e sem root
-    grep -q 'turbo.perfmode_on' "$app" && grep -q 'turbo.perfmode_off' "$app" \
-        && ok "app: card chama as ações turbo.perfmode_*" || bad "app: card sem ação real"
-    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            $on=$a["turbo.perfmode_on"]["argv"] ?? []; $off=$a["turbo.perfmode_off"]["argv"] ?? [];
-            if ($on === ["turbo.sh","perfmode","on"] && $off === ["turbo.sh","perfmode","off"]) echo "OK";' \
-        | grep -q OK && ok "registro: perfmode on/off existe e é reversível" \
-        || bad "registro: perfmode on/off ausente ou errado"
-
-    # estado real exposto pelo painel (mIsFixedPerformanceMode -> on/off)
-    grep -q 'mIsFixedPerformanceMode' "$state" && ok "panel-state: lê o modo desempenho fixo" \
-        || bad "panel-state: não lê o modo desempenho fixo"
-    grep -q '"fixed_perf"' "$state" && ok "panel-state: expõe fixed_perf" \
-        || bad "panel-state: sem fixed_perf"
-    for f in "$app" "$web"; do
-        grep -q 'applyPerfmode' "$f" && ok "$(basename "$f"): sincroniza a opção em uso" \
-            || bad "$(basename "$f"): não sincroniza a opção em uso"
-    done
-
-    # paridade web x app: o mesmo card, sem divergir no visual
+    # paridade web x app do card e do JS
     python3 - "$app" "$web" <<'PY' | grep -q IGUAIS \
-        && ok "web e app: card idêntico (paridade)" || bad "web e app: card divergiu"
+        && ok "web e app: card do piloto idêntico" || bad "web e app: card divergiu"
 import re, sys
-def card(p):
+def blk(p, pat):
     s = open(p, encoding='utf-8').read()
-    m = re.search(r'<div class="panelbox[^"]*config-gpu-card[\s\S]*?\n      </div>', s)
+    m = re.search(pat, s)
     return re.sub(r'\s+', ' ', m.group(0)).strip() if m else None
-a, w = card(sys.argv[1]), card(sys.argv[2])
-print("IGUAIS" if a and a == w else "DIFERENTES")
+C = r'<div class="panelbox[^"]*config-gpu-card[\s\S]*?\n      </div>'
+J = r'/\* ---- Piloto térmico: cockpit[\s\S]*?\n\}\);\n'
+print("IGUAIS" if blk(sys.argv[1], C) and blk(sys.argv[1], C) == blk(sys.argv[2], C)
+      and blk(sys.argv[1], J) == blk(sys.argv[2], J) else "DIFERENTES")
 PY
+
+    # o estado do piloto chega ao painel
+    grep -q 'pilot_state' "$ROOT/scripts/panel-state.sh" && ok "panel-state expõe pilot_state" \
+        || bad "panel-state sem pilot_state"
+    grep -q 'thermal-pilot.sh" tick' "$ROOT/scripts/panel-stats.sh" \
+        && ok "panel-stats chama o tick (batimento do piloto)" \
+        || bad "panel-stats não chama o tick"
 }
 
 t_thermal_gate
@@ -2370,7 +2434,7 @@ t_privilege_detect
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts
-t_gpu_card
+t_pilot
 t_pack
 
 printf '\n  --------------------------------------------------\n'

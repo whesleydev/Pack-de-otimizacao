@@ -405,6 +405,40 @@ section[data-g] .head{animation:otmFade .3s both}
 .now{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
 .now b{color:var(--ink)}
 
+/* ---- piloto térmico: cockpit --------------------------------------------- */
+.pilot-gauge{position:relative;height:10px;border-radius:999px;background:var(--glass-2);
+  border:1px solid var(--line);overflow:hidden;margin:12px 0 6px}
+.pilot-gauge i{position:absolute;inset:0 auto 0 0;width:0;border-radius:999px;
+  background:linear-gradient(90deg,var(--teal),var(--accent));transition:width .6s ease}
+.pilot-gauge.hot i{background:linear-gradient(90deg,var(--accent),var(--danger))}
+.pilot-gauge.cold i{background:linear-gradient(90deg,#2f9e8f,var(--teal))}
+.pilot-gauge u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);
+  opacity:.5;border-radius:2px}
+.pilot-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pilot-temp{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1;
+  color:var(--ink);letter-spacing:-.02em}
+.pilot-temp span{font-size:15px;color:var(--muted);font-weight:600}
+.pilot-badge{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line-strong);color:var(--muted);
+  background:var(--glass-2)}
+.pilot-badge.on{border-color:var(--teal);color:var(--teal);
+  background:color-mix(in srgb,var(--teal) 14%,var(--glass-2))}
+.pilot-badge.cooling{border-color:var(--warn);color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 14%,var(--glass-2))}
+.pilot-badge.off{opacity:.75}
+.pilot-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin-top:12px}
+.pilot-stats div{background:var(--glass-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:9px 10px}
+.pilot-stats b{display:block;font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink)}
+.pilot-stats s{display:block;font-size:10px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--muted);text-decoration:none;margin-top:2px}
+.pilot-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pilot-actions .btn{flex:1 1 130px;justify-content:center}
+.pilot-hist{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  max-height:76px;overflow:auto;line-height:1.65}
+.pilot-hist b{color:var(--ink);font-weight:600}
+@media (prefers-reduced-motion:reduce){.pilot-gauge i{transition:none}}
+
 /* ---- sliders (ajuste fino) ------------------------------------------------ */
 .slider{display:flex;align-items:center;gap:10px}
 .slider input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:26px}
@@ -758,21 +792,28 @@ body.drawer .scrim{opacity:1;visibility:visible}
         </div>
       </section>
 
-      <!-- Perfil de desempenho fixo (Desempenho x Equilibrado) -->
-      <div class="panelbox config-gpu-card" data-perfmode-card style="margin-top:16px;">
-        <h3>Perfil de Desempenho</h3>
-        <p class="sub">Fixa o desempenho no máximo ou deixa o sistema equilibrar sozinho. Vale para o aparelho todo.</p>
-        <div class="opts" role="group" aria-label="Perfil de desempenho">
-          <button class="opt" type="button" data-perfmode="on" aria-pressed="false">
-            <span class="opt-t">Desempenho</span>
-            <span class="opt-s" data-label="Máx FPS">Máx FPS</span>
-          </button>
-          <button class="opt" type="button" data-perfmode="off" aria-pressed="false">
-            <span class="opt-t">Equilibrado</span>
-            <span class="opt-s" data-label="Estável">Estável</span>
-          </button>
+      <!-- Piloto térmico adaptativo: cockpit ao vivo -->
+      <div class="panelbox config-gpu-card" data-pilot-card style="margin-top:16px;">
+        <h3>Piloto Térmico</h3>
+        <p class="sub">Segura o desempenho no máximo e solta sozinho quando esquenta — antes do sistema derrubar o FPS. Vale para o aparelho todo.</p>
+        <div class="pilot-head">
+          <div class="pilot-temp" data-pilot="temp">—<span>°C</span></div>
+          <span class="pilot-badge off" data-pilot="badge">desligado</span>
         </div>
-        <div class="now" data-now hidden></div>
+        <div class="pilot-gauge" data-pilot="gauge"><i data-pilot="fill"></i><u data-pilot="mark"></u></div>
+        <div class="pilot-stats">
+          <div><b data-pilot="left">—</b><s>min restantes</s></div>
+          <div><b data-pilot="releases">0</b><s>vezes que soltou</s></div>
+          <div><b data-pilot="peak">—</b><s>pico da sessão</s></div>
+          <div><b data-pilot="limits">43/38</b><s>solta / volta</s></div>
+        </div>
+        <div class="pilot-actions">
+          <button class="btn primary" type="button" data-pilot-go="on">Ligar piloto</button>
+          <button class="btn" type="button" data-pilot-go="off">Desligar</button>
+          <button class="btn" type="button" data-pilot-go="limits">Limites</button>
+        </div>
+        <div class="now" data-pilot="now" hidden></div>
+        <div class="pilot-hist" data-pilot="hist" hidden></div>
       </div>
 
       <!-- Game Lab & Perfis -->
@@ -1541,28 +1582,66 @@ document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.clo
 /* só opções de grupo de escolha: um .opt fora de .card-choice tem handler próprio */
 document.querySelectorAll(".card-choice .opt").forEach(b => b.onclick = () => selectOption(b));
 
-/* ---- Perfil de Desempenho (turbo.sh perfmode) ------------------------------ */
-function applyPerfmode(){
-  const card = document.querySelector("[data-perfmode-card]"); if (!card) return;
-  const v = String((STATE && STATE.fixed_perf) || "").toLowerCase();
-  const on = v === "on", known = v !== "";
-  card.querySelectorAll("[data-perfmode]").forEach(b => {
-    const active = known && (b.dataset.perfmode === "on") === on;
-    b.setAttribute("aria-pressed", active ? "true" : "false");
-    const s = b.querySelector(".opt-s");
-    if (s) s.textContent = active ? "Em uso" : (s.dataset.label || "Selecionar");
-  });
-  const now = card.querySelector("[data-now]");
+/* ---- Piloto térmico: cockpit ao vivo ---------------------------------------
+   O motor (scripts/thermal-pilot.sh) decide; aqui só desenhamos o que ele diz.
+   O `tick` vem no poll de métricas (4 s), então o card é um instrumento de
+   verdade: temperatura real, estado real, sem número inventado.              */
+function pilotEl(sel){ const c = document.querySelector("[data-pilot-card]"); return c && c.querySelector(sel); }
+function renderPilot(){
+  const card = document.querySelector("[data-pilot-card]"); if (!card) return;
+  const S = (typeof STATS === "object" && STATS) || {};
+  const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+  const temp = num(S.pilot_temp);
+  const hot = num(S.pilot_hot) ?? 43;
+  const cool = num(S.pilot_cool) ?? 38;
+  const st = ["on","cooling"].includes(S.pilot_state) ? S.pilot_state : "off";
+  const armed = S.pilot_armed === "1" || S.pilot_armed === 1;
+
+  const tEl = pilotEl('[data-pilot="temp"]');
+  if (tEl) tEl.innerHTML = (temp === null ? "—" : temp) + "<span>°C</span>";
+
+  const bEl = pilotEl('[data-pilot="badge"]');
+  if (bEl){
+    const txt = !armed ? "desligado" : (st === "cooling" ? "esfriando · teto solto" : "segurando o teto");
+    bEl.textContent = txt;
+    bEl.className = "pilot-badge " + (armed ? st : "off");
+  }
+
+  // barra: 30 °C na ponta fria, o limite quente na ponta quente
+  const gauge = pilotEl('[data-pilot="gauge"]');
+  const fill = pilotEl('[data-pilot="fill"]');
+  const mark = pilotEl('[data-pilot="mark"]');
+  const LO = 30, HI = Math.max(hot + 6, 50);
+  if (fill && temp !== null){
+    fill.style.width = Math.max(0, Math.min(100, ((temp - LO) / (HI - LO)) * 100)) + "%";
+  } else if (fill){ fill.style.width = "0%"; }
+  if (gauge){
+    gauge.className = "pilot-gauge" + (temp !== null && temp >= hot ? " hot" : (temp !== null && temp <= cool ? " cold" : ""));
+  }
+  if (mark) mark.style.left = Math.max(0, Math.min(100, ((hot - LO) / (HI - LO)) * 100)) + "%";
+
+  const set = (k, v) => { const e = pilotEl('[data-pilot="' + k + '"]'); if (e) e.textContent = v; };
+  set("left", armed && S.pilot_left !== "" && S.pilot_left != null ? S.pilot_left : "—");
+  set("releases", S.pilot_releases ?? 0);
+  set("peak", S.pilot_peak !== "" && S.pilot_peak != null ? S.pilot_peak : "—");
+  set("limits", hot + "/" + cool);
+
+  const now = pilotEl('[data-pilot="now"]');
   if (now){
-    const txt = !known ? "" : (on ? "Em uso agora: desempenho fixo (mais FPS, esquenta mais)"
-                                  : "Em uso agora: equilibrado (o sistema decide)");
-    now.textContent = txt; now.hidden = !txt;
+    let t = "";
+    if (!armed) t = "O aparelho está no controle normal de energia. Ligue o piloto para segurar o máximo com segurança.";
+    else if (temp === null) t = "Sem leitura de temperatura agora — o piloto está solto por segurança.";
+    else if (st === "cooling") t = "Esquentou (" + temp + "°C ≥ " + hot + "°C): teto solto. Volta sozinho ao esfriar até " + cool + "°C.";
+    else t = "Segurando o teto. Solta em " + hot + "°C para o aparelho respirar e evita o FPS despencar.";
+    now.textContent = t; now.hidden = false;
   }
 }
-document.querySelectorAll("[data-perfmode]").forEach(b => b.onclick = () => {
-  const a = ACTIONS[b.dataset.perfmode === "on" ? "turbo.perfmode_on" : "turbo.perfmode_off"];
-  if (!a){ toast("Ação indisponível", "bad"); return; }
-  Promise.resolve(doRun(a, {}, false, b)).then(applyPerfmode);
+document.querySelectorAll("[data-pilot-go]").forEach(b => b.onclick = async () => {
+  const go = b.dataset.pilotGo;
+  const id = go === "on" ? "pilot.arm" : (go === "off" ? "pilot.disarm" : "pilot.limits");
+  const a = ACTIONS[id]; if (!a){ toast("Ação indisponível", "bad"); return; }
+  await doRun(a, {}, false, b);
+  loadStats();
 });
 
 /* ---- estado real do aparelho (renderizador em uso, toque, refresh) ---------- */
@@ -1617,7 +1696,6 @@ function applyState(){
     const v = stateNum(STATE[range.dataset.state]);
     if (v !== null) setSliderValue(range, v);
   });
-  applyPerfmode();
 }
 function setSliderValue(range, val){
   const sl = range.closest(".slider"); if (!sl) return;
@@ -1917,7 +1995,7 @@ async function loadStats(){
   if (statsBusy) return; statsBusy = true;
   try{ const j = await apiGet("stats"); STATS = (j && j.stats) || {}; statsAt = Date.now(); }
   catch(e){ /* mantém o último valor real */ }
-  statsBusy = false; renderStats();
+  statsBusy = false; renderStats(); renderPilot();
 }
 function startStats(){
   loadStats();

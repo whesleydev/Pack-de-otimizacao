@@ -118,5 +118,28 @@ printf ',"refresh_peak":"%s"'      "$(_clean "$refresh_peak")"
 printf ',"stor_total_mb":"%s"'     "$(_clean "$stor_total_mb")"
 printf ',"stor_livre_mb":"%s"'     "$(_clean "$stor_livre_mb")"
 printf ',"uptime_s":"%s"'          "$(_clean "$uptime_s")"
+
+# --- piloto térmico -----------------------------------------------------------
+# O poll do painel (4 s) é o BATIMENTO do piloto: é ele que chama o `tick`, que
+# lê a temperatura e decide segurar/soltar. Assim não existe processo residente —
+# se o app fecha, o pulso para e o prazo absoluto solta o teto na próxima abertura.
+_pout="$(sh "$DIR/thermal-pilot.sh" tick 2>/dev/null | grep '^#OTM-PILOT' | head -1)"
+_pf() { printf '%s' "$_pout" | tr ' ' '\n' | grep "^$1=" | head -1 | cut -d= -f2; }
+_pst="$(_pf state)"; case "$_pst" in on|cooling) ;; *) _pst=off ;; esac
+printf ',"pilot_state":"%s"'    "$(_clean "$_pst")"
+_pa="$(_pf armed)"; case "$_pa" in 0|1) ;; *) _pa=0 ;; esac
+printf ',"pilot_armed":"%s"'    "$_pa"
+_pt="$(_pf temp)"; case "$_pt" in ''|*[!0-9]*) _pt="" ;; esac
+printf ',"pilot_temp":"%s"'     "$(_clean "$_pt")"
+_ph="$(_pf hot)";  case "$_ph" in ''|*[!0-9]*) _ph=43 ;; esac
+printf ',"pilot_hot":"%s"'      "$(_clean "$_ph")"
+_pc="$(_pf cool)"; case "$_pc" in ''|*[!0-9]*) _pc=38 ;; esac
+printf ',"pilot_cool":"%s"'     "$(_clean "$_pc")"
+_pl="$(_pf left)"; case "$_pl" in ''|*[!0-9]*) _pl="" ;; esac
+printf ',"pilot_left":"%s"'     "$(_clean "$_pl")"
+_pr="$(_pf releases)"; case "$_pr" in ''|*[!0-9]*) _pr=0 ;; esac
+printf ',"pilot_releases":"%s"' "$(_clean "$_pr")"
+_pk="$(_pf peak)"; case "$_pk" in ''|*[!0-9]*) _pk="" ;; esac
+printf ',"pilot_peak":"%s"'     "$(_clean "$_pk")"
 printf '}\n'
 exit 0

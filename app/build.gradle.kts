@@ -12,8 +12,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 58
-        versionName = "2.33.1"
+        versionCode = 59
+        versionName = "2.33.2"
     }
 
     signingConfigs {

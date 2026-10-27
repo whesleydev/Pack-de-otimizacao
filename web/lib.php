@@ -71,7 +71,7 @@ function otm_allowed_scripts(): array {
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
-        'profile-custom.sh', 'smart-opt.sh',
+        'profile-custom.sh', 'smart-opt.sh', 'thermal-pilot.sh',
     ];
 }
 
@@ -718,6 +718,35 @@ function otm_actions(): array {
           'desc' => 'Volta o controle de energia ao sistema.',
           'help' => 'Desliga o modo de desempenho fixo e devolve o gerenciamento de energia ao Android.',
           'argv' => ['turbo.sh', 'perfmode', 'off']]);
+
+    // ----- Piloto térmico adaptativo -----------------------------------------
+    // Segura o teto de desempenho e solta sozinho quando esquenta. É o oposto do
+    // "modo desempenho fixo" puro: lá o aparelho fica forçado até alguém lembrar
+    // de desligar; aqui quem decide é a temperatura medida.
+    $add(['id' => 'pilot.arm', 'group' => 'Desempenho', 'label' => 'Piloto térmico: ligar',
+          'desc' => 'Segura o desempenho no máximo e solta sozinho se esquentar.',
+          'help' => 'Liga o piloto térmico adaptativo. Ele segura o desempenho no máximo e fica de olho na temperatura: quando o aparelho esquenta, ele solta o teto ANTES do sistema derrubar a frequência (que é o que faz o FPS cair no meio da partida); quando esfria, segura de novo. Tem prazo máximo e solta sozinho mesmo se o app for fechado. Desligue quando quiser em "Piloto térmico: desligar".',
+          'argv' => ['thermal-pilot.sh', 'arm', '{min}'],
+          'params' => [['name' => 'min', 'type' => 'enum', 'label' => 'Tempo máximo (min)',
+                        'options' => ['10', '20', '30', '45', '60'], 'default' => '20']],
+          'risk' => 'careful', 'timeout' => 120]);
+    $add(['id' => 'pilot.disarm', 'group' => 'Desempenho', 'label' => 'Piloto térmico: desligar',
+          'desc' => 'Solta o teto e encerra o piloto.',
+          'help' => 'Desliga o piloto térmico e solta o teto de desempenho na hora, devolvendo o controle de energia ao sistema. Sempre reversível.',
+          'argv' => ['thermal-pilot.sh', 'disarm'], 'timeout' => 60]);
+    $add(['id' => 'pilot.limits', 'group' => 'Desempenho', 'label' => 'Piloto térmico: limites de temperatura',
+          'desc' => 'Define em quantos °C o piloto solta e em quantos volta.',
+          'help' => 'Ajusta os dois limites do piloto. "Soltar em" é a temperatura em que ele libera o teto para o aparelho respirar; "voltar em" é a temperatura em que ele segura de novo. A folga entre os dois (histerese) evita ficar ligando e desligando a cada leitura. Valores baixos protegem mais o aparelho; altos rendem mais FPS.',
+          'argv' => ['thermal-pilot.sh', 'limits', '{hot}', '{cool}'],
+          'params' => [['name' => 'hot', 'type' => 'enum', 'label' => 'Soltar em (°C)',
+                        'options' => ['40', '41', '42', '43', '45', '47'], 'default' => '43'],
+                       ['name' => 'cool', 'type' => 'enum', 'label' => 'Voltar em (°C)',
+                        'options' => ['35', '36', '37', '38', '39', '40'], 'default' => '38']],
+          'risk' => 'safe', 'timeout' => 60]);
+    $add(['id' => 'pilot.status', 'group' => 'Desempenho', 'label' => 'Piloto térmico: ver estado',
+          'desc' => 'Mostra temperatura, estado e histórico de ciclos.',
+          'help' => 'Mostra o estado atual do piloto: temperatura agora, se está segurando o teto ou esfriando, os limites configurados, quanto tempo resta e o histórico dos últimos ciclos. Só leitura.',
+          'argv' => ['thermal-pilot.sh', 'status'], 'timeout' => 60]);
     $add(['id' => 'turbo.telemetry_off', 'group' => 'Desempenho', 'label' => 'Telemetria e logs: desligar',
           'desc' => 'Desliga logs persistentes e scans "sempre disponível".',
           'help' => 'Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth "sempre disponível". Menos trabalho em segundo plano e mais privacidade. Reversível em "religar".',
