@@ -230,7 +230,7 @@ section[data-g] .head{animation:otmFade .3s both}
 .help-btn:active{transform:scale(.9)}
 
 /* ---- cartão de escolha: opções lado a lado -------------------------------- */
-.card-choice .opts{display:flex;flex-wrap:wrap;gap:8px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
 .opt{flex:1 1 88px;min-width:88px;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:12px 8px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
   background:var(--glass-2);cursor:pointer;color:var(--ink);text-align:center;
@@ -4378,24 +4378,26 @@ const collect = card => {
   });
   return out;
 };
+/* abre o modal de confirmação para a ação `a` e guarda `node` como pendente,
+   para o runPending saber o que reexecutar depois do "ok". */
+function askConfirm(node, a){
+  pending = node;
+  $("#mTitle").textContent = a.label;
+  $("#mDesc").textContent = a.desc || "";
+  const long = $("#mLong");
+  if (a.help){ long.textContent = a.help; long.hidden = false; } else { long.hidden = true; }
+  $("#mAck").hidden = false;
+  $("#mGo").hidden = false;
+  $("#mCancel").textContent = "Cancelar";
+  $("#mAckLabel").textContent = a.risk === "root"
+    ? "Estou ciente: mexe no kernel/sistema, pode esquentar ou instabilizar. Quero continuar."
+    : "Estou ciente dos riscos e quero continuar.";
+  $("#mCheck").checked = false; $("#mGo").disabled = true;
+  $("#mask").classList.add("open");
+}
 function run(card, confirmed){
   const a = ACTIONS[card.dataset.id];
-  if (a.confirm && !confirmed){
-    pending = card;
-    $("#mTitle").textContent = a.label;
-    $("#mDesc").textContent = a.desc || "";
-    const long = $("#mLong");
-    if (a.help){ long.textContent = a.help; long.hidden = false; } else { long.hidden = true; }
-    $("#mAck").hidden = false;
-    $("#mGo").hidden = false;
-    $("#mCancel").textContent = "Cancelar";
-    $("#mAckLabel").textContent = a.risk === "root"
-      ? "Estou ciente: mexe no kernel/sistema, pode esquentar ou instabilizar. Quero continuar."
-      : "Estou ciente dos riscos e quero continuar.";
-    $("#mCheck").checked = false; $("#mGo").disabled = true;
-    $("#mask").classList.add("open");
-    return;
-  }
+  if (a.confirm && !confirmed){ askConfirm(card, a); return; }
   doRun(a, collect(card), confirmed, card.querySelector("[data-run]"));
 }
 /* opção de um grupo de escolha (renderizador, driver por app, DNS, toque) */
@@ -4413,26 +4415,15 @@ function selectOption(btn, confirmed){
   if (card && card.querySelector('[data-p="pkg"]') && !params.pkg){
     toast("Escolha o app primeiro", "bad"); return;
   }
-  if (a.confirm && !confirmed){
-    pending = btn;
-    $("#mTitle").textContent = a.label;
-    $("#mDesc").textContent = a.desc || "";
-    const long = $("#mLong");
-    if (a.help){ long.textContent = a.help; long.hidden = false; } else { long.hidden = true; }
-    $("#mAck").hidden = false;
-    $("#mGo").hidden = false;
-    $("#mCancel").textContent = "Cancelar";
-    $("#mAckLabel").textContent = "Estou ciente dos riscos e quero continuar.";
-    $("#mCheck").checked = false; $("#mGo").disabled = true;
-    $("#mask").classList.add("open");
-    return;
-  }
+  if (a.confirm && !confirmed){ askConfirm(btn, a); return; }
   doRun(a, params, confirmed, btn);
 }
-/* reexecuta o que está pendente (cartão comum ou opção) depois do "ok" */
+/* reexecuta o que está pendente (cartão comum, opção ou botão de vitalidade)
+   depois do "ok" */
 function runPending(){
   const p = pending; if (!p) return;
-  if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
+  if (p.dataset.vitalGo) doRun(ACTIONS[p.dataset.vitalId], {}, true, p);
+  else if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
   else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
 }
 async function doRun(a, params, confirmed, btn){
@@ -4547,6 +4538,7 @@ document.querySelectorAll("[data-vital-go]").forEach(b => b.onclick = async () =
            : go === "care_off" ? "vital.care_off"
            : go === "diag" ? "vital.diag" : "vital.guard";
   const a = ACTIONS[id]; if (!a){ toast("Ação indisponível", "bad"); return; }
+  if (a.confirm){ b.dataset.vitalId = id; askConfirm(b, a); return; }
   await doRun(a, {}, false, b);
   loadStats();
 });

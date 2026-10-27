@@ -2385,6 +2385,35 @@ t_vitality() {
     printf '%s' "$out" | grep -q '#OTM-VITAL' && ok "optimize publica o estado de vitalidade" \
         || bad "optimize sem linha #OTM-VITAL"
 
+    # 6b) BUGS DO PAINEL (relatados pelo usuário): os botões de vitalidade precisam
+    # respeitar a confirmação da ação e os cartões de opção precisam ficar lado a lado.
+    local panel="$ROOT/app/src/main/assets/panel/index.html"
+    # Bug #1: `.opts` fora de `.card-choice` (card Perfil de Desempenho) empilhava os
+    # botões porque a regra de flex só valia para `.card-choice .opts`.
+    grep -qE '^\.opts\{display:flex' "$panel" \
+        && ok "painel: .opts é flex para QUALQUER card (Perfil de Desempenho lado a lado)" \
+        || bad "painel: .opts ainda preso a .card-choice (botões empilhados)"
+    grep -q '\.card-choice \.opts{display:flex' "$panel" \
+        && bad "painel: regra antiga .card-choice .opts voltou" \
+        || ok "painel: sem a regra antiga que empilhava o card"
+    # Bug #2: clicar em "Otimizar saúde do telefone" (vital.optimize, que pede
+    # confirmação) não pode chamar doRun com confirmed=false fixo — isso pulava o
+    # modal e o servidor respondia "esta ação pede confirmação".
+    grep -q 'if (a.confirm){ b.dataset.vitalId = id; askConfirm(b, a); return; }' "$panel" \
+        && ok "painel: botão de vitalidade pede confirmação antes de rodar" \
+        || bad "painel: botão de vitalidade pula a confirmação (erro 'pede confirmação')"
+    grep -q 'p.dataset.vitalGo) doRun(ACTIONS\[p.dataset.vitalId\], {}, true, p)' "$panel" \
+        && ok "painel: confirmar reexecuta a ação de vitalidade com confirm=true" \
+        || bad "painel: runPending não sabe reexecutar a ação de vitalidade"
+    grep -q 'function askConfirm(node, a)' "$panel" \
+        && ok "painel: modal de confirmação extraído (askConfirm)" \
+        || bad "painel: sem askConfirm"
+    # o web (index.php) tem os mesmos cartões: precisa das mesmas correções
+    grep -qE '^\.opts\{display:flex' "$ROOT/web/index.php" \
+        && ok "web: .opts é flex para qualquer card" || bad "web: .opts preso a .card-choice"
+    grep -q 'if (a.confirm){ b.dataset.vitalId = id; askConfirm(b, a); return; }' "$ROOT/web/index.php" \
+        && ok "web: botão de vitalidade pede confirmação" || bad "web: vitalidade pula a confirmação"
+
     # 7) diag é SÓ LEITURA: não mexe em nada (nenhum applies)
     out="$(vl 91 120 36 64 discharging diag 2>&1)"
     printf '%s' "$out" | grep -q 'applies=0' && ok "diag é só leitura (applies=0)" \
@@ -2394,7 +2423,8 @@ t_vitality() {
 
     printf '\n  # vitalidade: registro de ações\n'
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            $need=["vital.diag"=>["vitality.sh","diag"],
+            $need=["vital.optimize"=>["vitality.sh","optimize"],
+                   "vital.diag"=>["vitality.sh","diag"],
                    "vital.care_on"=>["vitality.sh","care","on"],
                    "vital.care_off"=>["vitality.sh","care","off"],
                    "vital.guard"=>["vitality.sh","guard"],
