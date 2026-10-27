@@ -324,6 +324,27 @@ nativa além do necessário para conectar e rodar os comandos.
   pede confirmação". O certo é abrir o modal (`askConfirm`) quando `a.confirm` e
   deixar o `runPending` reexecutar com `confirmed=true`. Ao mexer em `web/index.php`,
   replique em `assets/panel/index.html` (os dois têm o mesmo CSS/JS).
+- **Pareamento ADB por Wi-Fi (já custou bug).** Três armadilhas que quebram o
+  "só o código de 6 números" (`AdbRunner.kt` / `WifiDialog.kt`), todas invisíveis
+  sem device (a lib engole os erros):
+  (1) **Chave × certificado desencontrados.** O TLS do pareamento assina com a
+  privada e apresenta o certificado. Se o certificado sair de um par novo (era o
+  que acontecia quando o `adbcert.pem` faltava e a privada vinha do disco), o
+  handshake morre com `SignatureException`. O certificado tem de ser derivado da
+  **mesma** privada — daí o `publicFrom(RSAPrivateCrtKey)` reconstruir a pública,
+  já que o PKCS#8 guardado não a traz. Um `.pem` de par antigo é descartado quando
+  `cert.publicKey != adbKeyPair.public`.
+  (2) **`NsdManager` entrega os eventos no Looper de quem o criou.** A descoberta
+  precisa rodar em `Dispatchers.Main`; em `Dispatchers.IO` o callback nunca chega e
+  o `start()` fica mudo (a lib ainda deixa `onStartDiscoveryFailed` vazio).
+  (3) **Descoberta sem permissão falha em silêncio.** Android 13+ exige
+  `NEARBY_WIFI_DEVICES` e o 12- exige `ACCESS_FINE_LOCATION`; o multicast ainda
+  precisa de `CHANGE_WIFI_MULTICAST_STATE` + `MulticastLock` segurado. Há um plano B
+  de mDNS próprio (`discoverViaMulticast`/`parseMdnsAnswer`) porque o NsdManager do
+  sistema falha em algumas redes. Lembrar: no cabeçalho SRV a porta está no
+  **offset 4** (prioridade,peso,porta), não no 0.
+  O pareamento também usa API oculta do Conscrypt (`exportKeyingMaterial`, TLS 1.3),
+  liberada pelo `OtmApp` (`HiddenApiBypass.addHiddenApiExemptions("L")` + `PRNGFixes`).
 - **Taxa de atualização (Hz).** Cartão de escolha com 60/90/120/Automático
   (`refresh.60`/`refresh.90`/`refresh.120`/`refresh.auto` → `turbo.sh refresh_fixed
   <hz>` / `turbo.sh refresh auto`). A home mostra **"Taxa de tela"**: a taxa travada

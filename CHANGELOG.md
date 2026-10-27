@@ -5,11 +5,34 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Corrigido
+- **Pareamento ADB por Wi-Fi (só o código) voltou a funcionar.** Três causas
+  foram tratadas de uma vez:
+  - **Chave e certificado desencontrados:** o certificado autoassinado podia ser
+    gerado de um par de chaves diferente do que assinava o TLS, e o handshake
+    morria com `SignatureException` (`SelfSignedCert`/`AdbRunner`). Agora o
+    certificado é sempre derivado da **mesma** chave privada lida do disco, e um
+    `.pem` de par antigo é descartado ao detectar a incompatibilidade.
+  - **APIs ocultas do Conscrypt:** o TLS 1.3 do pareamento usa
+    `exportKeyingMaterial`; sem liberar as APIs ocultas o pareamento falha no
+    Android 10+. Entrou o `OtmApp` (Application) com `HiddenApiBypass` +
+    `PRNGFixes`, como no app de exemplo da própria libadb.
+  - **Descoberta mDNS:** a busca pelo serviço de pareamento agora pede a
+    permissão certa (13+: "Dispositivos próximos"; ≤12: localização), roda na
+    thread principal (o `NsdManager` entrega eventos no Looper) e tem um plano B
+    de consulta multicast própria, com o multicast segurado
+    (`MulticastLock`). Antes a descoberta falhava em silêncio.
+
+### Alterado
 - **Sistema de chaves/licença removido.** O acesso voltou a ser **usuário e senha**,
   no app e no painel. Saíram do projeto o `KeyGate`/`License` do app, o `KeyService`/
   `KeyVault`/`License` do painel, o cofre, a licença offline assinada (Ed25519), a
   geração/sincronização de chaves (`keys.json`) e os comandos `web key`/`web vault`.
   O painel `panel/` ficou com o essencial: administradores, auditoria e ajustes.
+- **Otimizador inteligente decide também pelo estado atual do aparelho:** passa a
+  ler a RAM realmente livre, o *throttling* térmico (`dumpsys thermalservice`) e a
+  economia de energia ligada. Com o aparelho apertado, segura mais o segundo plano
+  e limpa mais fundo; já quente, aplica cautela e segura a taxa de tela.
 
 ### Removido
 - **App:** `KeyGate.kt`, `License.kt`, `keys.json` e o campo de licença no

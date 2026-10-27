@@ -12,8 +12,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 63
-        versionName = "2.34.3"
+        versionCode = 64
+        versionName = "2.34.4"
     }
 
     signingConfigs {
@@ -100,6 +100,10 @@ dependencies {
     // ADB por Wi-Fi (libadb-android, Apache-2.0)
     implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
     implementation("com.github.MuntashirAkon:sun-security-android:1.1")
+    // O pareamento ADB fala TLS 1.3 e usa APIs internas do Conscrypt; a lib
+    // documenta este bypass como obrigatório no Android 10+ (o app de exemplo
+    // dela faz o mesmo em Application.attachBaseContext).
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
     // BouncyCastle: certificado autoassinado do cliente ADB (SelfSignedCert.kt).
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
     implementation("org.bouncycastle:bcprov-jdk15to18:1.81")

@@ -82,12 +82,14 @@ object WifiDialog {
                         toast("Digite o código de 6 números.")
                         return@launch
                     }
+                    toast("Procurando o serviço de pareamento na rede…")
                     val pr = adb.pairWithCode(c)
                     if (!pr.ok) {
                         finish(pr)
                         return@launch
                     }
                 }
+                toast("Conectando…")
                 finish(adb.connectWireless())
             }
         }

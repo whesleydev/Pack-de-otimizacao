@@ -626,6 +626,44 @@ t_app_fixes() {
         && ok "wifi: campos manuais só no Avançado" || bad "wifi: sem bloco Avançado"
     grep -q 'ADB por Wi-Fi (só o código)' "$src/PanelActivity.kt" \
         && ok "wifi: opção do menu de conexão simplificada" || bad "wifi: opção do menu não atualizada"
+    # 9d) pareamento por Wi-Fi: as três causas da falha ficam cobertas
+    #     (a) TLS 1.3 do pareamento usa API oculta do Conscrypt -> precisa do bypass
+    grep -q 'HiddenApiBypass.addHiddenApiExemptions' "$src/OtmApp.kt" \
+        && ok "wifi: libera as APIs ocultas (Conscrypt/TLS 1.3)" || bad "wifi: sem bypass das APIs ocultas"
+    grep -q 'android:name=".OtmApp"' "$ROOT/app/src/main/AndroidManifest.xml" \
+        && ok "wifi: OtmApp registrado no manifesto" || bad "wifi: OtmApp fora do manifesto"
+    grep -q 'hiddenapibypass' "$ROOT/app/build.gradle.kts" \
+        && ok "wifi: dependência do bypass declarada" || bad "wifi: dependência do bypass ausente"
+    #     (b) descoberta mDNS exige permissão (13+: Dispositivos próximos; <=12: localização)
+    grep -q 'NEARBY_WIFI_DEVICES' "$ROOT/app/src/main/AndroidManifest.xml" \
+        && grep -q 'ACCESS_FINE_LOCATION' "$ROOT/app/src/main/AndroidManifest.xml" \
+        && ok "wifi: permissões da descoberta no manifesto" || bad "wifi: manifesto sem permissão de descoberta"
+    grep -q 'CHANGE_WIFI_MULTICAST_STATE' "$ROOT/app/src/main/AndroidManifest.xml" \
+        && ok "wifi: permissão do multicast declarada" || bad "wifi: sem permissão de multicast"
+    grep -q 'fun askMdns(' "$src/Permissions.kt" && grep -q 'Permissions.askMdns(this)' "$src/PanelActivity.kt" \
+        && ok "wifi: pede a permissão antes de parear" || bad "wifi: não pede a permissão de descoberta"
+    #     (c) a chave e o certificado do ADB têm de ser SEMPRE do mesmo par
+    if grep -q 'fun loadOrCreateCert' "$src/AdbRunner.kt"; then
+        bad "wifi: certificado ainda pode sair de um par diferente da chave"
+    else
+        ok "wifi: certificado não é mais gerado de um par novo"
+    fi
+    grep -q 'fun publicFrom(' "$src/AdbRunner.kt" \
+        && ok "wifi: pública derivada da mesma privada lida do disco" || bad "wifi: pública não derivada da privada"
+    grep -q 'cert.publicKey == adbKeyPair.public' "$src/AdbRunner.kt" \
+        && ok "wifi: certificado antigo é descartado se não casar com a chave" \
+        || bad "wifi: certificado antigo aceito mesmo sem casar com a chave"
+    #     (d) o NsdManager entrega eventos no Looper: a descoberta não pode rodar em IO
+    grep -q 'withContext(Dispatchers.Main)' "$src/AdbRunner.kt" \
+        && ok "wifi: descoberta roda na thread principal (Looper do NsdManager)" \
+        || bad "wifi: descoberta fora da thread principal (NsdManager fica mudo)"
+    grep -q 'MulticastLock' "$src/AdbRunner.kt" \
+        && ok "wifi: multicast segurado durante a descoberta" || bad "wifi: multicast não é segurado"
+    grep -q 'fun parseMdnsAnswer(' "$src/AdbRunner.kt" \
+        && ok "wifi: plano B de mDNS próprio (não depende só do NsdManager)" || bad "wifi: sem plano B de mDNS"
+    grep -qi 'achei o serviço de' "$src/AdbRunner.kt" \
+        && ok "wifi: erro de descoberta é explicado (não falha em silêncio)" \
+        || bad "wifi: erro de descoberta continua silencioso"
     # 10) áudio audível: stream de mídia (não sonificação) e erro no logcat
     grep -q 'USAGE_MEDIA' "$src/SoundPlayer.kt" \
         && ok "som: usa stream de mídia (audível)" || bad "som: ainda usa stream de sonificação"
@@ -1997,6 +2035,21 @@ t_smart_opt() {
     assert_contains "$TMP/so_pack" "PLANO DO OTIMIZADOR" "pack.sh delega para smart-opt.sh"
     OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/pack.sh" smart > "$TMP/so_pack2" 2>&1
     assert_contains "$TMP/so_pack2" "OTIMIZADOR INTELIGENTE" "pack.sh smart (sem arg) faz tudo"
+    # --- leituras novas: o otimizador decide também pelo estado ATUAL ---
+    assert_contains "$TMP/so_an" "RAM livre" "analyze mostra a RAM livre agora"
+    grep -q 'dumpsys thermalservice' "$f" \
+        && ok "coleta o throttling térmico (dumpsys thermalservice)" || bad "sem leitura do estado térmico"
+    grep -q 'settings get global low_power' "$f" \
+        && ok "coleta o estado da economia de energia" || bad "sem leitura da economia de energia"
+    grep -q 'otm_ram_livre_mb' "$f" \
+        && ok "coleta a RAM realmente livre (otm_ram_livre_mb)" || bad "sem leitura da RAM livre"
+    # com o aparelho apertado, a decisão muda (menos apps em cache, limpeza funda)
+    grep -q 'D_APERTADO' "$f" \
+        && ok "decide pela pressão de memória (D_APERTADO)" || bad "sem decisão por pressão de memória"
+    grep -q 'D_THERMAL=cautela' "$f" && grep -q '2|3|4|5) D_THERMAL=cautela' "$f" \
+        && ok "cautela térmica também pelo throttling atual" || bad "cautela térmica só por SoC"
+    grep -q 'PSAVER' "$f" \
+        && ok "respeita a economia de energia já ligada" || bad "ignora a economia de energia ligada"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }

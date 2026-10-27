@@ -158,6 +158,19 @@ collect() {
     APPS3="$(sh_get 'pm list packages -3' | grep -c . )"
     APPS3="$(_num "$APPS3")"
 
+    # RAM realmente disponível agora (diz se o aparelho está apertado neste momento)
+    RAM_LIVRE="$(otm_ram_livre_mb)"
+    RAM_LIVRE="$(_num "$RAM_LIVRE")"
+    [ -z "$RAM_LIVRE" ] && RAM_LIVRE=0
+
+    # Throttling térmico: 0=none 1=light 2=moderate 3=severe 4=critical 5=emergency
+    THERM="$(sh_get 'dumpsys thermalservice' | awk -F': ' '/Thermal Status/{print $2; exit}' | tr -cd '0-9')"
+    [ -z "$THERM" ] && THERM=""
+
+    # Economia de energia ligada? (muda o que faz sentido aplicar agora)
+    PSAVER="$(sh_get 'settings get global low_power')"
+    case "$PSAVER" in 1) PSAVER=1 ;; *) PSAVER=0 ;; esac
+
     classify
 }
 
@@ -217,6 +230,9 @@ cmd_analyze() {
     printf '  %sCPU%s           %s núcleos · %s MHz de pico · %s cluster(s)\n' \
         "$C_A" "$C_R" "${CORES:-—}" "${MAXFREQ:-—}" "${CLUSTERS:-—}"
     printf '  %sRAM%s           %s MB\n' "$C_A" "$C_R" "${RAM_MB:-—}"
+    printf '  %sRAM livre%s    %s\n' "$C_A" "$C_R" \
+        "$([ "${RAM_LIVRE:-0}" -gt 0 ] 2>/dev/null && printf '%s MB%s' "$RAM_LIVRE" \
+            "$([ "$D_APERTADO" = "1" ] && printf ' %s(aparelho apertado agora)%s' "$C_Y" "$C_R")" || echo '—')"
     printf '  %stela%s          %s Hz suportado\n' "$C_A" "$C_R" "$([ "${HZ_MAX:-0}" -gt 0 ] 2>/dev/null && echo "$HZ_MAX" || echo '—')"
     printf '  %sarmazenamento%s %s MB livres\n' "$C_A" "$C_R" "${STORAGE_MB:-—}"
     printf '  %stérmico%s       %s zona(s)%s\n' "$C_A" "$C_R" "${ZONES:-—}" \
@@ -295,6 +311,14 @@ decide() {
                 *) D_RAM=8 ;;
             esac ;;
     esac
+    # aparelho apertado AGORA (pouca RAM livre em relação ao total): segura mais
+    # o segundo plano, senão o app em uso é que sofre.
+    D_APERTADO=0
+    if [ "$RAM_MB" -gt 0 ] 2>/dev/null && [ "$RAM_LIVRE" -gt 0 ] 2>/dev/null; then
+        limite=$((RAM_MB * 12 / 100))
+        [ "$RAM_LIVRE" -lt "$limite" ] 2>/dev/null && D_APERTADO=1
+    fi
+
     # Phantom Process Killer: em aparelho com RAM de sobra pode ficar off (não
     # mata processos "fantasma"); em aparelho modesto, ligado (protege a RAM).
     if [ "$RAM_MB" -ge 6000 ] 2>/dev/null; then D_PHANTOM=off; else D_PHANTOM=on; fi
@@ -321,27 +345,47 @@ decide() {
         D_HZ=""
     fi
 
-    # limpeza: jogo/desempenho só liberam RAM; o resto suaviza também
+    # limpeza: jogo/desempenho só liberam RAM; o resto suaviza também.
+    # Com o aparelho já apertado, a limpeza vai mais fundo (normal) para liberar de verdade.
     case "$prof" in
         desempenho|jogo) D_CLEAN=fundo ;;
         *)               D_CLEAN=suave ;;
     esac
+    [ "$D_APERTADO" = "1" ] && D_CLEAN=normal
+    # aparelho apertado AGORA: segura o segundo plano, senão o app em uso sofre
+    if [ "$D_APERTADO" = "1" ]; then
+        case "$prof" in
+            bateria) : ;;
+            jogo)    D_RAM=4 ;;
+            *)       D_RAM=8 ;;
+        esac
+    fi
 
-    # doze rápido: economia no equilíbrio/bateria; no jogo atrapalharia
+    # doze rápido: economia no equilíbrio/bateria; no jogo atrapalharia.
+    # Se o usuário já está com a economia de energia ligada, respeitamos (não forçamos).
     case "$prof" in
         equilibrado|bateria) D_DOZE=on ;;
         *)                   D_DOZE=off ;;
     esac
+    [ "$PSAVER" = "1" ] && [ "$prof" != "jogo" ] && D_DOZE=off
 
     # anti-relog no jogo escolhido (só no perfil jogo)
     D_GAME="$(game_pkg)"
     [ "$prof" = "jogo" ] || D_GAME=""
 
-    # cautela térmica por SoC: Tensor/Exynos esquentam e throttlam cedo
+    # cautela térmica: SoC que esquenta cedo OU aparelho já throttlando agora.
+    # Nesse caso o otimizador evita forçar o kernel (não piora o aquecimento).
     case "$SOC" in
         tensor|exynos) D_THERMAL=cautela ;;
         *)             D_THERMAL=normal ;;
     esac
+    case "$THERM" in
+        2|3|4|5) D_THERMAL=cautela ;;
+    esac
+    # com a tela no topo de Hz e o aparelho quente, segurar a taxa evita throttling
+    if [ "$D_THERMAL" = cautela ] && [ "$prof" != "bateria" ] && [ -n "$D_HZ" ]; then
+        D_HZ="$(snap_hz "$((D_HZ > 90 ? 90 : D_HZ))")"
+    fi
     return 0
 }
 
@@ -383,7 +427,7 @@ cmd_plan() {
         "$([ "$D_ANIM" = zero ] && echo '0 (instantâneo)' || echo '0.5x (rápido)')" \
         "$([ "$D_ANIM" = zero ] && echo 'menos espera entre telas' || echo 'resposta mais rápida sem parecer seco')"
     printf '   %sRAM em cache%s %s apps   %s\n' "$C_A" "$C_R" "$D_RAM" \
-        "sobra mais RAM para o app/jogo em uso"
+        "$([ "$D_APERTADO" = 1 ] && echo 'RAM apertada agora: mais apps saem do segundo plano' || echo 'sobra mais RAM para o app/jogo em uso')"
     printf '   %srenderizador%s %s   %s\n' "$C_A" "$C_R" "$D_RENDERER" \
         "$([ "$D_RENDERER" = skiavk ] && echo 'Vulkan: mais fluidez na GPU' || echo 'GL: máxima compatibilidade')"
     printf '   %staxa de tela%s %s   %s\n' "$C_A" "$C_R" \

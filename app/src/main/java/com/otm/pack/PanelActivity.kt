@@ -157,12 +157,15 @@ class PanelActivity : AppCompatActivity() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> useShizuku()
-                    1 -> WifiDialog.show(this, applicationContext) { r, msg ->
-                        runner = r
-                        toast(msg)
-                        sound.play("pareamento_feito_com_sucesso.mp3")
-                        pendingAfterConnect?.invoke(); pendingAfterConnect = null
-                        web.reload()
+                    1 -> {
+                        Permissions.askMdns(this)
+                        WifiDialog.show(this, applicationContext) { r, msg ->
+                            runner = r
+                            toast(msg)
+                            sound.play("pareamento_feito_com_sucesso.mp3")
+                            pendingAfterConnect?.invoke(); pendingAfterConnect = null
+                            web.reload()
+                        }
                     }
                     2 -> useAdbLocal()
                 }

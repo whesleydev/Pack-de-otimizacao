@@ -29,6 +29,7 @@ object Permissions {
 
     const val CHANNEL_ID = "otm_status"
     const val REQ_NOTIF = 4301
+    const val REQ_MDNS = 4302
 
     /** Cria o canal de notificações (obrigatório no Android 8+). */
     fun ensureChannel(context: Context) {
@@ -54,6 +55,23 @@ object Permissions {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (hasNotif(activity)) return
         ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF)
+    }
+
+    /** Permissão que o Android pede para descobrir serviços na rede (mDNS). */
+    private fun mdnsPermission(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.NEARBY_WIFI_DEVICES
+        else Manifest.permission.ACCESS_FINE_LOCATION
+
+    fun hasMdns(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(context, mdnsPermission()) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Pede a permissão da descoberta de rede antes de parear por Wi-Fi. Sem ela o
+     * Android nega a busca do serviço de pareamento em silêncio.
+     */
+    fun askMdns(activity: AppCompatActivity) {
+        if (hasMdns(activity)) return
+        ActivityCompat.requestPermissions(activity, arrayOf(mdnsPermission()), REQ_MDNS)
     }
 
     fun ignoringBattery(context: Context): Boolean {
