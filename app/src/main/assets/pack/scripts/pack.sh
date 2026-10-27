@@ -125,8 +125,8 @@ dispatch() {
         build-modules) sh "$DIR/build-modules.sh" ;;
 
         # grupos do adb-tweaks (nível 2)
-        perf|perf_max|gpu|net|net_reset|wifi|battery|battery_off|game|ff|ff_open|\
-        clean|clean_scan|mem|dnd|dnd_off|screen|fluidez|game_tune|\
+        perf|perf_max|gpu|net|net_reset|latency|latency_reset|wifi|battery|battery_off|game|ff|ff_open|\
+        clean|clean_scan|mem|proc_limit|dnd|dnd_off|screen|fluidez|game_tune|\
         obscure|mobile_net|notif|window_tweaks)
             sh "$DIR/adb-tweaks.sh" "$acao" "$@" ;;
 

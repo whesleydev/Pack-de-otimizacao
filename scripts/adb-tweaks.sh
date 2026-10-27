@@ -34,7 +34,6 @@ perf() {
     bkp_set global force_gpu_rendering 1
     bkp_set global disable_window_blurs 1
     bkp_set global accessibility_reduce_transparency 1
-    am_set max_cached_processes=32
     sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
     say "animações 0.5x, GPU forçada, blur off"
 }
@@ -139,6 +138,77 @@ net_reset() {
     bkp_set global private_dns_mode opportunistic
     sh_run "settings delete global private_dns_specifier" >/dev/null
     say "pronto"
+}
+
+# --- latência / ping ----------------------------------------------------------
+# O que muda o ping de verdade, em ordem de impacto:
+#   1) congestion control (BBR/CUBIC): menos fila no bufferbloat = ping estável
+#   2) buffers de socket: menos retransmissão em rede instável
+#   3) TCP_NOTSENT_LOWAT / low latency: envia o pacote pequeno sem esperar
+#   4) ECN: evita queda de pacote em vez de retransmitir
+#   5) DNS: resolver rápido corta o "tempo até o primeiro pacote" (já no `net`)
+#   6) Wi-Fi: desligar economia e scan de fundo (já no `wifi`)
+# Tudo via sysctl (reversível) e só onde o kernel aceita.
+latency() {
+    bkp_begin
+    say "Latência / ping"
+    # congestion control: BBR se o kernel tiver; senão mantém o atual
+    cc="$(sh_get 'sysctl -n net.ipv4.tcp_available_congestion_control')"
+    case "$cc" in
+        *bbr*)
+            otm_sysctl net.ipv4.tcp_congestion_control bbr
+            ;;
+        *)
+            warn "kernel sem BBR (disponível: ${cc:-?}) — mantendo o atual"
+            ;;
+    esac
+    # fila curta + low latency: o pacote sai na hora em vez de esperar encher
+    otm_sysctl net.ipv4.tcp_low_latency 1
+    otm_sysctl net.ipv4.tcp_autocorking 0
+    otm_sysctl net.ipv4.tcp_slow_start_after_idle 0
+    otm_sysctl net.ipv4.tcp_fastopen 3
+    otm_sysctl net.ipv4.tcp_mtu_probing 1
+    otm_sysctl net.ipv4.tcp_notsent_lowat 16384
+    otm_sysctl net.ipv4.tcp_rmem "4096 87380 6291456"
+    otm_sysctl net.ipv4.tcp_wmem "4096 16384 4194304"
+    otm_sysctl net.core.netdev_max_backlog 3000
+    # ECN: negocia em vez de descartar (menos retransmissão = ping menor)
+    otm_sysctl net.ipv4.tcp_ecn 1
+    say "congestion control, buffers e low latency ajustados"
+}
+
+latency_reset() {
+    bkp_begin
+    say "Latência - restaurar padrão do kernel"
+    for k in net.ipv4.tcp_congestion_control net.ipv4.tcp_low_latency \
+             net.ipv4.tcp_autocorking net.ipv4.tcp_slow_start_after_idle \
+             net.ipv4.tcp_fastopen net.ipv4.tcp_mtu_probing \
+             net.ipv4.tcp_notsent_lowat net.ipv4.tcp_rmem net.ipv4.tcp_wmem \
+             net.core.netdev_max_backlog net.ipv4.tcp_ecn; do
+        sh_run "sysctl -w $k=''" >/dev/null 2>&1
+    done
+    say "pronto (reinicie para o kernel reavaliar os padrões)"
+}
+
+# --- limite de processos em segundo plano -------------------------------------
+# Grupo dedicado ao "Limite de processos em segundo plano" do Android. Além de
+# escrever no lugar certo (device_config), ele MOSTRA o valor real lido de volta,
+# então dá para conferir se pegou em vez de confiar no "Padrão".
+proc_limit() {
+    n="${1:-status}"
+    case "$n" in
+        status|'')
+            say "Limite de processos em segundo plano"
+            printf '   atual: %s%s%s\n' "$C_G" "$(proc_limit_get)" "$C_R"
+            printf '   %s1-4 = mais RAM livre (jogo) · 8-32 = multitarefa%s\n' "$C_D" "$C_R"
+            ;;
+        padrao|default|off)
+            proc_limit_set padrao ;;
+        1|2|3|4|5|6|8|12|16|24|32)
+            proc_limit_set "$n" ;;
+        *)
+            err "uso: proc_limit <status|padrao|1..32>"; return 1 ;;
+    esac
 }
 
 wifi() {
@@ -297,9 +367,8 @@ game_keepalive() {
     # 1) bateria sem restrição + 2º plano + isenção do Doze
     perm_pkg "$pkg"
 
-    # 2) no máximo 4 apps em 2º plano. Mescla com o que já existe: gravar a
-    #    string inteira apagaria o max_phantom_processes e outros ajustes.
-    am_set max_cached_processes=4
+    # 2) no máximo 4 apps em 2º plano (escreve onde o Android 10+ realmente lê)
+    proc_limit_set 4
 
     # 3) o jogo não é rebaixado de balde nem congelado pelo sistema
     sh_run "am set-standby-bucket $pkg active" >/dev/null 2>&1
@@ -505,7 +574,11 @@ game_tune() {
 }
 
 # --- memória / RAM ------------------------------------------------------------
-# mem [padrao|gaming] -> ajusta quantos apps ficam em cache e libera RAM de verdade
+# mem [padrao|gaming|4|8|16|32] -> quantos apps ficam em cache + libera RAM.
+# O limite de processos em segundo plano (o que aparece no Dev Options do
+# Android) é escrito de verdade por proc_limit_set: no Android 10+ isso mora em
+# `device_config activity_manager max_cached_processes`, não no setting — por
+# isso antes ele ficava sempre em "Padrão" no aparelho.
 mem() {
     perfil="${1:-padrao}"
     bkp_begin
@@ -513,11 +586,17 @@ mem() {
     case "$perfil" in
         gaming)
             say "RAM - perfil GAMING (mais RAM livre)"
-            am_set max_cached_processes=8,max_phantom_processes=1024
+            proc_limit_set 4
+            am_set max_phantom_processes=1024
+            ;;
+        4|8|16|32)
+            say "RAM - limite de $perfil apps em segundo plano"
+            proc_limit_set "$perfil"
             ;;
         *)
             say "RAM - perfil PADRÃO (multitarefa)"
-            am_set max_cached_processes=32,max_phantom_processes=2147483647
+            proc_limit_set 32
+            am_set max_phantom_processes=2147483647
             ;;
     esac
     # libera de verdade: encerra apps de fundo e poda o cache
@@ -770,7 +849,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all game_keepalive restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all game_keepalive restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
@@ -778,11 +857,25 @@ list() {
     printf '\n  Uso: %s <grupo> [grupo...] | all | raw "<cmd>" | list\n' "$0"
 }
 
+# --- pack recomendado ("faz tudo" para quem não quer escolher) ----------------
+# É o botão único: aplica o conjunto seguro e completo, sem precisar entender
+# cada categoria. Junta performance, RAM, GPU, rede, latência/ping, Wi-Fi,
+# jogo, limpeza e o limite de processos em segundo plano. Tudo reversível em
+# "Reverter TUDO" (ou no snapshot). Debloat fica de fora de propósito (remover
+# app de fábrica é decisão do usuário e tem aba própria).
 all() {
-    for g in perf mem gpu net wifi game freezer dnd screen fluidez game_tune clean; do
+    for g in perf mem gpu net latency wifi game freezer dnd screen fluidez game_tune; do
         eval "$g"
         echo
     done
+    # Fecha com o limite de 4 processos em segundo plano: é o que o Android
+    # permite de mais agressivo e o que sobra mais RAM para o app em uso. Sem
+    # esta linha o aparelho ficava em "Padrão" nas Opções do desenvolvedor.
+    proc_limit_set 4
+    echo
+    # limpeza suave por último (libera RAM de verdade depois de tudo aplicado)
+    clean suave
+    echo
     # otimizações profundas que não exigem root
     sh "$DIR/deep-tune.sh" debloat on
     echo

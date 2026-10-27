@@ -36,7 +36,7 @@ if (!otm_auth_logged_in()) {
 $actions = array_values(otm_actions());
 
 // Ordem fixa das categorias. Menu enxuto: 7 grupos (Rede/DNS separados) + a Home.
-$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'DNS e rede', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
+$GROUP_ORDER = ['Geral', 'Display & Touch', 'Sensi e mira', 'Desempenho', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
 $GROUP_ALIAS = ['Rede e conexão' => 'DNS e rede'];
 $byGroup = [];
 foreach ($actions as $a) {
@@ -56,6 +56,8 @@ $meta = [
     'Processos'       => ['t' => 'Processos',        's' => 'Veja o que gasta RAM/CPU de verdade e limite, priorize ou congele um app.'],
     'Debloat'         => ['t' => 'Debloat',          's' => 'Remova bloatware com lista curada: universal (qualquer marca) ou por fabricante. Sempre reversível.'],
     'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo e Game Mode. O debloat agora tem aba própria.'],
+    'Latência e ping' => ['t' => 'Latência e ping','s' => 'Congestion control, buffers TCP, low latency e ECN: o que muda o ping de verdade.'],
+    'Sensi e mira'    => ['t' => 'Sensi e mira',    's' => 'Gera a sensi do Free Fire sob medida para o seu aparelho (só leitura, nada é alterado).'],
     'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],
 ];
 

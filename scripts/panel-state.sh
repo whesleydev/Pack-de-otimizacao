@@ -49,6 +49,9 @@ printf ',"dns_host":"%s"' "$(_clean "$(_g global private_dns_specifier)")"
 _perf="$(sh_get 'dumpsys power 2>/dev/null' | grep -o 'mIsFixedPerformanceMode=[a-zA-Z]*' | head -1 | cut -d= -f2)"
 case "$_perf" in true) _perf=on ;; false) _perf=off ;; *) _perf="" ;; esac
 printf ',"fixed_perf":"%s"' "$(_clean "$_perf")"
+# limite de processos em segundo plano (Dev Options): valor REAL, não o que o
+# pack escreveu. No Android 10+ mora em device_config, não no setting.
+printf ',"proc_limit":"%s"' "$(_clean "$(proc_limit_get)")"
 
 # vitalidade: um único 'tick' mede a bateria e roda o guardião. Roda antes de
 # ler o estado para o painel nunca mostrar número velho.

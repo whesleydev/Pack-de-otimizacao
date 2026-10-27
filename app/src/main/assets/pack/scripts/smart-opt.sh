@@ -492,10 +492,11 @@ cmd_apply() {
 
     # 2) RAM sob medida para o aparelho
     so_step "2/7  RAM ajustada ao aparelho ($D_RAM apps em cache)"
+    proc_limit_set "$D_RAM"
     if [ "$D_PHANTOM" = off ]; then
-        am_set max_cached_processes=$D_RAM,max_phantom_processes=2147483647
+        am_set max_phantom_processes=2147483647
     else
-        am_set max_cached_processes=$D_RAM,max_phantom_processes=1024
+        am_set max_phantom_processes=1024
     fi
 
     # 3) renderizador escolhido pela GPU/versão do Android

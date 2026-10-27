@@ -87,11 +87,37 @@ EOF
 root="${SYSCTL_ROOT:-$TMP_STORE}"
 key="${2#vm.}"
 case "$1" in
-  -n) if [ -f "$root/$key" ]; then cat "$root/$key"; else cat "$TMP_STORE/sys.$2" 2>/dev/null || echo cubic; fi ;;
+  -n) if [ -f "$root/$key" ]; then cat "$root/$key"
+      elif [ -f "$TMP_STORE/sys.$2" ]; then cat "$TMP_STORE/sys.$2"
+      elif [ "$2" = "net.ipv4.tcp_available_congestion_control" ]; then echo "cubic reno bbr"
+      else echo cubic; fi ;;
   -w) k="${2%%=*}"; v="${2#*=}"
       if [ -f "$root/${k#vm.}" ]; then printf '%s' "$v" > "$root/${k#vm.}"
       else printf '%s' "$v" > "$TMP_STORE/sys.$k"; fi ;;
 esac
+exit 0
+EOF
+    # device_config: usado pelo limite de processos (Android 10+). Guarda por
+    # namespace+chave e imprime "null" quando não existe, como no Android.
+    cat > "$TMP/bin/device_config" <<'EOF'
+#!/bin/sh
+case "$1" in
+  put)    printf '%s' "$4" > "$TMP_STORE/dc.$2.$3" ;;
+  get)    if [ -f "$TMP_STORE/dc.$2.$3" ]; then cat "$TMP_STORE/dc.$2.$3"; else echo null; fi ;;
+  delete) rm -f "$TMP_STORE/dc.$2.$3" ;;
+esac
+exit 0
+EOF
+    # dumpsys: só o suficiente para o fallback do limite de processos
+    cat > "$TMP/bin/dumpsys" <<'EOF'
+#!/bin/sh
+if [ "$1" = "activity" ] && [ "$2" = "settings" ]; then
+    if [ -f "$TMP_STORE/dc.activity_manager.max_cached_processes" ]; then
+        echo "  CUR_MAX_CACHED_PROCESSES=$(cat "$TMP_STORE/dc.activity_manager.max_cached_processes")"
+    else
+        echo "  CUR_MAX_CACHED_PROCESSES=32"
+    fi
+fi
 exit 0
 EOF
     # su falso: finge ser root e executa o comando como shell local
@@ -1617,8 +1643,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 11 ] && ok "index.php renderiza a home + 9 categorias + Terminal" || bad "seções: $n_sec (esperado 11)"
-        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
+        [ "$n_sec" -eq 13 ] && ok "index.php renderiza a home + 11 categorias + Terminal" || bad "seções: $n_sec (esperado 13)"
+        for cat in "Geral" "Display &amp; Touch" "Sensi e mira" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # Terminal: seção própria + campo de comando
@@ -1880,7 +1906,9 @@ t_gameclean() {
     printf '1' > "$TMP_STORE/global.heads_up_notifications_enabled"
     printf '1' > "$TMP_STORE/global.notification_bubbles"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" on com.exemplo > "$TMP/gc_on" 2>&1
-    assert_contains "$TMP_STORE/global.activity_manager_constants" "max_cached_processes=8" "game-clean põe a RAM no perfil gaming"
+    assert_contains "$TMP_STORE/global.activity_manager_constants" "max_cached_processes=4" "game-clean põe a RAM no perfil gaming"
+    assert_eq "4" "$(cat "$TMP_STORE/dc.activity_manager.max_cached_processes" 2>/dev/null)" \
+        "game-clean escreve o limite de processos onde o Android 10+ lê (device_config)"
     grep -q 'deviceidle whitelist +com.exemplo' "$TMP_CMD_LOG" && ok "game-clean isenta o jogo do Doze" || bad "game-clean sem Doze"
     grep -q 'game set --mode performance com.exemplo' "$TMP_CMD_LOG" && ok "game-clean liga Game Mode performance" || bad "game-clean sem Game Mode"
     assert_contains "$TMP_STORE/global.game_driver_all_apps" "1" "game-clean liga o driver de jogo"
@@ -2306,6 +2334,133 @@ t_pack() {
     unset TMP_PM_LOG
 }
 
+t_proc_limit() {
+    printf '\n  # limite de processos: escreve onde o Android 10+ lê e confere\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    rm -f "$TMP_STORE/dc.activity_manager.max_cached_processes"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" proc_limit 4 > "$TMP/pl4" 2>&1
+    assert_eq "4" "$(cat "$TMP_STORE/dc.activity_manager.max_cached_processes" 2>/dev/null)" \
+        "proc_limit 4 grava no device_config (Android 10+)"
+    assert_contains "$TMP_STORE/global.activity_manager_constants" "max_cached_processes=4" \
+        "proc_limit 4 mantém o setting em sincronia"
+    assert_contains "$TMP/pl4" "OK" "proc_limit confirma quando a leitura bate"
+    # lido de volta pelo mesmo caminho do painel
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" proc_limit status 2>&1)
+    printf '%s\n' "$out" > "$TMP/pl_status"
+    assert_contains "$TMP/pl_status" "4" "proc_limit status mostra o valor real (4)"
+    # padrão: apaga o override e o status volta a dizer "padrão"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" proc_limit padrao > "$TMP/ploff" 2>&1
+    test ! -f "$TMP_STORE/dc.activity_manager.max_cached_processes" \
+        && ok "proc_limit padrao apaga o override" || bad "proc_limit padrao nao apagou"
+    # valor fora da faixa é recusado
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" proc_limit 999 > "$TMP/plbad" 2>&1
+    assert_contains "$TMP/plbad" "uso:" "proc_limit recusa valor inválido"
+    # reversão registrada: restore_all limpa o que o pack escreveu
+    grep -q 'device_config delete activity_manager' "$HOME/.packotm/undo/adb-tweaks.sh" \
+        && ok "proc_limit é reversível (undo com device_config delete)" || bad "proc_limit sem reversão"
+    # o pack recomendado (all) fecha com o limite de 4
+    grep -q 'proc_limit_set 4' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "pack recomendado aplica o limite de 4" || bad "all sem proc_limit"
+    grep -q 'latency' "$ROOT/scripts/adb-tweaks.sh" \
+        && ok "pack recomendado inclui a latência" || bad "all sem latência"
+    # nenhum script pode voltar a escrever o limite só no setting
+    ! grep -rqE 'am_set max_cached_processes=[1-9]' "$ROOT/scripts/" \
+        && ok "nenhum script escreve o limite só no setting" \
+        || bad "ainda há am_set max_cached_processes=<n>"
+    rm -rf "$HOME/.packotm"
+}
+
+t_latency() {
+    printf '\n  # latência / ping: aplica sysctl, confere e reverte\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" latency > "$TMP/lat_on" 2>&1
+    assert_contains "$TMP/lat_on" "Latência" "latency explica o efeito"
+    # os knobs que mudam o ping de verdade foram escritos
+    assert_eq "bbr" "$(cat "$TMP_STORE/sys.net.ipv4.tcp_congestion_control" 2>/dev/null)" \
+        "latency liga o BBR (o stub anuncia bbr disponível)"
+    assert_eq "1" "$(cat "$TMP_STORE/sys.net.ipv4.tcp_low_latency" 2>/dev/null)" \
+        "latency liga o low latency"
+    assert_eq "0" "$(cat "$TMP_STORE/sys.net.ipv4.tcp_autocorking" 2>/dev/null)" \
+        "latency desliga o autocorking"
+    assert_eq "16384" "$(cat "$TMP_STORE/sys.net.ipv4.tcp_notsent_lowat" 2>/dev/null)" \
+        "latency encurta o notsent_lowat"
+    assert_contains "$TMP_STORE/sys.net.ipv4.tcp_rmem" "6291456" "latency ajusta o buffer de recepção"
+    grep -q 'tcp_congestion_control' "$HOME/.packotm/undo/adb-tweaks.sh" \
+        && ok "latency guarda reversão do congestion control" || bad "latency sem reversão"
+    assert_contains "$TMP/lat_on" "#OTM-RESULT" "latency emite #OTM-RESULT"
+    ch=$(grep '#OTM-RESULT' "$TMP/lat_on" | sed -n 's/.*changed=\([0-9]*\).*/\1/p')
+    [ "${ch:-0}" -ge 5 ] && ok "latency confirmou mudança real (changed=$ch)" \
+        || bad "latency não confirmou mudanças (changed=$ch)"
+    # kernel sem BBR: não inventa, avisa e segue
+    rm -rf "$HOME/.packotm"
+    mkdir -p "$TMP/bin_nobbr"
+    printf '#!/bin/sh\ncase "$1" in -n) echo "cubic reno";; -w) exit 0;; esac\n' > "$TMP/bin_nobbr/sysctl"
+    chmod +x "$TMP/bin_nobbr/sysctl"
+    out=$(PATH="$TMP/bin_nobbr:$PATH" OTM_NO_COLOR=1 OTM_MODE=su \
+        sh "$ROOT/scripts/adb-tweaks.sh" latency 2>&1)
+    printf '%s\n' "$out" > "$TMP/lat_nobbr"
+    assert_contains "$TMP/lat_nobbr" "sem BBR" "latency avisa quando o kernel não tem BBR"
+    # reversão: os valores antigos são restaurados
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" latency_reset > "$TMP/lat_off" 2>&1
+    assert_contains "$TMP/lat_off" "restaurar" "latency_reset explica a reversão"
+    rm -rf "$TMP/bin_nobbr" "$HOME/.packotm"
+}
+
+t_sensi() {
+    printf '\n  # sensi: gerador sob medida, só leitura\n'
+    f="$ROOT/scripts/sensi.sh"
+    [ -f "$f" ] && ok "scripts/sensi.sh existe" || { bad "sensi.sh ausente"; return; }
+    # não pode mexer em NADA: nenhuma chamada de escrita (settings put, setprop...)
+    ! grep -qE '^\s*(settings put|setprop|device_config put)' "$f" \
+        && ok "sensi.sh não escreve nada no aparelho" || bad "sensi.sh escreve no aparelho"
+    ! grep -q 'bkp_set' "$f" && ok "sensi.sh não registra reversão (não altera)" \
+        || bad "sensi.sh tem bkp_set"
+    rm -rf "$HOME/.packotm"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$f" 2>&1)
+    printf '%s\n' "$out" > "$TMP/sn_out"
+    assert_contains "$TMP/sn_out" "GERADOR DE SENSI" "sensi mostra o cabeçalho"
+    assert_contains "$TMP/sn_out" "Geral" "sensi mostra a sensi Geral"
+    assert_contains "$TMP/sn_out" "Ponto vermelho" "sensi mostra o ponto vermelho"
+    assert_contains "$TMP/sn_out" "AWM" "sensi mostra a mira AWM"
+    assert_contains "$TMP/sn_out" "Botão de atirar" "sensi mostra o tamanho do botão"
+    assert_contains "$TMP/sn_out" "máximo 50%" "sensi lembra o teto de 50% do botão"
+    assert_contains "$TMP/sn_out" "NÃO altera nada" "sensi avisa que não altera nada"
+    # todos os valores ficam na faixa válida do jogo (0-100)
+    vals=$(printf '%s\n' "$out" | sed -n 's/^ *\(Geral\|Ponto vermelho\|Mira 2x\|Mira 4x\|AWM \/ mira livre\) *\([0-9]*\)$/\2/p')
+    [ -n "$vals" ] && bad_count=0 || bad_count=1
+    for v in $vals; do
+        [ "$v" -ge 0 ] 2>/dev/null && [ "$v" -le 100 ] 2>/dev/null || bad_count=1
+    done
+    [ "$bad_count" = "0" ] && ok "todos os valores ficam entre 0 e 100" \
+        || bad "valor fora de 0..100 ($vals)"
+    # o teto do botão nunca passa de 50%
+    btn=$(printf '%s\n' "$out" | sed -n 's/.*Botão de atirar *\([0-9]*\)%.*/\1/p' | head -1)
+    [ -n "$btn" ] && [ "$btn" -le 50 ] 2>/dev/null && ok "botão de atirar respeita o teto (${btn}%)" \
+        || bad "botão de atirar acima de 50% ($btn)"
+    # analyze mostra o que foi lido e os fatores
+    OTM_NO_COLOR=1 OTM_MODE=local sh "$f" analyze > "$TMP/sn_an" 2>&1
+    assert_contains "$TMP/sn_an" "densidade" "sensi analyze mostra a densidade lida"
+    assert_contains "$TMP/sn_an" "fatores aplicados" "sensi analyze mostra os fatores"
+    assert_contains "$TMP/sn_an" "1.000" "sensi analyze mostra fatores neutros no padrão"
+    # perfis: headshot > sniper no valor geral
+    g1=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$f" ff headshot 2>&1 | head -1 | awk '{print $1}')
+    g2=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$f" ff sniper 2>&1 | head -1 | awk '{print $1}')
+    [ "${g1:-0}" -gt "${g2:-0}" ] 2>/dev/null && ok "perfil headshot fica acima do sniper ($g1 > $g2)" \
+        || bad "perfis não se diferenciam ($g1 vs $g2)"
+    # ff imprime exatamente 5 valores
+    n=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$f" ff 2>&1 | head -1 | wc -w)
+    [ "$n" = "5" ] && ok "sensi ff imprime os 5 valores do Free Fire" \
+        || bad "sensi ff imprimiu $n valores"
+    # aparelho diferente -> sensi diferente (tela densa cai, tela leve sobe)
+    mkdir -p "$TMP/bin_den"
+    printf '#!/bin/sh\ncase "$1$2" in "wm size") echo "Physical size: 720x1600";;\n"wm density") echo "Physical density: 320";;\nesac\nexit 0\n' > "$TMP/bin_den/wm"
+    chmod +x "$TMP/bin_den/wm"
+    g3=$(PATH="$TMP/bin_den:$PATH" OTM_NO_COLOR=1 OTM_MODE=local sh "$f" ff 2>&1 | head -1 | awk '{print $1}')
+    [ -n "$g3" ] && ok "sensi responde à tela do aparelho (720p/320dpi -> $g3)" \
+        || bad "sensi não leu a tela alternativa"
+    rm -rf "$TMP/bin_den" "$HOME/.packotm"
+}
+
 # --- execução ----------------------------------------------------------------
 printf '  ==================================================\n'
 printf '  Testes do Pack de Otimização\n'
@@ -2604,6 +2759,9 @@ t_undo_scopes_declared
 t_no_silent_conflicts
 t_vitality
 t_pack
+t_proc_limit
+t_latency
+t_sensi
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

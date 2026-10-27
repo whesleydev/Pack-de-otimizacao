@@ -270,9 +270,14 @@ nativa além do necessário para conectar e rodar os comandos.
   O mesmo script também reescreve o objeto `ACTIONS` embutido no painel, então
   `php scratch/gen_actions.php app/src/main/assets/panel/actions.json
   app/src/main/assets/panel/index.html` mantém catálogo e HTML do app em sincronia.
-  O painel do app é o HTML do PHP já renderizado (`scratch/render_panel.php` →
-  `scratch/panel.html` → `scratch/build_panel.py`); ao mexer em
-  `index.php`/`lib.php`, os dois painéis (`web/index.php` e
+  O painel do app é o HTML do PHP já renderizado. O pipeline é:
+  `php -r 'require "web/auth.php"; otm_auth_login(<user>,<pass>); ob_start();
+  include "web/index.php"; file_put_contents("/tmp/pan/web.html", ob_get_clean());'`
+  → `python3 scratch/sync_app_panel.py /tmp/pan/web.html` (traz o nav, as seções
+  novas e o objeto `ACTIONS` do web para o app) → `python3 scratch/patch_app_panel.py`
+  (tira as ações só de root e ajusta textos) → `php scratch/gen_actions.php
+  app/src/main/assets/panel/actions.json app/src/main/assets/panel/index.html`.
+  Ao mexer em `index.php`/`lib.php`, os dois painéis (`web/index.php` e
   `assets/panel/index.html`) precisam ficar em sincronia (o CSS/JS é o mesmo).
 - Os scripts de `scripts/` são a fonte da verdade; o app embarca uma **cópia
   versionada** em `app/src/main/assets/pack/scripts` (task Gradle `syncPackAssets`
@@ -324,6 +329,16 @@ nativa além do necessário para conectar e rodar os comandos.
   pede confirmação". O certo é abrir o modal (`askConfirm`) quando `a.confirm` e
   deixar o `runPending` reexecutar com `confirmed=true`. Ao mexer em `web/index.php`,
   replique em `assets/panel/index.html` (os dois têm o mesmo CSS/JS).
+- **Limite de processos: onde o Android realmente lê (já custou bug).** O pack
+  escrevia `max_cached_processes` no setting `activity_manager_constants` e o
+  aparelho continuava em "Padrão". Motivo: a partir do Android 10 a plataforma lê
+  de **`device_config activity_manager max_cached_processes`** (o Dev Options usa
+  um override interno do ActivityManager e o setting só serve de legado). O
+  caminho certo é `proc_limit_set`/`proc_limit_get` em `common.sh`: escreve no
+  `device_config`, mantém o setting em sincronia para Androids antigos e **lê de
+  volta** — `proc_limit_get` devolve o valor real e `otm_v_report` marca falha
+  quando não pegou. Não volte a chamar `am_set max_cached_processes=<n>` direto:
+  o teste `t_proc_limit` procura exatamente esse padrão em `scripts/`.
 - **Pareamento ADB por Wi-Fi (já custou bug).** Três armadilhas que quebram o
   "só o código de 6 números" (`AdbRunner.kt` / `WifiDialog.kt`), todas invisíveis
   sem device (a lib engole os erros):

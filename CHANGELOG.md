@@ -6,6 +6,39 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Corrigido
+- **O "Limite de processos em segundo plano" finalmente pega no aparelho.** O pack
+  gravava `max_cached_processes` no setting `activity_manager_constants`, mas no
+  Android 10+ a plataforma lê esse valor de `device_config activity_manager
+  max_cached_processes` (e o Dev Options usa um override interno do
+  ActivityManager). Resultado: o aparelho continuava em "Padrão" mesmo depois do
+  pack. Agora o valor é escrito **onde o Android lê de verdade** (o setting é
+  mantido em sincronia para Androids antigos) e é **conferido lendo de volta** —
+  se não pegar, aparece como falha em vez de "aplicado". Vale para o pack
+  recomendado, o perfil de RAM, o Game Clean e o anti-relog do jogo.
+- **A latência/ping entrou no pack recomendado.** Antes o `all` ajustava DNS e
+  Wi-Fi, mas não mexia no que mais pesa no ping: congestion control e buffers
+  TCP.
+
+### Adicionado
+- **Categoria "Latência e ping"** com "Reduzir latência / ping" e "Latência:
+  restaurar": liga BBR (quando o kernel tem), encurta buffers, ativa low latency
+  e ECN — cada chave é lida de volta e só conta como aplicada se realmente mudou
+  (kernel sem a chave aparece como falha, não como sucesso).
+- **Limite de processos em segundo plano no painel** (categoria Processos):
+  ver o valor real, 4 (jogo), 8 (equilíbrio), 32 (multitarefa) e padrão. O
+  `panel-state.sh` passou a expor `proc_limit` para o painel mostrar o número
+  lido do aparelho.
+- **Categoria "Sensi e mira": gerador de sensi do Free Fire sob medida.** Lê o
+  aparelho (resolução, DPI, polegadas, taxa de toque, Hz, SoC, RAM e o ajuste de
+  toque já aplicado) e calcula Geral, Ponto vermelho, 2x, 4x, AWM e o tamanho do
+  botão de atirar (com teto de 50%, para não ficar grande). Perfis headshot,
+  spray, sniper e speed. **Não altera nada no aparelho** — só mostra os números.
+  Tem "ver o que foi lido" para o cálculo ficar transparente.
+- **Pack recomendado mais completo:** agora aplica, em ordem, performance, RAM,
+  GPU, rede, **latência/ping**, Wi-Fi, jogo, freezer, DND, tela, fluidez, tuning
+  do jogo e, no fim, o limite de 4 processos em segundo plano e a limpeza suave.
+
+### Corrigido
 - **Pareamento ADB por Wi-Fi (só o código) voltou a funcionar.** Três causas
   foram tratadas de uma vez:
   - **Chave e certificado desencontrados:** o certificado autoassinado podia ser

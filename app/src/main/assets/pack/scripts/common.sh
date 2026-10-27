@@ -309,6 +309,92 @@ am_constants_merge() {
 # am_set <k=v> [k=v...] -> aplica as constantes mesclando com o que já existe
 am_set() { bkp_set global activity_manager_constants "$(am_constants_merge "$@")"; }
 
+# --- limite de processos em segundo plano -------------------------------------
+# O "Limite de processos em segundo plano" das Opções do desenvolvedor NÃO lê o
+# setting global activity_manager_constants. No Android 10+ a plataforma lê
+# `device_config activity_manager max_cached_processes` (namespace
+# activity_manager) e o Dev Options lê um override interno
+# (IActivityManager.setProcessLimit). Era por isso que o pack gravava
+# max_cached_processes no setting e o painel do Android continuava em "Padrão":
+# a string era lida, mas a chave não era usada (MAX_CACHED_PROCESSES é um
+# recurso do sistema, não um campo do parser). Aqui escrevemos nos DOIS lugares
+# (o setting fica para Androids antigos e para não quebrar quem já lê de lá) e
+# lemos de volta o valor REAL.
+OTM_PROC_NS="activity_manager"
+OTM_PROC_KEY="max_cached_processes"
+
+# proc_limit_set <n>  -> n = 1..32 (0 ou "padrao" volta ao padrão de fábrica)
+proc_limit_set() {
+    n="$1"
+    bkp_begin
+    case "$n" in
+        padrao|default|0)
+            otm_v_inc apply
+            bkp_raw "device_config delete $OTM_PROC_NS $OTM_PROC_KEY"
+            sh_run "device_config delete $OTM_PROC_NS $OTM_PROC_KEY" >/dev/null 2>&1
+            am_set max_cached_processes=0
+            say "limite de processos: padrão do sistema"
+            ;;
+        *[!0-9]*|'')
+            err "uso: proc_limit <1..32|padrao>"; return 1 ;;
+        *)
+            [ "$n" -lt 1 ] && n=1
+            [ "$n" -gt 32 ] && n=32
+            otm_v_inc apply
+            bkp_raw "device_config delete $OTM_PROC_NS $OTM_PROC_KEY"
+            sh_run "device_config put $OTM_PROC_NS $OTM_PROC_KEY $n" >/dev/null 2>&1
+            # mantém o setting em sincronia (Androids antigos / quem lê de lá)
+            am_set "max_cached_processes=$n"
+            got="$(sh_get "device_config get $OTM_PROC_NS $OTM_PROC_KEY")"
+            if [ "$got" = "$n" ]; then
+                otm_v_inc changed
+                printf '   %bOK%b limite de processos em segundo plano = %s\n' "$C_G" "$C_R" "$n"
+            else
+                otm_v_inc failed
+                printf '   %bX%b limite não pegou (lido: %s)\n' "$C_RD" "$C_R" "${got:-vazio}"
+            fi
+            ;;
+    esac
+}
+
+# proc_limit_get -> valor REAL do limite (número, ou "padrão" se não houver)
+proc_limit_get() {
+    v="$(sh_get "device_config get $OTM_PROC_NS $OTM_PROC_KEY")"
+    case "$v" in
+        ''|null)
+            # cai para o setting (Androids antigos) e, por fim, para o dumpsys
+            s="$(sh_get 'settings get global activity_manager_constants' \
+                | tr ',' '\n' | grep "^$OTM_PROC_KEY=" | head -1 | cut -d= -f2)"
+            case "$s" in ''|0|null) v="$(sh_get 'dumpsys activity settings' \
+                | awk -F= '/^ *CUR_MAX_CACHED_PROCESSES=/{print $2; exit}' | tr -d ' ')";; *) v="$s" ;; esac
+            ;;
+    esac
+    case "$v" in ''|null|0) printf 'padrão' ;; *) printf '%s' "$v" ;; esac
+}
+
+# --- sysctl com verificação e reversão ----------------------------------------
+# otm_sysctl <chave> <valor> -> escreve, LÊ DE VOLTA e guarda o valor antigo.
+# Nem todo kernel aceita toda chave (BBR, ECN, low latency): sem ler de volta, o
+# script "aplicaria" no escuro. Espaços em valores de lista (tcp_rmem) contam
+# como iguais mesmo com tabulação/espaço diferente.
+otm_sysctl() {
+    k="$1"; v="$2"
+    otm_v_inc apply
+    old="$(sh_get "sysctl -n $k")"
+    [ -n "$old" ] && bkp_raw "sysctl -w $k='$old'"
+    sh_run "sysctl -w $k='$v'" >/dev/null
+    now="$(sh_get "sysctl -n $k")"
+    n_now="$(printf '%s' "$now" | tr -s ' \t' ' ' | sed 's/^ *//;s/ *$//')"
+    n_want="$(printf '%s' "$v" | tr -s ' \t' ' ' | sed 's/^ *//;s/ *$//')"
+    if [ "$n_now" = "$n_want" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b %s = %s\n' "$C_G" "$C_R" "$k" "$v"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s nao mudou (lido: %s)\n' "$C_RD" "$C_R" "$k" "${now:-vazio}"
+    fi
+}
+
 # --- RAM: leitura e liberação real --------------------------------------------
 # apps que nunca devem ser encerrados por engano (a UI do sistema, o próprio pack)
 OTM_SYS_KEEP="android com.android.systemui com.android.launcher3 com.google.android.apps.nexuslauncher com.android.settings com.otm.pack com.termux"

@@ -151,9 +151,9 @@ function otm_actions(): array {
 
     // ----- Rápido -----
     $add(['id' => 'apply', 'group' => 'Geral', 'label' => 'Aplicar o pack recomendado',
-          'desc' => 'Aplica o conjunto seguro (sem root): performance, RAM, GPU, rede e jogo.',
-          'help' => 'Liga de uma vez as otimizações seguras que não precisam de root: animações mais rápidas, GPU na interface, RAM ajustada, DNS/rede e modo de jogo. É o "faz tudo" para começar. Dá para desfazer em "Reverter TUDO".',
-          'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 300]);
+          'desc' => 'O "faz tudo" para novato: performance, RAM, GPU, rede, latência, jogo, bateria e touch.',
+          'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Sensi e mira" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 420]);
     $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
           'desc' => 'Analisa o seu aparelho e aplica as melhores configurações para ele.',
           'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência, RAM, taxa de tela, armazenamento, térmico, bateria, zram, Android e kernel) e calcula uma nota e a classe do aparelho. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, limpeza e doze. (O debloat ficou de fora de propósito: remover app de fábrica é decisão sua e mora na aba Debloat.) Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim, confere se os ajustes pegaram de verdade. É tudo reversível em "Reverter TUDO".',
@@ -247,6 +247,71 @@ function otm_actions(): array {
           'desc' => 'Mede a latência de cada perfil de DNS.',
           'help' => 'Testa a latência (tempo de resposta) dos principais servidores de DNS e mostra qual está mais rápido na sua rede. Não altera nada — é só medição.',
           'argv' => ['dns.sh', 'bench'], 'timeout' => 180]);
+
+    // ----- Latência / Ping (o que muda o ping de verdade) -----
+    $add(['id' => 'latency.on', 'group' => 'Latência e ping', 'label' => 'Reduzir latência / ping',
+          'desc' => 'Ajusta congestion control, buffers e low latency para o ping cair.',
+          'help' => 'Ataque direto no atraso da rede: liga o congestion control BBR (quando o kernel tem), encurta os buffers de envio, liga o modo low latency e o ECN para o aparelho não esperar encher o pacote nem retransmitir à toa. O resultado aparece no ping do jogo (menos "trava" e menos atraso no tiro). Tudo reversível em "Latência: restaurar".',
+          'argv' => ['adb-tweaks.sh', 'latency'], 'confirm' => true, 'risk' => 'careful', 'timeout' => 120]);
+    $add(['id' => 'latency.off', 'group' => 'Latência e ping', 'label' => 'Latência: restaurar',
+          'desc' => 'Devolve os parâmetros de rede do kernel ao padrão.',
+          'help' => 'Desfaz os ajustes de latência, devolvendo o congestion control e os buffers ao padrão do aparelho. Reinicie o aparelho depois para o kernel reavaliar.',
+          'argv' => ['adb-tweaks.sh', 'latency_reset']]);
+
+    // ----- Limite de processos em segundo plano (Dev Options) -----
+    // A ação que faltava: no Android 10+ o "Limite de processos em segundo plano"
+    // mora em `device_config activity_manager max_cached_processes` — o pack
+    // antes escrevia só no setting e o aparelho continuava em "Padrão".
+    $add(['id' => 'proc.limit.status', 'group' => 'Processos', 'label' => 'Limite de processos: ver',
+          'desc' => 'Mostra o valor REAL lido do aparelho (não o que o pack escreveu).',
+          'help' => 'Mostra o limite de processos em segundo plano que está valendo de verdade no aparelho, lido de volta do sistema. Se aparecer "padrão", é porque o Android está no automático — o que era o problema antigo: o pack escrevia o valor e o aparelho ignorava.',
+          'argv' => ['adb-tweaks.sh', 'proc_limit', 'status']]);
+    $add(['id' => 'proc.limit.4', 'group' => 'Processos', 'label' => 'Limite de processos: 4 (jogo)',
+          'desc' => 'Só 4 apps em segundo plano: mais RAM e CPU para o jogo.',
+          'help' => 'Limita o aparelho a manter apenas 4 apps em segundo plano. Sobra mais memória e processador para o jogo, que é o que mais importa em partida. O valor é escrito onde o Android 10+ realmente lê e conferido na hora. Reverta em "Limite de processos: padrão".',
+          'argv' => ['adb-tweaks.sh', 'proc_limit', '4'], 'confirm' => true, 'risk' => 'careful']);
+    $add(['id' => 'proc.limit.8', 'group' => 'Processos', 'label' => 'Limite de processos: 8 (equilíbrio)',
+          'desc' => 'Oito apps em segundo plano: equilíbrio entre jogar e multitarefa.',
+          'help' => 'Deixa o sistema manter 8 apps em segundo plano: bom meio-termo entre liberar RAM para o jogo e ainda conseguir alternar entre apps sem eles recarregarem. Reverta em "Limite de processos: padrão".',
+          'argv' => ['adb-tweaks.sh', 'proc_limit', '8'], 'risk' => 'careful']);
+    $add(['id' => 'proc.limit.32', 'group' => 'Processos', 'label' => 'Limite de processos: 32 (multitarefa)',
+          'desc' => 'Muitos apps em segundo plano: prioriza o dia a dia.',
+          'help' => 'Deixa o sistema manter até 32 apps em segundo plano. Alternar entre apps fica instantâneo, mas sobra menos RAM para o jogo. É o padrão de fábrica do Android. Reverta em "Limite de processos: padrão".',
+          'argv' => ['adb-tweaks.sh', 'proc_limit', '32'], 'risk' => 'careful']);
+    $add(['id' => 'proc.limit.off', 'group' => 'Processos', 'label' => 'Limite de processos: padrão',
+          'desc' => 'Devolve a decisão ao sistema (automático).',
+          'help' => 'Apaga o limite que o pack escreveu e devolve a decisão ao Android (que passa a calcular sozinho conforme a memória). Use se algum app parou de ficar aberto em segundo plano.',
+          'argv' => ['adb-tweaks.sh', 'proc_limit', 'padrao']]);
+
+    // ----- Gerador de sensi (só leitura: calcula para o SEU aparelho) -----
+    $add(['id' => 'sensi.calc', 'group' => 'Sensi e mira', 'label' => 'Gerar sensi do meu aparelho',
+          'desc' => 'Calcula a sensi ideal para o seu aparelho, sem alterar nada.',
+          'help' => 'Lê o seu aparelho (resolução, densidade/DPI, tamanho da tela, taxa de toque, taxa de atualização, SoC, RAM e o ajuste de toque já aplicado) e calcula uma sensi sob medida: Geral, Ponto vermelho, mira 2x, 4x, AWM, além do tamanho do botão de atirar (com teto de 50%, que é o que não deixa o botão feio/grande). NÃO altera nada no aparelho: só mostra os números para você digitar no jogo. Rode de novo se mudar a resolução.',
+          'argv' => ['sensi.sh', 'calc'], 'timeout' => 90]);
+    $add(['id' => 'sensi.analyze', 'group' => 'Sensi e mira', 'label' => 'Sensi: ver o que foi lido',
+          'desc' => 'Mostra as leituras e os fatores usados no cálculo da sensi.',
+          'help' => 'Transparência total: mostra exatamente o que o gerador leu do seu aparelho (tela, DPI, polegadas, toque, Hz, SoC, RAM) e quais fatores aplicou em cada item. Assim você entende por que a sensi saiu daquele valor. Só leitura.',
+          'argv' => ['sensi.sh', 'analyze'], 'timeout' => 90]);
+    $add(['id' => 'sensi.headshot', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil headshot',
+          'desc' => 'Recalcula a sensi com foco em mira rápida na cabeça.',
+          'help' => 'Mesma conta do gerador, com o perfil headshot: mira mais ágil para pegar a cabeça. Mostra os valores para digitar no jogo. Só leitura, nada é alterado no aparelho.',
+          'argv' => ['sensi.sh', 'calc', 'headshot'], 'timeout' => 90]);
+    $add(['id' => 'sensi.spray', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil spray',
+          'desc' => 'Recalcula a sensi com foco em controle de recuo.',
+          'help' => 'Mesma conta do gerador, com o perfil spray: controle melhor no tiro contínuo (segurar o dedo atirando). Mostra os valores para digitar no jogo. Só leitura.',
+          'argv' => ['sensi.sh', 'calc', 'spray'], 'timeout' => 90]);
+    $add(['id' => 'sensi.sniper', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil sniper',
+          'desc' => 'Recalcula a sensi com foco em mira precisa de longe.',
+          'help' => 'Mesma conta do gerador, com o perfil sniper: mira mais lenta e precisa para longa distância (AWM, mira 4x). Mostra os valores para digitar no jogo. Só leitura.',
+          'argv' => ['sensi.sh', 'calc', 'sniper'], 'timeout' => 90]);
+    $add(['id' => 'sensi.speed', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil speed',
+          'desc' => 'Recalcula a sensi com foco em reação máxima.',
+          'help' => 'Mesma conta do gerador, com o perfil speed: resposta o mais rápida possível, para quem joga agressivo e vira rápido. Mostra os valores para digitar no jogo. Só leitura.',
+          'argv' => ['sensi.sh', 'calc', 'speed'], 'timeout' => 90]);
+    $add(['id' => 'sensi.ff', 'group' => 'Sensi e mira', 'label' => 'Sensi: valores na ordem do FF',
+          'desc' => 'Imprime só os números, na ordem da tela do Free Fire.',
+          'help' => 'Imprime os cinco valores separados por espaço (Geral, Ponto vermelho, 2x, 4x, AWM) na mesma ordem em que o Free Fire pede, para você digitar rápido sem procurar. Só leitura.',
+          'argv' => ['sensi.sh', 'ff'], 'timeout' => 90]);
 
     // ----- RAM / Limpeza -----
     $add(['id' => 'mem.padrao', 'group' => 'Desempenho', 'label' => 'RAM: perfil padrão',
