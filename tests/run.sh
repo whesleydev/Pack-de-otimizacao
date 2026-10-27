@@ -2481,6 +2481,18 @@ PY
     grep -q 'vitality.sh" tick' "$ROOT/scripts/panel-stats.sh" \
         && ok "panel-stats chama o tick (batimento do guardião)" \
         || bad "panel-stats não chama o tick"
+    # GUARDA: o ACTIONS do web é GERADO pelo PHP a cada requisição (não é JSON fixo).
+    # Um JSON fixo envelhece: adicionar uma ação no lib.php deixaria de aparecer no web.
+    grep -q 'json_encode(array_column' "$web" \
+        && ok "web: ACTIONS é gerado pelo PHP (não é JSON fixo)" \
+        || bad "web: ACTIONS virou JSON fixo (o web para de ver ações novas)"
+    # GUARDA: o card Perfil de Desempenho continua respondendo de verdade (não é decorativo)
+    for f in "$app" "$web"; do
+        grep -q 'turbo.perfmode_on' "$f" && grep -q 'turbo.perfmode_off' "$f" \
+            && ok "$(basename "$f"): Perfil de Desempenho chama as ações reais" \
+            || bad "$(basename "$f"): Perfil de Desempenho sem ação real"
+    done
+
     # o espelho do app bate com scripts/
     cmp -s "$ROOT/scripts/vitality.sh" "$ROOT/app/src/main/assets/pack/scripts/vitality.sh" \
         && ok "vitality.sh espelhado no app" || bad "espelho do vitality.sh divergiu"
