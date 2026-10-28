@@ -18,8 +18,23 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **A latência/ping entrou no pack recomendado.** Antes o `all` ajustava DNS e
   Wi-Fi, mas não mexia no que mais pesa no ping: congestion control e buffers
   TCP.
+- **O "Reverter TUDO" não devolvia o desfoque do teclado e da barra.** As ações
+  de desempenho (`perf`, `gpu`, `fluidez`, `clean`, otimizador inteligente e o
+  pack recomendado) desligam `disable_window_blurs` e
+  `accessibility_reduce_transparency`, mas o `fluidez` gravava os dois com
+  `sh_run` em vez de `bkp_set` — fora do arquivo de reversão. Resultado: a
+  interface ficava "seca" e o teclado/barra perdiam o desfoque **para sempre**,
+  mesmo depois de reverter. Agora os dois entram na reversão, e o modo imersivo
+  (`policy_control`, do grupo `window_tweaks`) também — este último não tinha
+  reversão nenhuma e deixava as barras escondidas de forma permanente.
 
 ### Adicionado
+- **Card "Desfoque e transparência (efeitos visuais)"** (categoria Display &
+  Touch): liga/desliga o desfoque (blur) do teclado, da barra de navegação e das
+  notificações e a transparência do sistema, a qualquer momento. O painel lê o
+  estado real do aparelho e marca o que está em uso. Antes não havia como
+  devolver o visual sem editar settings na mão. Grupo novo no script:
+  `adb-tweaks.sh effects <on|off|status>`.
 - **Categoria "Latência e ping"** com "Reduzir latência / ping" e "Latência:
   restaurar": liga BBR (quando o kernel tem), encurta buffers, ativa low latency
   e ECN — cada chave é lida de volta e só conta como aplicada se realmente mudou

@@ -52,6 +52,14 @@ printf ',"fixed_perf":"%s"' "$(_clean "$_perf")"
 # limite de processos em segundo plano (Dev Options): valor REAL, não o que o
 # pack escreveu. No Android 10+ mora em device_config, não no setting.
 printf ',"proc_limit":"%s"' "$(_clean "$(proc_limit_get)")"
+# efeitos visuais (desfoque/transparência). Ausente/"null" = padrão do sistema,
+# que é o efeito LIGADO — o painel precisa saber disso para marcar "Em uso".
+_bl="$(sh_get 'settings get global disable_window_blurs' 2>/dev/null)"
+case "$_bl" in 1) _fx_blur=off ;; *) _fx_blur=on ;; esac
+printf ',"blur":"%s"' "$(_clean "$_fx_blur")"
+_tp="$(sh_get 'settings get global accessibility_reduce_transparency' 2>/dev/null)"
+case "$_tp" in 1) _fx_tp=off ;; *) _fx_tp=on ;; esac
+printf ',"reduce_transparency":"%s"' "$(_clean "$_fx_tp")"
 
 # vitalidade: um único 'tick' mede a bateria e roda o guardião. Roda antes de
 # ler o estado para o painel nunca mostrar número velho.

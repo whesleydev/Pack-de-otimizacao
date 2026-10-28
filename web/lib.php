@@ -131,6 +131,12 @@ function otm_choices(): array {
             'risk'  => 'careful',
             'app'   => true,
         ],
+        'effects' => [
+            'title' => 'Desfoque e transparência (efeitos visuais)',
+            'desc'  => 'O "vidro fosco" atrás do teclado, da barra de navegação e das notificações, e o efeito de transparência do sistema. As otimizações de desempenho (performance, GPU, fluidez, clean, otimizador inteligente e o pack recomendado) desligam os dois para sobrar GPU/CPU — é por isso que depois de aplicar o pack a interface fica "seca" e o teclado parece diferente. Aqui você escolhe: mantenha ligado para o visual completo, ou desligue se preferir mais fluidez. O painel lê o estado real do aparelho.',
+            'state' => 'blur',
+            'risk'  => 'safe',
+        ],
         'proclimit' => [
             'title' => 'Limite de processos em segundo plano',
             'desc'  => 'Quantos apps o sistema pode manter na memória ao mesmo tempo (o mesmo "Limite de processos em segundo plano" das Opções do desenvolvedor). Menos apps = mais RAM e CPU para o jogo; mais apps = multitarefa mais fluida no dia a dia. O painel lê de volta o valor que está valendo de verdade — não só o que foi escrito.',
@@ -708,6 +714,24 @@ function otm_actions(): array {
           'desc' => 'Reduz o trabalho do sistema com notificações pop-up.',
           'help' => 'Desliga os balões (heads-up) e as bolhas de notificação. O sistema trabalha menos e sobra fluidez — bom para jogar.',
           'argv' => ['adb-tweaks.sh', 'notif']]);
+    // ----- Efeitos visuais: desfoque e transparência (liga/desliga na mão) -----
+    // O pack desliga os dois nas ações de desempenho. Sem este grupo, o usuário
+    // não tinha como devolver o desfoque do teclado/barra sem editar settings.
+    $add(['id' => 'fx.blur_on', 'group' => 'Display & Touch', 'label' => 'Efeitos visuais: LIGAR (visual completo)',
+          'desc' => 'Devolve o desfoque do teclado, da barra e das notificações.',
+          'help' => 'Liga o desfoque (blur) e a transparência do sistema. Use se você achou a interface "seca" ou o teclado estranho depois de aplicar o pack. O desfoque consome um pouco de GPU — em aparelho fraco, deixe desligado.',
+          'choice' => 'effects', 'option' => 'Ligado (visual completo)', 'state_value' => 'on',
+          'argv' => ['adb-tweaks.sh', 'effects', 'on']]);
+    $add(['id' => 'fx.blur_off', 'group' => 'Display & Touch', 'label' => 'Efeitos visuais: DESLIGAR (mais fluidez)',
+          'desc' => 'Tira o desfoque e a transparência: interface mais leve.',
+          'help' => 'Desliga o desfoque (blur) e a transparência do sistema. A interface fica mais leve e sobra GPU/CPU para o jogo — é o que o pack recomendado já faz. Reverta em "Efeitos visuais: LIGAR".',
+          'choice' => 'effects', 'option' => 'Desligado (mais fluidez)', 'state_value' => 'off',
+          'argv' => ['adb-tweaks.sh', 'effects', 'off']]);
+    $add(['id' => 'fx.blur_status', 'group' => 'Display & Touch', 'label' => 'Efeitos visuais: ver estado',
+          'desc' => 'Mostra se o desfoque e a transparência estão ligados.',
+          'help' => 'Mostra, lido do aparelho, se o desfoque (blur) e a transparência do sistema estão ligados ou desligados agora. Só leitura.',
+          'argv' => ['adb-tweaks.sh', 'effects', 'status']]);
+
     $add(['id' => 'adv.window', 'group' => 'Display & Touch', 'label' => 'Janelas / modo imersivo',
           'desc' => 'Transições mais curtas e modo imersivo (esconde barras).',
           'help' => 'Reduz as animações de janela e ativa o modo imersivo, escondendo as barras de status/navegação. Mais tela e menos distração no jogo.',

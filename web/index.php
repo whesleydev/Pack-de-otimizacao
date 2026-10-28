@@ -1714,6 +1714,12 @@ function applyState(){
         + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
     } else if (key === "dns_host" && STATE.dns_host){
       txt = "Em uso agora: " + (active || STATE.dns_host);
+    } else if (key === "blur" && STATE.blur){
+      const b = STATE.blur === "on", t = STATE.reduce_transparency === "on";
+      txt = b && t ? "No aparelho: desfoque e transparência ligados"
+          : (!b && !t) ? "No aparelho: desfoque e transparência desligados (interface mais leve)"
+          : "No aparelho: desfoque " + (b ? "ligado" : "desligado")
+            + " · transparência " + (t ? "ligada" : "desligada");
     } else if (key === "proc_limit" && STATE.proc_limit){
       txt = "No aparelho: " + STATE.proc_limit
         + (String(STATE.proc_limit) === "padrão" ? " (o sistema decide)" : " apps em segundo plano");

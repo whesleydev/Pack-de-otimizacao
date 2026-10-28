@@ -2283,6 +2283,57 @@
         "risk": "safe"
     },
     {
+        "id": "fx.blur_on",
+        "group": "Display & Touch",
+        "label": "Efeitos visuais: LIGAR (visual completo)",
+        "desc": "Devolve o desfoque do teclado, da barra e das notificações.",
+        "help": "Liga o desfoque (blur) e a transparência do sistema. Use se você achou a interface \"seca\" ou o teclado estranho depois de aplicar o pack. O desfoque consome um pouco de GPU — em aparelho fraco, deixe desligado.",
+        "choice": "effects",
+        "option": "Ligado (visual completo)",
+        "state_value": "on",
+        "argv": [
+            "adb-tweaks.sh",
+            "effects",
+            "on"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "fx.blur_off",
+        "group": "Display & Touch",
+        "label": "Efeitos visuais: DESLIGAR (mais fluidez)",
+        "desc": "Tira o desfoque e a transparência: interface mais leve.",
+        "help": "Desliga o desfoque (blur) e a transparência do sistema. A interface fica mais leve e sobra GPU/CPU para o jogo — é o que o pack recomendado já faz. Reverta em \"Efeitos visuais: LIGAR\".",
+        "choice": "effects",
+        "option": "Desligado (mais fluidez)",
+        "state_value": "off",
+        "argv": [
+            "adb-tweaks.sh",
+            "effects",
+            "off"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "fx.blur_status",
+        "group": "Display & Touch",
+        "label": "Efeitos visuais: ver estado",
+        "desc": "Mostra se o desfoque e a transparência estão ligados.",
+        "help": "Mostra, lido do aparelho, se o desfoque (blur) e a transparência do sistema estão ligados ou desligados agora. Só leitura.",
+        "argv": [
+            "adb-tweaks.sh",
+            "effects",
+            "status"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "adv.window",
         "group": "Display & Touch",
         "label": "Janelas / modo imersivo",

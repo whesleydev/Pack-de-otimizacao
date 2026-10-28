@@ -1678,14 +1678,14 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 8 ] && ok "renderiza 8 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos)" \
-            || bad "grupos de escolha: $n_choice (esperado 8)"
+        [ "$n_choice" -eq 9 ] && ok "renderiza 9 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos)" \
+            || bad "grupos de escolha: $n_choice (esperado 9)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
         # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
         # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
         # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
-        [ "$n_opts" -eq 32 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 perfil ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 32)"
+        [ "$n_opts" -eq 34 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 2 perfil ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 34)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -2272,6 +2272,10 @@ t_no_silent_conflicts() {
         global heads_up_notifications_enabled
         global notification_bubbles
         global low_power
+        # desfoque/transparência: liga (effects on) e desliga (effects off, perf,
+        # gpu, fluidez, clean) — par intencional, igual ao low_power
+        global disable_window_blurs
+        global accessibility_reduce_transparency
         global app_standby_enabled
         global adaptive_battery_management_enabled
         global private_dns_mode
@@ -2367,6 +2371,52 @@ t_proc_limit() {
     ! grep -rqE 'am_set max_cached_processes=[1-9]' "$ROOT/scripts/" \
         && ok "nenhum script escreve o limite só no setting" \
         || bad "ainda há am_set max_cached_processes=<n>"
+    rm -rf "$HOME/.packotm"
+}
+
+t_effects() {
+    printf '\n  # efeitos visuais: desfoque/transparência ligam, desligam e revertem\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    # desligar (o que o pack faz nas ações de desempenho)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" effects off > "$TMP/fx_off" 2>&1
+    assert_eq "1" "$(cat "$TMP_STORE/global.disable_window_blurs" 2>/dev/null)" \
+        "effects off desliga o desfoque"
+    assert_eq "1" "$(cat "$TMP_STORE/global.accessibility_reduce_transparency" 2>/dev/null)" \
+        "effects off desliga a transparência"
+    assert_contains "$TMP/fx_off" "desfoque" "effects off explica o que fez"
+    # ligar de volta (o card que devolve o blur do teclado/barra)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" effects on > "$TMP/fx_on" 2>&1
+    assert_eq "0" "$(cat "$TMP_STORE/global.disable_window_blurs" 2>/dev/null)" \
+        "effects on religa o desfoque"
+    assert_eq "0" "$(cat "$TMP_STORE/global.accessibility_reduce_transparency" 2>/dev/null)" \
+        "effects on religa a transparência"
+    # status lê o estado real, não o que foi escrito
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" effects status > "$TMP/fx_st" 2>&1
+    assert_contains "$TMP/fx_st" "ligado" "effects status mostra o estado real"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" effects off >/dev/null 2>&1
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" effects status > "$TMP/fx_st2" 2>&1
+    assert_contains "$TMP/fx_st2" "desligado" "effects status detecta o desfoque desligado"
+    # valor inválido é recusado
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" effects xyz > "$TMP/fx_bad" 2>&1
+    assert_contains "$TMP/fx_bad" "uso:" "effects recusa argumento inválido"
+    # REVERSÃO: o bug era o blur/transparência saírem por sh_run (sem undo)
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" fluidez >/dev/null 2>&1
+    grep -q 'disable_window_blurs' "$HOME/.packotm/undo/adb-tweaks.sh" \
+        && ok "fluidez registra a reversão do desfoque" || bad "fluidez não reverte o desfoque"
+    grep -q 'accessibility_reduce_transparency' "$HOME/.packotm/undo/adb-tweaks.sh" \
+        && ok "fluidez registra a reversão da transparência" || bad "fluidez não reverte a transparência"
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" window_tweaks >/dev/null 2>&1
+    grep -q 'policy_control' "$HOME/.packotm/undo/adb-tweaks.sh" \
+        && ok "modo imersivo registra a reversão" || bad "modo imersivo não reverte"
+    # nenhum script pode voltar a mexer no blur por sh_run (sem reversão)
+    ! grep -rn 'sh_run "settings put global disable_window_blurs' "$ROOT/scripts/" >/dev/null 2>&1 \
+        && ok "nenhum script escreve o desfoque fora da reversão" \
+        || bad "ainda há sh_run com disable_window_blurs"
+    ! grep -rn 'sh_run "settings put global accessibility_reduce_transparency' "$ROOT/scripts/" >/dev/null 2>&1 \
+        && ok "nenhum script escreve a transparência fora da reversão" \
+        || bad "ainda há sh_run com accessibility_reduce_transparency"
     rm -rf "$HOME/.packotm"
 }
 
@@ -2762,6 +2812,7 @@ t_pack
 t_proc_limit
 t_latency
 t_sensi
+t_effects
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

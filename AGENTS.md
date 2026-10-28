@@ -329,6 +329,20 @@ nativa além do necessário para conectar e rodar os comandos.
   pede confirmação". O certo é abrir o modal (`askConfirm`) quando `a.confirm` e
   deixar o `runPending` reexecutar com `confirmed=true`. Ao mexer em `web/index.php`,
   replique em `assets/panel/index.html` (os dois têm o mesmo CSS/JS).
+- **Efeitos visuais desligados pelas ações de desempenho (já custou bug).** Todo
+  ajuste de performance (`perf`, `gpu`, `fluidez`, `clean`, `smart-opt` e o pack
+  recomendado) grava `disable_window_blurs=1` e
+  `accessibility_reduce_transparency=1`. Isso mata o desfoque atrás do teclado,
+  da barra de navegação e das notificações e a transparência do sistema — o
+  usuário sente como "interface seca". Dois cuidados: (1) **tudo que mexe nesses
+  dois settings tem de usar `bkp_set`**, nunca `sh_run`, senão fica fora do
+  arquivo de reversão e nem o "Reverter TUDO" devolve (foi o caso do `fluidez`);
+  (2) o grupo `effects <on|off|status>` (`adb-tweaks.sh`) é o card do painel que
+  liga/desliga na mão. O `panel-state.sh` expõe `blur`/`reduce_transparency`
+  como `on`/`off`, tratando **ausente = `on`** (o padrão do Android é o efeito
+  ligado, e `settings get` devolve `null` quando nunca foi escrito). O teste
+  `t_effects` cobre isso. O modo imersivo do `window_tweaks` (`policy_control`)
+  tinha o mesmo defeito e agora também entra na reversão.
 - **Limite de processos: onde o Android realmente lê (já custou bug).** O pack
   escrevia `max_cached_processes` no setting `activity_manager_constants` e o
   aparelho continuava em "Padrão". Motivo: a partir do Android 10 a plataforma lê

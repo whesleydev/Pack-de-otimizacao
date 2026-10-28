@@ -556,8 +556,10 @@ fluidez() {
     bkp_set system min_refresh_rate "$hz"
     sh_run "settings put system touch_responsiveness 110" >/dev/null
     sh_run "settings put system touch_slop 4" >/dev/null
-    sh_run "settings put global disable_window_blurs 1" >/dev/null
-    sh_run "settings put global accessibility_reduce_transparency 1" >/dev/null
+    # blur/transparência: entram na reversão (com sh_run o "Reverter TUDO" não
+    # devolvia o desfoque do teclado/barra — foi o que o usuário notou)
+    bkp_set global disable_window_blurs 1
+    bkp_set global accessibility_reduce_transparency 1
     say "pronto (efeito instantâneo, toque sem atraso, Hz máximo)"
 }
 
@@ -750,6 +752,43 @@ touch_latency() {
     say "aplicado (reinicie o jogo para valer)"
 }
 
+# --- efeitos visuais (desfoque / transparência) --------------------------------
+# O desfoque (blur) é o "vidro fosco" atrás do teclado, da barra de navegação e
+# da gaveta de notificações. As otimizações de desempenho (perf, gpu, fluidez,
+# clean, smart-opt e o pack recomendado) desligam ele e a transparência do
+# sistema para sobrar GPU/CPU — é daí que vem a sensação de "interface seca"
+# depois de aplicar o pack. Este grupo liga/desliga na mão, a qualquer hora.
+effects() {
+    acao="${1:-status}"
+    case "$acao" in
+        on|ligar)
+            bkp_begin
+            say "Efeitos visuais: desfoque e transparência LIGADOS"
+            bkp_set global disable_window_blurs 0
+            bkp_set global accessibility_reduce_transparency 0
+            say "o desfoque do teclado e da barra voltou"
+            ;;
+        off|desligar)
+            bkp_begin
+            say "Efeitos visuais: desfoque e transparência DESLIGADOS"
+            bkp_set global disable_window_blurs 1
+            bkp_set global accessibility_reduce_transparency 1
+            say "visual mais leve (sobra GPU/CPU)"
+            ;;
+        status|'')
+            say "Efeitos visuais (desfoque / transparência)"
+            bl="$(sh_get 'settings get global disable_window_blurs')"
+            tp="$(sh_get 'settings get global accessibility_reduce_transparency')"
+            # ausente/"null" = padrão do sistema = efeito ligado
+            case "$bl" in 1) bl="desligado" ;; *) bl="ligado (padrão)" ;; esac
+            case "$tp" in 1) tp="desligado" ;; *) tp="ligado (padrão)" ;; esac
+            printf '   desfoque (blur): %s\n' "$bl"
+            printf '   transparência:   %s\n' "$tp"
+            ;;
+        *) err "uso: effects <on|off|status>"; return 1 ;;
+    esac
+}
+
 # --- janela / transições (sem root) -------------------------------------------
 # Além das animações: desliga "rotação lenta" e transições de tema escuro.
 window_tweaks() {
@@ -759,7 +798,9 @@ window_tweaks() {
     bkp_set global transition_animation_scale 0.5
     bkp_set global animator_duration_scale 0.5
     bkp_set system screen_off_timeout 600000
-    sh_run "settings put global policy_control immersive.full=*" >/dev/null 2>&1
+    # modo imersivo (esconde as barras): precisa de reversão, senão as barras
+    # ficam escondidas para sempre, mesmo depois do "Reverter TUDO"
+    bkp_set global policy_control immersive.full=*
     say "transições 0.5x + modo imersivo"
 }
 
@@ -849,7 +890,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all game_keepalive restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
