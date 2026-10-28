@@ -399,12 +399,12 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiavk']]);
     $add(['id' => 'gpu.skiagl_threaded', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL multithread',
           'desc' => 'SkiaGL desenhando numa thread separada. Mais suave.',
-          'help' => 'Usa SkiaGL e move a composição para uma thread separada (backend "skiaglthreaded"). Costuma deixar a rolagem mais suave em telas de alta taxa. É mais exigente: se esquentar ou instabilizar, volte para SkiaGL.',
+          'help' => 'Usa SkiaGL e move a composição para uma thread separada (backend "skiaglthreaded"). Costuma deixar a rolagem mais suave em telas de alta taxa. O backend do compositor só passa a valer depois de REINICIAR o aparelho. É mais exigente: se esquentar ou instabilizar, volte para SkiaGL.',
           'choice' => 'renderer', 'option' => 'SkiaGL multithread', 'state_value' => 'skiagl', 'state_backend_value' => 'skiaglthreaded',
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiagl-threaded']]);
     $add(['id' => 'gpu.skiavk_threaded', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan multithread',
           'desc' => 'Skia Vulkan em thread separada. Máxima fluidez.',
-          'help' => 'Usa Skia Vulkan com a composição numa thread separada (backend "skiavkthreaded"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou Automático.',
+          'help' => 'Usa Skia Vulkan com a composição numa thread separada (backend "skiavkthreaded"). O backend do compositor só passa a valer depois de REINICIAR o aparelho. É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou Automático.',
           'choice' => 'renderer', 'option' => 'Skia Vulkan multithread', 'state_value' => 'skiavk', 'state_backend_value' => 'skiavkthreaded',
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiavk-threaded']]);
     $add(['id' => 'gpu.opengl', 'group' => 'Display & Touch', 'label' => 'Renderizador: OpenGL (só Android antigo)',
