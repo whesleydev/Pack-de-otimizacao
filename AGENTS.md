@@ -637,12 +637,30 @@ selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão 
 Build local (sem Android Studio):
 
 ```sh
-# toolchain em /workspace/project/.toolchain (JDK 21 + SDK 34 + Gradle 8.7)
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-export ANDROID_HOME=/workspace/project/.toolchain/sdk
-cd android && GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home \
-  ./gradlew :app:assembleRelease
+# toolchain em /workspace/project/.toolchain (JDK + SDK 34 + Gradle 8.7)
+# o wrapper é o da RAIZ do repo (android/gradlew não tem o jar do wrapper)
+export JAVA_HOME=/workspace/project/.toolchain/jdk
+export ANDROID_HOME=/workspace/android-sdk          # ver local.properties (sdk.dir)
+export GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home
+./gradlew :app:assembleRelease --no-daemon
 # saída: app/build/outputs/apk/release/app-release.apk (já assinado)
+```
+
+O build demora ~1 min com o cache do Gradle quente; rode em background
+(`nohup ... > /tmp/build.log 2>&1 &`) para não bater no timeout do terminal.
+Antes de buildar, espelhe os scripts (`cp scripts/*.sh
+app/src/main/assets/pack/scripts/` e `cp VERSION app/src/main/assets/pack/VERSION`),
+senão o APK sai com o pack velho.
+
+Conferir o que ficou dentro do APK (não confie só no build verde):
+
+```sh
+python3 -c "import zipfile; z=zipfile.ZipFile('app/build/outputs/apk/release/app-release.apk');
+print(z.read('assets/pack/VERSION').decode()); print(sorted(n for n in z.namelist() if 'panel' in n)[:5])"
+# apksigner/aapt2 são scripts que precisam de `java` no PATH
+export PATH=$JAVA_HOME/bin:$PATH
+$ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs <apk>
+$ANDROID_HOME/build-tools/34.0.0/aapt2 dump badging <apk> | grep ^package
 ```
 
 Assinatura (atualizar por cima, sem desinstalar): o `release` usa a keystore fixa
@@ -654,5 +672,22 @@ manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
 `app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
-publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git).
+publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git; os
+`.sha256` **são** versionados).
+
+Publicar o download: o repo **público** é `whesleydev/Pack-de-otimizacao`
+(o `00-Otimizacao` é privado, então link de asset lá não abre para o usuário).
+Crie a release pela API com o token do remote `otm-push` (tem escopo `repo`):
+
+```sh
+T=$(git config --get remote.otm-push.url | sed -E 's|https://([^@]*)@.*|\1|' | cut -d: -f2)
+# POST /repos/whesleydev/Pack-de-otimizacao/releases  {tag_name, target_commitish, name, body}
+# POST https://uploads.github.com/repos/.../releases/<id>/assets?name=<arquivo>  (binário)
+```
+
+A release cria a tag no `target_commitish` no momento do POST. Se você criar a
+release **antes** de terminar os commits, a tag fica num commit velho — mova com
+`PATCH /repos/.../git/refs/tags/<tag>` com `{"sha": "<sha completo>", "force": true}`.
+O link `releases/latest/download/<arquivo>` só funciona se for a release mais
+recente; para citar uma versão fixa, use `releases/download/<tag>/<arquivo>`.
 
