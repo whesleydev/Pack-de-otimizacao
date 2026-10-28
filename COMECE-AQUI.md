@@ -42,7 +42,7 @@ sh main.sh web start
 ```
 
 No painel você escolhe o **DNS**, limpa **RAM/cache**, troca o **renderizador**
-(OpenGL/Vulkan), seleciona um **app/jogo** para usar ANGLE/Vulkan, ajusta o **touch** e
+(Skia/Vulkan), seleciona um **app/jogo** para usar ANGLE/Vulkan, ajusta o **touch** e
 muito mais — tudo com botões. Ações de risco (como debloat) **perguntam antes**. Precisa
 de **PHP** (Termux: `pkg install php`). O `main.sh` também **baixa os recursos full** do
 pack (`sh main.sh baixar`).

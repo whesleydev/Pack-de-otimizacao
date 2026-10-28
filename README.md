@@ -5,7 +5,7 @@
 >
 > 🌐 **Site completo:** abra **[`index.html`](index.html)** — explica os apps, os 4 níveis,
 > os plugins e traz uma **área de comandos** (cache, congelar apps, renderizador
-> OpenGL/Vulkan/Skia/ANGLE, RAM, bateria, touch) com botão de copiar. É um só arquivo
+> Skia/Vulkan/ANGLE, RAM, bateria, touch) com botão de copiar. É um só arquivo
 > HTML/CSS/JS, sem dependências — funciona offline e dá para publicar no GitHub Pages.
 >
 > 📱 **Apps para instalar:** guia em **[`Apps/README.md`](Apps/README.md)** (Brevent,
@@ -122,7 +122,7 @@ No painel você tem, com botões (e visual):
 | **Rápido** | aplicar o recomendado, reverter tudo, salvar/ver/comparar/restaurar snapshot |
 | **DNS** | perfis (privacidade, **bloqueio de anúncios**, família, **latência/gaming**) ou um host seu |
 | **RAM / Limpeza** | perfil padrão/gaming, limpar cache e RAM, **clean profundo (CPU/GPU/I/O)** |
-| **Renderizador** | trocar o motor: **OpenGL, SkiaGL, Skia Vulkan**, forçar GPU |
+| **Renderizador** | trocar o motor: **SkiaGL, Skia Vulkan, multithread**, forçar GPU ou voltar ao automático |
 | **Por app / jogo** | escolher um app/jogo e usar **ANGLE (Vulkan)**, modo performance, **reduzir resolução (FPS)** ou resetar |
 | **Touch / Free Fire** | perfis balanced/headshot/spray/sniper/speed, ajuste fino, abrir o jogo |
 | **Performance** | animações, fluidez, tela/refresh, DND, bateria |

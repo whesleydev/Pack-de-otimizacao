@@ -100,7 +100,7 @@ Vários itens **já existiam** no pack; só o que era real e fazia sentido virou
 
 **Já existia (nada a fazer):**
 - Game Driver **ANGLE** por jogo: `deep-tune.sh angle` + `app.angle*`.
-- **SkiaGL / SkiaVK / OpenGL**: `gpu.skiagl|skiavk|opengl`.
+- **SkiaGL / SkiaVK / automático**: `gpu.skiagl|skiavk|auto` (`opengl` só em Android antigo).
 - **Hardware Composition / VDS**: coberto por `ext.display` (props de SurfaceFlinger/HWUI).
 - **Frame pacing / SurfaceFlinger**: `deep-tune.sh latency` + `ext.display`.
 - **Refresh (max/auto)**: `turbo.sh refresh`.

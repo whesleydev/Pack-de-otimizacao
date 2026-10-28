@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pack de Otimização · Guia completo + comandos</title>
-<meta name="description" content="Guia completo do Pack de Otimização para Android: apps, 4 níveis, plugins, módulos e uma área de comandos prontos para copiar (cache, congelar apps, renderizador OpenGL/Vulkan/Skia/ANGLE, RAM, bateria, touch e Free Fire).">
+<meta name="description" content="Guia completo do Pack de Otimização para Android: apps, 4 níveis, plugins, módulos e uma área de comandos prontos para copiar (cache, congelar apps, renderizador Skia/Vulkan/ANGLE, RAM, bateria, touch e Free Fire).">
 <style>
 /* ============================================================
    Pack de Otimização · site único (HTML + CSS + JS puro)
@@ -200,7 +200,7 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;paddi
     <h1>Deixe o Android <span>mais rápido</span> — sem enrolação</h1>
     <p>Pack completo em <strong>4 níveis</strong>: de copiar-e-colar no Brevent até plugin com painel web no
     AxManager. Tudo reversível, com comandos prontos para <strong>cache, RAM, congelar apps,
-    renderizador (OpenGL/Vulkan/Skia/ANGLE)</strong>, bateria, touch e Free Fire.</p>
+    renderizador (Skia/Vulkan/ANGLE)</strong>, bateria, touch e Free Fire.</p>
     <div class="badges">
       <span class="badge">Sem root (opcional)</span>
       <span class="badge">Brevent · Shizuku · Termux · AxManager · root</span>
@@ -245,7 +245,7 @@ sh pack.sh restore  # desfaz TUDO de uma vez</code></pre>
     <h3>🖥️ Painel web (PHP): controle pelo navegador</h3>
     <p>Prefere clicar em botões? Um comando sobe um <strong>painel web completo</strong> e te dá
       uma URL para abrir no PC (mesma rede Wi-Fi). De lá você escolhe o <strong>DNS</strong>,
-      limpa <strong>RAM/cache</strong>, troca o <strong>renderizador</strong> (OpenGL/Skia/Vulkan),
+      limpa <strong>RAM/cache</strong>, troca o <strong>renderizador</strong> (Skia/Vulkan),
       seleciona um <strong>app/jogo</strong> para usar ANGLE/Vulkan, ajusta o <strong>touch</strong>,
       o debloat e muito mais — com <strong>confirmação nas ações de risco</strong>.</p>
     <pre><code>sh main.sh              # menu principal (baixar full, subir servidor, abrir painel)
@@ -390,10 +390,13 @@ sh main.sh baixar       # baixa os recursos FULL do pack</code></pre>
     <details><summary>Como eu reverto tudo?</summary>
       <p>Nível 1: cole o <code>99-restaurar-tudo.txt</code>. Nível 2: <code>run.sh restore</code>. Plugins:
       o <code>uninstall.sh</code> de cada um. Profundas: <code>sh scripts/deep-tune.sh restore</code>.</p></details>
-    <details><summary>O que é o "renderizador" (OpenGL/Vulkan/Skia/ANGLE)?</summary>
-      <p>É o motor gráfico que desenha a interface. <code>skiagl</code> e <code>skiavk</code> costumam dar mais
-      fluidez; <code>opengl</code> é o padrão. <strong>ANGLE</strong> traduz OpenGL para Vulkan e pode melhorar
-      jogos específicos. Veja a categoria <em>Renderizador</em> nos comandos.</p></details>
+    <details><summary>O que é o "renderizador" (Vulkan/Skia/ANGLE)?</summary>
+      <p>É o motor gráfico que desenha a interface. O Android aceita só dois valores:
+      <code>skiagl</code> e <code>skiavk</code> — qualquer outro é ignorado. O OpenGL
+      foi removido no Android 10, então <code>opengl</code> só vale em aparelho antigo.
+      Sem nada setado, quem escolhe é o sistema (o padrão). <strong>ANGLE</strong>
+      traduz OpenGL para Vulkan e pode melhorar jogos específicos. Veja a categoria
+      <em>Renderizador</em> nos comandos.</p></details>
     <details><summary>Congelei um app e ele não abre. E agora?</summary>
       <p>Rode <code>pm unsuspend --user 0 PACOTE</code> e <code>pm enable --user 0 PACOTE</code>, ou use
       <code>13-descongelar-apps.txt</code> / o plugin <strong>06-freezer</strong> (botão descongelar).
@@ -562,18 +565,18 @@ const CMDS = [
   // ---------- Renderizador ----------
   {c:"Renderizador", t:"Ver o renderizador atual", d:"Mostra qual motor gráfico está ativo.", r:"seguro",
    s:'getprop debug.hwui.renderer'},
-  {c:"Renderizador", t:"Usar SkiaGL", d:"Renderizador Skia sobre OpenGL — bom custo/benefício.", r:"seguro",
+  {c:"Renderizador", t:"Usar SkiaGL", d:"Skia sobre OpenGL. Bom custo/benefício.", r:"seguro",
    s:'setprop debug.hwui.renderer skiagl'},
   {c:"Renderizador", t:"Usar Skia Vulkan", d:"Skia sobre Vulkan — costuma dar mais fluidez em jogos.", r:"seguro",
    s:'setprop debug.hwui.renderer skiavk'},
-  {c:"Renderizador", t:"Voltar para OpenGL (padrão)", d:"Renderizador padrão de fábrica.", r:"seguro",
-   s:'setprop debug.hwui.renderer opengl'},
-  {c:"Renderizador", t:"Usar SkiaGL multithread", d:"SkiaGL desenhando numa thread separada — mais suave.", r:"seguro",
+  {c:"Renderizador", t:"Automático (deixar o sistema escolher)", d:"Apaga o prop; vale o padrão do sistema.", r:"seguro",
+   s:"setprop debug.hwui.renderer ''"},
+  {c:"Renderizador", t:"Usar SkiaGL multithread", d:"SkiaGL desenhando numa thread separada — mais suave (exige reiniciar).", r:"seguro",
    s:'setprop debug.hwui.renderer skiagl\nsetprop debug.renderengine.backend skiaglthreaded'},
-  {c:"Renderizador", t:"Usar Skia Vulkan multithread", d:"Skia Vulkan em thread separada — máxima fluidez.", r:"seguro",
+  {c:"Renderizador", t:"Usar Skia Vulkan multithread", d:"Skia Vulkan em thread separada — máxima fluidez (exige reiniciar).", r:"seguro",
    s:'setprop debug.hwui.renderer skiavk\nsetprop debug.renderengine.backend skiavkthreaded'},
-  {c:"Renderizador", t:"Voltar o backend para o padrão", d:"Desfaz o modo multithread (backend single-thread).", r:"seguro",
-   s:'setprop debug.hwui.renderer skiagl\nsetprop debug.renderengine.backend skiagl'},
+  {c:"Renderizador", t:"Voltar o backend do compositor ao padrão", d:"Desfaz o modo multithread (exige reiniciar).", r:"seguro",
+   s:"setprop debug.renderengine.backend ''"},
   {c:"Renderizador", t:"Forçar renderização por GPU", d:"Usa a GPU para desenhar a interface.", r:"seguro",
    s:'settings put global force_gpu_rendering 1'},
   {c:"Renderizador", t:"Driver de jogo (Vulkan) em todos apps", d:"Ativa o game driver globalmente.", r:"seguro",
@@ -652,8 +655,8 @@ const CMDS = [
   // ---------- Restaurar ----------
   {c:"Restaurar", t:"Restaurar animações (1x)", d:"Volta ao padrão.", r:"seguro",
    s:'settings put global window_animation_scale 1\nsettings put global transition_animation_scale 1\nsettings put global animator_duration_scale 1'},
-  {c:"Restaurar", t:"Restaurar renderizador (OpenGL)", d:"Volta ao motor padrão.", r:"seguro",
-   s:'setprop debug.hwui.renderer opengl'},
+  {c:"Restaurar", t:"Restaurar renderizador (automático)", d:"Apaga o prop e devolve a escolha ao sistema.", r:"seguro",
+   s:"setprop debug.hwui.renderer ''"},
   {c:"Restaurar", t:"Restaurar touch (apagar ajustes)", d:"Remove os valores de toque personalizados.", r:"seguro",
    s:'settings delete system touch_responsiveness\nsettings delete system long_press_timeout\nsettings delete system touch_slop\nsettings delete system pointer_speed\nsettings delete system multi_press_timeout'},
   {c:"Restaurar", t:"Desligar o cache freezer", d:"Volta o congelamento automático ao normal.", r:"seguro",

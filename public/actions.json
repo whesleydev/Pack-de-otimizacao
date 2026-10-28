@@ -810,28 +810,28 @@
         "risk": "safe"
     },
     {
-        "id": "gpu.opengl",
+        "id": "gpu.auto",
         "group": "Display & Touch",
-        "label": "Renderizador: OpenGL (padrão)",
-        "desc": "Motor gráfico de fábrica. Mais compatível.",
-        "help": "Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.",
+        "label": "Renderizador: Automático (padrão)",
+        "desc": "Apaga o prop; o sistema escolhe o melhor.",
+        "help": "Deixa o sistema decidir o renderizador (nenhum valor forçado). É o estado de fábrica: skiavk se o aparelho usa Vulkan, senão skiagl. Use isto se algum app ficar com tela estranha nos outros modos.",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
-            "opengl"
+            "auto"
         ],
         "confirm": false,
         "risk": "safe",
         "choice": "renderer",
-        "option": "OpenGL",
-        "state_value": "opengl"
+        "option": "Automático",
+        "state_auto": true
     },
     {
         "id": "gpu.skiagl",
         "group": "Display & Touch",
         "label": "Renderizador: SkiaGL",
         "desc": "Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.",
-        "help": "Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.",
+        "help": "Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
@@ -848,7 +848,7 @@
         "group": "Display & Touch",
         "label": "Renderizador: Skia Vulkan",
         "desc": "Skia sobre Vulkan. Costuma dar mais fluidez.",
-        "help": "Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.",
+        "help": "Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para SkiaGL ou para o Automático.",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
@@ -864,8 +864,8 @@
         "id": "gpu.skiagl_threaded",
         "group": "Display & Touch",
         "label": "Renderizador: SkiaGL multithread",
-        "desc": "SkiaGL desenhando numa thread separada. Mais suave.",
-        "help": "Usa SkiaGL e move a composição para uma thread separada (backend \"skiaglthreaded\"). Costuma deixar a rolagem mais suave em telas de alta taxa. É mais exigente: se esquentar ou instabilizar, volte para SkiaGL.",
+        "desc": "SkiaGL desenhando numa thread separada. Mais suave (exige reiniciar).",
+        "help": "Usa SkiaGL e move a composição para uma thread separada (backend \"skiaglthreaded\"). Costuma deixar a rolagem mais suave em telas de alta taxa. É mais exigente: se esquentar ou instabilizar, volte para SkiaGL. O backend do compositor só vale depois de reiniciar o aparelho.",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
@@ -882,8 +882,8 @@
         "id": "gpu.skiavk_threaded",
         "group": "Display & Touch",
         "label": "Renderizador: Skia Vulkan multithread",
-        "desc": "Skia Vulkan em thread separada. Máxima fluidez.",
-        "help": "Usa Skia Vulkan com a composição numa thread separada (backend \"skiavkthreaded\"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou OpenGL.",
+        "desc": "Skia Vulkan em thread separada. Máxima fluidez (exige reiniciar).",
+        "help": "Usa Skia Vulkan com a composição numa thread separada (backend \"skiavkthreaded\"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou para o Automático. O backend do compositor só vale depois de reiniciar o aparelho.",
         "argv": [
             "adb-tweaks.sh",
             "renderer",
