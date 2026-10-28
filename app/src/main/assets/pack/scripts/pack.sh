@@ -127,7 +127,7 @@ dispatch() {
         # grupos do adb-tweaks (nível 2)
         perf|perf_max|gpu|net|net_reset|latency|latency_reset|wifi|battery|battery_off|game|ff|ff_open|\
         clean|clean_scan|mem|proc_limit|dnd|dnd_off|screen|fluidez|game_tune|\
-        obscure|mobile_net|notif|window_tweaks)
+        obscure|mobile_net|notif|window_tweaks|sysbars)
             sh "$DIR/adb-tweaks.sh" "$acao" "$@" ;;
 
         *) return 1 ;;

@@ -34,6 +34,9 @@ printf ',"renderengine_backend":"%s"' "$(_clean "$(_p debug.renderengine.backend
 printf ',"force_gpu":"%s"' "$(_clean "$(_g global force_gpu_rendering)")"
 printf ',"angle_pkgs":"%s"' "$(_clean "$(_g global angle_gl_driver_selection_pkgs)")"
 printf ',"angle_vals":"%s"' "$(_clean "$(_g global angle_gl_driver_selection_values)")"
+printf ',"angle_all":"%s"' "$(_clean "$(_g global angle_gl_driver_all_angle)")"
+printf ',"game_driver_all":"%s"' "$(_clean "$(_g global game_driver_all_apps)")"
+printf ',"updatable_driver":"%s"' "$(_clean "$(_g global updatable_driver_all_apps)")"
 printf ',"touch_responsiveness":"%s"' "$(_clean "$(_g system touch_responsiveness)")"
 printf ',"long_press_timeout":"%s"' "$(_clean "$(_g system long_press_timeout)")"
 printf ',"pointer_speed":"%s"' "$(_clean "$(_g system pointer_speed)")"
@@ -49,6 +52,19 @@ printf ',"dns_host":"%s"' "$(_clean "$(_g global private_dns_specifier)")"
 _perf="$(sh_get 'dumpsys power 2>/dev/null' | grep -o 'mIsFixedPerformanceMode=[a-zA-Z]*' | head -1 | cut -d= -f2)"
 case "$_perf" in true) _perf=on ;; false) _perf=off ;; *) _perf="" ;; esac
 printf ',"fixed_perf":"%s"' "$(_clean "$_perf")"
+# barras do sistema (modo imersivo, ícones escondidos, bateria em %). O painel
+# usa isto para marcar a opção em uso de verdade, não a que foi pedida.
+_pc="$(sh_get 'settings get global policy_control')"
+case "$_pc" in
+    ""|null)            _sb="on" ;;
+    *immersive.full*)   _sb="off" ;;
+    *immersive.status*) _sb="status" ;;
+    *immersive.navigation*) _sb="nav" ;;
+    *)                  _sb="other" ;;
+esac
+printf ',"sysbars":"%s"' "$(_clean "$_sb")"
+printf ',"sysbars_icons":"%s"' "$(_clean "$(_g secure icon_blacklist)")"
+printf ',"sysbars_battery":"%s"' "$(_clean "$(_g system status_bar_show_battery_percent)")"
 # limite de processos em segundo plano (Dev Options): valor REAL, não o que o
 # pack escreveu. No Android 10+ mora em device_config, não no setting.
 printf ',"proc_limit":"%s"' "$(_clean "$(proc_limit_get)")"

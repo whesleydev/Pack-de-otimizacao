@@ -6,6 +6,20 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Corrigido
+- **A barra de navegação (a dos gestos: quadrado, bolinha, voltar) ficava
+  diferente depois de aplicar o pack.** O grupo `window_tweaks` gravava
+  `policy_control immersive.full=*`, que esconde as barras de cima e de baixo.
+  Duas falhas se somavam: (1) a reversão só reconhecia o valor que a ação tinha
+  escrito na **primeira** vez, então trocar de "imersivo" para "só a barra de
+  baixo" deixava o guard preso no valor velho e o "Reverter TUDO" não devolvia
+  nada — a barra ficava escondida de forma permanente; (2) não havia nenhuma
+  forma de ver ou controlar isso no painel. Agora existe o grupo **"Barras do
+  sistema"** (`adb-tweaks.sh sysbars`) com visíveis / esconder as duas / só a de
+  cima / só a de baixo, além dos ícones da barra de cima e do percentual de
+  bateria. O painel lê o estado **real** do aparelho (`panel-state.sh`) e marca
+  qual opção está em uso. A reversão agora reposiciona o guard a cada escrita
+  (`otm_undo_retarget` em `common.sh`), então o "Reverter TUDO" devolve as
+  barras mesmo depois de trocar de modo várias vezes.
 - **O "Limite de processos em segundo plano" finalmente pega no aparelho.** O pack
   gravava `max_cached_processes` no setting `activity_manager_constants`, mas no
   Android 10+ a plataforma lê esse valor de `device_config activity_manager
@@ -29,6 +43,15 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   reversão nenhuma e deixava as barras escondidas de forma permanente.
 
 ### Adicionado
+- **Categoria "Barras do sistema"** (Display & Touch): mostra/esconde as barras de
+  cima e de baixo, esconde só uma delas, limpa os ícones secundários da barra de
+  cima e liga o percentual de bateria. Cada opção é conferida lendo de volta e o
+  painel marca a que está em uso de verdade.
+- **Driver gráfico do sistema** (Display & Touch, por app e global):
+  `deep-tune.sh gfxdriver` com `angle_all` (ANGLE em todos os apps),
+  `gamedriver` (driver de jogo do fabricante) e `updatable` (driver atualizável:
+  produção / pré-lançamento / só no jogo escolhido). Tudo sem root, com leitura
+  de confirmação e reversão que não empilha.
 - **Card "Desfoque e transparência (efeitos visuais)"** (categoria Display &
   Touch): liga/desliga o desfoque (blur) do teclado, da barra de navegação e das
   notificações e a transparência do sistema, a qualquer momento. O painel lê o

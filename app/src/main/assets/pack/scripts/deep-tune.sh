@@ -7,6 +7,7 @@
 #
 #  Módulos:
 #     angle  [add|remove|list|reset]   ANGLE/Vulkan por jogo           ★
+#     gfxdriver [status|angle_all|gamedriver|updatable]  driver do sistema
 #     debloat[on|off]                  appops + standby buckets
 #     display[on|off]                  props HWUI/SurfaceFlinger
 #     dexopt [run|status]              recompilar apps (AOT)
@@ -209,6 +210,110 @@ m_angle() {
     esac
 }
 
+# =============================================================================
+#  MÓDULO: DRIVER GRÁFICO GLOBAL (o "motor gráfico" do aparelho todo)
+#
+#  São as opções de "Driver gráfico" das Opções de desenvolvedor, mas aqui
+#  aplicadas por script e revertidas de verdade:
+#    angle_all   -> todos os apps usam ANGLE (angle_gl_driver_all_angle)
+#    gamedriver  -> liga/desliga o driver de jogo do fabricante (game_driver_all_apps)
+#    updatable   -> driver atualizável do sistema: producao | pre (pré-lançamento)
+#  Nada disso precisa de root.
+# =============================================================================
+m_gfxdriver() {
+    acao="${1:-status}"
+
+    # gd_set <tipo> <chave> <valor> -> aplica, guarda a reversão com a tag do
+    # módulo (deep-tune tem escopo próprio) e confere no aparelho se pegou.
+    gd_set() {
+        t="$1"; k="$2"; v="$3"
+        otm_v_inc apply
+        old="$(sh_get "settings get $t $k")"
+        # guarda a reversão só na 1ª vez por chave: reaplicar (ligar/desligar)
+        # não pode empilhar backups obsoletos, senão o "Reverter TUDO" devolvia
+        # o valor que a PRÓPRIA ação tinha acabado de escrever.
+        if ! grep -qE "settings (put|delete) $t $k( |$)" "$DEEP_OFF" 2>/dev/null; then
+            if [ -n "$old" ] && [ "$old" != "null" ]; then
+                deep_add "settings put $t $k $old"
+            else
+                deep_add "settings delete $t $k"
+            fi
+        fi
+        sh_run "settings put $t $k $v" >/dev/null 2>&1
+        now="$(sh_get "settings get $t $k")"
+        if [ "$now" = "$v" ]; then
+            otm_v_inc changed
+            printf '   %bOK%b %s %s = %s\n' "$C_G" "$C_R" "$t" "$k" "$v"
+        else
+            otm_v_inc failed
+            printf '   %bX%b %s %s nao mudou (lido: %s)\n' "$C_RD" "$C_R" "$t" "$k" "${now:-vazio}"
+        fi
+    }
+
+    gd_status() {
+        say "Driver gráfico do sistema (estado real)"
+        aa="$(sh_get 'settings get global angle_gl_driver_all_angle')"
+        case "$aa" in 1) aa="ligado (todos usam ANGLE)" ;; 0) aa="desligado" ;; *) aa="padrão" ;; esac
+        printf '   ANGLE em todos os apps: %s\n' "$aa"
+        gda="$(sh_get 'settings get global game_driver_all_apps')"
+        case "$gda" in 1) gda="ligado" ;; 0) gda="desligado" ;; *) gda="padrão" ;; esac
+        printf '   driver de jogo (todos):  %s\n' "$gda"
+        upd="$(sh_get 'settings get global updatable_driver_all_apps')"
+        case "$upd" in
+            1) upd="todos os apps (pré-lançamento)" ;;
+            2) upd="só o jogo escolhido" ;;
+            0|"") upd="desligado (driver do sistema)" ;;
+            *) upd="$upd" ;;
+        esac
+        printf '   driver atualizável:      %s\n' "$upd"
+        gd0="$(sh_get 'getprop ro.gfx.driver.0')"
+        printf '   driver instalado:        %s\n' "${gd0:-(nenhum; usa o do sistema)}"
+    }
+
+    gd_angle_all() {
+        case "${1:-on}" in
+            on|1|sim)  v=1 ;;
+            off|0|nao) v=0 ;;
+            *) err "uso: gfxdriver angle_all on|off"; return 1 ;;
+        esac
+        DEEP_TAG=gfxdriver; deep_begin
+        gd_set global angle_gl_driver_all_angle "$v"
+        [ "$v" = 1 ] && say "ANGLE ligado em TODOS os apps — reabra o app/jogo" \
+                      || say "ANGLE voltou a ser por app"
+    }
+
+    gd_gamedriver() {
+        case "${1:-on}" in
+            on|1|sim)  v=1 ;;
+            off|0|nao) v=0 ;;
+            *) err "uso: gfxdriver gamedriver on|off"; return 1 ;;
+        esac
+        DEEP_TAG=gfxdriver; deep_begin
+        gd_set global game_driver_all_apps "$v"
+        [ "$v" = 1 ] && say "driver de jogo ligado em todos os apps" \
+                     || say "driver de jogo desligado"
+    }
+
+    gd_updatable() {
+        case "${1:-status}" in
+            producao|prod|0) v=0; msg="usa o driver estável do sistema" ;;
+            pre|beta|1)      v=1; msg="PRÉ-LANÇAMENTO em todos os apps" ;;
+            jogo|game|2)     v=2; msg="só no app/jogo escolhido" ;;
+            *) err "uso: gfxdriver updatable producao|pre|jogo"; return 1 ;;
+        esac
+        DEEP_TAG=gfxdriver; deep_begin
+        gd_set global updatable_driver_all_apps "$v"
+        say "driver atualizável: $msg"
+    }
+
+    case "$acao" in
+        angle_all)  gd_angle_all "$2" ;;
+        gamedriver) gd_gamedriver "$2" ;;
+        updatable)  gd_updatable "$2" ;;
+        *)          gd_status ;;
+    esac
+}
+
 m_debloat() {
     acao="${1:-status}"
 
@@ -408,6 +513,7 @@ detect() {
 mod="$1"; shift
 case "$mod" in
     angle)   m_angle "$@" ;;
+    gfxdriver) m_gfxdriver "$@" ;;
     debloat) m_debloat "$@" ;;
     display) m_display "$@" ;;
     dexopt)  m_dexopt "$@" ;;

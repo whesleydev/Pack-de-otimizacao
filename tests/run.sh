@@ -261,8 +261,71 @@ t_adv_noroot() {
     OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" list > "$TMP/adb_list" 2>&1
     assert_contains "$TMP/adb_list" "obscure" "list mostra o grupo obscure"
     assert_contains "$TMP/adb_list" "window_tweaks" "list mostra o grupo window_tweaks"
+    assert_contains "$TMP/adb_list" "sysbars" "list mostra o grupo sysbars (barras)"
     OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
     rm -rf "$HOME/.packotm"
+}
+
+t_sysbars() {
+    printf '\n  # barras do sistema: esconder/mostrar com reversão (sem root)\n'
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    # esconder as duas: escreve o policy_control imersivo
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" sysbars off >/dev/null 2>&1
+    assert_eq "immersive.full=*" "$(cat "$TMP_STORE/global.policy_control" 2>/dev/null)" \
+        "sysbars off esconde as duas barras"
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "policy_control" \
+        "sysbars guarda a reversão das barras"
+    # voltar ao padrão: apaga a chave
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" sysbars on >/dev/null 2>&1
+    [ ! -f "$TMP_STORE/global.policy_control" ] \
+        && ok "sysbars on devolve as barras (padrão)" || bad "sysbars on não limpou o policy_control"
+    # só a barra de baixo (a dos gestos: quadrado, bolinha, voltar)
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" sysbars so_nav >/dev/null 2>&1
+    assert_eq "immersive.navigation=*" "$(cat "$TMP_STORE/global.policy_control" 2>/dev/null)" \
+        "sysbars so_nav esconde só a barra de baixo"
+    # estado lido de volta pelo panel-state (marcação de "Em uso" no painel)
+    out=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/sb_out"
+    grep -q '"sysbars":"nav"' "$TMP/sb_out" && ok "state: lê a barra escondida (nav)" \
+        || bad "state: sysbars não leu 'nav'"
+    # restaurar tudo volta as barras ao padrão
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
+    [ ! -f "$TMP_STORE/global.policy_control" ] \
+        && ok "restore_all devolve as barras (padrão)" || bad "restore_all não devolveu as barras"
+    rm -rf "$HOME/.packotm"
+}
+
+t_gfxdriver() {
+    printf '\n  # driver gráfico do sistema: aplica, verifica de verdade e reverte\n'
+    rm -rf "$HOME/.packotm"
+    out=$(OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/scripts/deep-tune.sh" gfxdriver status 2>&1)
+    printf '%s\n' "$out" > "$TMP/gd_status"
+    assert_contains "$TMP/gd_status" '#OTM-RESULT tag=deep:gfxdriver' "gfxdriver status emite o resultado"
+    # ANGLE em todos os apps: aplica e confirma na leitura
+    out=$(OTM_MODE=local OTM_NO_COLOR=1 sh "$ROOT/scripts/deep-tune.sh" gfxdriver angle_all on 2>&1)
+    printf '%s\n' "$out" > "$TMP/gd_aa"
+    assert_eq "1" "$(cat "$TMP_STORE/global.angle_gl_driver_all_angle" 2>/dev/null)" \
+        "angle_all on aplica de verdade"
+    assert_contains "$TMP/gd_aa" "changed=1" "gfxdriver confirma a mudança real (changed=1)"
+    # reaplicar NÃO pode empilhar reversão (senão o restore devolvia o valor errado)
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" gfxdriver angle_all off >/dev/null 2>&1
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" gfxdriver angle_all on >/dev/null 2>&1
+    n=$(grep -c 'angle_gl_driver_all_angle' "$HOME/.packotm/deep/off.sh" 2>/dev/null)
+    assert_eq "1" "$n" "reaplicar não empilha reversão (1 linha)"
+    # restore devolve ao padrão (nada estava setado antes)
+    OTM_MODE=local sh "$ROOT/scripts/deep-tune.sh" restore >/dev/null 2>&1
+    [ ! -f "$TMP_STORE/global.angle_gl_driver_all_angle" ] \
+        && ok "gfxdriver restore devolve ao padrão" || bad "gfxdriver restore não devolveu"
+    # sem acesso real, não pode dizer que deu certo
+    mkdir -p "$TMP/bin_gd"
+    printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_gd/settings"
+    chmod +x "$TMP/bin_gd/settings"
+    out=$(TMP_STORE="$TMP/store_gd" PATH="$TMP/bin_gd:$PATH" OTM_MODE=local OTM_NO_COLOR=1 \
+        sh "$ROOT/scripts/deep-tune.sh" gfxdriver gamedriver on 2>&1)
+    printf '%s\n' "$out" > "$TMP/gd_bad"
+    assert_contains "$TMP/gd_bad" "failed=1" "gfxdriver detecta falha real (failed=1)"
+    assert_contains "$TMP/gd_bad" "ok=0" "gfxdriver não mascara sucesso sem acesso"
+    rm -rf "$TMP/bin_gd" "$TMP/store_gd" "$HOME/.packotm"
 }
 
 # deep_off já definido acima (lê o arquivo de reversão do deep-tune)
@@ -279,11 +342,15 @@ t_realverify() {
     [ "${ch:-0}" -ge 1 ] && ok "perf confirmou mudança real (changed=$ch)" \
         || bad "perf não confirmou mudança (changed=$ch)"
     assert_contains "$TMP/vout" "OK" "saída mostra OK para valores aplicados"
-    # caso 2: settings quebrado (não grava) -> verificação marca X e failed>=1
-    mkdir -p "$TMP/bin_bad"
+    # caso 2: settings quebrado (não grava) -> verificação marca X e failed>=1.
+    # Store limpo + stub que engole settings E setprop: "sem acesso real" não
+    # pode mascarar nada. (Só o settings quebrado não bastava: a prop do
+    # renderizador ainda gravava de verdade e virava um "changed" solitário.)
+    mkdir -p "$TMP/bin_bad" "$TMP/store_bad"
     printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_bad/settings"
-    chmod +x "$TMP/bin_bad/settings"
-    out2=$(PATH="$TMP/bin_bad:$PATH" OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" perf 2>&1)
+    printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_bad/setprop"
+    chmod +x "$TMP/bin_bad/settings" "$TMP/bin_bad/setprop"
+    out2=$(TMP_STORE="$TMP/store_bad" PATH="$TMP/bin_bad:$PATH" OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" perf 2>&1)
     printf '%s\n' "$out2" > "$TMP/vout2"
     res2=$(printf '%s\n' "$out2" | grep '#OTM-RESULT')
     fl=$(printf '%s' "$res2" | sed -n 's/.*failed=\([0-9]*\).*/\1/p')
@@ -1678,14 +1745,14 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 9 ] && ok "renderiza 9 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos)" \
-            || bad "grupos de escolha: $n_choice (esperado 9)"
+        [ "$n_choice" -eq 10 ] && ok "renderiza 10 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos, barras)" \
+            || bad "grupos de escolha: $n_choice (esperado 10)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
         # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
         # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
         # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
-        [ "$n_opts" -eq 34 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 2 perfil ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 34)"
+        [ "$n_opts" -eq 38 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 38)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -1750,11 +1817,15 @@ t_web() {
                  echo ((int)$v["applies"]===3 && (int)$v["changed"]===2 && (int)$v["failed"]===1) ? "PARSEOK":"PARSEBAD";' \
             > "$TMP/web_parse" 2>&1
         assert_contains "$TMP/web_parse" "PARSEOK" "otm_parse_result lê a linha #OTM-RESULT"
-        # sem acesso, aplicar algo NÃO pode dizer que deu certo
-        mkdir -p "$TMP/bin_noop"
+        # sem acesso, aplicar algo NÃO pode dizer que deu certo. Store limpo +
+        # stubs que engolem settings E setprop: se o setprop real (ou um valor
+        # velho no store) ainda aparecesse, o renderizador viraria um "changed"
+        # solitário e mascararia a falha.
+        mkdir -p "$TMP/bin_noop" "$TMP/store_noop"
         printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_noop/settings"
-        chmod +x "$TMP/bin_noop/settings"
-        PATH="$TMP/bin_noop:$PATH" OTM_MODE=local php -r 'require "'"$ROOT"'/web/lib.php";
+        printf '#!/bin/sh\nexit 0\n' > "$TMP/bin_noop/setprop"
+        chmod +x "$TMP/bin_noop/settings" "$TMP/bin_noop/setprop"
+        TMP_STORE="$TMP/store_noop" PATH="$TMP/bin_noop:$PATH" OTM_MODE=local php -r 'require "'"$ROOT"'/web/lib.php";
                  $r=otm_run("perf",[],false);
                  echo (!empty($r["applied"]) && empty($r["real"])) ? "FALHA_REAL":"MASCARADO";' \
             > "$TMP/web_real" 2>&1
@@ -2288,17 +2359,26 @@ t_no_silent_conflicts() {
         system long_press_timeout
         system multi_press_timeout
         system pointer_speed
+        system touch_slop
+        # barras do sistema: os pares visível/escondido e ligado/desligado do
+        # grupo `sysbars` são intencionais (mesma ação, dois botões)
+        global policy_control
+        system clock_seconds
+        system status_bar_show_battery_percent
     "
     python3 - "$ROOT" "$allow" <<'PYEOF' > "$TMP/conf"
 import re,sys,glob,collections,os
 root=sys.argv[1]
-allow=set(x.strip() for x in sys.argv[2].split('\n') if x.strip())
+allow=set(x.strip() for x in sys.argv[2].split('\n') if x.strip() and not x.strip().startswith('#'))
 keys=collections.defaultdict(lambda: collections.defaultdict(set))
 for f in glob.glob(os.path.join(root,'scripts','*.sh')):
     for ln,l in enumerate(open(f,encoding='utf-8',errors='ignore'),1):
         m=re.search(r'bkp_set\s+(\S+)\s+(\S+)\s+(.+?)\s*$', l)
         if not m: continue
         ns,k,v=m.group(1),m.group(2).strip('"'),m.group(3).strip()
+        # linhas dentro de um `case ... esac` terminam com ";;": nao fazem
+        # parte do valor gravado
+        v=re.sub(r'\s*;;\s*$','',v).strip()
         if ns.startswith('$'): continue
         keys[ns+' '+k][os.path.basename(f)].add(v)
 for k,d in sorted(keys.items()):
@@ -2522,6 +2602,8 @@ t_renderer_app
 t_per_module
 t_extreme
 t_adv_noroot
+t_sysbars
+t_gfxdriver
 t_realverify
 t_realverify_deep
 t_config

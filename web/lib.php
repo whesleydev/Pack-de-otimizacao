@@ -143,6 +143,12 @@ function otm_choices(): array {
             'state' => 'proc_limit',
             'risk'  => 'careful',
         ],
+        'sysbars' => [
+            'title' => 'Barras do sistema (barra de cima e de baixo)',
+            'desc'  => 'A barra de baixo é a dos gestos (quadrado, bolinha, voltar) e a de cima é a de status (relógio, bateria, ícones). O pack recomendado e as ações de desempenho desligam o desfoque e o "Janelas / modo imersivo" esconde as barras — é por isso que depois de aplicar o pack a barra de baixo pode parecer "estranha" ou sumir. Aqui você escolhe o que fica visível. O painel lê o estado real do aparelho e marca o que está em uso.',
+            'state' => 'sysbars',
+            'risk'  => 'careful',
+        ],
         'ramboost' => [
             'title' => 'Liberar RAM agora',
             'desc'  => 'Libera a memória de verdade: encerra os apps de fundo (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps. Diferente de "RAM: perfil gaming", que só muda quantos apps o sistema deixa em cache — aqui a memória é liberada na hora. O painel mostra quanto foi liberado.',
@@ -413,6 +419,39 @@ function otm_actions(): array {
               ['name' => 'driver', 'type' => 'enum', 'label' => 'Driver', 'options' => ['angle', 'native', 'default'], 'default' => 'angle'],
           ]]);
 
+    // ----- Motor gráfico do aparelho (driver do sistema) -----
+    // São as opções de "Driver gráfico" das Opções de desenvolvedor. O painel lê
+    // o estado real (angle_all / game_driver_all / updatable_driver) e marca o
+    // que está valendo — nada de mostrar a opção só porque foi tocada.
+    $add(['id' => 'gfx.angle_all_on', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: ANGLE em TODOS os apps',
+          'desc' => 'Todos os apps passam a usar ANGLE (OpenGL ES sobre Vulkan).',
+          'help' => 'Liga o ANGLE para todos os apps de uma vez, em vez de configurar um por um. Em aparelhos compatíveis, o ANGLE costuma dar mais FPS porque traduz o OpenGL para Vulkan. Se algum app ficar com gráfico estranho, volte em "ANGLE só por app".',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'angle_all', 'on']]);
+    $add(['id' => 'gfx.angle_all_off', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: ANGLE só por app',
+          'desc' => 'Devolve a escolha do driver para cada app (padrão).',
+          'help' => 'Desliga o ANGLE global e devolve a decisão ao sistema e à lista por app. Use se você notou apps com gráfico estranho depois de ligar o ANGLE em todos.',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'angle_all', 'off']]);
+    $add(['id' => 'gfx.gamedriver_on', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: driver de jogo (todos)',
+          'desc' => 'Usa o driver gráfico de jogos do fabricante em todos os apps.',
+          'help' => 'Liga o driver gráfico de jogos do fabricante (o mesmo "Driver de jogos" das Opções de desenvolvedor) para todos os apps. Alguns fabricantes entregam um driver mais novo por aqui; outros não expõem nada, e aí o ajuste não muda nada no aparelho — o painel avisa quando isso acontece.',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'gamedriver', 'on']]);
+    $add(['id' => 'gfx.gamedriver_off', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: driver de jogo off',
+          'desc' => 'Desliga o driver de jogos em todos os apps.',
+          'help' => 'Desliga o driver gráfico de jogos do fabricante. Use se o aparelho ficou instável ou esquentando depois de ligar.',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'gamedriver', 'off']]);
+    $add(['id' => 'gfx.updatable_pre', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: driver em pré-lançamento',
+          'desc' => 'Pede ao sistema o driver gráfico mais novo (pré-lançamento).',
+          'help' => 'Pede ao Android para usar o driver gráfico atualizável mais novo, em pré-lançamento (o mesmo "Driver atualizável do sistema" das Opções de desenvolvedor). Só tem efeito se o aparelho tiver um driver atualizável instalado; sem ele, nada muda e o painel informa.',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'updatable', 'pre']]);
+    $add(['id' => 'gfx.updatable_prod', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: driver do sistema',
+          'desc' => 'Volta a usar o driver gráfico estável do sistema.',
+          'help' => 'Devolve a escolha do driver atualizável para o driver estável do sistema (produção), em vez do pré-lançamento. Reverta aqui se o pré-lançamento causou travamento ou artefato.',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'updatable', 'producao']]);
+    $add(['id' => 'gfx.status', 'group' => 'Display & Touch', 'label' => 'Motor gráfico: ver estado real',
+          'desc' => 'Mostra o driver gráfico que está realmente em uso.',
+          'help' => 'Mostra, lido do aparelho: se o ANGLE está ligado em todos os apps, se o driver de jogos está ligado, qual driver atualizável está escolhido e qual driver gráfico está instalado. Só leitura — nada fictício.',
+          'argv' => ['deep-tune.sh', 'gfxdriver', 'status']]);
+
     // ----- Taxa de atualização (Hz) — escolha rápida -----
     $add(['id' => 'refresh.60', 'group' => 'Display & Touch', 'label' => '60Hz (economia)',
           'desc' => 'Trava a tela em 60Hz. Menos bateria, frametime estável.',
@@ -542,11 +581,11 @@ function otm_actions(): array {
               ['name' => 'ps', 'type' => 'int', 'label' => 'pointer speed', 'min' => -10, 'max' => 10, 'default' => 0],
               ['name' => 'slop', 'type' => 'int', 'label' => 'touch slop', 'min' => 0, 'max' => 50, 'default' => 4],
           ], 'risk' => 'careful']);
-    $add(['id' => 'ff', 'group' => 'Display & Touch', 'label' => 'Preparar e abrir o Free Fire',
+    $add(['id' => 'ff', 'group' => 'Apps e jogos', 'label' => 'Preparar e abrir o Free Fire',
           'desc' => 'Fecha apps de fundo, aplica o preset do FF e abre o jogo.',
           'help' => 'Prepara o aparelho para o Free Fire: fecha apps pesados que estavam abertos, aplica o modo de jogo e abre o FF. É o "entrar em modo partida" com um clique.',
           'argv' => ['adb-tweaks.sh', 'ff']]);
-    $add(['id' => 'game_mode', 'group' => 'Display & Touch', 'label' => 'Ligar Game Mode',
+    $add(['id' => 'game_mode', 'group' => 'Apps e jogos', 'label' => 'Ligar Game Mode',
           'desc' => 'Ativa o modo de jogo do sistema.',
           'help' => 'Liga o modo de jogo do Android, que dá prioridade ao jogo em execução e segura interrupções. Vale para todos os jogos.',
           'argv' => ['adb-tweaks.sh', 'game']]);
@@ -732,9 +771,55 @@ function otm_actions(): array {
           'help' => 'Mostra, lido do aparelho, se o desfoque (blur) e a transparência do sistema estão ligados ou desligados agora. Só leitura.',
           'argv' => ['adb-tweaks.sh', 'effects', 'status']]);
 
-    $add(['id' => 'adv.window', 'group' => 'Display & Touch', 'label' => 'Janelas / modo imersivo',
-          'desc' => 'Transições mais curtas e modo imersivo (esconde barras).',
-          'help' => 'Reduz as animações de janela e ativa o modo imersivo, escondendo as barras de status/navegação. Mais tela e menos distração no jogo.',
+    // ----- Barras do sistema (barra de cima e de baixo) -----
+    // O pack recomendado e as ações de desempenho mexem em coisas que mudam a
+    // cara da barra de baixo (o desfoque) e o "Janelas / modo imersivo" esconde
+    // as barras. Sem este grupo, o usuário não tinha como devolver a barra de
+    // baixo ao normal sem editar settings na mão.
+    $add(['id' => 'sysbars.on', 'group' => 'Display & Touch', 'label' => 'Barras: VISÍVEIS (padrão)',
+          'desc' => 'Devolve a barra de cima e a de baixo (quadrado/bolinha).',
+          'help' => 'Desliga o modo imersivo e devolve as duas barras do sistema. Use se a barra de baixo (quadrado, bolinha, voltar) sumiu ou ficou estranha depois de aplicar o pack. O painel lê o estado real do aparelho e marca o que está em uso.',
+          'choice' => 'sysbars', 'option' => 'Visíveis (padrão)', 'state_value' => 'on',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'on']]);
+    $add(['id' => 'sysbars.off', 'group' => 'Display & Touch', 'label' => 'Barras: esconder as DUAS (imersivo)',
+          'desc' => 'Esconde a barra de cima e a de baixo: mais tela no jogo.',
+          'help' => 'Ativa o modo imersivo: esconde a barra de status (relógio, bateria) e a barra de navegação. Sobra tela para o jogo. Deslize de baixo para cima ou de cima para baixo para elas aparecerem na hora. Reverta em "Barras: VISÍVEIS".',
+          'choice' => 'sysbars', 'option' => 'Esconder as duas', 'state_value' => 'off',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'off']]);
+    $add(['id' => 'sysbars.nav', 'group' => 'Display & Touch', 'label' => 'Barras: esconder só a de BAIXO',
+          'desc' => 'Esconde só a barra de navegação (quadrado/bolinha).',
+          'help' => 'Esconde apenas a barra de navegação, mantendo o relógio e a bateria à vista. Útil quando a barra de baixo atrapalha o jogo, mas você ainda quer ver as notificações.',
+          'choice' => 'sysbars', 'option' => 'Só a de baixo', 'state_value' => 'nav',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'so_nav']]);
+    $add(['id' => 'sysbars.status', 'group' => 'Display & Touch', 'label' => 'Barras: esconder só a de CIMA',
+          'desc' => 'Esconde só a barra de status (relógio/bateria).',
+          'help' => 'Esconde apenas a barra de cima (relógio, bateria, ícones), mantendo a navegação. Deixa a tela mais limpa sem tirar os botões de voltar.',
+          'choice' => 'sysbars', 'option' => 'Só a de cima', 'state_value' => 'status',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'so_status']]);
+    $add(['id' => 'sysbars.status_show', 'group' => 'Display & Touch', 'label' => 'Barras: ver estado',
+          'desc' => 'Mostra, lido do aparelho, o que está escondido agora.',
+          'help' => 'Mostra o estado real das barras: se estão visíveis, se o modo imersivo está ligado, quais ícones estão escondidos e se a bateria aparece em porcentagem. Só leitura.',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'status']]);
+    $add(['id' => 'sysbars.icons_clean', 'group' => 'Display & Touch', 'label' => 'Barra de cima: esconder ícones extras',
+          'desc' => 'Tira rotação, fone, volume e alarme da barra de status.',
+          'help' => 'Esconde os ícones secundários da barra de cima (rotação automática, fone, volume, alarme), deixando só o essencial: relógio, bateria, sinal e notificações. Reverta em "Barra de cima: mostrar todos os ícones".',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'clean']]);
+    $add(['id' => 'sysbars.icons_all', 'group' => 'Display & Touch', 'label' => 'Barra de cima: mostrar todos os ícones',
+          'desc' => 'Devolve todos os ícones da barra de status.',
+          'help' => 'Remove a lista de ícones escondidos da barra de cima, devolvendo todos os indicadores (rotação, fone, volume, alarme).',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'icons', 'none']]);
+    $add(['id' => 'sysbars.battery_pct', 'group' => 'Display & Touch', 'label' => 'Barra de cima: bateria em %',
+          'desc' => 'Mostra o número da bateria ao lado do ícone.',
+          'help' => 'Mostra a porcentagem da bateria na barra de status. Útil para saber quanto resta sem abrir as configurações.',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'battery', 'on']]);
+    $add(['id' => 'sysbars.battery_off', 'group' => 'Display & Touch', 'label' => 'Barra de cima: bateria só ícone',
+          'desc' => 'Volta a mostrar só o ícone da bateria.',
+          'help' => 'Esconde o número da porcentagem da bateria, deixando só o ícone. Reverta em "Barra de cima: bateria em %".',
+          'argv' => ['adb-tweaks.sh', 'sysbars', 'battery', 'off']]);
+
+    $add(['id' => 'adv.window', 'group' => 'Display & Touch', 'label' => 'Janelas / transições rápidas',
+          'desc' => 'Transições mais curtas e o modo imersivo ligado.',
+          'help' => 'Reduz as animações de janela e liga o modo imersivo (esconde as duas barras). Mais tela e menos distração no jogo. Se a barra de baixo sumir e você quiser ela de volta, use "Barras: VISÍVEIS (padrão)" — as duas ações ficam no mesmo lugar.',
           'argv' => ['adb-tweaks.sh', 'window_tweaks']]);
 
 

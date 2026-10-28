@@ -1684,6 +1684,12 @@ function applyState(){
     const key = card.dataset.stateKey || "";
     const bkey = card.dataset.stateBackend || "";
     const isTouch = card.dataset.choice === "touchprofile";
+    // backends "multithread" declarados neste card. Uma opção SEM backend
+    // (ex.: "SkiaGL") não pode ficar "Em uso" quando o backend real é um dos
+    // multithread — senão "SkiaGL" e "SkiaGL multithread" acendiam juntas.
+    const mtBackends = Array.from(card.querySelectorAll(".opt[data-state-backend-value]"))
+      .map(o => String(o.dataset.stateBackendValue).toLowerCase());
+    const curBackend = String(STATE[bkey] || "").toLowerCase();
     let active = null;
     card.querySelectorAll(".opt").forEach(o => {
       let on = false;
@@ -1691,7 +1697,9 @@ function applyState(){
         on = String(STATE[key]).toLowerCase() === o.dataset.stateValue.toLowerCase();
         // "multithread" compartilha o mesmo hwui.renderer; o backend desempata
         if (on && o.dataset.stateBackendValue){
-          on = String(STATE[bkey] || "").toLowerCase() === o.dataset.stateBackendValue.toLowerCase();
+          on = curBackend === String(o.dataset.stateBackendValue).toLowerCase();
+        } else if (on && !o.dataset.stateBackendValue && mtBackends.length){
+          on = !mtBackends.includes(curBackend);
         }
       } else if (o.dataset.stateMatch){
         const want = o.dataset.stateMatch.split(":")[1].split(",");
@@ -1712,6 +1720,20 @@ function applyState(){
       txt = "Em uso agora: " + (active || STATE.renderer)
         + (STATE.renderengine_backend ? " (" + STATE.renderengine_backend + ")" : "")
         + (String(STATE.force_gpu) === "1" ? " · GPU forçada" : "");
+      const aa = String(STATE.angle_all || ""), gda = String(STATE.game_driver_all || "");
+      const ud = String(STATE.updatable_driver || "");
+      const extras = [];
+      if (aa === "1") extras.push("ANGLE em todos os apps");
+      if (gda === "1") extras.push("driver de jogo ligado");
+      if (ud === "1") extras.push("driver pré-lançamento");
+      else if (ud === "2") extras.push("driver pré-lançamento só no jogo");
+      if (extras.length) txt += " · " + extras.join(" · ");
+    } else if (key === "sysbars" && STATE.sysbars){
+      const icons = String(STATE.sysbars_icons || "");
+      const bat = String(STATE.sysbars_battery || "");
+      txt = "No aparelho: " + (active || STATE.sysbars)
+        + (icons ? " · ícones escondidos: " + icons : "")
+        + (bat === "1" ? " · bateria em %" : "");
     } else if (key === "dns_host" && STATE.dns_host){
       txt = "Em uso agora: " + (active || STATE.dns_host);
     } else if (key === "blur" && STATE.blur){

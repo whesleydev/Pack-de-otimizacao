@@ -236,6 +236,22 @@ otm_v_report() {
 }
 
 
+# otm_undo_retarget <tipo> <chave> <novo_guard> -> atualiza a CONDIÇÃO da
+# reversão já registrada para esta chave, sem trocar o alvo (o valor original).
+# A reversão é 1 por chave e o guard nasce com o 1º valor escrito. Se a MESMA
+# ação escrever a chave de novo com outro valor (ex.: barras do sistema trocando
+# de "imersivo" para "só a de baixo"), o guard antigo ficava preso no valor
+# velho e o "Reverter TUDO" não devolvia nada (a barra ficava escondida).
+otm_undo_retarget() {
+    t="$1"; k="$2"; v="$3"
+    [ -s "$OFF_SH" ] || return 0
+    awk -v t="$t" -v k="$k" -v v="$v" '
+        $0 ~ ("settings (put|delete) " t " " k "( |$)") {
+            sub(/= "[^"]*"/, "= \"" v "\"")
+        }
+        { print }' "$OFF_SH" > "$OFF_SH.tmp" && mv "$OFF_SH.tmp" "$OFF_SH"
+}
+
 # bkp_set <tipo> <chave> <novo_valor> -> aplica e guarda o valor antigo
 bkp_set() {
     t="$1"; k="$2"; v="$3"
@@ -259,6 +275,10 @@ bkp_set() {
             printf '[ "$(settings get %s %s)" = "%s" ] && settings put %s %s %s\n' \
                 "$t" "$k" "$v" "$t" "$k" "$orig" >> "$OFF_SH"
         fi
+    else
+        # já havia reversão para esta chave: só move o guard para o valor atual,
+        # para o "desfazer" ainda reconhecer o que esta ação acabou de escrever
+        otm_undo_retarget "$t" "$k" "$v"
     fi
     sh_run "settings put $t $k $v" >/dev/null
     now=$(sh_get "settings get $t $k")
@@ -274,8 +294,13 @@ bkp_set() {
 prop_set() {
     p="$1"; v="$2"
     otm_v_inc apply
+    bkp_begin
     old=$(sh_get "getprop $p")
-    if [ -n "$old" ]; then bkp_raw "setprop $p $old"; else bkp_raw "setprop $p ''"; fi
+    # guarda a reversão só na 1ª vez por prop: reaplicar não pode empilhar backups
+    # obsoletos (sem isso, "renderer opengl" depois de "skiagl" restaurava o skiagl).
+    if ! grep -qE "setprop $p( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -n "$old" ]; then bkp_raw "setprop $p $old"; else bkp_raw "setprop $p ''"; fi
+    fi
     sh_run "setprop $p $v" >/dev/null
     now=$(sh_get "getprop $p")
     if [ "$now" = "$v" ]; then
@@ -287,8 +312,63 @@ prop_set() {
     fi
 }
 
+# prop_clear <prop> -> apaga o prop (setprop ''), com reversão
+prop_clear() {
+    p="$1"
+    otm_v_inc apply
+    bkp_begin
+    old=$(sh_get "getprop $p")
+    if ! grep -qE "setprop $p( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -n "$old" ]; then bkp_raw "setprop $p $old"; else bkp_raw "setprop $p ''"; fi
+    fi
+    sh_run "setprop $p ''" >/dev/null
+    now=$(sh_get "getprop $p")
+    if [ -z "$now" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b prop %s = (vazio)\n' "$C_G" "$C_R" "$p"
+    else
+        otm_v_inc failed
+        printf '   %bX%b prop %s nao limpou (lido: %s)\n' "$C_RD" "$C_R" "$p" "$now"
+    fi
+}
+
 # bkp_raw "comando de reversão" -> só registra para o restore
 bkp_raw() { echo "$1" >> "$OFF_SH"; }
+
+# bkp_del <tipo> <chave> -> APAGA a chave (settings delete) com reversão.
+# Diferente de bkp_set com valor vazio: `settings put <t> <k> ` não remove a
+# chave e em muitos aparelhos dá erro; o delete devolve o padrão de fábrica.
+bkp_del() {
+    t="$1"; k="$2"
+    otm_v_inc apply
+    old=$(sh_get "settings get $t $k")
+    orig="$(orig_get "$t" "$k")"
+    if [ "$orig" = "__NONE__" ]; then
+        [ -z "$old" ] || [ "$old" = "null" ] && orig="" || orig="$old"
+        orig_set "$t" "$k" "$orig"
+    fi
+    if ! grep -qE "settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -z "$orig" ]; then
+            printf 'settings delete %s %s\n' "$t" "$k" >> "$OFF_SH"
+        else
+            printf '[ "$(settings get %s %s)" = "null" ] && settings put %s %s %s\n' \
+                "$t" "$k" "$t" "$k" "$orig" >> "$OFF_SH"
+        fi
+    else
+        # já havia reversão: depois do delete o valor é nulo, então o guard da
+        # linha existente tem de casar com "null" (senão o restore não devolvia)
+        otm_undo_retarget "$t" "$k" null
+    fi
+    sh_run "settings delete $t $k" >/dev/null
+    now=$(sh_get "settings get $t $k")
+    if [ -z "$now" ] || [ "$now" = "null" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b %s %s apagado (padrão)\n' "$C_G" "$C_R" "$t" "$k"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s %s nao apagou (lido: %s)\n' "$C_RD" "$C_R" "$t" "$k" "$now"
+    fi
+}
 
 # --- ActivityManager constants ------------------------------------------------
 # am_constants_merge <k=v> [k=v...] -> string de activity_manager_constants com as

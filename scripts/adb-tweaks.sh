@@ -34,7 +34,7 @@ perf() {
     bkp_set global force_gpu_rendering 1
     bkp_set global disable_window_blurs 1
     bkp_set global accessibility_reduce_transparency 1
-    sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
+    prop_set debug.hwui.renderer skiagl
     say "animações 0.5x, GPU forçada, blur off"
 }
 
@@ -47,7 +47,7 @@ perf_max() {
     bkp_set global force_gpu_rendering 1
     bkp_set global disable_window_blurs 1
     bkp_set global accessibility_reduce_transparency 1
-    sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
+    prop_set debug.hwui.renderer skiagl
     say "pronto"
 }
 
@@ -59,14 +59,9 @@ gpu() {
     bkp_set global disable_window_blurs 1
     bkp_set global accessibility_reduce_transparency 1
     bkp_set global game_driver_all_apps 1
-    # debug.hwui.renderer é uma *prop* (não um setting): guarda o valor antigo e aplica
-    old=$(sh_get "getprop debug.hwui.renderer")
-    if [ -n "$old" ]; then
-        bkp_raw "setprop debug.hwui.renderer '$old'"
-    else
-        bkp_raw "setprop debug.hwui.renderer ''"
-    fi
-    sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
+    # debug.hwui.renderer é uma *prop* (não um setting): prop_set guarda o valor
+    # antigo (uma vez só) e confere no aparelho se o novo pegou de verdade.
+    prop_set debug.hwui.renderer skiagl
     say "renderização otimizada"
 }
 
@@ -74,42 +69,32 @@ gpu() {
 # Cada modo grava o valor antigo dos props, então dá para reverter (Reverter TUDO).
 renderer() {
     mode="${1:-}"
-    # só guarda a 1ª vez: reaplicar não pode empilhar backups obsoletos
-    if [ ! -f "$MARK" ]; then
-        bkp_begin
-        for prop in debug.hwui.renderer debug.renderengine.backend; do
-            old=$(sh_get "getprop $prop")
-            if [ -n "$old" ]; then
-                bkp_raw "setprop $prop '$old'"
-            else
-                bkp_raw "setprop $prop ''"
-            fi
-        done
-    fi
+    # o backend só deve ficar setado nos modos "multithread"; nos demais ele
+    # precisa voltar ao padrão, senão trocar de "multithread" para "SkiaGL"
+    # deixava o backend antigo valendo (a tela continuava em multithread).
     case "$mode" in
-        opengl)
-            sh_run "setprop debug.hwui.renderer opengl" >/dev/null
-            say "renderizador: OpenGL (padrão, mais compatível)" ;;
-        skiagl)
-            sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
-            sh_run "setprop debug.renderengine.backend skiagl" >/dev/null
-            say "renderizador: SkiaGL (equilíbrio)" ;;
-        skiavk)
-            sh_run "setprop debug.hwui.renderer skiavk" >/dev/null
-            sh_run "setprop debug.renderengine.backend skiavk" >/dev/null
-            say "renderizador: Skia Vulkan (fluidez)" ;;
-        skiagl-threaded)
-            sh_run "setprop debug.hwui.renderer skiagl" >/dev/null
-            sh_run "setprop debug.renderengine.backend skiaglthreaded" >/dev/null
-            say "renderizador: SkiaGL multithread" ;;
-        skiavk-threaded)
-            sh_run "setprop debug.hwui.renderer skiavk" >/dev/null
-            sh_run "setprop debug.renderengine.backend skiavkthreaded" >/dev/null
-            say "renderizador: Skia Vulkan multithread" ;;
+        opengl)          r_prop="opengl"; b_prop="" ;;
+        skiagl)          r_prop="skiagl"; b_prop="skiagl" ;;
+        skiavk)          r_prop="skiavk"; b_prop="skiavk" ;;
+        skiagl-threaded) r_prop="skiagl"; b_prop="skiaglthreaded" ;;
+        skiavk-threaded) r_prop="skiavk"; b_prop="skiavkthreaded" ;;
         *)
             err "uso: renderer opengl|skiagl|skiavk|skiagl-threaded|skiavk-threaded"
             return 1 ;;
     esac
+    bkp_begin
+    prop_set debug.hwui.renderer "$r_prop"
+    if [ -n "$b_prop" ]; then
+        prop_set debug.renderengine.backend "$b_prop"
+    else
+        prop_clear debug.renderengine.backend
+    fi
+    say "renderizador: $r_prop${b_prop:+ (backend $b_prop)}"
+    # confere no aparelho o que está valendo de verdade e avisa se não pegou
+    _r=$(sh_get "getprop debug.hwui.renderer")
+    _b=$(sh_get "getprop debug.renderengine.backend")
+    printf '   %sno aparelho agora:%s renderer=%s%s\n' \
+        "$C_A" "$C_R" "${_r:-opengl (padrão)}" "${_b:+ · backend=$_b}"
     printf '  %sreverter:%s sh scripts/pack.sh restore\n' "$C_A" "$C_R"
 }
 
@@ -554,8 +539,8 @@ fluidez() {
     bkp_set system multi_press_timeout 0
     bkp_set system peak_refresh_rate "$hz"
     bkp_set system min_refresh_rate "$hz"
-    sh_run "settings put system touch_responsiveness 110" >/dev/null
-    sh_run "settings put system touch_slop 4" >/dev/null
+    bkp_set system touch_responsiveness 110
+    bkp_set system touch_slop 4
     # blur/transparência: entram na reversão (com sh_run o "Reverter TUDO" não
     # devolvia o desfoque do teclado/barra — foi o que o usuário notou)
     bkp_set global disable_window_blurs 1
@@ -789,6 +774,101 @@ effects() {
     esac
 }
 
+# --- barras do sistema (barra de cima e barra de baixo) ------------------------
+# A barra de baixo (a dos gestos: quadrado, bolinha, voltar) e a de cima
+# (status: relógio, bateria, ícones) são desenhadas pelo SystemUI. O que o pack
+# mexe aqui:
+#   · policy_control  -> modo imersivo: esconde as barras (é o que fazia a barra
+#                        de baixo "sumir" depois de aplicar o pack recomendado)
+#   · icon_blacklist  -> esconde ícones da barra de cima (secure)
+#   · status_bar_show_battery_percent / clock_seconds -> percentual e segundos
+# Tudo com bkp_set, então o "Reverter TUDO" devolve como estava.
+sysbars() {
+    acao="${1:-show}"
+    # policy_control: ausente/"null" = barras visíveis (padrão do Android);
+    # immersive.status/navigation/full esconde a barra de cima, a de baixo ou as duas.
+    _sb_policy() {
+        case "$1" in
+            off|normal|visiveis) bkp_del global policy_control ;;
+            status)              bkp_set global policy_control "immersive.status=*" ;;
+            nav|navegacao)       bkp_set global policy_control "immersive.navigation=*" ;;
+            full|tudo|imersivo)  bkp_set global policy_control "immersive.full=*" ;;
+            *) err "policy inválida: $1"; return 1 ;;
+        esac
+    }
+    # icon_blacklist: lista de ícones separada por vírgula. Vazio = nenhum.
+    _sb_icons() {
+        if [ -z "$1" ]; then bkp_del secure icon_blacklist; else bkp_set secure icon_blacklist "$1"; fi
+    }
+    case "$acao" in
+        on|visiveis|normal)
+            bkp_begin
+            say "Barras do sistema: VISÍVEIS (padrão)"
+            _sb_policy off
+            say "barra de cima e de baixo de volta"
+            ;;
+        off|full|imersivo)
+            bkp_begin
+            say "Barras do sistema: ESCONDER AS DUAS (modo imersivo)"
+            _sb_policy full
+            say "mais tela no jogo; deslize de baixo/cima para elas aparecerem"
+            ;;
+        so_status)
+            bkp_begin
+            say "Barras do sistema: esconder só a de CIMA"
+            _sb_policy status
+            ;;
+        so_nav)
+            bkp_begin
+            say "Barras do sistema: esconder só a de BAIXO"
+            _sb_policy nav
+            ;;
+        icons|icones)
+            # icons "<lista>" | icons none
+            l="${2:-}"
+            { [ "$l" = "none" ] || [ "$l" = "nenhum" ]; } && l=""
+            bkp_begin
+            say "Ícones da barra de cima: ${l:-(nenhum escondido)}"
+            _sb_icons "$l"
+            ;;
+        clean|limpa)
+            bkp_begin
+            say "Barra de cima: esconder ícones secundários"
+            _sb_icons "rotate,headset,volume,alarm_clock"
+            ;;
+        battery|bateria)
+            bkp_begin
+            case "${2:-on}" in
+                on|1|sim)  bkp_set system status_bar_show_battery_percent 1 ;;
+                off|0|nao) bkp_set system status_bar_show_battery_percent 0 ;;
+                *) err "uso: sysbars battery on|off"; return 1 ;;
+            esac
+            ;;
+        clock|relogio)
+            bkp_begin
+            case "${2:-off}" in
+                on|1|sim)  bkp_set system clock_seconds 1 ;;
+                off|0|nao) bkp_set system clock_seconds 0 ;;
+                *) err "uso: sysbars clock on|off"; return 1 ;;
+            esac
+            ;;
+        *)
+            say "Barras do sistema (estado real)"
+            pc="$(sh_get 'settings get global policy_control')"
+            case "$pc" in
+                ""|null) pc="visíveis (padrão)" ;;
+            esac
+            printf '   barras:            %s\n' "$pc"
+            bl="$(sh_get 'settings get secure icon_blacklist')"
+            { [ -z "$bl" ] || [ "$bl" = "null" ]; } && bl="(nenhum escondido)"
+            printf '   ícones escondidos: %s\n' "$bl"
+            bp="$(sh_get 'settings get system status_bar_show_battery_percent')"
+            case "$bp" in 1) bp="ligado" ;; 0) bp="desligado" ;; *) bp="não exposto" ;; esac
+            printf '   bateria em %%:      %s\n' "$bp"
+            ;;
+    esac
+}
+
 # --- janela / transições (sem root) -------------------------------------------
 # Além das animações: desliga "rotação lenta" e transições de tema escuro.
 window_tweaks() {
@@ -890,7 +970,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
+GRUPOS="perf perf_max gpu renderer net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
