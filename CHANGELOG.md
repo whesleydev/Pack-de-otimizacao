@@ -43,6 +43,16 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   reversão nenhuma e deixava as barras escondidas de forma permanente.
 
 ### Adicionado
+- **Painel flutuante sobre o jogo (overlay).** Uma janela arrastável que fica por
+  cima do Free Fire/CODM/etc., sem precisar fechar a partida: mostra a sensi
+  calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o
+  tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot,
+  Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Abre pelo card
+  "Painel flutuante sobre o jogo" (Sensi e mira) ou pelo botão "Flutuante" no
+  cabeçalho; toque de novo para desligar. Na primeira vez o Android pede a
+  permissão "aparecer por cima de outros apps". É um serviço em primeiro plano
+  (`TYPE_APPLICATION_OVERLAY`), usa o mesmo executor de scripts do painel
+  (`OtmExec`) e não pede permissão sozinho: aproveita a conexão já feita no app.
 - **Categoria "Barras do sistema"** (Display & Touch): mostra/esconde as barras de
   cima e de baixo, esconde só uma delas, limpa os ícones secundários da barra de
   cima e liga o percentual de bateria. Cada opção é conferida lendo de volta e o

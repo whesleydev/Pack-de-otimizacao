@@ -49,6 +49,7 @@ class PackBridge(
     private val context: Context,
     private val runnerProvider: () -> ShellRunner?,
     private val onConnect: () -> Unit,
+    private val onOverlay: () -> Unit,
     private val onSoundSet: (Boolean) -> Boolean,
     private val onLogin: () -> Unit,
     private val onLoginFail: () -> Unit,
@@ -86,6 +87,7 @@ class PackBridge(
                         okJson()
                     }
                     "connect" -> { withContext(Dispatchers.Main) { onConnect() }; okJson() }
+                    "overlay" -> { withContext(Dispatchers.Main) { onOverlay() }; okJson() }
                     "login" -> { withContext(Dispatchers.Main) { onLogin() }; okJson() }
                     "login_fail" -> { withContext(Dispatchers.Main) { onLoginFail() }; okJson() }
                     "sound" -> {
@@ -403,35 +405,12 @@ class PackBridge(
         JSONObject().put("ok", true).put("text", output(cmd)).toString()
 
     /** Monta `sh <execDir>/scripts/<script> <args>` com HOME na pasta de execução. */
-    private fun scriptCommand(script: String, args: List<String>): String {
-        val dir = execDir()
-        if (dir == null) return "echo 'sem acesso (conecte o Shizuku ou o ADB)' >&2; exit 1"
-        val sb = StringBuilder()
-        sb.append("export HOME='").append(dir).append("'; ")
-        sb.append("cd '").append(dir).append("'; ")
-        sb.append("sh '").append(dir).append("/scripts/").append(script).append('\'')
-        for (a in args) sb.append(" '").append(a.replace("'", "'\\''")).append('\'')
-        return sb.toString()
-    }
-
-    /**
-     * Pasta de execução visível ao usuário `shell` (Shizuku/ADB): `/data/local/tmp`.
-     * O `filesDir` do app (modo 0700) é ilegível para o shell, então os scripts
-     * precisam morar aqui. Devolve null quando não há runner conectado.
-     */
-    private fun execDir(): String? = PackAssets.ensureShellCopy(context, runnerProvider())
+    private fun scriptCommand(script: String, args: List<String>): String =
+        OtmExec.scriptCommand(context, runnerProvider(), script, args)
 
     private fun packDir(): File = PackAssets.ensureExtracted(context)
 
-    private fun parseResult(out: String): Map<String, String> {
-        val m = Regex("#OTM-RESULT\\b(.*)$", RegexOption.MULTILINE).find(out) ?: return emptyMap()
-        val kv = HashMap<String, String>()
-        for (tok in m.groupValues[1].trim().split(Regex("\\s+"))) {
-            val i = tok.indexOf('=')
-            if (i > 0) kv[tok.substring(0, i)] = tok.substring(i + 1)
-        }
-        return kv
-    }
+    private fun parseResult(out: String): Map<String, String> = OtmExec.parseResult(out)
 
     private fun validate(p: Param, v: String): String? {
         when (p.type) {

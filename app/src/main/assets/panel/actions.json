@@ -792,6 +792,18 @@
         "risk": "safe"
     },
     {
+        "id": "overlay.sensi",
+        "group": "Sensi e mira",
+        "label": "Painel flutuante sobre o jogo",
+        "desc": "Mostra a sensi e os perfis de toque por cima do jogo, sem sair da partida.",
+        "help": "Abre o painel flutuante: uma janela arrastável que fica por cima do jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Assim você confere e troca o ajuste sem fechar o jogo. Na primeira vez o Android pede a permissão \"aparecer por cima de outros apps\". Toque de novo no botão para desligar.",
+        "argv": [],
+        "ui": "overlay",
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "sensi.calc",
         "group": "Sensi e mira",
         "label": "Gerar sensi do meu aparelho",

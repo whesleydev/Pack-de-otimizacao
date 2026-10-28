@@ -48,6 +48,7 @@ class PanelActivity : AppCompatActivity() {
         // Se o Shizuku já está autorizado, conecta direto e esconde a capa.
         if (shizuku.isAvailable() && shizuku.hasPermission()) {
             runner = shizuku
+            OtmRunner.current = shizuku
             overlay.visibility = View.GONE
         }
 
@@ -105,6 +106,12 @@ class PanelActivity : AppCompatActivity() {
             (function(){
               var t = document.querySelector('header');
               if (!t) return;
+              if (document.getElementById('otmFloat')) return;
+              var f = document.createElement('button');
+              f.className = 'iconbtn'; f.id = 'otmFloat'; f.title = 'Painel flutuante (sobre o jogo)';
+              f.textContent = 'Flutuante';
+              f.onclick = function(){ window.OTM.call('overlay','','c'); };
+              t.appendChild(f);
               if (document.getElementById('otmConnect')) return;
               var b = document.createElement('button');
               b.className = 'iconbtn'; b.id = 'otmConnect'; b.title = 'Conectar (Shizuku/ADB)';
@@ -120,6 +127,7 @@ class PanelActivity : AppCompatActivity() {
         context = applicationContext,
         runnerProvider = { runner },
         onConnect = { askConnect() },
+        onOverlay = { askOverlay() },
         onSoundSet = { on ->
             sound.muted = !on
             if (on) sound.play("ativando.mp3")
@@ -143,6 +151,50 @@ class PanelActivity : AppCompatActivity() {
         },
     )
 
+    // ---- painel flutuante (overlay) ------------------------------------------
+
+    /**
+     * Liga/desliga o painel flutuante. Sem a permissão de sobreposição, manda o
+     * usuário para a tela do sistema que libera "aparecer por cima de outros
+     * apps" — é o único jeito de o Android deixar o painel ficar sobre o jogo.
+     */
+    private fun askOverlay() {
+        if (OverlayService.canDraw(this)) {
+            if (overlayRunning) {
+                OverlayService.stop(this)
+                overlayRunning = false
+                toast("Painel flutuante desligado.")
+            } else {
+                OverlayService.start(this)
+                overlayRunning = true
+                toast("Painel flutuante ligado — ele fica sobre o jogo.")
+            }
+            return
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Painel flutuante")
+            .setMessage(
+                "Para o painel aparecer por cima do jogo, o Android precisa da permissão " +
+                    "\"aparecer por cima de outros apps\". Abra a tela, ligue a opção e volte aqui."
+            )
+            .setPositiveButton("Abrir") { _, _ ->
+                try {
+                    startActivity(
+                        Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:$packageName"),
+                        )
+                    )
+                } catch (_: Throwable) {
+                    toast("Não consegui abrir as permissões.")
+                }
+            }
+            .setNegativeButton("Agora não", null)
+            .show()
+    }
+
+    private var overlayRunning = false
+
     // ---- conexão (Shizuku / ADB) ---------------------------------------------
 
     private fun askConnect() {
@@ -161,6 +213,7 @@ class PanelActivity : AppCompatActivity() {
                         Permissions.askMdns(this)
                         WifiDialog.show(this, applicationContext) { r, msg ->
                             runner = r
+                            OtmRunner.current = r
                             toast(msg)
                             sound.play("pareamento_feito_com_sucesso.mp3")
                             pendingAfterConnect?.invoke(); pendingAfterConnect = null
@@ -185,6 +238,7 @@ class PanelActivity : AppCompatActivity() {
             val r = adb.connectLocal()
             if (r.ok) {
                 runner = adb
+                OtmRunner.current = adb
                 toast(r.stdout.ifBlank { "Conectado." })
                 sound.play("pareamento_feito_com_sucesso.mp3")
                 pendingAfterConnect?.invoke(); pendingAfterConnect = null
@@ -214,6 +268,7 @@ class PanelActivity : AppCompatActivity() {
 
     private fun activateShizuku() {
         runner = shizuku
+        OtmRunner.current = shizuku
         toast("Shizuku conectado.")
         sound.play("pareamento_feito_com_sucesso.mp3")
         pendingAfterConnect?.invoke()

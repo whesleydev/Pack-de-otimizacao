@@ -1565,6 +1565,7 @@ async function doRun(a, params, confirmed, btn){
   if (a.id === "appearance"){ syncGear(); $("#gearMask").classList.add("open"); return; }
   if (a.id === "profile.custom"){ openCustomProfile(); return; }
   if (a.id === "profile.custom.apply"){ return applyCustomProfile(a, btn); }
+  if (a.ui === "overlay"){ toast("Painel flutuante: use o app no celular (fica sobre o jogo).", "bad"); return; }
   setBusy(true, btn);
   openConsole(a.label, "executando…");
   try{

@@ -17,6 +17,10 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Painel flutuante: janela sobre o jogo (TYPE_APPLICATION_OVERLAY). O
+         usuário precisa liberar "aparecer por cima de outros apps". -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Acesso a dados de uso: o Android exige que o usuário libere em
          Configurações. Com isso o painel lê o app em primeiro plano e o tempo
          de uso direto do sistema, sem depender de shell. -->
@@ -41,6 +45,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Painel flutuante (overlay) para usar durante o jogo: a sensi, os
+             perfis de toque e atalhos de latência/RAM por cima do jogo. -->
+        <service
+            android:name=".OverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="painel flutuante de otimização sobre o jogo" />
+        </service>
 
         <!-- Provedor do Shizuku: usado para checar se o app está instalado e
              receber o binder do serviço. A permissão é do próprio Shizuku. -->

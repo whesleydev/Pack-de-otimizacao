@@ -582,15 +582,17 @@ t_app_exec() {
     grep -q 'ensureShellCopy' "$src/PackAssets.kt" \
         && ok "PackAssets copia p/ o shell" || bad "sem ensureShellCopy"
     # o bridge monta o comando a partir da pasta visível ao shell
-    grep -q 'execDir()' "$src/PackBridge.kt" \
+    grep -q 'OtmExec.scriptCommand' "$src/PackBridge.kt" \
         && ok "PackBridge usa a pasta de execução" || bad "PackBridge ainda usa filesDir"
     # o comando de execução não pode apontar para o filesDir do app (0700)
-    awk '/private fun scriptCommand/,/^    }/' "$src/PackBridge.kt" > "$TMP/scmd"
+    awk '/fun scriptCommand/,/^    }/' "$src/OtmExec.kt" > "$TMP/scmd"
     if grep -q 'packDir()' "$TMP/scmd"; then
         bad "comando ainda usa o filesDir do app"
     else
         ok "comando usa a pasta visível ao shell"
     fi
+    grep -q 'ensureShellCopy' "$src/OtmExec.kt" \
+        && ok "executor compartilhado usa a pasta do shell" || bad "OtmExec sem ensureShellCopy"
 }
 
 # --- menu lateral do painel: fica fixo ao rolar ------------------------------
@@ -2629,6 +2631,55 @@ t_side_fixed
 t_plugin_mark_once
 t_plugin_restore
 t_freezer_whitelist
+t_overlay() {
+    printf '\n  # painel flutuante (overlay sobre o jogo)\n'
+    local src="$ROOT/app/src/main/java/com/otm/pack"
+    local man="$ROOT/app/src/main/AndroidManifest.xml"
+    local svc="$src/OverlayService.kt"
+
+    [ -f "$svc" ] && ok "OverlayService existe" || { bad "OverlayService ausente"; return; }
+    # permissão de sobreposição declarada (sem ela o Android não deixa o painel sobre o jogo)
+    grep -q 'SYSTEM_ALERT_WINDOW' "$man" \
+        && ok "manifest pede SYSTEM_ALERT_WINDOW" || bad "manifest sem SYSTEM_ALERT_WINDOW"
+    # o serviço é de primeiro plano e do tipo exigido no Android 14
+    grep -q 'foregroundServiceType="specialUse"' "$man" \
+        && ok "service declara foregroundServiceType" || bad "service sem foregroundServiceType"
+    grep -q 'FOREGROUND_SERVICE_SPECIAL_USE' "$man" \
+        && ok "manifest pede FOREGROUND_SERVICE_SPECIAL_USE" || bad "sem permissão specialUse"
+    # janela de sobreposição de verdade (TYPE_APPLICATION_OVERLAY)
+    grep -q 'TYPE_APPLICATION_OVERLAY' "$svc" \
+        && ok "janela usa TYPE_APPLICATION_OVERLAY" || bad "sem TYPE_APPLICATION_OVERLAY"
+    # usa o executor compartilhado (não reimplementa o comando)
+    grep -q 'OtmExec.run' "$svc" \
+        && ok "overlay usa o executor compartilhado" || bad "overlay não usa OtmExec"
+    # a sensi e os perfis de toque estão no painel flutuante
+    grep -q 'sensi.sh' "$svc" && ok "overlay lê a sensi do aparelho" || bad "overlay sem sensi.sh"
+    grep -q 'ff-touch.sh' "$svc" && ok "overlay troca o perfil de toque" || bad "overlay sem ff-touch.sh"
+    for p in balanced headshot spray sniper speed; do
+        grep -q "\"$p\"" "$svc" || bad "overlay sem o perfil $p"
+    done
+    ok "overlay tem os 5 perfis de toque"
+    # o acesso ao shell vem de fora (o Service não pede permissão sozinho)
+    grep -q 'OtmRunner.current' "$src/PanelActivity.kt" \
+        && ok "Activity publica o runner para o overlay" || bad "Activity não publica o runner"
+    # sem permissão de sobreposição, manda o usuário para a tela do sistema
+    grep -q 'ACTION_MANAGE_OVERLAY_PERMISSION' "$src/PanelActivity.kt" \
+        && ok "Activity abre a tela de permissão de sobreposição" || bad "sem ACTION_MANAGE_OVERLAY_PERMISSION"
+    # a ponte expõe o tipo "overlay" e o painel chama por ele
+    grep -q '"overlay" ->' "$src/PackBridge.kt" \
+        && ok "ponte trata o tipo overlay" || bad "ponte sem o tipo overlay"
+    grep -q 'OTM.call("overlay"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "painel do app chama o overlay" || bad "painel do app não chama o overlay"
+    # no site (PC) o overlay avisa que é só no celular
+    grep -q 'Painel flutuante: use o app no celular' "$ROOT/web/index.php" \
+        && ok "site avisa que o overlay é só no app" || bad "site sem aviso do overlay"
+    # a ação aparece no catálogo dos dois painéis (mesma fonte: lib.php)
+    grep -q 'overlay.sensi' "$ROOT/web/lib.php" \
+        && ok "lib.php registra a ação do painel flutuante" || bad "lib.php sem overlay.sensi"
+    grep -q 'overlay.sensi' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "catálogo do app tem a ação do painel flutuante" || bad "actions.json sem overlay.sensi"
+}
+
 t_vitality() {
     printf '\n  # vitalidade: motor de longevidade (sem aparelho)\n'
     local vit="$ROOT/scripts/vitality.sh"
@@ -2895,6 +2946,7 @@ t_proc_limit
 t_latency
 t_sensi
 t_effects
+t_overlay
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

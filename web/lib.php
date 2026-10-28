@@ -306,6 +306,10 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'proc_limit', 'padrao']]);
 
     // ----- Gerador de sensi (só leitura: calcula para o SEU aparelho) -----
+    $add(['id' => 'overlay.sensi', 'group' => 'Sensi e mira', 'label' => 'Painel flutuante sobre o jogo',
+          'desc' => 'Mostra a sensi e os perfis de toque por cima do jogo, sem sair da partida.',
+          'help' => 'Abre o painel flutuante: uma janela arrastável que fica por cima do jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Assim você confere e troca o ajuste sem fechar o jogo. Na primeira vez o Android pede a permissão "aparecer por cima de outros apps". Toque de novo no botão para desligar.',
+          'argv' => [], 'ui' => 'overlay']);
     $add(['id' => 'sensi.calc', 'group' => 'Sensi e mira', 'label' => 'Gerar sensi do meu aparelho',
           'desc' => 'Calcula a sensi ideal para o seu aparelho, sem alterar nada.',
           'help' => 'Lê o seu aparelho (resolução, densidade/DPI, tamanho da tela, taxa de toque, taxa de atualização, SoC, RAM e o ajuste de toque já aplicado) e calcula uma sensi sob medida: Geral, Ponto vermelho, mira 2x, 4x, AWM, além do tamanho do botão de atirar (com teto de 50%, que é o que não deixa o botão feio/grande). NÃO altera nada no aparelho: só mostra os números para você digitar no jogo. Rode de novo se mudar a resolução.',
