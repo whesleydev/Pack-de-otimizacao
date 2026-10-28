@@ -38,11 +38,39 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `accessibility_reduce_transparency`, mas o `fluidez` gravava os dois com
   `sh_run` em vez de `bkp_set` — fora do arquivo de reversão. Resultado: a
   interface ficava "seca" e o teclado/barra perdiam o desfoque **para sempre**,
-  mesmo depois de reverter. Agora os dois entram na reversão, e o modo imersivo
-  (`policy_control`, do grupo `window_tweaks`) também — este último não tinha
-  reversão nenhuma e deixava as barras escondidas de forma permanente.
+  mesmo depois de reverter. Agora os dois entram na reversão.
+- **O modo imersivo saiu do `window_tweaks` (e com ele o "esticado" do conteúdo).**
+  O grupo de janelas/transições gravava `policy_control immersive.full=*` junto com
+  as animações. Isso escondia as barras e fazia o conteúdo do app descer até debaixo
+  da barra de gestos — a barra de pesquisa do YouTube, por exemplo, ficava atrás
+  dela e não dava para tocar. Quem quiser esconder as barras usa o grupo explícito
+  **"Barras do sistema"** (`sysbars`), que é reversível.
+- **O motor gráfico dizia "aplicado" mesmo quando o sistema ignorava.** O pack
+  aceitava `renderer opengl` e mostrava "renderizador: opengl" só porque o prop
+  tinha ficado com esse texto. No Android o `debug.hwui.renderer` só entende
+  **dois** valores — `skiagl` e `skiavk`; qualquer outro cai no SkiaGL em
+  silêncio, e o pipeline OpenGL foi **removido no Android 10** (API 29). Agora:
+  `renderer opengl` é **recusado** com aviso em API ≥ 29; a confirmação lê o prop
+  e informa o que o sistema **vai usar de verdade**; e o novo modo **"Automático"**
+  apaga o prop para devolver a decisão ao sistema (skiavk se o aparelho usa Vulkan,
+  senão skiagl). O painel ganhou a opção "Automático (padrão)" e os textos deixaram
+  de afirmar que "opengl é o padrão".
+- **O pack recomendado religava o congelador que o anti-relog tinha desligado.** O
+  `all` rodava `game` (que desliga o `cached_apps_freezer` para o jogo não ser
+  congelado) **antes** de `freezer` (que o ligava de novo). Resultado: o jogo
+  voltava a fechar sozinho e pedir login no meio da partida. A ordem agora é
+  `freezer` antes de `game`.
+- **O anti-relog só valia para quem já tinha escolhido um jogo.** Sem jogo salvo,
+  o `game` não aplicava proteção nenhuma e o jogo relogava do mesmo jeito. Agora,
+  sem escolha, ele protege o **Free Fire** por padrão.
 
 ### Adicionado
+- **Renderizador "Automático" e controle separado do compositor.** O grupo
+  `renderer` ganhou o modo `auto` (apaga `debug.hwui.renderer` e deixa o sistema
+  escolher) e um comando próprio, `renderer_backend`, para o backend do
+  compositor do SurfaceFlinger (`debug.renderengine.backend`). Este último é lido
+  **uma vez no boot**, então o pack avisa que só vale depois de **reiniciar** —
+  antes ele era escrito junto com o renderer e prometia efeito imediato.
 - **Painel flutuante sobre o jogo (overlay).** Uma janela arrastável que fica por
   cima do Free Fire/CODM/etc., sem precisar fechar a partida: mostra a sensi
   calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o
