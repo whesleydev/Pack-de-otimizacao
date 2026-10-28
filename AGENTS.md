@@ -185,6 +185,12 @@ Publique no GitHub Pages apontando para a raiz (o `index.html` fica na raiz).
 
 ## Comandos
 
+O pipeline do painel (renderizar `web/index.php`, `scratch/gen_actions.php`,
+`sync_app_panel.py`) precisa de **PHP**. Se `php` não estiver no PATH, o
+`tests/run.sh` **pula** os testes do painel em silêncio e mostra falhas soltas
+(`php: not found`) — não confie num "0 falharam" sem conferir que o PHP rodou.
+Há um PHP estático no toolchain: `export PATH=/workspace/project/.toolchain/php:$PATH`.
+
 ```sh
 sh tests/run.sh                 # testes (stubs de settings/cmd/am/getprop/su) — deve dar 0 falhas
 sh pack.sh                      # MENU-MESTRE (interativo); ou: sh pack.sh status|apply|restore
@@ -224,10 +230,11 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 ## Pendências que dependem do dono
 
 - **Push para `origin/main`**: o `GITHUB_TOKEN` do ambiente é uma credencial de
-  integração (GitHub App) **somente leitura** — `git push` e a API de refs retornam
-  `403 Resource not accessible by integration`. Para publicar, o dono precisa conceder
-  `Contents: Read and write` ao app/token, ou rodar o push a partir da própria máquina.
-  Enquanto isso, use o bundle/patch gerados em `releases/` (ver abaixo).
+  integração (GitHub App) e **não** serve para a API de releases
+  (`Resource not accessible by integration`). Já o token embutido na URL do
+  remote `origin`/`otm-push` tem escopo `repo` e admin no repo, e o `git push`
+  passa por ele. Ainda assim, **não empurre direto para `main`**: use a branch de
+  trabalho (`sem-root`) e deixe o merge para o dono.
 - Revogar o token exposto no histórico e purgar o `apps_otm.zip` (`docs/SEGURANCA.md`).
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
@@ -677,17 +684,24 @@ publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git; os
 
 Publicar o download: o repo **público** é `whesleydev/Pack-de-otimizacao`
 (o `00-Otimizacao` é privado, então link de asset lá não abre para o usuário).
-Crie a release pela API com o token do remote `otm-push` (tem escopo `repo`):
+Crie a release pela API com o token do remote `origin`/`otm-push` (tem escopo
+`repo` e admin no repo; o `GITHUB_TOKEN` do ambiente é de integração e devolve
+`Resource not accessible by integration` na API de releases):
 
 ```sh
-T=$(git config --get remote.otm-push.url | sed -E 's|https://([^@]*)@.*|\1|' | cut -d: -f2)
-# POST /repos/whesleydev/Pack-de-otimizacao/releases  {tag_name, target_commitish, name, body}
+TOK=$(git remote get-url origin | sed -E 's#https://([^@]+)@.*#\1#')
+# POST /repos/whesleydev/Pack-de-otimizacao/releases  {tag_name, name, body}
 # POST https://uploads.github.com/repos/.../releases/<id>/assets?name=<arquivo>  (binário)
 ```
 
+Se a tag **já existir** (você já fez `git push origin <tag>`), não mande
+`target_commitish` no POST: a API responde `422 Validation Failed
+(field: target_commitish)`. A release então aponta para onde a tag aponta.
 A release cria a tag no `target_commitish` no momento do POST. Se você criar a
 release **antes** de terminar os commits, a tag fica num commit velho — mova com
 `PATCH /repos/.../git/refs/tags/<tag>` com `{"sha": "<sha completo>", "force": true}`.
 O link `releases/latest/download/<arquivo>` só funciona se for a release mais
 recente; para citar uma versão fixa, use `releases/download/<tag>/<arquivo>`.
+Confirme o link **baixando** o arquivo e comparando o SHA-256 (não confie só no
+`201` do upload).
 
