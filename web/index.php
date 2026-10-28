@@ -147,6 +147,7 @@ foreach ($CHOICE as $k => $c) {
             'desc' => $a['desc'] ?? '', 'risk' => $a['risk'] ?? 'safe',
             'state_value' => $a['state_value'] ?? null, 'state_match' => $a['state_match'] ?? null,
             'state_backend_value' => $a['state_backend_value'] ?? null,
+            'state_auto' => !empty($a['state_auto']),
         ];
     }
     // parâmetros extras do grupo (ex.: escolher o app no motor por app)
@@ -1056,7 +1057,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
                             data-state-value="<?= htmlspecialchars((string)($o['state_value'] ?? ''), ENT_QUOTES) ?>"
                             data-state-match="<?= htmlspecialchars((string)($o['state_match'] ?? ''), ENT_QUOTES) ?>"
                             data-state-backend-value="<?= htmlspecialchars((string)($o['state_backend_value'] ?? ''), ENT_QUOTES) ?>"
-                            aria-pressed="false">
+                            <?= !empty($o['state_auto']) ? 'data-state-auto="1" ' : '' ?>aria-pressed="false">
                       <span class="opt-t"><?= htmlspecialchars($o['label']) ?></span>
                       <span class="opt-s">Selecionar</span>
                     </button>
@@ -1694,7 +1695,12 @@ function applyState(){
     let active = null;
     card.querySelectorAll(".opt").forEach(o => {
       let on = false;
-      if (o.dataset.stateValue && key && STATE[key] !== undefined && STATE[key] !== ""){
+      if (o.dataset.stateAuto && key && STATE[key] !== undefined){
+        // "Automático": em uso quando NADA foi gravado (o sistema decide).
+        // Para o renderizador o prop cru é o que importa — se está vazio, é auto.
+        const raw = (key === "renderer") ? String(STATE.renderer_prop || "") : String(STATE[key] || "");
+        on = raw === "";
+      } else if (o.dataset.stateValue && key && STATE[key] !== undefined && STATE[key] !== ""){
         on = String(STATE[key]).toLowerCase() === o.dataset.stateValue.toLowerCase();
         // "multithread" compartilha o mesmo hwui.renderer; o backend desempata
         if (on && o.dataset.stateBackendValue){

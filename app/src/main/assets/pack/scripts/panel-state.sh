@@ -25,8 +25,19 @@ _p() {
 _clean() { printf '%s' "$1" | tr -d '"\\\n\r' | cut -c1-120; }
 
 renderer="$(_clean "$(_p debug.hwui.renderer)")"
-# quando o prop está vazio, o Android usa o padrão (OpenGL)
-[ -z "$renderer" ] && renderer="opengl"
+# Quando o prop está VAZIO, quem decide é o sistema. No Android 10+ o pipeline
+# OpenGL foi removido (só existem SkiaGL e Skia Vulkan) e o padrão é skiavk se
+# ro.hwui.use_vulkan=true, senão skiagl — nunca "opengl". Abaixo de API 29 o
+# OpenGL ainda existia e era o padrão. (Fonte: AOSP libs/hwui/Properties.cpp.)
+if [ -z "$renderer" ]; then
+    _api="$(_p ro.build.version.sdk)"
+    case "$_api" in
+        ''|*[!0-9]*) renderer="skiagl" ;;
+        *) if [ "$_api" -lt 29 ]; then renderer="opengl"; else
+               [ "$(_p ro.hwui.use_vulkan)" = "true" ] && renderer="skiavk" || renderer="skiagl"
+           fi ;;
+    esac
+fi
 
 printf '{"renderer":"%s"' "$renderer"
 printf ',"renderer_prop":"%s"' "$(_clean "$(_p debug.hwui.renderer)")"

@@ -97,7 +97,7 @@ function otm_choices(): array {
     return [
         'renderer' => [
             'title' => 'Motor gráfico (renderizador)',
-            'desc'  => 'Escolha como a interface é desenhada. OpenGL é o padrão do Android (mais compatível); SkiaGL fica no meio; Skia Vulkan costuma dar mais fluidez. Os modos "multithread" desenham numa thread separada (mais suave, porém mais exigentes). Se um app ficar com tela estranha, volte para OpenGL.',
+            'desc'  => 'Escolha como a interface é desenhada. "Automático" deixa o sistema decidir (mais seguro). SkiaGL é o motor padrão e o mais compatível; Skia Vulkan costuma dar mais fluidez em aparelhos compatíveis. Os modos "multithread" desenham numa thread separada (mais suave, porém mais exigentes). No Android 10+ o motor OpenGL foi removido do sistema — a opção "OpenGL" só funciona em aparelho antigo. Se um app ficar com tela estranha, volte para "Automático".',
             'state' => 'renderer',
             'state_backend' => 'renderengine_backend',
             'risk'  => 'careful',
@@ -382,19 +382,19 @@ function otm_actions(): array {
           'desc' => 'Renderizador + força GPU + remove desfoques.',
           'help' => 'Pacote gráfico completo: usa a GPU para desenhar a interface, remove os efeitos de desfoque (blur) que pesam e liga o driver de jogo. Deixa a navegação mais fluida.',
           'argv' => ['adb-tweaks.sh', 'gpu']]);
-    $add(['id' => 'gpu.opengl', 'group' => 'Display & Touch', 'label' => 'Renderizador: OpenGL (padrão)',
-          'desc' => 'Motor gráfico de fábrica. Mais compatível.',
-          'help' => 'Volta o renderizador para o OpenGL, o padrão do Android. É o mais compatível — use se algum app ficar com tela estranha nos outros modos.',
-          'choice' => 'renderer', 'option' => 'OpenGL', 'state_value' => 'opengl',
-          'argv' => ['adb-tweaks.sh', 'renderer', 'opengl']]);
+    $add(['id' => 'gpu.auto', 'group' => 'Display & Touch', 'label' => 'Renderizador: Automático (padrão)',
+          'desc' => 'O sistema escolhe o melhor motor para o seu aparelho.',
+          'help' => 'Devolve a decisão ao Android: o próprio sistema usa SkiaGL ou Skia Vulkan conforme o aparelho (no Android 10+ não existe mais o motor OpenGL). É a opção mais segura — use se algum app ficar com tela estranha nos outros modos.',
+          'choice' => 'renderer', 'option' => 'Automático', 'state_value' => '', 'state_auto' => true,
+          'argv' => ['adb-tweaks.sh', 'renderer', 'auto']]);
     $add(['id' => 'gpu.skiagl', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL',
           'desc' => 'Skia sobre OpenGL. Equilíbrio entre fluidez e compatibilidade.',
-          'help' => 'Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL. Costuma ser um bom equilíbrio: mais fluido que o padrão sem arriscar tanto quanto o Vulkan.',
+          'help' => 'Usa a biblioteca Skia (mais moderna) rodando sobre OpenGL ES. É o motor padrão na maioria dos aparelhos e o mais compatível. Use se o Vulkan der problema.',
           'choice' => 'renderer', 'option' => 'SkiaGL', 'state_value' => 'skiagl',
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiagl']]);
     $add(['id' => 'gpu.skiavk', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan',
           'desc' => 'Skia sobre Vulkan. Costuma dar mais fluidez.',
-          'help' => 'Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para OpenGL.',
+          'help' => 'Usa Skia sobre Vulkan, a API gráfica mais moderna. Em aparelhos compatíveis dá a interface mais fluida. Se algum app travar ou mostrar artefatos, volte para "Automático" ou SkiaGL.',
           'choice' => 'renderer', 'option' => 'Skia Vulkan', 'state_value' => 'skiavk',
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiavk']]);
     $add(['id' => 'gpu.skiagl_threaded', 'group' => 'Display & Touch', 'label' => 'Renderizador: SkiaGL multithread',
@@ -404,9 +404,14 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiagl-threaded']]);
     $add(['id' => 'gpu.skiavk_threaded', 'group' => 'Display & Touch', 'label' => 'Renderizador: Skia Vulkan multithread',
           'desc' => 'Skia Vulkan em thread separada. Máxima fluidez.',
-          'help' => 'Usa Skia Vulkan com a composição numa thread separada (backend "skiavkthreaded"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou OpenGL.',
+          'help' => 'Usa Skia Vulkan com a composição numa thread separada (backend "skiavkthreaded"). É o modo mais fluido em aparelhos compatíveis, mas também o mais sensível ao driver. Se a tela piscar ou travar, volte para Skia Vulkan ou Automático.',
           'choice' => 'renderer', 'option' => 'Skia Vulkan multithread', 'state_value' => 'skiavk', 'state_backend_value' => 'skiavkthreaded',
           'argv' => ['adb-tweaks.sh', 'renderer', 'skiavk-threaded']]);
+    $add(['id' => 'gpu.opengl', 'group' => 'Display & Touch', 'label' => 'Renderizador: OpenGL (só Android antigo)',
+          'desc' => 'Motor antigo. Só funciona até o Android 9.',
+          'help' => 'Força o motor OpenGL, que existia até o Android 9. No Android 10 ou mais novo ele foi REMOVIDO do sistema — a ação recusa em vez de fingir que aplicou. Em aparelhos antigos é o mais compatível.',
+          'choice' => 'renderer', 'option' => 'OpenGL (antigo)', 'state_value' => 'opengl',
+          'argv' => ['adb-tweaks.sh', 'renderer', 'opengl']]);
     $add(['id' => 'gpu.force', 'group' => 'Display & Touch', 'label' => 'Forçar renderização por GPU',
           'desc' => 'Usa a GPU para desenhar a interface (não a CPU).',
           'help' => 'Faz a interface ser desenhada pela GPU em vez da CPU. Isso libera a CPU para outras tarefas e deixa a rolagem mais suave.',
@@ -822,8 +827,8 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'sysbars', 'battery', 'off']]);
 
     $add(['id' => 'adv.window', 'group' => 'Display & Touch', 'label' => 'Janelas / transições rápidas',
-          'desc' => 'Transições mais curtas e o modo imersivo ligado.',
-          'help' => 'Reduz as animações de janela e liga o modo imersivo (esconde as duas barras). Mais tela e menos distração no jogo. Se a barra de baixo sumir e você quiser ela de volta, use "Barras: VISÍVEIS (padrão)" — as duas ações ficam no mesmo lugar.',
+          'desc' => 'Transições mais curtas: a interface responde na hora.',
+          'help' => 'Reduz as animações de janela, transição e abertura para 0.5x: o aparelho parece mais rápido sem mudar nada de visual. NÃO esconde as barras — se você quer mais tela no jogo, use "Barras: esconder as duas (imersivo)" logo acima; se já escondeu e quer voltar, use "Barras: VISÍVEIS (padrão)".',
           'argv' => ['adb-tweaks.sh', 'window_tweaks']]);
 
 

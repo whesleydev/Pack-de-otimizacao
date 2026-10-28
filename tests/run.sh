@@ -69,7 +69,9 @@ EOF
 #!/bin/sh
 case "$1" in
   ro.product.model) echo "TestPhone"; exit 0 ;;
-  ro.build.version.sdk) echo "34"; exit 0 ;;
+  ro.build.version.sdk) if [ -f "$TMP_STORE/prop.ro.build.version.sdk" ]; then
+                            cat "$TMP_STORE/prop.ro.build.version.sdk"; else echo "34"; fi
+                        exit 0 ;;
   "") exit 0 ;;
 esac
 cat "$TMP_STORE/prop.$1" 2>/dev/null
@@ -173,14 +175,24 @@ t_renderer_app() {
     printf '\n  # renderizador do sistema + driver gráfico por app\n'
     rm -rf "$HOME/.packotm"
     rm -f "$TMP_STORE/prop.debug.hwui.renderer" "$TMP_STORE/prop.debug.renderengine.backend"
-    # renderizador base grava o prop e o backend
+    # renderizador base grava o prop; o backend do COMPOSITOR fica no padrão
+    # (nos modos não-multithread não mexemos no SurfaceFlinger — ver AOSP)
     OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer skiagl >/dev/null 2>&1
     assert_eq "skiagl" "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" "renderer skiagl grava o prop"
-    assert_eq "skiagl" "$(cat "$TMP_STORE/prop.debug.renderengine.backend" 2>/dev/null)" "renderer skiagl grava o backend"
-    # multithread muda só o backend
+    [ -z "$(cat "$TMP_STORE/prop.debug.renderengine.backend" 2>/dev/null)" ] \
+        && ok "renderer skiagl não prende o compositor (backend no padrão)" \
+        || bad "renderer skiagl não devia setar o backend do compositor"
+    # multithread usa o backend do compositor (é o único caso que desempata)
     OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer skiavk-threaded >/dev/null 2>&1
     assert_eq "skiavk" "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" "renderer multithread usa skiavk"
     assert_eq "skiavkthreaded" "$(cat "$TMP_STORE/prop.debug.renderengine.backend" 2>/dev/null)" "renderer multithread grava o backend"
+    # "opengl" é recusado em Android 10+ (o pipeline não existe mais) — nada fictício
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer opengl > "$TMP/gl_bad" 2>&1
+    assert_contains "$TMP/gl_bad" "não existe" "renderer opengl é recusado no Android novo"
+    # "auto" apaga o prop e devolve a decisão ao sistema
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" renderer auto >/dev/null 2>&1
+    [ -z "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" ] \
+        && ok "renderer auto limpa o prop (sistema decide)" || bad "renderer auto não limpou o prop"
     grep -q 'debug.renderengine.backend' "$HOME/.packotm/undo/adb-tweaks.sh" && ok "renderer é reversível" || bad "renderer sem reversão"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
     [ -z "$(cat "$TMP_STORE/prop.debug.hwui.renderer" 2>/dev/null)" ] && ok "renderer volta ao original no restore" || bad "restore não limpou o renderer"
@@ -866,11 +878,24 @@ t_panel_state() {
     grep -q '"pointer_speed":"0"' "$TMP/st_out" && ok "state: lê pointer speed real" || bad "state: sem pointer speed"
     grep -q '"touch_slop":"4"' "$TMP/st_out" && ok "state: lê touch slop real" || bad "state: sem touch slop"
     grep -q '"refresh_peak":"90.0"' "$TMP/st_out" && ok "state: lê o refresh atual" || bad "state: sem refresh"
-    # sem prop setada, o Android usa o padrão (OpenGL) — nada fictício
+    # sem prop setada, quem decide é o SISTEMA: no Android 10+ (API>=29) o motor
+    # OpenGL foi removido e o padrão é skiagl/skiavk — nunca "opengl" (fonte: AOSP)
     rm -f "$TMP_STORE/prop.debug.hwui.renderer"
+    printf '34' > "$TMP_STORE/prop.ro.build.version.sdk"
+    rm -f "$TMP_STORE/prop.ro.hwui.use_vulkan"
     out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-state.sh" 2>&1)
     printf '%s\n' "$out" > "$TMP/st_out2"
-    grep -q '"renderer":"opengl"' "$TMP/st_out2" && ok "state: sem prop assume OpenGL (padrão)" || bad "state: default renderer errado"
+    grep -q '"renderer":"skiagl"' "$TMP/st_out2" && ok "state: API 34 sem prop assume SkiaGL (real)" || bad "state: default renderer errado"
+    printf 'true' > "$TMP_STORE/prop.ro.hwui.use_vulkan"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/st_out3"
+    grep -q '"renderer":"skiavk"' "$TMP/st_out3" && ok "state: com ro.hwui.use_vulkan assume Skia Vulkan" || bad "state: vulkan default errado"
+    # em Android antigo (API<29) o OpenGL ainda existia e era o padrão
+    printf '28' > "$TMP_STORE/prop.ro.build.version.sdk"
+    rm -f "$TMP_STORE/prop.ro.hwui.use_vulkan"
+    out=$(OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/st_out4"
+    grep -q '"renderer":"opengl"' "$TMP/st_out4" && ok "state: API 28 sem prop assume OpenGL (antigo)" || bad "state: default antigo errado"
     # o JSON é válido
     php -r '$j=json_decode(file_get_contents($argv[1]),true);
              echo is_array($j) && isset($j["renderer"]) ? "OK" : "RUIM";' "$TMP/st_out" > "$TMP/st_json" 2>&1
@@ -1753,8 +1778,8 @@ t_web() {
         # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
         # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
         # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
-        [ "$n_opts" -eq 38 ] && ok "opções lado a lado: 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 38)"
+        [ "$n_opts" -eq 39 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 39)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
@@ -2490,8 +2515,12 @@ t_effects() {
         && ok "fluidez registra a reversão da transparência" || bad "fluidez não reverte a transparência"
     rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/adb-tweaks.sh" window_tweaks >/dev/null 2>&1
-    grep -q 'policy_control' "$HOME/.packotm/undo/adb-tweaks.sh" \
-        && ok "modo imersivo registra a reversão" || bad "modo imersivo não reverte"
+    # Bug A: o modo imersivo (policy_control immersive.*) ESTICAVA o conteúdo
+    # para baixo da barra de gestos (a busca do YouTube ficava atrás dela).
+    # window_tweaks não pode mais escrever imersivo.
+    ! grep -q 'policy_control' "$HOME/.packotm/undo/adb-tweaks.sh" \
+        && ok "window_tweaks não mexe mais no modo imersivo" \
+        || bad "window_tweaks ainda escreve policy_control (esticava o conteúdo)"
     # nenhum script pode voltar a mexer no blur por sh_run (sem reversão)
     ! grep -rn 'sh_run "settings put global disable_window_blurs' "$ROOT/scripts/" >/dev/null 2>&1 \
         && ok "nenhum script escreve o desfoque fora da reversão" \

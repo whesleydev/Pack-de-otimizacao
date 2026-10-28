@@ -554,7 +554,7 @@ cmd_status() {
     printf '  %sRAM em cache:%s %s\n' "$C_A" "$C_R" \
         "$(sh_get 'settings get global activity_manager_constants')"
     printf '  %srenderizador:%s %s\n' "$C_A" "$C_R" \
-        "$(sh_get 'getprop debug.hwui.renderer')"
+        "$(sh_get 'getprop debug.hwui.renderer' | grep . || echo 'automático (o sistema escolhe)')"
     printf '  %staxa de tela:%s %s / %s Hz (min/peak)\n' "$C_A" "$C_R" \
         "$(sh_get 'settings get system min_refresh_rate')" \
         "$(sh_get 'settings get system peak_refresh_rate')"

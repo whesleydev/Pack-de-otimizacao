@@ -66,35 +66,111 @@ gpu() {
 }
 
 # --- renderizador do sistema (motor gráfico) ----------------------------------
-# Cada modo grava o valor antigo dos props, então dá para reverter (Reverter TUDO).
+# O que o Android REALMENTE aceita (conferido no AOSP, libs/hwui/Properties.cpp):
+#   debug.hwui.renderer só tem DOIS valores válidos: "skiagl" e "skiavk".
+#   Qualquer outra coisa (inclusive "opengl") cai no SkiaGL — o sistema ignora.
+#   O pipeline OpenGL foi REMOVIDO no Android 10 (OpenGLPipeline.cpp não existe
+#   mais no android10-release). Ou seja: em API >= 29 "OpenGL" não existe, e
+#   "skiavk" exige o hardware/ro.hwui.use_vulkan.
+#   Sem o prop setado, o padrão é skiavk se ro.hwui.use_vulkan=true, senão skiagl.
+# Por isso o modo "automático" APAGA o prop (devolve a decisão ao sistema) e o
+# "opengl" só é aceito em Android antigo (API < 29), onde o pipeline existia.
+# debug.renderengine.backend é OUTRA coisa: é o compositor do SurfaceFlinger
+# (não a UI do app), lido uma única vez no boot (SurfaceFlinger.cpp) — exige
+# reiniciar o aparelho. Valores válidos: gles|threaded|skiagl|skiaglthreaded|
+# skiavk|skiavkthreaded. Por isso é aplicado à parte e com aviso de reboot.
+_renderer_api() {
+    _a=$(sh_get "getprop ro.build.version.sdk" 2>/dev/null)
+    case "$_a" in ''|*[!0-9]*) echo "" ;; *) echo "$_a" ;; esac
+}
+_renderer_default() {
+    # o que o sistema usa quando NENHUM prop está setado
+    if [ "$(sh_get 'getprop ro.hwui.use_vulkan' 2>/dev/null)" = "true" ]; then
+        echo "skiavk"
+    else
+        echo "skiagl"
+    fi
+}
 renderer() {
     mode="${1:-}"
-    # o backend só deve ficar setado nos modos "multithread"; nos demais ele
-    # precisa voltar ao padrão, senão trocar de "multithread" para "SkiaGL"
-    # deixava o backend antigo valendo (a tela continuava em multithread).
+    api="$(_renderer_api)"
     case "$mode" in
-        opengl)          r_prop="opengl"; b_prop="" ;;
-        skiagl)          r_prop="skiagl"; b_prop="skiagl" ;;
-        skiavk)          r_prop="skiavk"; b_prop="skiavk" ;;
-        skiagl-threaded) r_prop="skiagl"; b_prop="skiaglthreaded" ;;
-        skiavk-threaded) r_prop="skiavk"; b_prop="skiavkthreaded" ;;
+        auto|automatico|padrao|default)
+            bkp_begin
+            prop_clear debug.hwui.renderer
+            say "renderizador: automático (o sistema escolhe)"
+            printf '   %sno aparelho agora:%s %s (padrão do sistema)\n' \
+                "$C_A" "$C_R" "$(_renderer_default)"
+            printf '  %sreverter:%s sh scripts/pack.sh restore\n' "$C_A" "$C_R"
+            return 0 ;;
+        opengl)
+            # em API >= 29 o pipeline OpenGL não existe mais: seria mentira
+            if [ -n "$api" ] && [ "$api" -ge 29 ]; then
+                err "OpenGL não existe no seu Android (API $api)."
+                say "No Android 10+ só existem SkiaGL e Skia Vulkan. Use: renderer skiagl"
+                return 1
+            fi
+            r_prop="opengl" ;;
+        skiagl)          r_prop="skiagl" ;;
+        skiavk)          r_prop="skiavk" ;;
+        skiagl-threaded) r_prop="skiagl" ;;
+        skiavk-threaded) r_prop="skiavk" ;;
         *)
-            err "uso: renderer opengl|skiagl|skiavk|skiagl-threaded|skiavk-threaded"
+            err "uso: renderer auto|opengl|skiagl|skiavk|skiagl-threaded|skiavk-threaded"
             return 1 ;;
     esac
     bkp_begin
     prop_set debug.hwui.renderer "$r_prop"
-    if [ -n "$b_prop" ]; then
-        prop_set debug.renderengine.backend "$b_prop"
-    else
-        prop_clear debug.renderengine.backend
-    fi
-    say "renderizador: $r_prop${b_prop:+ (backend $b_prop)}"
-    # confere no aparelho o que está valendo de verdade e avisa se não pegou
+    # O backend do compositor é separado do renderer da UI. Só mexemos nele nos
+    # modos "multithread" (é o único caso em que ele desempata algo visível);
+    # nos demais ele volta ao padrão para não deixar o compositor preso.
+    case "$mode" in
+        skiagl-threaded) prop_set debug.renderengine.backend skiaglthreaded ;;
+        skiavk-threaded) prop_set debug.renderengine.backend skiavkthreaded ;;
+        *)               prop_clear debug.renderengine.backend ;;
+    esac
+    # o backend do compositor é lido UMA vez no boot: sem reiniciar, não vale
+    case "$mode" in
+        *-threaded) warn "o backend do compositor só vale depois de REINICIAR o aparelho" ;;
+    esac
+    say "renderizador: $r_prop"
+    # verificação HONESTA: lê o prop e compara com o que o sistema vai USAR de
+    # verdade. "opengl" em Android novo, ou qualquer valor fora de skia*, cai no
+    # SkiaGL — então não podemos dizer "aplicado" só porque o prop pegou.
     _r=$(sh_get "getprop debug.hwui.renderer")
-    _b=$(sh_get "getprop debug.renderengine.backend")
-    printf '   %sno aparelho agora:%s renderer=%s%s\n' \
-        "$C_A" "$C_R" "${_r:-opengl (padrão)}" "${_b:+ · backend=$_b}"
+    case "$_r" in
+        skiavk) _real="Skia Vulkan" ;;
+        skiagl) _real="SkiaGL" ;;
+        "")     _real="$(_renderer_default) (padrão do sistema)" ;;
+        *)      _real="SkiaGL (o sistema ignorou '$_r')" ;;
+    esac
+    printf '   %sno aparelho agora:%s renderer=%s → %s\n' \
+        "$C_A" "$C_R" "${_r:-vazio}" "$_real"
+    case "$_r" in
+        skiavk|skiagl|"") otm_v_inc changed ;;
+        *) otm_v_inc failed ;;
+    esac
+    printf '  %sreverter:%s sh scripts/pack.sh restore\n' "$C_A" "$C_R"
+}
+
+# --- backend do compositor (SurfaceFlinger) -----------------------------------
+# Exige reiniciar o aparelho: o SurfaceFlinger lê este prop UMA vez, no boot.
+renderer_backend() {
+    v="${1:-}"
+    case "$v" in
+        gles|threaded|skiagl|skiaglthreaded|skiavk|skiavkthreaded) ;;
+        auto|automatico|padrao|default) v="" ;;
+        *) err "uso: renderer_backend gles|threaded|skiagl|skiaglthreaded|skiavk|skiavkthreaded|auto"; return 1 ;;
+    esac
+    bkp_begin
+    if [ -z "$v" ]; then
+        prop_clear debug.renderengine.backend
+        say "compositor: automático (padrão do sistema)"
+    else
+        prop_set debug.renderengine.backend "$v"
+        say "compositor: $v"
+    fi
+    warn "isto é o compositor do SurfaceFlinger: só vale depois de REINICIAR"
     printf '  %sreverter:%s sh scripts/pack.sh restore\n' "$C_A" "$C_R"
 }
 
@@ -275,9 +351,13 @@ game() {
     sh_run "cmd game set --mode performance com.dts.freefireth" >/dev/null
     sh_run "cmd game set --mode performance com.dts.freefiremax" >/dev/null
     sh_run "cmd game set --downscale-factor 1 com.dts.freefireth" >/dev/null
-    # o jogo escolhido no modo gamer também entra (FF MAX, CODM, Minecraft...)
+    # o jogo escolhido no modo gamer também entra (FF MAX, CODM, Minecraft...).
+    # SEM escolha salva, cai no Free Fire: antes o anti-relog só era aplicado se
+    # o usuário já tivesse escolhido um jogo, e quem só apertava "pack recomendado"
+    # ficava sem proteção nenhuma e o jogo relogava.
     gp="$(game_pkg_saved 2>/dev/null)"
-    if [ -n "$gp" ] && _valid_game_pkg "$gp"; then
+    [ -z "$gp" ] && gp="$GAME_PKG_DEFAULT"
+    if _valid_game_pkg "$gp"; then
         game_keepalive "$gp"
     fi
     say "game mode performance aplicado"
@@ -357,7 +437,9 @@ game_keepalive() {
 
     # 3) o jogo não é rebaixado de balde nem congelado pelo sistema
     sh_run "am set-standby-bucket $pkg active" >/dev/null 2>&1
-    sh_run "settings put global cached_apps_freezer disabled" >/dev/null 2>&1
+    # desliga o congelador de apps em cache COM reversão: sem isso o valor
+    # ficava alterado para sempre e o "Reverter TUDO" não devolvia
+    bkp_set global cached_apps_freezer disabled
 
     # 4) proteção completa (Doze, wake lock, congelador e oom com root)
     if have_shell; then
@@ -870,7 +952,10 @@ sysbars() {
 }
 
 # --- janela / transições (sem root) -------------------------------------------
-# Além das animações: desliga "rotação lenta" e transições de tema escuro.
+# Só animação: NADA de policy_control aqui. O modo imersivo esconde as barras e
+# faz o conteúdo do app "esticar" para baixo (a barra de pesquisa do YouTube
+# ficava atrás da barra de gestos). Quem quiser esconder as barras usa o grupo
+# sysbars, que é explícito e reversível.
 window_tweaks() {
     bkp_begin
     say "Janelas / transições"
@@ -878,10 +963,7 @@ window_tweaks() {
     bkp_set global transition_animation_scale 0.5
     bkp_set global animator_duration_scale 0.5
     bkp_set system screen_off_timeout 600000
-    # modo imersivo (esconde as barras): precisa de reversão, senão as barras
-    # ficam escondidas para sempre, mesmo depois do "Reverter TUDO"
-    bkp_set global policy_control immersive.full=*
-    say "transições 0.5x + modo imersivo"
+    say "transições 0.5x"
 }
 
 # --- permissões / bateria / segundo plano -------------------------------------
@@ -970,7 +1052,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
+GRUPOS="perf perf_max gpu renderer renderer_backend net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'
@@ -985,7 +1067,11 @@ list() {
 # "Reverter TUDO" (ou no snapshot). Debloat fica de fora de propósito (remover
 # app de fábrica é decisão do usuário e tem aba própria).
 all() {
-    for g in perf mem gpu net latency wifi game freezer dnd screen fluidez game_tune; do
+    # ORDEM IMPORTA: `game` roda o anti-relog (que DESLIGA o cached_apps_freezer
+    # para o jogo não ser congelado). Se `freezer` viesse depois, ele religava o
+    # congelador e o jogo voltava a "relogar" (fechar e pedir login). Por isso o
+    # freezer fica ANTES do game.
+    for g in perf mem gpu net latency wifi freezer game dnd screen fluidez game_tune; do
         eval "$g"
         echo
     done
