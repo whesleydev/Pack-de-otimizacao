@@ -300,6 +300,25 @@ t_sysbars() {
     printf '%s\n' "$out" > "$TMP/sb_out"
     grep -q '"sysbars":"nav"' "$TMP/sb_out" && ok "state: lê a barra escondida (nav)" \
         || bad "state: sysbars não leu 'nav'"
+    # o card "Barra de cima: ícones" marca a opção em uso pelo valor canônico
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" sysbars clean >/dev/null 2>&1
+    out=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/sb_ic"
+    grep -q '"sysbars_icons_clean":"clean"' "$TMP/sb_ic" \
+        && ok "state: card de ícones marca 'Só o essencial' quando escondido" \
+        || bad "state: sysbars_icons_clean não leu 'clean'"
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" sysbars icons none >/dev/null 2>&1
+    out=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/sb_ic2"
+    grep -q '"sysbars_icons_clean":"all"' "$TMP/sb_ic2" \
+        && ok "state: card de ícones marca 'Mostrar todos' quando limpo" \
+        || bad "state: sysbars_icons_clean não leu 'all'"
+    # bateria em %: card lê o valor real (1 = número, 0 = só ícone)
+    OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" sysbars battery on >/dev/null 2>&1
+    out=$(OTM_NO_COLOR=1 OTM_MODE=local sh "$ROOT/scripts/panel-state.sh" 2>&1)
+    printf '%s\n' "$out" > "$TMP/sb_bat"
+    grep -q '"sysbars_battery":"1"' "$TMP/sb_bat" \
+        && ok "state: card de bateria lê '1' (número)" || bad "state: sysbars_battery não leu '1'"
     # restaurar tudo volta as barras ao padrão
     OTM_MODE=local sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
     [ ! -f "$TMP_STORE/global.policy_control" ] \
@@ -1772,15 +1791,28 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 10 ] && ok "renderiza 10 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos, barras)" \
-            || bad "grupos de escolha: $n_choice (esperado 10)"
+        [ "$n_choice" -eq 12 ] && ok "renderiza 12 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos, barras, ícones da barra, bateria)" \
+            || bad "grupos de escolha: $n_choice (esperado 12)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        # 26 = 5 renderizadores + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM.
-        # Os 2 "extra" antigos eram os botões do card de Perfil de Desempenho, que virou
-        # o cockpit do Piloto Térmico (usa .btn: são ações de comando, não um grupo de escolha).
-        [ "$n_opts" -eq 39 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 39)"
+        # 43 = 37 opções de grupo (6 renderizadores + 1 app + 4 refresh + 7 DNS + 5
+        # toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones
+        # + 2 bateria) + os 2 botões do card de Perfil de Desempenho.
+        [ "$n_opts" -eq 43 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones + 2 bateria ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 43)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
+        # barras do sistema: cada bloco é um card de ligar/desligar (não botões soltos)
+        assert_contains "$TMP/web_html" 'data-choice="sysbars_icons"' \
+            "ícones da barra de cima são um card de ligar/desligar"
+        assert_contains "$TMP/web_html" 'data-choice="sysbars_battery"' \
+            "bateria em % é um card de ligar/desligar"
+        assert_contains "$TMP/web_html" 'data-state-key="sysbars_icons_clean"' \
+            "card de ícones lê o estado real (só o essencial / todos)"
+        assert_contains "$TMP/web_html" 'data-state-value="clean"' \
+            "ícones: opção 'Só o essencial' casa com o estado lido"
+        assert_contains "$TMP/web_html" 'data-state-key="sysbars_battery"' \
+            "card de bateria lê o estado real"
+        assert_contains "$TMP/web_html" 'data-state-value="1"' \
+            "bateria: opção 'Número (%)' casa com o estado lido"
         # taxa de atualização: escolha 60/90/120/automático (usuário prefere 60Hz)
         assert_contains "$TMP/web_html" 'data-choice="refresh"' "há o cartão de taxa de atualização (Hz)"
         for hz in 'refresh.60' 'refresh.90' 'refresh.120' 'refresh.auto'; do
@@ -2688,6 +2720,22 @@ t_overlay() {
         grep -q "\"$p\"" "$svc" || bad "overlay sem o perfil $p"
     done
     ok "overlay tem os 5 perfis de toque"
+    # o painel flutuante se chama só "00" (não "Sensi & mira")
+    grep -q 'text = "00"' "$svc" && ok "overlay se chama só '00'" || bad "overlay não usa o nome '00'"
+    grep -q 'text = "Sensi & mira"' "$svc" && bad "overlay ainda mostra o título antigo" \
+        || ok "overlay não usa mais o título antigo"
+    # organizado em seções (cabeçalho próprio), não numa lista única
+    grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
+    for s in "Sensi do seu aparelho" "Perfil de toque" "Atalhos"; do
+        grep -q "\"$s\"" "$svc" && ok "overlay tem a seção '$s'" || bad "overlay sem a seção '$s'"
+    done
+    # minimizar vira só o ÍCONE do app; tocar no ícone volta ao painel completo
+    grep -q 'R.mipmap.ic_launcher' "$svc" && ok "overlay minimizado usa o ícone do app" \
+        || bad "overlay minimizado não usa o ícone do app"
+    grep -q 'ImageView' "$svc" && ok "overlay tem a bolha (ícone) de minimizado" \
+        || bad "overlay sem ImageView para o ícone"
+    grep -q 'setMinimized(false)' "$svc" && ok "tocar no ícone devolve o painel" \
+        || bad "ícone não devolve o painel ao ser tocado"
     # o acesso ao shell vem de fora (o Service não pede permissão sozinho)
     grep -q 'OtmRunner.current' "$src/PanelActivity.kt" \
         && ok "Activity publica o runner para o overlay" || bad "Activity não publica o runner"

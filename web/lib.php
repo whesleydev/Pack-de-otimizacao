@@ -149,6 +149,18 @@ function otm_choices(): array {
             'state' => 'sysbars',
             'risk'  => 'careful',
         ],
+        'sysbars_icons' => [
+            'title' => 'Barra de cima: ícones',
+            'desc'  => 'Os ícones secundários da barra de status (rotação automática, fone, volume, alarme). Escondendo, sobra só o essencial: relógio, bateria, sinal e notificações — a barra de cima fica mais limpa e menos poluída no jogo. O painel lê o estado real do aparelho e marca o que está em uso.',
+            'state' => 'sysbars_icons_clean',
+            'risk'  => 'safe',
+        ],
+        'sysbars_battery' => [
+            'title' => 'Barra de cima: bateria',
+            'desc'  => 'Mostra o número da porcentagem ao lado do ícone da bateria, ou deixa só o ícone. Com o número você sabe quanto resta sem abrir as configurações; sem ele, a barra de cima fica mais discreta. O painel lê o estado real do aparelho e marca o que está em uso.',
+            'state' => 'sysbars_battery',
+            'risk'  => 'safe',
+        ],
         'ramboost' => [
             'title' => 'Liberar RAM agora',
             'desc'  => 'Libera a memória de verdade: encerra os apps de fundo (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps. Diferente de "RAM: perfil gaming", que só muda quantos apps o sistema deixa em cache — aqui a memória é liberada na hora. O painel mostra quanto foi liberado.',
@@ -807,23 +819,27 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'sysbars', 'so_status']]);
     $add(['id' => 'sysbars.status_show', 'group' => 'Display & Touch', 'label' => 'Barras: ver estado',
           'desc' => 'Mostra, lido do aparelho, o que está escondido agora.',
-          'help' => 'Mostra o estado real das barras: se estão visíveis, se o modo imersivo está ligado, quais ícones estão escondidos e se a bateria aparece em porcentagem. Só leitura.',
+          'help' => 'Mostra o estado real das barras: se estão visíveis, se o modo imersivo está ligado, quais ícones estão escondidos e se a bateria aparece em porcentagem. Só leitura. Os cards acima já mostram o estado sozinhos; este comando serve para ver o valor cru do aparelho.',
           'argv' => ['adb-tweaks.sh', 'sysbars', 'status']]);
     $add(['id' => 'sysbars.icons_clean', 'group' => 'Display & Touch', 'label' => 'Barra de cima: esconder ícones extras',
           'desc' => 'Tira rotação, fone, volume e alarme da barra de status.',
           'help' => 'Esconde os ícones secundários da barra de cima (rotação automática, fone, volume, alarme), deixando só o essencial: relógio, bateria, sinal e notificações. Reverta em "Barra de cima: mostrar todos os ícones".',
+          'choice' => 'sysbars_icons', 'option' => 'Só o essencial', 'state_value' => 'clean',
           'argv' => ['adb-tweaks.sh', 'sysbars', 'clean']]);
     $add(['id' => 'sysbars.icons_all', 'group' => 'Display & Touch', 'label' => 'Barra de cima: mostrar todos os ícones',
           'desc' => 'Devolve todos os ícones da barra de status.',
           'help' => 'Remove a lista de ícones escondidos da barra de cima, devolvendo todos os indicadores (rotação, fone, volume, alarme).',
+          'choice' => 'sysbars_icons', 'option' => 'Mostrar todos', 'state_value' => 'all',
           'argv' => ['adb-tweaks.sh', 'sysbars', 'icons', 'none']]);
     $add(['id' => 'sysbars.battery_pct', 'group' => 'Display & Touch', 'label' => 'Barra de cima: bateria em %',
           'desc' => 'Mostra o número da bateria ao lado do ícone.',
           'help' => 'Mostra a porcentagem da bateria na barra de status. Útil para saber quanto resta sem abrir as configurações.',
+          'choice' => 'sysbars_battery', 'option' => 'Número (%)', 'state_value' => '1',
           'argv' => ['adb-tweaks.sh', 'sysbars', 'battery', 'on']]);
     $add(['id' => 'sysbars.battery_off', 'group' => 'Display & Touch', 'label' => 'Barra de cima: bateria só ícone',
           'desc' => 'Volta a mostrar só o ícone da bateria.',
           'help' => 'Esconde o número da porcentagem da bateria, deixando só o ícone. Reverta em "Barra de cima: bateria em %".',
+          'choice' => 'sysbars_battery', 'option' => 'Só o ícone', 'state_value' => '0',
           'argv' => ['adb-tweaks.sh', 'sysbars', 'battery', 'off']]);
 
     $add(['id' => 'adv.window', 'group' => 'Display & Touch', 'label' => 'Janelas / transições rápidas',

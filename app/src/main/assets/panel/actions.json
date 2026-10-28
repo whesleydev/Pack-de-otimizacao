@@ -2552,7 +2552,7 @@
         "group": "Display & Touch",
         "label": "Barras: ver estado",
         "desc": "Mostra, lido do aparelho, o que está escondido agora.",
-        "help": "Mostra o estado real das barras: se estão visíveis, se o modo imersivo está ligado, quais ícones estão escondidos e se a bateria aparece em porcentagem. Só leitura.",
+        "help": "Mostra o estado real das barras: se estão visíveis, se o modo imersivo está ligado, quais ícones estão escondidos e se a bateria aparece em porcentagem. Só leitura. Os cards acima já mostram o estado sozinhos; este comando serve para ver o valor cru do aparelho.",
         "argv": [
             "adb-tweaks.sh",
             "sysbars",
@@ -2568,6 +2568,9 @@
         "label": "Barra de cima: esconder ícones extras",
         "desc": "Tira rotação, fone, volume e alarme da barra de status.",
         "help": "Esconde os ícones secundários da barra de cima (rotação automática, fone, volume, alarme), deixando só o essencial: relógio, bateria, sinal e notificações. Reverta em \"Barra de cima: mostrar todos os ícones\".",
+        "choice": "sysbars_icons",
+        "option": "Só o essencial",
+        "state_value": "clean",
         "argv": [
             "adb-tweaks.sh",
             "sysbars",
@@ -2583,6 +2586,9 @@
         "label": "Barra de cima: mostrar todos os ícones",
         "desc": "Devolve todos os ícones da barra de status.",
         "help": "Remove a lista de ícones escondidos da barra de cima, devolvendo todos os indicadores (rotação, fone, volume, alarme).",
+        "choice": "sysbars_icons",
+        "option": "Mostrar todos",
+        "state_value": "all",
         "argv": [
             "adb-tweaks.sh",
             "sysbars",
@@ -2599,6 +2605,9 @@
         "label": "Barra de cima: bateria em %",
         "desc": "Mostra o número da bateria ao lado do ícone.",
         "help": "Mostra a porcentagem da bateria na barra de status. Útil para saber quanto resta sem abrir as configurações.",
+        "choice": "sysbars_battery",
+        "option": "Número (%)",
+        "state_value": "1",
         "argv": [
             "adb-tweaks.sh",
             "sysbars",
@@ -2615,6 +2624,9 @@
         "label": "Barra de cima: bateria só ícone",
         "desc": "Volta a mostrar só o ícone da bateria.",
         "help": "Esconde o número da porcentagem da bateria, deixando só o ícone. Reverta em \"Barra de cima: bateria em %\".",
+        "choice": "sysbars_battery",
+        "option": "Só o ícone",
+        "state_value": "0",
         "argv": [
             "adb-tweaks.sh",
             "sysbars",

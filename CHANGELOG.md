@@ -81,10 +81,17 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   permissão "aparecer por cima de outros apps". É um serviço em primeiro plano
   (`TYPE_APPLICATION_OVERLAY`), usa o mesmo executor de scripts do painel
   (`OtmExec`) e não pede permissão sozinho: aproveita a conexão já feita no app.
+- **O painel flutuante ficou legível: seções e minimizar para o ícone.** O painel
+  se chama só **"00"** e os botões agora ficam em **seções com cabeçalho** (Sensi
+  do seu aparelho, Perfil de toque, Atalhos) em vez de uma lista única — no meio
+  da partida dava para se perder. Ao minimizar, o painel inteiro some e sobra
+  **só o ícone do app**, que continua arrastável; um toque no ícone devolve o
+  painel completo, no mesmo lugar da tela.
 - **Categoria "Barras do sistema"** (Display & Touch): mostra/esconde as barras de
   cima e de baixo, esconde só uma delas, limpa os ícones secundários da barra de
-  cima e liga o percentual de bateria. Cada opção é conferida lendo de volta e o
-  painel marca a que está em uso de verdade.
+  cima e liga o percentual de bateria. Cada bloco é um **card de ligar/desligar**
+  (ícones: só o essencial / mostrar todos; bateria: número % / só o ícone), não
+  botões soltos, e o painel marca a opção em uso lendo o estado real do aparelho.
 - **Driver gráfico do sistema** (Display & Touch, por app e global):
   `deep-tune.sh gfxdriver` com `angle_all` (ANGLE em todos os apps),
   `gamedriver` (driver de jogo do fabricante) e `updatable` (driver atualizável:

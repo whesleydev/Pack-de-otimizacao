@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -15,7 +17,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -33,6 +35,14 @@ import kotlinx.coroutines.launch
  * `Service` em primeiro plano com uma janela `TYPE_APPLICATION_OVERLAY`, que
  * pode ser arrastada e minimizada.
  *
+ * O painel se chama só **"00"** e é organizado em **seções** (Sensi, Toque e
+ * Atalhos), cada uma com um cabeçalho — antes os botões saíam numa lista única,
+ * difícil de ler no meio da partida.
+ *
+ * **Minimizado ele vira só o ícone do app**: o painel inteiro some e sobra o
+ * ícone do "00 Otimização", que continua arrastável. Um toque no ícone devolve
+ * o painel completo — é o mesmo gesto de minimizar/maximizar de um app.
+ *
  * O que o painel mostra e faz:
  *  - a sensi calculada para ESTE aparelho (Geral, Ponto, 2x, 4x, AWM e o
  *    tamanho do botão de atirar), lida do `sensi.sh`;
@@ -46,9 +56,10 @@ class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var root: View? = null
+    private var panel: View? = null
+    private var bubble: View? = null
     private var sensiText: TextView? = null
     private var statusText: TextView? = null
-    private val content = ArrayList<View>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -73,6 +84,8 @@ class OverlayService : Service() {
         scope.cancel()
         root?.let { runCatching { windowManager.removeView(it) } }
         root = null
+        panel = null
+        bubble = null
         super.onDestroy()
     }
 
@@ -86,42 +99,30 @@ class OverlayService : Service() {
         }
         box.addView(titleBar())
 
+        // --- Seção: Sensi (o número que o usuário quer ver de relance) ---
+        box.addView(sectionHeader("Sensi do seu aparelho"))
         sensiText = TextView(this).apply {
             setTextColor(Color.parseColor("#F3EFE7"))
             textSize = 13f
             text = "lendo a sensi…"
         }
         box.addView(sensiText, matchWrap())
-        content.add(sensiText!!)
 
-        val hint = TextView(this).apply {
-            text = "Perfil de toque"
-            setTextColor(Color.parseColor("#E4571C"))
-            textSize = 12f
-            setPadding(0, dp(8), 0, dp(4))
+        // --- Seção: Toque ---
+        box.addView(sectionHeader("Perfil de toque"))
+        val profiles = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        for ((key, label) in TOUCH_PROFILES) {
+            profiles.addView(smallButton(label) { runScript("ff-touch.sh", listOf(key), "Toque: $label") })
         }
-        box.addView(hint)
-        content.add(hint)
+        box.addView(profiles, matchWrap())
 
-        val profiles = listOf(
-            "balanced" to "Equilibrado",
-            "headshot" to "Headshot",
-            "spray" to "Spray",
-            "sniper" to "Sniper",
-            "speed" to "Speed",
-        )
-        for ((key, label) in profiles) {
-            val b = profileButton(key, label)
-            box.addView(b)
-            content.add(b)
-        }
-
+        // --- Seção: Atalhos ---
+        box.addView(sectionHeader("Atalhos"))
         val extras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         extras.addView(smallButton("Latência") { runScript("adb-tweaks.sh", listOf("latency"), "Latência") })
         extras.addView(smallButton("Limpar RAM") { runScript("adb-tweaks.sh", listOf("clean", "suave"), "Limpeza") })
         extras.addView(smallButton("Atualizar") { refreshSensi() })
         box.addView(extras, matchWrap())
-        content.add(extras)
 
         statusText = TextView(this).apply {
             setTextColor(Color.parseColor("#B9B2A6"))
@@ -129,73 +130,121 @@ class OverlayService : Service() {
             setPadding(0, dp(6), 0, 0)
         }
         box.addView(statusText)
-        content.add(statusText!!)
 
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = dp(12); y = dp(80)
-        }
-        box.setOnTouchListener(dragger(params))
+        panel = box
+        bubble = bubbleView()
         root = box
+
+        val params = baseParams()
+        box.setOnTouchListener(dragger(params, box))
         runCatching { windowManager.addView(box, params) }
     }
+
+    /** Cabeçalho de seção: separa os blocos do painel. */
+    private fun sectionHeader(text: String): View =
+        TextView(this).apply {
+            this.text = text
+            setTextColor(Color.parseColor("#E4571C"))
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, dp(10), 0, dp(4))
+        }
 
     /** Barra do topo: arrasta pelo título, minimiza e fecha. */
     private fun titleBar(): View {
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         bar.addView(TextView(this).apply {
-            text = "Sensi & mira"
+            text = "00"
             setTextColor(Color.parseColor("#E4571C"))
-            textSize = 13f
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        bar.addView(Button(this).apply {
-            text = "—"
-            textSize = 12f
-            setPadding(dp(8), 0, dp(8), 0)
-            setOnClickListener { toggleMinimize() }
-        })
-        bar.addView(Button(this).apply {
-            text = "X"
-            textSize = 12f
-            setPadding(dp(8), 0, dp(8), 0)
-            setOnClickListener { stopSelf() }
-        })
+        bar.addView(iconButton("—") { toggleMinimize() })
+        bar.addView(iconButton("X") { stopSelf() })
         return bar
     }
 
+    /** O app minimizado: só o ícone, sem texto — um toque devolve o painel. */
+    private fun bubbleView(): View =
+        ImageView(this).apply {
+            setImageResource(R.mipmap.ic_launcher)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#E60D0C0A"))
+            }
+            setOnClickListener { setMinimized(false) }
+        }
+
     private var minimized = false
 
-    private fun toggleMinimize() {
-        minimized = !minimized
-        for (v in content) v.visibility = if (minimized) View.GONE else View.VISIBLE
+    /**
+     * Minimiza/maximiza trocando a janela: minimizado sobra só o ícone do app
+     * (a janela fica pequena, sem atrapalhar o jogo); um toque no ícone devolve
+     * o painel completo, no mesmo lugar da tela.
+     */
+    private fun toggleMinimize() = setMinimized(!minimized)
+
+    private fun setMinimized(value: Boolean) {
+        if (value == minimized) return
+        val atual = root ?: return
+        val novo = (if (value) bubble else panel) ?: return
+        val params = baseParams()
+        // mantém onde o usuário deixou: a janela nova nasce na mesma posição
+        (atual.layoutParams as? WindowManager.LayoutParams)?.let {
+            params.x = it.x; params.y = it.y
+        }
+        minimized = value
+        runCatching {
+            windowManager.removeView(atual)
+            novo.setOnTouchListener(dragger(params, novo))
+            windowManager.addView(novo, params)
+            root = novo
+        }
     }
 
-    private fun profileButton(key: String, label: String): View =
-        Button(this).apply {
+    private fun iconButton(label: String, action: () -> Unit): View =
+        TextView(this).apply {
             text = label
             textSize = 12f
-            setOnClickListener { runScript("ff-touch.sh", listOf(key), "Toque: $label") }
-        }.also { it.layoutParams = matchWrap() }
-
-    private fun smallButton(label: String, action: () -> Unit): View =
-        Button(this).apply {
-            text = label
-            textSize = 11f
-            setPadding(dp(6), 0, dp(6), 0)
+            setTextColor(Color.parseColor("#F3EFE7"))
+            setPadding(dp(10), dp(2), dp(10), dp(2))
             setOnClickListener { action() }
         }
 
+    private fun smallButton(label: String, action: () -> Unit): View =
+        TextView(this).apply {
+            text = label
+            textSize = 11f
+            setTextColor(Color.parseColor("#12151A"))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(Color.parseColor("#E4571C"))
+            }
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            setOnClickListener { action() }
+        }.also {
+            it.layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            ).apply { marginEnd = dp(4) }
+        }
+
+    private fun baseParams() = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        gravity = Gravity.TOP or Gravity.START
+        x = dp(12); y = dp(80)
+    }
+
     /** Arrasta a janela; um toque curto (sem mover) não consome o clique. */
-    private fun dragger(params: WindowManager.LayoutParams): View.OnTouchListener {
+    private fun dragger(params: WindowManager.LayoutParams, view: View): View.OnTouchListener {
         var startX = 0; var startY = 0; var downX = 0f; var downY = 0f
         return View.OnTouchListener { _, ev ->
             when (ev.action) {
@@ -208,7 +257,7 @@ class OverlayService : Service() {
                     if (kotlin.math.abs(ev.rawX - downX) > dp(6) || kotlin.math.abs(ev.rawY - downY) > dp(6)) {
                         params.x = startX + (ev.rawX - downX).toInt()
                         params.y = startY + (ev.rawY - downY).toInt()
-                        root?.let { runCatching { windowManager.updateViewLayout(it, params) } }
+                        runCatching { windowManager.updateViewLayout(view, params) }
                         true
                     } else false
                 }
@@ -307,6 +356,15 @@ class OverlayService : Service() {
         const val CHANNEL_ID = "otm_overlay"
         const val NOTIF_ID = 2
         const val ACTION_STOP = "com.otm.pack.overlay.STOP"
+
+        /** Perfis de toque do `ff-touch.sh`, na ordem em que aparecem no painel. */
+        private val TOUCH_PROFILES = listOf(
+            "balanced" to "Equilibrado",
+            "headshot" to "Headshot",
+            "spray" to "Spray",
+            "sniper" to "Sniper",
+            "speed" to "Speed",
+        )
 
         /** O usuário liberou "aparecer por cima de outros apps"? */
         fun canDraw(context: Context): Boolean =

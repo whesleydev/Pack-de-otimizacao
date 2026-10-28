@@ -75,6 +75,16 @@ case "$_pc" in
 esac
 printf ',"sysbars":"%s"' "$(_clean "$_sb")"
 printf ',"sysbars_icons":"%s"' "$(_clean "$(_g secure icon_blacklist)")"
+# o card "Barra de cima: ícones" marca a opção em uso. O grupo canônico que o
+# pack escreve é rotate,headset,volume,alarm_clock; qualquer outra lista (ou
+# nenhuma) conta como "mostrar todos".
+_sbi="$(sh_get 'settings get secure icon_blacklist' 2>/dev/null)"
+case "$_sbi" in
+    ""|null)                        _sbic="all" ;;
+    rotate,headset,volume,alarm_clock) _sbic="clean" ;;
+    *)                              _sbic="other" ;;
+esac
+printf ',"sysbars_icons_clean":"%s"' "$(_clean "$_sbic")"
 printf ',"sysbars_battery":"%s"' "$(_clean "$(_g system status_bar_show_battery_percent)")"
 # limite de processos em segundo plano (Dev Options): valor REAL, não o que o
 # pack escreveu. No Android 10+ mora em device_config, não no setting.
