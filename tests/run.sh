@@ -1744,8 +1744,9 @@ PYEOF
     else
         bad "icones com problema: $icon_out"
     fi
-    # a logo nova substituiu a antiga: o icone nao pode ser igual ao do git
-    if git -C "$ROOT" show HEAD:app/src/main/res/mipmap-xxxhdpi/ic_launcher.png > "$TMP/ic_old.png" 2>/dev/null; then
+    # a logo nova substituiu a antiga: o icone nao pode ser igual ao de antes do
+    # rebranding (tag v2.41.2, o ultimo release com a logo velha)
+    if git -C "$ROOT" show v2.41.2:app/src/main/res/mipmap-xxxhdpi/ic_launcher.png > "$TMP/ic_old.png" 2>/dev/null; then
         if cmp -s "$TMP/ic_old.png" "$ROOT/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"; then
             bad "ic_launcher ainda e o antigo (logo nao trocou)"
         else
