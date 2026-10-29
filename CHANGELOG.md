@@ -25,6 +25,10 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   por **cluster de CPU**, a **pressão de memória** do kernel, a **resolução
   lógica**, o **zram em uso**, o **MGLRU**, a **entropia** e o **I/O** — e mostra
   o que está **segurando** a nota.
+- **Guia com os comandos de resolução.** A área de comandos do site ganhou a
+  categoria **Resolução** (`wm size`): ver a atual, baixar para 1080p/720p e
+  voltar à de fábrica, para quem prefere digitar o comando em vez de usar o
+  painel.
 
 ### Mudado
 - **Otimizador mais rigoroso nas escolhas.** A memória do kernel (swappiness)
