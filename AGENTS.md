@@ -787,6 +787,18 @@ TOK=$(git remote get-url origin | sed -E 's#https://([^@]+)@.*#\1#')
 # POST https://uploads.github.com/repos/.../releases/<id>/assets?name=<arquivo>  (binário)
 ```
 
+**O `GITHUB_TOKEN` do ambiente é de GitHub App e não escreve.** Ele lê a API
+(`/user` responde `login: whesleydev`, `permissions.admin: true`) e os *checks*
+de CI, mas `git push` devolve `403 Permission to ... denied` e
+`POST /pulls` devolve `403` — não perca tempo com ele. Para **escrever** (push,
+PR, release), use um PAT clássico com escopo `repo` (`ghp_...`) no lugar da URL:
+`git remote set-url origin https://<token>@github.com/whesleydev/Pack-de-otimizacao.git`,
+faça o push e **volte a URL sem token** (`git remote set-url origin
+https://github.com/whesleydev/Pack-de-otimizacao.git`) para não deixar o segredo
+no `.git/config`. O mesmo vale para o `otm-push`. A ferramenta `create_pr`
+também usa o token do ambiente (falha com 403): crie o PR com
+`POST /repos/<owner>/<repo>/pulls` via `urllib`/`curl` com o PAT.
+
 Se a tag **já existir** (você já fez `git push origin <tag>`), não mande
 `target_commitish` no POST: a API responde `422 Validation Failed
 (field: target_commitish)`. A release então aponta para onde a tag aponta.
@@ -804,7 +816,11 @@ quando a tag `v*` chega: usa o `CHANGELOG.md` como corpo e sobe só os `.zip` de
 run ficar verde, anexe o APK e o `.sha256` no release já criado
 (`POST https://uploads.github.com/.../releases/<id>/assets?name=<arquivo>`) e
 renomeie a release para o padrão `"<versão> — <resumo>"` (o CI a cria com o nome
-igual à tag). Fluxo completo do release: bump `VERSION`/`versionCode` →
-`git tag vX.Y.Z && git push origin vX.Y.Z` → esperar o CI → anexar o APK →
-atualizar `serve/index.html` e os `.sha256` de `releases/` e `serve/`.
+igual à tag). O `body_path: CHANGELOG.md` manda o **arquivo inteiro** (todas as
+versões, ~60 KB) — o padrão das releases boas é só a seção da versão: corte com
+`re.findall(r'^## \[<versão>\].*?(?=^## \[)', changelog, re.S|re.M)` e mande por
+`PATCH /repos/.../releases/<id>` junto do `name` novo. Fluxo completo do release:
+bump `VERSION`/`versionCode` → `git tag vX.Y.Z && git push origin vX.Y.Z` →
+esperar o CI → anexar o APK → ajustar nome/corpo → atualizar `serve/index.html` e
+os `.sha256` de `releases/` e `serve/`.
 
