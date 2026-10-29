@@ -3,6 +3,25 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.42.1] - 2026-10-22
+
+### Corrigido
+- **Painel flutuante minimizado agora arrasta.** O ícone minimizado ficava preso
+  no lugar: o clique para reabrir estava no `ImageView` de dentro da bolha, que
+  virava "clickable" e engolia o toque antes de chegar ao container — onde vive o
+  arrasto. O clique passou para o container, então dá para mover a bolha pela
+  tela e um toque curto continua devolvendo o painel completo.
+- **Fim dos cards repetidos no rodapé do painel.** Os cards de permissão
+  (`Permitir o app do pack`, `Permitir os Free Fire`, `Permitir o meu jogo`,
+  `Bateria sem economia agressiva`, `Aplicar todas as permissões` e
+  `Aparência e som`) apareciam **duas vezes**: uma na aba Sistema, como deviam, e
+  outra solta no fim do painel, fora de qualquer aba, empilhada junto com os
+  créditos. Era um fragmento órfão que ficou entre o fim da seção Sistema e a
+  seção seguinte; como não pertencia a grupo nenhum, o CSS que esconde as abas
+  inativas não o alcançava e ele aparecia sempre. O fragmento foi removido e o
+  gerador do painel (`sync_app_panel.py`) agora limpa órfãos e avisa se as
+  seções ficarem desbalanceadas.
+
 ## [2.42.0] - 2026-10-22
 
 ### Alterado

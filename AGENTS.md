@@ -663,6 +663,26 @@ continua existindo e é para quem QUER o máximo (mais FPS, esquenta mais). O ca
 durar. Nenhum dos dois substitui o outro — e **nada do pack original pode ser
 removido** (há guarda de regressão em `t_vitality`).
 
+### Bug histórico: bolha flutuante que não arrastava
+
+O painel flutuante minimizado (a bolha com o ícone do app) ficava **preso no lugar**.
+Causa: o `setOnClickListener` que reabre o painel estava no `ImageView` de dentro do
+`FrameLayout`, e não no container. Um `View` com listener de clique fica *clickable* e
+**consome** o toque; o `OnTouchListener` do container (o `dragger`) nunca recebia o
+`ACTION_MOVE` e a bolha não se movia. Regra: em view que precisa arrastar, o clique mora
+no **container**, junto do `dragger` — nunca em view filha. O teste
+`t_overlay` verifica que o `ImageView` da bolha não tem `setOnClickListener`.
+
+### Bug histórico: cards órfãos fora das abas (apareciam sempre no rodapé)
+
+Os cards de permissão apareciam **duas vezes**: na aba Sistema e de novo soltos no fim do
+painel, empilhados junto dos créditos. Causa: um fragmento de HTML ficou **entre** o fim de
+uma `<section>` e o começo da próxima. Como não pertencia a grupo nenhum, o CSS que esconde
+as seções inativas (`.group:not(.active)`) não o alcançava e ele ficava sempre visível.
+Regra: todo `<article class="card">` tem de estar **dentro** de uma `<section>`. O
+`sync_app_panel.py` agora remove órfãos e avisa se as seções ficarem desbalanceadas; o
+teste `t_app_login` (bloco `panstruct`) falha se houver card duplicado ou fora de seção.
+
 ### Bug histórico: handler global de `.opt` (ainda vale como regra)
 
 O card antigo de Perfil de Desempenho ficou "morto" porque `document.querySelectorAll(".opt")`

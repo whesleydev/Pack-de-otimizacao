@@ -650,6 +650,29 @@ faltam = [g for g in links if 'g-' + g not in secs]
 print('OK' if not faltam else 'FALTAM:' + ','.join(faltam))
 PY
     assert_contains "$TMP/navsec" "OK" "app: todo link do menu tem a sua seção"
+
+    # o painel do app é montado por script (sync_app_panel); um card que ficou
+    # entre o fim de uma seção e o começo da próxima não pertence a grupo nenhum
+    # e aparece SEMPRE, empilhado no rodapé, fora das abas. Também denuncia
+    # <section> desbalanceada. Já aconteceu com os cards de permissão (v2.41.2).
+    python3 - "$p/index.html" <<'PY' > "$TMP/panstruct" 2>&1
+import re, sys
+from collections import Counter
+doc = open(sys.argv[1], encoding='utf-8').read()
+# só os cards de verdade (o texto do JS também cita data-id="apply")
+cards = re.findall(r'<article class="card"[^>]*?data-id="([^"]+)"', doc)
+dup = sorted(k for k, v in Counter(cards).items() if v > 1)
+orf = [m.group(1).strip()[:60] for m in
+       re.finditer(r'</section>([\s\S]*?)(?=<section\b|</main>)', doc)
+       if '<article class="card"' in m.group(1)]
+abre, fecha = len(re.findall(r'<section\b', doc)), doc.count('</section>')
+prob = []
+if dup: prob.append('cards duplicados: ' + ','.join(dup))
+if orf: prob.append('cards fora de seção: ' + ' | '.join(orf))
+if abre != fecha: prob.append('seções desbalanceadas: %d abre x %d fecha' % (abre, fecha))
+print('OK' if not prob else ' | '.join(prob))
+PY
+    assert_contains "$TMP/panstruct" "OK" "app: nenhum card duplicado nem fora de seção"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
@@ -3515,6 +3538,31 @@ PY
         || bad "overlay sem ImageView para o ícone"
     grep -q 'setMinimized(false)' "$svc" && ok "tocar no ícone devolve o painel" \
         || bad "ícone não devolve o painel ao ser tocado"
+    # a bolha minimizada tem de ARRASTAR: o toque é tratado pelo container, que
+    # também tem o dragger. Se o ImageView de dentro tivesse listener de clique,
+    # ele viraria "clickable" e engoliria o toque antes do container — a bolha
+    # ficava presa no lugar. (Era o bug relatado no aparelho.)
+    awk '/private fun bubbleView/,/^    }/' "$svc" > "$TMP/bubble"
+    python3 - "$TMP/bubble" <<'PY' > "$TMP/bubbleres" 2>&1
+import re, sys
+s = open(sys.argv[1], encoding='utf-8').read()
+i = s.index('ImageView(')
+j = s.index('apply {', i)
+depth, fim = 0, len(s)
+for m in re.finditer(r'[{}]', s[j + len('apply {') - 1:]):
+    depth += 1 if m.group(0) == '{' else -1
+    if depth == 0:
+        fim = j + len('apply {') - 1 + m.end()
+        break
+blk = s[j:fim]
+if 'setOnClickListener' in blk:
+    print('ImageView com clique engole o arrasto da bolha')
+elif 'setOnClickListener' not in s:
+    print('bolha sem clique para voltar ao painel')
+else:
+    print('OK')
+PY
+    assert_contains "$TMP/bubbleres" "OK" "app: bolha minimizada arrasta (clique no container)"
     # o acesso ao shell vem de fora (o Service não pede permissão sozinho)
     grep -q 'OtmRunner.current' "$src/PanelActivity.kt" \
         && ok "Activity publica o runner para o overlay" || bad "Activity não publica o runner"

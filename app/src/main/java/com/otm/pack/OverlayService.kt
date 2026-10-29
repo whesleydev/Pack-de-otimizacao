@@ -916,6 +916,11 @@ class OverlayService : Service() {
      * zone). Num ImageView isso dá um logo pequeno perdido num círculo grande —
      * era o que deixava a bolha "esquisita". O PNG redondo preenche o círculo
      * exatamente, então a bolha fica limpa em qualquer densidade.
+     *
+     * O clique (voltar ao painel) fica no container, que é quem também recebe o
+     * arrasto. Se o `ImageView` de dentro tivesse listener de clique, ele viraria
+     * "clickable" e engoliria o toque: o `OnTouchListener` do container (o
+     * `dragger`) nunca rodaria e a bolha ficaria presa no lugar.
      */
     private fun bubbleView(): View {
         return FrameLayout(this).apply {
@@ -923,7 +928,6 @@ class OverlayService : Service() {
                 ImageView(this@OverlayService).apply {
                     setImageResource(R.mipmap.ic_launcher_round)
                     scaleType = ImageView.ScaleType.FIT_CENTER
-                    setOnClickListener { setMinimized(false) }
                 },
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
