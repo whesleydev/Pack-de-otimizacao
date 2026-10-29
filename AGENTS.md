@@ -360,6 +360,15 @@ nativa além do necessário para conectar e rodar os comandos.
   (jogo no menu, camada trocada, app fora da tela) mostra **"—"**, não um número
   inventado. O mesmo card existe na Home do painel (app e `web/index.php`) via
   a chave `fps` do stats.
+  A ordem de `TABS` **tem de casar** com o `when` do `tabView`: a barra passa o
+  índice do rótulo, então fora de sincronia o conteúdo sai na aba errada (foi
+  assim que o FPS ficou escondido em "Processos" e "Monitor" abria o toque). O
+  `tests/run.sh` compara as duas ordens justamente por isso.
+  **Tamanho**: largura **fixa** (`panelWidth`, ~46% da tela com piso/teto em dp)
+  — com `WRAP_CONTENT` cada aba media um tamanho e o painel pulava ao trocar de
+  aba. Altura acompanha o conteúdo até `panelMaxHeight` (~50% da tela). A bolha
+  de minimizado é quadrado fixo (`BUBBLE_DP`, 46 dp): o ícone é *adaptive icon*
+  e solto num `ImageView` não tem tamanho confiável (saía enorme).
   A aba **Atalhos** tem a seção **Jogo** com o downscale do `game-per-app.sh`
   (`GAME_SCALES` = `fps` 0.9 / `balanced` 0.75 / `max` 0.5, mais "Reset
   resolução" e "Ver tuning"). O overlay sempre passa **`auto`** como pacote:
