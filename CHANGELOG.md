@@ -3,7 +3,7 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
+## [2.41.0] - 2026-10-29
 
 ### Corrigido
 - **O `panel-stats.sh` quebrava o JSON quando o jogo escolhido não tinha
