@@ -3,6 +3,42 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.41.2] - 2026-10-29
+
+### Adicionado
+- **Categoria Dispositivos: resolução de tela.** Aba nova no painel com os
+  degraus de resolução de vários aparelhos (540p a 1440p) e resolução
+  personalizada. Reduzir a resolução **lógica** é o ajuste que mais rende FPS em
+  jogo pesado — a mesma GPU desenha menos pixels. A **resolução de fábrica é
+  guardada antes do primeiro override**, então "Voltar à resolução de fábrica"
+  devolve o valor certo do seu aparelho, mesmo depois de testar vários degraus.
+  A validação recusa valores absurdos em vez de aceitar qualquer coisa. O
+  "automático" só desce para 1080p em tela QHD; em tela pequena não mexe.
+- **Otimizador: medir antes x depois.** O otimizador inteligente agora **mede** o
+  aparelho antes e depois de aplicar e diz se **melhorou, piorou ou ficou
+  estável** — em vez de só aplicar e confiar. Se piorar, avisa para reverter.
+  Ações novas: **analisar** (relatório completo, sem alterar nada), **ver o
+  plano** (o que seria aplicado e o motivo de cada escolha), **medir antes x
+  depois** e **comparar combinações** (testa Vulkan x GL e a maior taxa x 90Hz
+  no seu aparelho e fica com a de melhor nota).
+- **Análise mais profunda do aparelho.** O relatório agora lê também a frequência
+  por **cluster de CPU**, a **pressão de memória** do kernel, a **resolução
+  lógica**, o **zram em uso**, o **MGLRU**, a **entropia** e o **I/O** — e mostra
+  o que está **segurando** a nota.
+
+### Mudado
+- **Otimizador mais rigoroso nas escolhas.** A memória do kernel (swappiness)
+  passou a acompanhar a RAM do aparelho e a limpeza muda de fase conforme a
+  classe. Nada é chutado: o que o aparelho não expõe entra como "desconhecido" e
+  a comparação só considera o que foi realmente lido.
+- **A resolução também está no painel flutuante**, na aba **Motor** — é um
+  ajuste para mexer no meio da partida, não só antes de abrir o jogo.
+
+### Corrigido
+- **O botão "Esconder topo" do flutuante não escondia a barra.** Ele chamava
+  `sysbars status`, que é só leitura (mostra o estado), em vez de `so_status`,
+  que aplica o modo imersivo na barra de cima. O botão parecia não fazer nada.
+
 ## [2.41.1] - 2026-10-29
 
 ### Corrigido

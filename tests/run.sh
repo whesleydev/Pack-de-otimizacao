@@ -136,6 +136,25 @@ if [ "$1" = "SurfaceFlinger" ] && [ "$2" = "--latency" ]; then
 fi
 exit 0
 EOF
+    # wm: simula `wm size` / `wm density` com override persistido, como no
+    # Android (Physical size + Override size quando há override aplicado).
+    cat > "$TMP/bin/wm" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_CMD_LOG" ] && echo "wm $*" >> "$TMP_CMD_LOG"
+case "$1" in
+  size)
+     case "$2" in
+       reset) rm -f "$TMP_STORE/wm.size" ;;
+       '')    echo "Physical size: ${WM_PHYS:-1080x2400}"
+              [ -f "$TMP_STORE/wm.size" ] && echo "Override size: $(cat "$TMP_STORE/wm.size")" ;;
+       *)     printf '%s' "$2" > "$TMP_STORE/wm.size" ;;
+     esac ;;
+  density)
+     echo "Physical density: ${WM_DENSITY:-400}"
+     [ -f "$TMP_STORE/wm.density" ] && echo "Override density: $(cat "$TMP_STORE/wm.density")" ;;
+esac
+exit 0
+EOF
     # su falso: finge ser root e executa o comando como shell local
     cat > "$TMP/bin/su" <<'EOF'
 #!/bin/sh
@@ -616,6 +635,21 @@ t_app_login() {
         && ok "KeyGate removido do app" || bad "KeyGate ainda existe no app"
     [ ! -f "$ROOT/app/src/main/java/com/otm/pack/License.kt" ] \
         && ok "License removido do app" || bad "License ainda existe no app"
+    # todo link do menu tem de ter a seção correspondente: o painel é gerado por
+    # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
+    # deixando um link que não abre nada.
+    python3 - "$p/index.html" <<'PY' > "$TMP/navsec" 2>&1
+import re, sys, html as H, urllib.parse
+doc = open(sys.argv[1], encoding='utf-8').read()
+nav = re.search(r'<nav class="nav" id="nav">[\s\S]*?</nav>', doc).group(0)
+# cada link do menu aponta para a seção "g-<data-g>"; os ids vêm com o nome
+# URL-encoded e o data-g com entidade HTML (&amp;), então normalizo os dois.
+links = [H.unescape(m) for m in re.findall(r'data-g="([^"]+)"', nav)]
+secs = {urllib.parse.unquote(m) for m in re.findall(r'<section id="([^"]+)"', doc)}
+faltam = [g for g in links if 'g-' + g not in secs]
+print('OK' if not faltam else 'FALTAM:' + ','.join(faltam))
+PY
+    assert_contains "$TMP/navsec" "OK" "app: todo link do menu tem a sua seção"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
@@ -2040,8 +2074,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 13 ] && ok "index.php renderiza a home + 11 categorias + Terminal" || bad "seções: $n_sec (esperado 13)"
-        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
+        [ "$n_sec" -eq 14 ] && ok "index.php renderiza a home + 12 categorias + Terminal" || bad "seções: $n_sec (esperado 14)"
+        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "Dispositivos" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # "Sensi e mira" virou "Flutuante" e ficou só com o botão do painel flutuante
@@ -2456,7 +2490,9 @@ t_smart_opt() {
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_auto1" 2>&1
     assert_contains "$TMP/so_auto1" "análise" "auto comeca pela analise do aparelho"
     assert_contains "$TMP/so_auto1" "nota" "auto mostra a nota"
-    assert_contains "$TMP/so_auto1" "otimização aplicada" "auto aplica em seguida"
+    # auto = analisa, aplica E mede antes/depois (o resultado tem de aparecer)
+    assert_contains "$TMP/so_auto1" "TESTE DE DESEMPENHO" "auto roda o teste de desempenho"
+    assert_contains "$TMP/so_auto1" "resultado:" "auto diz se melhorou, piorou ou ficou estável"
     [ -n "$(cat "$HOME/.packotm/smart/last" 2>/dev/null)" ] \
         && ok "auto grava o perfil aplicado" || bad "auto nao gravou o perfil"
     # a escolha do jogo muda o perfil automático para "jogo"
@@ -2508,6 +2544,40 @@ t_smart_opt() {
         && ok "coleta o throttling térmico (dumpsys thermalservice)" || bad "sem leitura do estado térmico"
     grep -q 'settings get global low_power' "$f" \
         && ok "coleta o estado da economia de energia" || bad "sem leitura da economia de energia"
+    # --- v2: análise mais profunda, rigor, medição e comparação ---
+    for leitura in 'proc/pressure/memory' 'vm.swappiness' 'wm density' \
+                   'cpufreq' 'Features'; do
+        grep -q "$leitura" "$f" && ok "v2: lê $leitura" || bad "v2: sem leitura de $leitura"
+    done
+    # os pontos fracos do aparelho aparecem no relatório (o que segura a nota)
+    grep -q 'SO_WEAK' "$f" && ok "v2: aponta os pontos fracos do aparelho" \
+        || bad "v2: sem pontos fracos"
+    # medição: existe a nota de desempenho e ela normaliza pelo que foi lido
+    grep -q 'so_measure()' "$f" && ok "v2: tem medição de desempenho" || bad "v2: sem medição"
+    grep -q 'so_measure_avg()' "$f" && ok "v2: mede 3× e tira a média" || bad "v2: sem média"
+    # bench: mede antes x depois e diz o resultado
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" bench equilibrado > "$TMP/so_bench" 2>&1
+    assert_contains "$TMP/so_bench" "TESTE DE DESEMPENHO" "bench anuncia o teste"
+    assert_contains "$TMP/so_bench" "antes" "bench mostra a medição de antes"
+    assert_contains "$TMP/so_bench" "depois" "bench mostra a medição de depois"
+    assert_contains "$TMP/so_bench" "resultado:" "bench conclui o resultado"
+    [ -s "$HOME/.packotm/smart/bench" ] && ok "bench guarda a medição" || bad "bench não guardou"
+    # compare: testa combinações e declara o vencedor
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" compare desempenho > "$TMP/so_cmp" 2>&1
+    assert_contains "$TMP/so_cmp" "COMPARANDO COMBINA" "compare anuncia a comparação"
+    assert_contains "$TMP/so_cmp" "testando" "compare testa mais de um caminho"
+    assert_contains "$TMP/so_cmp" "vencedor" "compare declara o vencedor"
+    # rigor: perfil inválido é recusado no bench/compare também
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" bench bogus > "$TMP/so_bad2" 2>&1
+    assert_contains "$TMP/so_bad2" "inválido" "bench recusa perfil inválido"
+    # o apply continua confirmando cada ajuste (leitura de volta)
+    grep -q 'so_verify' "$f" && ok "v2: apply confirma cada ajuste lendo de volta" \
+        || bad "v2: apply não confirma"
+    # a memória do kernel é ajustada com verificação (otm_sysctl lê de volta)
+    grep -q 'otm_sysctl vm.swappiness' "$f" \
+        && ok "v2: ajusta vm.swappiness conforme a RAM" || bad "v2: sem vm.swappiness"
     grep -q 'otm_ram_livre_mb' "$f" \
         && ok "coleta a RAM realmente livre (otm_ram_livre_mb)" || bad "sem leitura da RAM livre"
     # com o aparelho apertado, a decisão muda (menos apps em cache, limpeza funda)
@@ -2638,6 +2708,53 @@ t_clean() {
         && bad "app: actions.json ainda tem clean.deep (root)" || ok "app: actions.json sem clean.deep"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_resolution() {
+    printf '\n  # resolução de tela: perfis de vários aparelhos + custom\n'
+    local f="$ROOT/scripts/resolution.sh"
+    [ -f "$f" ] && ok "scripts/resolution.sh existe" || { bad "resolution.sh ausente"; return; }
+    # a lista tem perfis de aparelhos reais e nomes legíveis
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" list > "$TMP/res_list" 2>&1
+    assert_contains "$TMP/res_list" "720x1600" "lista traz o 720p alto (celular comum)"
+    assert_contains "$TMP/res_list" "1080x2340" "lista traz o 1080p alto"
+    assert_contains "$TMP/res_list" "1440x3200" "lista traz o QHD alto"
+    assert_contains "$TMP/res_list" "RESOLUÇÕES DISPONÍVEIS" "lista se identifica"
+    # aplica um perfil pelo nome e confere que o wm size recebeu o valor
+    rm -rf "$HOME/.packotm"
+    : > "$TMP/res.log"; export TMP_CMD_LOG="$TMP/res.log"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 720x1600 > "$TMP/res_ap" 2>&1
+    assert_contains "$TMP/res_ap" "720x1600" "apply aplica a resolução pedida"
+    grep -q 'wm size 720x1600' "$TMP/res.log" \
+        && ok "apply manda 'wm size' com o valor certo" || bad "apply não chamou wm size"
+    # resolução custom em WxH é aceita
+    : > "$TMP/res.log"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 900x1800 > "$TMP/res_c" 2>&1
+    grep -q 'wm size 900x1800' "$TMP/res.log" \
+        && ok "apply aceita resolução personalizada" || bad "custom não passou"
+    # valores inválidos são recusados (nada de quebrar a tela)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 99x99 > "$TMP/res_bad" 2>&1
+    assert_contains "$TMP/res_bad" "pequena demais" "apply recusa resolução minúscula"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 99999x99999 > "$TMP/res_bad2" 2>&1
+    assert_contains "$TMP/res_bad2" "grande demais" "apply recusa resolução absurda"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply abc > "$TMP/res_bad3" 2>&1
+    assert_contains "$TMP/res_bad3" "desconhecido" "apply recusa nome inexistente"
+    # reset devolve a de fábrica
+    : > "$TMP/res.log"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" reset > "$TMP/res_rst" 2>&1
+    grep -q 'wm size reset' "$TMP/res.log" \
+        && ok "reset devolve a resolução de fábrica" || bad "reset não chamou wm size reset"
+    # a resolução de fábrica fica guardada (o restore do pack depende disso)
+    grep -q 'ST/res/orig' "$f" && ok "guarda a resolução de fábrica" || bad "não guarda a original"
+    unset TMP_CMD_LOG
+    # whitelist do painel + catálogo
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("resolution.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' \
+        > "$TMP/res_lib" 2>&1
+    assert_contains "$TMP/res_lib" "ok" "resolution.sh na whitelist"
+    # espelho do app
+    [ -f "$ROOT/app/src/main/assets/pack/scripts/resolution.sh" ] \
+        && ok "espelho: resolution.sh presente" || bad "espelho: resolution.sh ausente"
 }
 
 t_smart_clean_protect() {
@@ -3087,7 +3204,7 @@ t_overlay() {
         || ok "overlay não usa mais o título antigo"
     # organizado em CATEGORIAS (abas), não numa lista única
     grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
-    for t in Monitor Toque Motor Processos Atalhos; do
+    for t in Monitor Jogo Toque Motor Processos Atalhos; do
         grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
     # a ORDEM do `when` do tabView tem de casar com a ordem de TABS: um índice
@@ -3103,7 +3220,7 @@ if not (tabs and tv):
     sys.exit(1)
 nomes = re.findall(r'"([^"]+)"', tabs.group(1))
 # cada aba tem de ter uma função própria, na MESMA ordem dos rótulos
-esperado = ["monitorTab", "touchTab", "engineTab", "procTab", "shortcutsTab"]
+esperado = ["monitorTab", "gameTab", "touchTab", "engineTab", "procTab", "shortcutsTab"]
 achado = re.findall(r'(\w+Tab)\(\)', tv.group(1))
 sys.exit(0 if achado == esperado and len(nomes) == len(esperado) else 1)
 PY
@@ -3147,6 +3264,86 @@ PY
     # os rótulos das 5 abas não cabem numa linha só no painel estreito
     grep -q 'TAB_COLS' "$svc" && ok "as abas quebram em linhas (rótulo legível)" \
         || bad "abas numa linha só (rótulo cortado)"
+    # o painel não pode voltar a ser estreito: largura de painel de verdade
+    python3 - "$svc" <<'PY' && ok "painel tem largura de painel (não fica fino)" \
+        || bad "painel estreito demais (fracao < 0.6 da tela)"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'PANEL_W_FRAC\s*=\s*([0-9.]+)f', src)
+sys.exit(0 if m and float(m.group(1)) >= 0.6 else 1)
+PY
+    # a bolha usa o PNG redondo: o adaptive icon (ic_launcher) desenha o logo em
+    # ~66% do quadro e deixava a bolha com um logo pequeno perdido num círculo
+    grep -q 'R.mipmap.ic_launcher_round' "$svc" \
+        && ok "a bolha usa o ícone redondo (preenche o círculo)" \
+        || bad "bolha usa o adaptive icon (logo pequeno e torto)"
+    # TODA chamada do overlay tem de apontar para um script que existe. Um nome
+    # de script errado só apareceria em runtime, no meio da partida.
+    python3 - "$svc" "$ROOT/scripts" <<'PY' && ok "overlay só chama scripts que existem" \
+        || bad "overlay chama script inexistente"
+import os, re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+d = sys.argv[2]
+chamadas = set(re.findall(r'runScript\(\s*"([^"]+\.sh)"', src))
+faltando = sorted(c for c in chamadas if not os.path.isfile(os.path.join(d, c)))
+if faltando:
+    print("     faltando:", ", ".join(faltando))
+sys.exit(1 if faltando else 0)
+PY
+    # os valores de multitouch respeitam o limite do script (100..800); 10 seria
+    # recusado e o botão não faria nada
+    python3 - "$svc" <<'PY' && ok "overlay usa multitouch dentro do limite (100..800)" \
+        || bad "overlay manda multitouch fora do limite"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+vals = [int(v) for v in re.findall(r'"touch_multi",\s*"(\d+)"', src)]
+sys.exit(1 if any(v < 100 or v > 800 for v in vals) else 0)
+PY
+    # RODA de verdade cada chamada do overlay contra os stubs. O que se procura
+    # aqui é ERRO DE ARGUMENTO (perfil inexistente, valor fora do limite, ação
+    # desconhecida) — isso só apareceria no meio da partida, quando o usuário
+    # apertasse o botão. Chamadas com valor dinâmico (vindo de uma lista) são
+    # puladas: o valor real não está no fonte.
+    python3 - "$svc" > "$TMP/overlay_calls" <<'PY'
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+pat = re.compile(r'runScript\(\s*"([^"]+)"\s*,\s*listOf\(([^)]*)\)', re.S)
+for m in pat.finditer(src):
+    inner = m.group(2).strip()
+    if not inner:
+        print(m.group(1)); continue
+    # separa os argumentos no nível de cima e exige que TODOS sejam literal
+    args, buf, depth, instr = [], "", 0, False
+    for ch in inner:
+        if ch == '"': instr = not instr
+        elif ch == '(' and not instr: depth += 1
+        elif ch == ')' and not instr: depth -= 1
+        elif ch == ',' and depth == 0 and not instr:
+            args.append(buf.strip()); buf = ""; continue
+        buf += ch
+    args.append(buf.strip())
+    if any(not re.fullmatch(r'"[^"]*"', a) for a in args):
+        continue  # valor dinâmico: não dá para saber aqui
+    print(m.group(1) + "\t" + "\t".join(a[1:-1] for a in args))
+PY
+    n_ok=0; n_bad=0
+    while IFS="$(printf '\t')" read -r script a1 a2 a3 a4; do
+        [ -z "$script" ] && continue
+        set -- $script $a1 $a2 $a3 $a4
+        out=$(OTM_NO_COLOR=1 OTM_MODE=su timeout 25 sh "$ROOT/scripts/$1" "$2" "$3" "$4" "$5" 2>&1)
+        # Argumento recusado = "uso: ..." / "perfil desconhecido:" / "ação
+        # desconhecida:" (os `err` dos scripts põem os dois-pontos). NÃO conta
+        # "desconhecido" solto (o smart-opt chama assim um SoC que não conhece)
+        # nem o "Uso:" da ajuda do ff-touch (maiúsculo, é texto de ajuda).
+        if printf '%s' "$out" | grep -qE 'uso:|desconhecid[oa]:|inv[aá]lid'; then
+            n_bad=$((n_bad+1))
+            printf '       %s %s -> %s\n' "$1" "$2 $3 $4 $5" "$(printf '%s' "$out" | head -1)"
+        else
+            n_ok=$((n_ok+1))
+        fi
+    done < "$TMP/overlay_calls"
+    [ "$n_bad" = 0 ] && ok "todo argumento do overlay é aceito pelo script ($n_ok chamadas)" \
+        || bad "overlay manda $n_bad argumento(s) que o script recusa"
     # as novas ações do flutuante chamam os scripts do pack (nada reimplementado)
     for c in 'turbo.sh' 'dns.sh' 'ram-boost.sh' 'snapshot.sh' 'game-per-app.sh'; do
         grep -q "$c" "$svc" || bad "overlay sem atalho para $c"
@@ -3523,6 +3720,7 @@ t_panel_v219
 t_keepalive
 t_gameclean
 t_ramboost
+t_resolution
 t_smart_opt
 t_clean
 t_smart_clean_protect

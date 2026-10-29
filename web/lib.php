@@ -71,7 +71,7 @@ function otm_allowed_scripts(): array {
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'fps.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
-        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh',
+        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh', 'resolution.sh',
     ];
 }
 
@@ -185,10 +185,41 @@ function otm_actions(): array {
           'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Display & Touch" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 420]);
     $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
-          'desc' => 'Analisa o seu aparelho e aplica as melhores configurações para ele.',
-          'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência, RAM, taxa de tela, armazenamento, térmico, bateria, zram, Android e kernel) e calcula uma nota e a classe do aparelho. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, limpeza e doze. (O debloat ficou de fora de propósito: remover app de fábrica é decisão sua e mora na aba Debloat.) Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim, confere se os ajustes pegaram de verdade. É tudo reversível em "Reverter TUDO".',
+          'desc' => 'Analisa o seu aparelho, aplica as melhores configurações E mede o resultado.',
+          'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência por cluster, RAM, taxa de tela, armazenamento, térmico, bateria, zram, MGLRU, rede, governador e pressão de memória) e calcula uma nota e a classe do aparelho — mostrando também o que está SEGURANDO a nota. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, limpeza, doze e a memória do kernel (swappiness) conforme a RAM. (O debloat ficou de fora de propósito: remover app de fábrica é decisão sua e mora na aba Debloat.) Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim ele MEDE antes x depois e diz se melhorou, piorou ou ficou estável — se piorar, avisa para reverter. É tudo reversível em "Reverter TUDO".',
           'argv' => ['smart-opt.sh', 'auto'], 'risk' => 'careful', 'confirm' => true,
-          'timeout' => 420]);
+          'timeout' => 900]);
+    $add(['id' => 'smart.report', 'group' => 'Geral', 'label' => 'Otimizador: analisar o aparelho',
+          'desc' => 'Relatório completo do aparelho, sem alterar nada.',
+          'help' => 'Lê o aparelho de ponta a ponta e mostra tudo: SoC, GPU, clusters de CPU com as frequências, RAM (total e livre), pressão de memória do kernel, taxa de tela, resolução lógica, armazenamento, térmico, bateria, zram em uso, governador, entropia, I/O e renderizador atual. Termina com a nota (0-100), a classe e a lista do que está segurando a nota. Não altera NADA — é só leitura.',
+          'argv' => ['smart-opt.sh', 'analyze']]);
+    $add(['id' => 'smart.decide', 'group' => 'Geral', 'label' => 'Otimizador: ver o plano',
+          'desc' => 'Mostra o que seria aplicado, item por item, e o motivo de cada escolha.',
+          'help' => 'Mostra as decisões do otimizador para o seu aparelho, com o motivo de cada uma (por que Vulkan e não GL, por que 120Hz e não 144Hz, quantos apps em cache...). Nada é aplicado aqui — serve para você conferir antes. Você pode pedir um perfil específico.',
+          'argv' => ['smart-opt.sh', 'plan', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                         'default' => 'auto']]]);
+    $add(['id' => 'smart.bench', 'group' => 'Geral', 'label' => 'Otimizador: medir antes x depois',
+          'desc' => 'Mede o desempenho, aplica o perfil e mede de novo, comparando os dois.',
+          'help' => 'O teste que prova o resultado. Ele mede a nota de desempenho do aparelho (RAM livre, pressão de memória, carga de CPU, frequência e temperatura — 3 amostras de cada), aplica o perfil e mede de novo. No fim diz se MELHOROU, PIOROU ou ficou ESTÁVEL. Se piorar, avisa para reverter. É o "olha o número" em vez de "confie em mim".',
+          'argv' => ['smart-opt.sh', 'bench', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                         'default' => 'auto']],
+          'risk' => 'careful', 'confirm' => true, 'timeout' => 900]);
+    $add(['id' => 'smart.compare', 'group' => 'Geral', 'label' => 'Otimizador: comparar combinações',
+          'desc' => 'Testa caminhos diferentes (Vulkan x GL, 120Hz x 90Hz) e fica com o melhor.',
+          'help' => 'Quando dois ajustes são plausíveis, este comando testa os dois no SEU aparelho e fica com o de melhor nota de desempenho. Ele alterna o renderizador (Vulkan/GL) e a taxa de tela (a maior x 90Hz, que esquenta menos) medindo cada combinação, e no fim deixa aplicada a vencedora. O que funciona melhor depende do aparelho — então, em vez de adivinhar, ele mede.',
+          'argv' => ['smart-opt.sh', 'compare', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                         'default' => 'auto']],
+          'risk' => 'careful', 'confirm' => true, 'timeout' => 900]);
+    $add(['id' => 'smart.state', 'group' => 'Geral', 'label' => 'Otimizador: ver o que está ativo',
+          'desc' => 'Mostra o perfil aplicado e o estado real dos ajustes agora.',
+          'help' => 'Mostra o perfil que foi aplicado por último, a RAM em cache, o renderizador, a taxa de tela (mín/máx), a RAM livre e os apps no anti-relog. Só leitura.',
+          'argv' => ['smart-opt.sh', 'status']]);
     $add(['id' => 'restore_all', 'group' => 'Geral', 'label' => 'Reverter TUDO',
           'desc' => 'Desfaz níveis 2, otimizações profundas e debloat de uma vez.',
           'help' => 'Volta o aparelho ao estado de fábrica de configuração: desfaz as otimizações, as profundas (root) e o debloat. Use quando quiser "limpar" tudo o que o pack aplicou.',
@@ -1145,6 +1176,30 @@ function otm_actions(): array {
           'help' => 'Coleta o estado atual e compara com a medida anterior, mostrando a diferença. Rode depois de aplicar o pack.',
           'argv' => ['bench.sh', 'run', '{label}'],
           'params' => [['name' => 'label', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'depois']]]);
+
+    // ----- Dispositivos: resolução de tela (mesma de vários aparelhos) -----
+    $add(['id' => 'res.list', 'group' => 'Dispositivos', 'label' => 'Ver resoluções disponíveis',
+          'desc' => 'Lista as resoluções de vários aparelhos e qual está valendo agora.',
+          'help' => 'Mostra os degraus de resolução que existem no mercado (de 480x800 até 1440x3200) e a resolução de fábrica do seu aparelho. A resolução lógica é o ajuste que MAIS rende FPS em jogo pesado: com menos pixels para desenhar, a mesma GPU entrega mais quadros. Escolha o quanto aceita perder de nitidez em troca de FPS.',
+          'argv' => ['resolution.sh', 'list']]);
+    $add(['id' => 'res.current', 'group' => 'Dispositivos', 'label' => 'Ver a resolução atual',
+          'desc' => 'Mostra a resolução de fábrica, a que está em uso e a densidade.',
+          'help' => 'Compara a resolução de fábrica do aparelho com a que está valendo agora (override). Se houver override ativo, "Voltar à resolução de fábrica" desfaz. Só leitura.',
+          'argv' => ['resolution.sh', 'current']]);
+    $add(['id' => 'res.auto', 'group' => 'Dispositivos', 'label' => 'Resolução recomendada (automático)',
+          'desc' => 'Escolhe um degrau de resolução conforme o tamanho da tela do seu aparelho.',
+          'help' => 'Em tela muito grande (QHD/1440p), desce para 1080p — é um ganho grande de FPS com perda pequena de nitidez. Em tela pequena, não mexe (já renderiza pouco). Reversível em "Voltar à resolução de fábrica".',
+          'argv' => ['resolution.sh', 'auto'], 'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'res.apply', 'group' => 'Dispositivos', 'label' => 'Aplicar uma resolução',
+          'desc' => 'Escolha um perfil pronto (720p, 1080p, 1440p...) ou digite "largura x altura".',
+          'help' => 'Aplica a resolução lógica. Ex.: 720x1600 (mais FPS, imagem mais leve), 1080x2340 (equilíbrio), 1440x3200 (nitidez máxima). Você também pode digitar um valor próprio, como 900x1800. Reinicie o jogo depois para ele pegar. A resolução de fábrica fica guardada e volta em "Voltar à resolução de fábrica".',
+          'argv' => ['resolution.sh', 'apply', '{res}'],
+          'params' => [['name' => 'res', 'type' => 'name', 'label' => 'Resolução (ex.: 720x1600)', 'default' => '720x1600']],
+          'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'res.reset', 'group' => 'Dispositivos', 'label' => 'Voltar à resolução de fábrica',
+          'desc' => 'Devolve a tela à resolução original do aparelho.',
+          'help' => 'Remove o override de resolução e volta exatamente à resolução de fábrica. Use se a imagem ficar estranha ou se quiser a nitidez máxima de volta.',
+          'argv' => ['resolution.sh', 'reset'], 'risk' => 'careful']);
 
     // ----- Módulos (plugins do pack) -----
     $add(['id' => 'module.run', 'group' => 'Geral', 'label' => 'Executar um módulo',

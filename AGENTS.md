@@ -568,6 +568,33 @@ nativa além do necessário para conectar e rodar os comandos.
   roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
 
+  **Medir para provar (`bench`/`compare`).** O `auto` não termina mais em "confie
+  em mim": ele mede antes, aplica e mede depois (`so_measure`), dizendo se
+  MELHOROU, PIOROU ou ficou ESTÁVEL — e avisa para reverter se piorar. As ações
+  `bench [perfil]` (mede → aplica → mede, com 3 amostras de cada) e
+  `compare [perfil]` (testa os candidatos — Vulkan x GL e a maior taxa x 90Hz —
+  e deixa aplicada a combinação de melhor nota) são as que fecham o ciclo. A
+  medição nunca chuta: campo que o aparelho não expõe entra como "desconhecido" e
+  a comparação só considera o que foi lido. É o mesmo `so_measure` nos três
+  comandos, então `analyze`, `bench` e `compare` falam a mesma língua. No painel
+  ficam em `smart.report` (analisar), `smart.decide` (ver o plano), `smart.bench`
+  e `smart.compare` — além de `smart.state` (o que está ativo).
+
+### Dispositivos: resolução de tela (`scripts/resolution.sh`)
+
+Categoria **Dispositivos** (grupo próprio, `res.*` no `lib.php`). Reduzir a
+resolução **lógica** (não a física) é o ajuste que mais rende FPS em jogo pesado:
+menos pixels para a mesma GPU desenhar. `resolution.sh` tem `list` (degraus de
+mercado + a resolução de fábrica), `current` (fábrica x override x densidade),
+`apply <WxH>`, `custom <W>x<H>` e `reset` (volta à de fábrica). A **resolução de
+fábrica é guardada antes do primeiro override** (`$ST/resolution/factory`), então
+o `reset` volta ao valor certo mesmo depois de vários testes — não ao "padrão de
+mercado". A validação recusa valores absurdos ("pequena demais"/"grande demais"/
+formato inválido) em vez de aceitar qualquer coisa. `auto` desce para 1080p só em
+tela QHD; em tela pequena não mexe (já renderiza pouco). É tudo `wm size` (não
+precisa de root). No painel flutuante a resolução também aparece na aba **Motor**,
+porque é um ajuste para mexer no meio da partida.
+
 ### Vitalidade: cuidar para durar (`scripts/vitality.sh`)
 
 O pack inteiro "tira o freio" (mais FPS, mais desempenho) e tinha **dezenas** de ações

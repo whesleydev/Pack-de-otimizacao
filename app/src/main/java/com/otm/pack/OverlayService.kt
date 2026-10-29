@@ -260,9 +260,10 @@ class OverlayService : Service() {
      */
     private fun tabView(index: Int): View = when (index) {
         0 -> monitorTab()
-        1 -> touchTab()
-        2 -> engineTab()
-        3 -> procTab()
+        1 -> gameTab()
+        2 -> touchTab()
+        3 -> engineTab()
+        4 -> procTab()
         else -> shortcutsTab()
     }
 
@@ -389,9 +390,17 @@ class OverlayService : Service() {
         return map
     }
 
-    /** Aba Toque: perfis de sensibilidade do jogo. */
+    /**
+     * Aba Toque: sensibilidade e resposta do dedo — o que se mexe no meio da
+     * partida quando a mira não está encaixando.
+     *
+     * Cada botão chama o MESMO script do painel principal (`ff-touch.sh` para os
+     * perfis de toque, `sensi.sh` para o cálculo da sensi, `adb-tweaks.sh` para a
+     * resposta do dedo) — nada é reimplementado aqui.
+     */
     private fun touchTab(): View {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
         box.addView(sectionHeader("Perfil de toque"))
         var row: LinearLayout? = null
         for ((i, p) in TOUCH_PROFILES.withIndex()) {
@@ -401,6 +410,121 @@ class OverlayService : Service() {
             }
             row!!.addView(smallButton(p.second) { runScript("ff-touch.sh", listOf(p.first), "Toque: ${p.second}") })
         }
+        box.addView(procNote("perfis do pack: troca a resposta do toque no jogo"))
+        val tRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        tRow.addView(smallButton("Ver perfil") { runScript("ff-touch.sh", listOf("list"), "Perfis de toque") })
+        tRow.addView(smallButton("Restaurar") { runScript("ff-touch.sh", listOf("restore"), "Toque restaurado") })
+        box.addView(tRow, matchWrap())
+
+        box.addView(sectionHeader("Sensi (mira)"))
+        box.addView(procNote("só calcula os valores do seu aparelho — não altera nada"))
+        var sRow: LinearLayout? = null
+        for ((i, s) in SENSI_PROFILES.withIndex()) {
+            if (i % 2 == 0) {
+                sRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(sRow, matchWrap())
+            }
+            sRow!!.addView(smallButton(s.second) {
+                runScript("sensi.sh", listOf("calc", s.first), "Sensi: ${s.second}")
+            })
+        }
+        val sRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        sRow2.addView(smallButton("Ler a minha") { runScript("sensi.sh", listOf("analyze"), "Sensi lida") })
+        sRow2.addView(smallButton("Ordem do FF") { runScript("sensi.sh", listOf("ff"), "Sensi (ordem FF)") })
+        box.addView(sRow2, matchWrap())
+
+        box.addView(sectionHeader("Resposta do dedo"))
+        var dRow: LinearLayout? = null
+        for ((i, d) in TOUCH_LEVELS.withIndex()) {
+            if (i % 2 == 0) {
+                dRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(dRow, matchWrap())
+            }
+            dRow!!.addView(smallButton(d.second) {
+                runScript("adb-tweaks.sh", listOf("touch_latency", d.first, "350", "0", "4"), "Toque: ${d.second}")
+            })
+        }
+        val dRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        dRow2.addView(smallButton("Multitouch 300") {
+            runScript("adb-tweaks.sh", listOf("touch_multi", "300"), "Multitouch 300ms")
+        })
+        dRow2.addView(smallButton("Multitouch 150") {
+            runScript("adb-tweaks.sh", listOf("touch_multi", "150"), "Multitouch 150ms")
+        })
+        box.addView(dRow2, matchWrap())
+        return box
+    }
+
+    /**
+     * Aba Jogo: o que só faz sentido com a partida aberta — resolução, modo do
+     * app, anti-relog e o estado atual do tuning.
+     */
+    private fun gameTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        box.addView(sectionHeader("Desempenho do jogo"))
+        box.addView(procNote("o flutuante não sabe qual é o jogo: o script resolve (auto)"))
+        val perf = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        perf.addView(smallButton("Performance") {
+            runScript("game-per-app.sh", listOf("mode", "auto", "performance"), "Jogo: performance")
+        })
+        perf.addView(smallButton("Padrão") {
+            runScript("game-per-app.sh", listOf("mode", "auto", "standard"), "Jogo: padrão")
+        })
+        box.addView(perf, matchWrap())
+
+        box.addView(sectionHeader("Anti-relog (não fechar)"))
+        box.addView(procNote("aplica ao jogo escolhido no pack (sem escolha, o Free Fire)"))
+        val relog = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        relog.addView(smallButton("Ligar") {
+            runScript("adb-tweaks.sh", listOf("game"), "Anti-relog ligado")
+        })
+        relog.addView(smallButton("Abrir o jogo") {
+            runScript("adb-tweaks.sh", listOf("game_open"), "Abrindo o jogo")
+        })
+        box.addView(relog, matchWrap())
+
+        box.addView(sectionHeader("Resolução (mais FPS)"))
+        box.addView(procNote("reduz a resolução de renderização — reinicie o jogo"))
+        var jrow: LinearLayout? = null
+        for ((i, g) in GAME_SCALES.withIndex()) {
+            if (i % 2 == 0) {
+                jrow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(jrow, matchWrap())
+            }
+            // "auto" deixa o script resolver o jogo (escolhido no pack, ou o app
+            // em primeiro plano) — o flutuante não tem como saber qual é o jogo.
+            jrow!!.addView(smallButton(g.second) {
+                runScript("game-per-app.sh", listOf("apply", "auto", g.first), "Resolução: ${g.second}")
+            })
+        }
+        val jreset = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        jreset.addView(smallButton("Reset resolução") {
+            runScript("game-per-app.sh", listOf("reset", "auto"), "Resolução restaurada")
+        })
+        jreset.addView(smallButton("Ver tuning") {
+            runScript("game-per-app.sh", listOf("show", "auto"), "Tuning do jogo")
+        })
+        box.addView(jreset, matchWrap())
+
+        box.addView(sectionHeader("Extras do jogo"))
+        val extra = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        extra.addView(smallButton("Otimizar agora") {
+            runScript("smart-opt.sh", listOf("auto"), "Otimização inteligente")
+        })
+        extra.addView(smallButton("Otimizar +") {
+            runScript("adb-tweaks.sh", listOf("game_tune"), "Tuning do jogo")
+        })
+        box.addView(extra, matchWrap())
+
+        val extra2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        extra2.addView(smallButton("Compilar jogo") {
+            runScript("turbo.sh", listOf("art-all", "speed-profile"), "Compilando apps")
+        })
+        extra2.addView(smallButton("Abrir mais rápido") {
+            runScript("turbo.sh", listOf("dexopt-bg"), "bg-dexopt")
+        })
+        box.addView(extra2, matchWrap())
         return box
     }
 
@@ -418,6 +542,29 @@ class OverlayService : Service() {
                 runScript("adb-tweaks.sh", listOf("renderer", e.first), "Motor: ${e.second}")
             })
         }
+
+        // Resolução de tela: é o ajuste que MAIS rende FPS, então tem de estar
+        // no meio da partida, não só no painel principal. Os degraus vão do mais
+        // leve (mais FPS) ao mais nítido; "Fábrica" desfaz.
+        box.addView(sectionHeader("Resolução (mais FPS)"))
+        var rowRes: LinearLayout? = null
+        for ((i, r) in RESOLUTIONS.withIndex()) {
+            if (i % 2 == 0) {
+                rowRes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(rowRes, matchWrap())
+            }
+            rowRes!!.addView(smallButton(r.second) {
+                runScript("resolution.sh", listOf("apply", r.first), "Resolução: ${r.second}")
+            })
+        }
+        val rowFab = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        rowFab.addView(smallButton("Automático") {
+            runScript("resolution.sh", listOf("auto"), "Resolução automática")
+        })
+        rowFab.addView(smallButton("Fábrica") {
+            runScript("resolution.sh", listOf("reset"), "Resolução de fábrica")
+        })
+        box.addView(rowFab, matchWrap())
         return box
     }
 
@@ -590,10 +737,12 @@ class OverlayService : Service() {
     }
 
     /**
-     * Aba Atalhos: o que se ajusta no meio da partida, em blocos curtos.
+     * Aba Atalhos: o resto do ajuste de meio-de-partida, em blocos curtos.
      *
      * Cada botão chama o MESMO script que o painel principal usa — nada é
-     * reimplementado aqui (o flutuante não pode divergir do painel).
+     * reimplementado aqui (o flutuante não pode divergir do painel). O que é
+     * específico de jogo mora na aba **Jogo**; aqui ficam rede, tela, limpeza,
+     * avisos, barras e snapshot.
      */
     private fun shortcutsTab(): View {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -601,10 +750,25 @@ class OverlayService : Service() {
         box.addView(sectionHeader("Rede e latência"))
         val rede = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         rede.addView(smallButton("Latência") { runScript("adb-tweaks.sh", listOf("latency"), "Latência") })
-        rede.addView(smallButton("DNS gamer") { runScript("dns.sh", listOf("gaming"), "DNS gaming") })
+        rede.addView(smallButton("Latência off") { runScript("adb-tweaks.sh", listOf("latency_reset"), "Latência restaurada") })
         box.addView(rede, matchWrap())
 
-        box.addView(sectionHeader("Fluidez"))
+        val rede2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        rede2.addView(smallButton("DNS gamer") { runScript("dns.sh", listOf("gaming"), "DNS gaming") })
+        rede2.addView(smallButton("DNS auto") { runScript("dns.sh", listOf("auto"), "DNS automático") })
+        box.addView(rede2, matchWrap())
+
+        val rede3 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        rede3.addView(smallButton("Rede/TCP") { runScript("adb-tweaks.sh", listOf("net"), "Rede/TCP") })
+        rede3.addView(smallButton("Rede off") { runScript("adb-tweaks.sh", listOf("net_reset"), "Rede restaurada") })
+        box.addView(rede3, matchWrap())
+
+        val rede4 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        rede4.addView(smallButton("Medir ping") { runScript("dns.sh", listOf("bench"), "Ping do DNS") })
+        rede4.addView(smallButton("Wi-Fi") { runScript("adb-tweaks.sh", listOf("wifi"), "Ajustes de Wi-Fi") })
+        box.addView(rede4, matchWrap())
+
+        box.addView(sectionHeader("Tela e fluidez"))
         var row: LinearLayout? = null
         for ((i, r) in REFRESH_RATES.withIndex()) {
             if (i % 2 == 0) {
@@ -624,6 +788,11 @@ class OverlayService : Service() {
         fixo.addView(smallButton("Perf. off") { runScript("turbo.sh", listOf("perfmode", "off"), "Desempenho normal") })
         box.addView(fixo, matchWrap())
 
+        val fluidez = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fluidez.addView(smallButton("Fluidez") { runScript("adb-tweaks.sh", listOf("fluidez"), "Fluidez") })
+        fluidez.addView(smallButton("GPU") { runScript("adb-tweaks.sh", listOf("gpu"), "Ajustes de GPU") })
+        box.addView(fluidez, matchWrap())
+
         box.addView(sectionHeader("Durante a partida"))
         val partida = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         partida.addView(smallButton("Foco de jogo") { runScript("adb-tweaks.sh", listOf("game_focus"), "Foco de jogo") })
@@ -637,19 +806,34 @@ class OverlayService : Service() {
 
         val congelar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         congelar.addView(smallButton("Hibernar") { runScript("turbo.sh", listOf("hibernate", "now"), "Hibernar apps") })
-        congelar.addView(smallButton("Congelar") { runScript("adb-tweaks.sh", listOf("freeze_apps"), "Congelar apps") })
+        congelar.addView(smallButton("Poda caches") { runScript("turbo.sh", listOf("trim"), "Caches podados") })
         box.addView(congelar, matchWrap())
+
+        val congelar2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        congelar2.addView(smallButton("Congelar") { runScript("adb-tweaks.sh", listOf("freezer"), "Congelar apps") })
+        congelar2.addView(smallButton("Descongelar") { runScript("adb-tweaks.sh", listOf("freezer_off"), "Congelador desligado") })
+        box.addView(congelar2, matchWrap())
 
         val gameClean = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         gameClean.addView(smallButton("Game Clean") { runScript("game-clean.sh", listOf("on"), "Game Clean") })
         gameClean.addView(smallButton("Game Clean off") { runScript("game-clean.sh", listOf("off"), "Game Clean desligado") })
         box.addView(gameClean, matchWrap())
 
-        box.addView(sectionHeader("Mira e toque"))
-        val mira = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        mira.addView(smallButton("Headshot") { runScript("sensi.sh", listOf("headshot"), "Sensi: headshot") })
-        mira.addView(smallButton("Multitouch") { runScript("adb-tweaks.sh", listOf("touch_multi", "250"), "Multitouch") })
-        box.addView(mira, matchWrap())
+        val matar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        matar.addView(smallButton("Matar 2º plano") { runScript("turbo.sh", listOf("killbg"), "2º plano encerrado") })
+        matar.addView(smallButton("Phantom on") { runScript("turbo.sh", listOf("phantom", "on"), "Phantom Killer") })
+        box.addView(matar, matchWrap())
+
+        box.addView(sectionHeader("Sem interrupção"))
+        val avisos = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        avisos.addView(smallButton("Não perturbe") { runScript("adb-tweaks.sh", listOf("dnd"), "DND ligado") })
+        avisos.addView(smallButton("DND off") { runScript("adb-tweaks.sh", listOf("dnd_off"), "DND desligado") })
+        box.addView(avisos, matchWrap())
+
+        val avisos2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        avisos2.addView(smallButton("Menos avisos") { runScript("adb-tweaks.sh", listOf("notif"), "Heads-up desligado") })
+        avisos2.addView(smallButton("Telemetria off") { runScript("turbo.sh", listOf("telemetry", "off"), "Telemetria desligada") })
+        box.addView(avisos2, matchWrap())
 
         box.addView(sectionHeader("Aparência e tela"))
         val visual = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -658,32 +842,35 @@ class OverlayService : Service() {
         box.addView(visual, matchWrap())
 
         val barras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        barras.addView(smallButton("Esconder topo") { runScript("adb-tweaks.sh", listOf("sysbars", "status"), "Barra de cima") })
+        barras.addView(smallButton("Esconder topo") { runScript("adb-tweaks.sh", listOf("sysbars", "so_status"), "Barra de cima") })
         barras.addView(smallButton("Mostrar tudo") { runScript("adb-tweaks.sh", listOf("sysbars", "on"), "Barras visíveis") })
         box.addView(barras, matchWrap())
 
-        box.addView(sectionHeader("Jogo"))
-        box.addView(procNote("reduz a resolução do jogo = mais FPS (reinicie o jogo)"))
-        var jrow: LinearLayout? = null
-        for ((i, g) in GAME_SCALES.withIndex()) {
-            if (i % 2 == 0) {
-                jrow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                box.addView(jrow, matchWrap())
-            }
-            // "auto" deixa o script resolver o jogo (escolhido no pack, ou o app
-            // em primeiro plano) — o flutuante não tem como saber qual é o jogo.
-            jrow!!.addView(smallButton(g.second) {
-                runScript("game-per-app.sh", listOf("apply", "auto", g.first), "Resolução: ${g.second}")
-            })
-        }
-        val jreset = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        jreset.addView(smallButton("Reset resolução") {
-            runScript("game-per-app.sh", listOf("reset", "auto"), "Resolução restaurada")
-        })
-        jreset.addView(smallButton("Ver tuning") {
-            runScript("game-per-app.sh", listOf("show", "auto"), "Tuning do jogo")
-        })
-        box.addView(jreset, matchWrap())
+        val barras2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        barras2.addView(smallButton("Tela cheia") { runScript("adb-tweaks.sh", listOf("sysbars", "off"), "Imersivo") })
+        barras2.addView(smallButton("Animações 0") { runScript("adb-tweaks.sh", listOf("perf_max"), "Performance extrema") })
+        box.addView(barras2, matchWrap())
+
+        box.addView(sectionHeader("Bateria e sistema"))
+        val bat = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        bat.addView(smallButton("Sem economia") { runScript("adb-tweaks.sh", listOf("battery_off"), "Economia desligada") })
+        bat.addView(smallButton("Economia") { runScript("adb-tweaks.sh", listOf("battery"), "Economia ligada") })
+        box.addView(bat, matchWrap())
+
+        val doze = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        doze.addView(smallButton("Sono off") { runScript("adb-tweaks.sh", listOf("doze", "off"), "Doze desligado") })
+        doze.addView(smallButton("Sono on") { runScript("adb-tweaks.sh", listOf("doze", "on"), "Doze ligado") })
+        box.addView(doze, matchWrap())
+
+        val perfis = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        perfis.addView(smallButton("Perf. 0.5x") { runScript("adb-tweaks.sh", listOf("perf"), "Animações 0.5x") })
+        perfis.addView(smallButton("RAM gaming") { runScript("adb-tweaks.sh", listOf("mem", "gaming"), "RAM gaming") })
+        box.addView(perfis, matchWrap())
+
+        val perfis2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        perfis2.addView(smallButton("RAM padrão") { runScript("adb-tweaks.sh", listOf("mem", "padrao"), "RAM padrão") })
+        perfis2.addView(smallButton("Ver bateria") { runScript("vitality.sh", listOf("diag"), "Saúde da bateria") })
+        box.addView(perfis2, matchWrap())
 
         box.addView(sectionHeader("Snapshot"))
         val snap = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -721,18 +908,21 @@ class OverlayService : Service() {
         return bar
     }
 
-    /** O app minimizado: só o ícone, sem texto — um toque devolve o painel. */
+    /**
+     * O app minimizado: só o ícone do app, sem texto — um toque devolve o painel.
+     *
+     * Usa `ic_launcher_round` (PNG já redondo) e NÃO `ic_launcher`: este último
+     * é um *adaptive icon*, que desenha o logo dentro de ~66% do quadro (safe
+     * zone). Num ImageView isso dá um logo pequeno perdido num círculo grande —
+     * era o que deixava a bolha "esquisita". O PNG redondo preenche o círculo
+     * exatamente, então a bolha fica limpa em qualquer densidade.
+     */
     private fun bubbleView(): View {
-        // O ícone do app é um adaptive icon (mipmap-anydpi-v26): usado direto num
-        // ImageView ele não tem tamanho intrínseco confiável e a bolha saía
-        // enorme/irregular. Aqui o tamanho é FIXO e o ImageView só preenche.
-        val lado = dp(BUBBLE_DP)
         return FrameLayout(this).apply {
             addView(
                 ImageView(this@OverlayService).apply {
-                    setImageResource(R.mipmap.ic_launcher)
-                    scaleType = ImageView.ScaleType.CENTER_INSIDE
-                    setPadding(dp(5), dp(5), dp(5), dp(5))
+                    setImageResource(R.mipmap.ic_launcher_round)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
                     setOnClickListener { setMinimized(false) }
                 },
                 FrameLayout.LayoutParams(
@@ -740,12 +930,7 @@ class OverlayService : Service() {
                     FrameLayout.LayoutParams.MATCH_PARENT,
                 ),
             )
-            elevation = dp(10).toFloat()
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#E61A1815"))
-                setStroke(dp(1), Color.parseColor(C_LINE))
-            }
+            elevation = dp(12).toFloat()
             setOnClickListener { setMinimized(false) }
         }
     }
@@ -888,7 +1073,7 @@ class OverlayService : Service() {
      */
     private fun panelWidth(): Int {
         val tela = resources.displayMetrics.widthPixels
-        return (tela * PANEL_W_FRAC).toInt().coerceIn(dp(170), dp(280))
+        return (tela * PANEL_W_FRAC).toInt().coerceIn(dp(240), dp(420))
     }
 
     /** Teto de altura do conteúdo: o resto da tela fica livre para o jogo. */
@@ -986,12 +1171,16 @@ class OverlayService : Service() {
         private const val C_TEXT = "#F3EFE7"
         private const val C_MUTED = "#B9B2A6"
 
-        /** Largura do painel: fração da tela, com piso/teto em [panelWidth]. */
-        private const val PANEL_W_FRAC = 0.46f
+        /**
+         * Largura do painel: fração da tela, com piso/teto em dp ([panelWidth]).
+         * 0.70 num aparelho de 360 dp dá ~252 dp — largura de painel de verdade.
+         * Antes era 0.46 (~170 dp) e o conteúdo ficava apertado, "fino".
+         */
+        private const val PANEL_W_FRAC = 0.70f
         /** Teto de altura do conteúdo (o resto da tela fica para o jogo). */
-        private const val PANEL_H_FRAC = 0.50f
+        private const val PANEL_H_FRAC = 0.62f
         /** Lado do ícone minimizado (quadrado, sempre igual em qualquer aparelho). */
-        private const val BUBBLE_DP = 46
+        private const val BUBBLE_DP = 56
 
         /**
          * Fontes empacotadas (mesmos `.ttf` do painel), por chave do `FONTS` do
@@ -1010,10 +1199,35 @@ class OverlayService : Service() {
             "mono" to "jetbrainsmono.ttf",
         )
 
-        /** Categorias do painel, na ordem das abas (casa com [tabView]). */
-        private val TABS = listOf("Monitor", "Toque", "Motor", "Processos", "Atalhos")
-        /** Abas por linha: 5 rótulos numa linha só não cabem no painel estreito. */
+        /**
+         * Categorias do painel, na ordem das abas (casa com [tabView]).
+         * O FPS fica na PRIMEIRA: é o que se abre no meio da partida.
+         */
+        private val TABS = listOf("Monitor", "Jogo", "Toque", "Motor", "Processos", "Atalhos")
+        /** Abas por linha: 6 rótulos numa linha só não cabem no painel. */
         private const val TAB_COLS = 3
+
+        /** Perfis de sensi do `sensi.sh calc <perfil>` (só cálculo, não altera). */
+        private val SENSI_PROFILES = listOf(
+            "padrao" to "Padrão",
+            "headshot" to "Headshot",
+            "spray" to "Spray",
+            "sniper" to "Sniper",
+            "speed" to "Speed",
+        )
+
+        /**
+         * Resposta do dedo (`adb-tweaks.sh touch_latency <tr> 350 0 4`). O valor é
+         * a responsividade 1..1000: menor = o toque responde mais cedo. Os
+         * mesmos degraus que o `ff-touch.sh` usa nos perfis, para não inventar
+         * número que o pack não usa.
+         */
+        private val TOUCH_LEVELS = listOf(
+            "95" to "Preciso (95)",
+            "100" to "Padrão (100)",
+            "110" to "Rápido (110)",
+            "120" to "Ultra (120)",
+        )
 
         /** Taxas de tela fixas aceitas por `turbo.sh refresh_fixed <hz>`. */
         private val REFRESH_RATES = listOf(
@@ -1040,6 +1254,19 @@ class OverlayService : Service() {
             "8" to "8 · meio",
             "32" to "32 · multitarefa",
             "padrao" to "Padrão",
+        )
+
+        /**
+         * Degraus de resolução aceitos por `resolution.sh apply <WxH>`, do mais
+         * leve (mais FPS) ao mais nítido. São os mesmos perfis que o módulo
+         * oferece, para o flutuante e o painel principal nunca divergirem.
+         */
+        private val RESOLUTIONS = listOf(
+            "540x960" to "540p",
+            "720x1280" to "720p",
+            "720x1600" to "720p+",
+            "1080x2340" to "1080p",
+            "1440x2560" to "1440p",
         )
 
         /** Um app rodando, lido das linhas `#OTM-PROC` do `proc-mgr.sh list`. */

@@ -36,7 +36,7 @@ if (!otm_auth_logged_in()) {
 $actions = array_values(otm_actions());
 
 // Ordem fixa das categorias. Menu enxuto: 7 grupos (Rede/DNS separados) + a Home.
-$GROUP_ORDER = ['Geral', 'Flutuante', 'Display & Touch', 'Desempenho', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
+$GROUP_ORDER = ['Geral', 'Flutuante', 'Display & Touch', 'Desempenho', 'Dispositivos', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
 $GROUP_ALIAS = ['Rede e conexão' => 'DNS e rede'];
 $byGroup = [];
 foreach ($actions as $a) {
