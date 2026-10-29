@@ -5,7 +5,35 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+- **A aba "Flutuante" no painel, com um botão só: ligar o painel sobre o jogo.**
+  A antiga categoria "Sensi e mira" virou **"Flutuante"** e ficou com um único
+  cartão — ativar/desativar o overlay. As ações de **sensi** (gerar, analisar,
+  perfis headshot/spray/sniper/speed e os valores na ordem do Free Fire) foram
+  para **"Display & Touch"**, que é onde o resto dos ajustes de mira e toque já
+  morava. Nada foi removido: só ficou no lugar certo.
+- **O painel flutuante agora é organizado por categorias (abas).** Antes tudo
+  saía numa lista corrida e, no meio da partida, achar um botão era lento. Agora
+  são quatro abas — **Sensi**, **Toque**, **Motor** e **Atalhos** — cada uma
+  mostrando só o seu bloco. O visual ganhou fundo arredondado e as abas viram
+  "chips" (a ativa fica destacada).
+- **Escolha do motor de renderização dentro do painel flutuante.** A aba
+  **Motor** traz Automático, SkiaGL, Skia Vulkan e as variantes multithread
+  (SkiaGL MT / SkiaVK MT), chamando o mesmo `adb-tweaks.sh renderer` do painel
+  principal — dá para trocar o renderizador sem fechar o jogo.
+- **A limpeza inteligente agora poupa quem está na sua frente.** As limpezas
+  (Clean, Liberar RAM e Game Clean) passaram a **nunca encerrar** o app em
+  **primeiro plano** (o que está na tela), o **jogo escolhido** no Modo
+  Competitivo, o **próprio app do pack** (que sustenta o painel flutuante) nem
+  os apps protegidos no **anti-relog**. Antes, uma limpeza podia fechar o jogo
+  ou o overlay no meio do uso.
+
 ### Corrigido
+- **O `sync_app_panel.py` não removia seções de grupo que sumiram do web.** Ao
+  renomear um grupo (ex.: "Sensi e mira" → "Flutuante"), a seção antiga ficava
+  órfã no painel do app, com o conteúdo velho e um item de menu morto. Agora o
+  script apaga as seções do app que não existem mais no web (poupando as
+  seções exclusivas do app, como Terminal e Vitalidade) e o link do menu junto.
 - **A barra de navegação (a dos gestos: quadrado, bolinha, voltar) ficava
   diferente depois de aplicar o pack.** O grupo `window_tweaks` gravava
   `policy_control immersive.full=*`, que esconde as barras de cima e de baixo.

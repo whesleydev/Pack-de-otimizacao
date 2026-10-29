@@ -31,23 +31,17 @@ import kotlinx.coroutines.launch
  * Painel flutuante (overlay) para usar **durante o jogo**.
  *
  * O app roda dentro do Free Fire/CODM/etc. por cima da tela, sem precisar
- * fechar o jogo para conferir a sensi ou trocar o perfil de toque. É um
- * `Service` em primeiro plano com uma janela `TYPE_APPLICATION_OVERLAY`, que
- * pode ser arrastada e minimizada.
+ * fechar o jogo para conferir a sensi, trocar o perfil de toque ou escolher o
+ * motor de renderização. É um `Service` em primeiro plano com uma janela
+ * `TYPE_APPLICATION_OVERLAY`, que pode ser arrastada e minimizada.
  *
- * O painel se chama só **"00"** e é organizado em **seções** (Sensi, Toque e
- * Atalhos), cada uma com um cabeçalho — antes os botões saíam numa lista única,
- * difícil de ler no meio da partida.
+ * O painel se chama só **"00"** e é organizado em **categorias (abas)** — Sensi,
+ * Toque, Motor e Atalhos. Antes tudo saía numa lista corrida e, no meio da
+ * partida, achar um botão era lento; agora cada aba mostra só o que interessa.
  *
  * **Minimizado ele vira só o ícone do app**: o painel inteiro some e sobra o
  * ícone do "00 Otimização", que continua arrastável. Um toque no ícone devolve
  * o painel completo — é o mesmo gesto de minimizar/maximizar de um app.
- *
- * O que o painel mostra e faz:
- *  - a sensi calculada para ESTE aparelho (Geral, Ponto, 2x, 4x, AWM e o
- *    tamanho do botão de atirar), lida do `sensi.sh`;
- *  - os perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed);
- *  - atalhos de latência e limpeza de RAM, os mesmos do painel principal.
  *
  * O acesso ao shell vem de [OtmRunner], que a Activity preenche ao conectar o
  * Shizuku/ADB — o Service não tem como pedir permissão sozinho.
@@ -60,6 +54,8 @@ class OverlayService : Service() {
     private var bubble: View? = null
     private var sensiText: TextView? = null
     private var statusText: TextView? = null
+    private var content: LinearLayout? = null
+    private val tabChips = mutableListOf<TextView>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -94,43 +90,24 @@ class OverlayService : Service() {
     private fun addOverlay() {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#E60D0C0A"))
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = rounded(dp(16).toFloat(), "#F00D0C0A", "#3A3733")
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            minimumWidth = dp(240)
         }
         box.addView(titleBar())
+        box.addView(tabBar())
 
-        // --- Seção: Sensi (o número que o usuário quer ver de relance) ---
-        box.addView(sectionHeader("Sensi do seu aparelho"))
-        sensiText = TextView(this).apply {
-            setTextColor(Color.parseColor("#F3EFE7"))
-            textSize = 13f
-            text = "lendo a sensi…"
-        }
-        box.addView(sensiText, matchWrap())
-
-        // --- Seção: Toque ---
-        box.addView(sectionHeader("Perfil de toque"))
-        val profiles = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        for ((key, label) in TOUCH_PROFILES) {
-            profiles.addView(smallButton(label) { runScript("ff-touch.sh", listOf(key), "Toque: $label") })
-        }
-        box.addView(profiles, matchWrap())
-
-        // --- Seção: Atalhos ---
-        box.addView(sectionHeader("Atalhos"))
-        val extras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        extras.addView(smallButton("Latência") { runScript("adb-tweaks.sh", listOf("latency"), "Latência") })
-        extras.addView(smallButton("Limpar RAM") { runScript("adb-tweaks.sh", listOf("clean", "suave"), "Limpeza") })
-        extras.addView(smallButton("Atualizar") { refreshSensi() })
-        box.addView(extras, matchWrap())
+        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(content, matchWrap())
 
         statusText = TextView(this).apply {
             setTextColor(Color.parseColor("#B9B2A6"))
             textSize = 11f
-            setPadding(0, dp(6), 0, 0)
+            setPadding(0, dp(8), 0, 0)
         }
         box.addView(statusText)
 
+        selectTab(0)
         panel = box
         bubble = bubbleView()
         root = box
@@ -140,6 +117,114 @@ class OverlayService : Service() {
         runCatching { windowManager.addView(box, params) }
     }
 
+    /** Abas: cada categoria mostra só o seu bloco, sem lista corrida. */
+    private fun tabBar(): View {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        tabChips.clear()
+        for ((i, name) in TABS.withIndex()) {
+            val chip = tabChip(name, i)
+            tabChips.add(chip)
+            row.addView(chip)
+        }
+        return row
+    }
+
+    private fun tabChip(label: String, index: Int): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setOnClickListener { selectTab(index) }
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            ).apply { marginEnd = dp(4) }
+        }
+
+    private fun selectTab(index: Int) {
+        val box = content ?: return
+        box.removeAllViews()
+        box.addView(tabView(index), matchWrap())
+        for ((i, chip) in tabChips.withIndex()) {
+            val on = i == index
+            chip.setTextColor(Color.parseColor(if (on) "#12151A" else "#D8D2C7"))
+            chip.background = if (on) rounded(dp(8).toFloat(), "#E4571C")
+            else rounded(dp(8).toFloat(), "#00000000", "#3A3733")
+            chip.setTypeface(chip.typeface, if (on) Typeface.BOLD else Typeface.NORMAL)
+        }
+    }
+
+    private fun tabView(index: Int): View = when (index) {
+        0 -> sensiTab()
+        1 -> touchTab()
+        2 -> engineTab()
+        else -> shortcutsTab()
+    }
+
+    /** Aba Sensi: o número que o usuário quer ver de relance. */
+    private fun sensiTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(sectionHeader("Sensi do seu aparelho"))
+        sensiText = TextView(this).apply {
+            setTextColor(Color.parseColor("#F3EFE7"))
+            textSize = 13f
+            text = "lendo a sensi…"
+        }
+        box.addView(sensiText, matchWrap())
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row.addView(smallButton("Atualizar") { refreshSensi() })
+        row.addView(smallButton("Headshot") { runScript("sensi.sh", listOf("headshot"), "Sensi: headshot") })
+        box.addView(row, matchWrap())
+        return box
+    }
+
+    /** Aba Toque: perfis de sensibilidade do jogo. */
+    private fun touchTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(sectionHeader("Perfil de toque"))
+        var row: LinearLayout? = null
+        for ((i, p) in TOUCH_PROFILES.withIndex()) {
+            if (i % 2 == 0) {
+                row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(row, matchWrap())
+            }
+            row!!.addView(smallButton(p.second) { runScript("ff-touch.sh", listOf(p.first), "Toque: ${p.second}") })
+        }
+        return box
+    }
+
+    /** Aba Motor: escolhe o motor de renderização (o mesmo do painel principal). */
+    private fun engineTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(sectionHeader("Motor de renderização"))
+        var row: LinearLayout? = null
+        for ((i, e) in RENDERERS.withIndex()) {
+            if (i % 2 == 0) {
+                row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(row, matchWrap())
+            }
+            row!!.addView(smallButton(e.second) {
+                runScript("adb-tweaks.sh", listOf("renderer", e.first), "Motor: ${e.second}")
+            })
+        }
+        return box
+    }
+
+    /** Aba Atalhos: latência, limpeza de RAM e atualizar. */
+    private fun shortcutsTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(sectionHeader("Atalhos"))
+        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row1.addView(smallButton("Latência") { runScript("adb-tweaks.sh", listOf("latency"), "Latência") })
+        row1.addView(smallButton("Limpar RAM") { runScript("clean.sh", listOf("now", "fundo"), "Limpeza") })
+        box.addView(row1, matchWrap())
+        val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row2.addView(smallButton("Game Clean") { runScript("game-clean.sh", listOf("on"), "Game Clean") })
+        row2.addView(smallButton("Atualizar") { refreshSensi() })
+        box.addView(row2, matchWrap())
+        return box
+    }
+
     /** Cabeçalho de seção: separa os blocos do painel. */
     private fun sectionHeader(text: String): View =
         TextView(this).apply {
@@ -147,12 +232,15 @@ class OverlayService : Service() {
             setTextColor(Color.parseColor("#E4571C"))
             textSize = 12f
             setTypeface(typeface, Typeface.BOLD)
-            setPadding(0, dp(10), 0, dp(4))
+            setPadding(0, dp(10), 0, dp(6))
         }
 
     /** Barra do topo: arrasta pelo título, minimiza e fecha. */
     private fun titleBar(): View {
-        val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
         bar.addView(TextView(this).apply {
             text = "00"
             setTextColor(Color.parseColor("#E4571C"))
@@ -172,6 +260,7 @@ class OverlayService : Service() {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.parseColor("#E60D0C0A"))
+                setStroke(dp(1), Color.parseColor("#3A3733"))
             }
             setOnClickListener { setMinimized(false) }
         }
@@ -216,17 +305,23 @@ class OverlayService : Service() {
         TextView(this).apply {
             text = label
             textSize = 11f
+            gravity = Gravity.CENTER
             setTextColor(Color.parseColor("#12151A"))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(8).toFloat()
-                setColor(Color.parseColor("#E4571C"))
-            }
-            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = rounded(dp(8).toFloat(), "#E4571C")
+            setPadding(dp(8), dp(6), dp(8), dp(6))
             setOnClickListener { action() }
         }.also {
             it.layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
             ).apply { marginEnd = dp(4) }
+        }
+
+    /** Fundo arredondado com borda opcional (usado no painel e nos chips de aba). */
+    private fun rounded(radius: Float, fill: String, stroke: String? = null): GradientDrawable =
+        GradientDrawable().apply {
+            cornerRadius = radius
+            setColor(Color.parseColor(fill))
+            if (stroke != null) setStroke(dp(1), Color.parseColor(stroke))
         }
 
     private fun baseParams() = WindowManager.LayoutParams(
@@ -357,6 +452,9 @@ class OverlayService : Service() {
         const val NOTIF_ID = 2
         const val ACTION_STOP = "com.otm.pack.overlay.STOP"
 
+        /** Categorias do painel, na ordem das abas. */
+        private val TABS = listOf("Sensi", "Toque", "Motor", "Atalhos")
+
         /** Perfis de toque do `ff-touch.sh`, na ordem em que aparecem no painel. */
         private val TOUCH_PROFILES = listOf(
             "balanced" to "Equilibrado",
@@ -364,6 +462,15 @@ class OverlayService : Service() {
             "spray" to "Spray",
             "sniper" to "Sniper",
             "speed" to "Speed",
+        )
+
+        /** Motores de renderização aceitos por `adb-tweaks.sh renderer`. */
+        private val RENDERERS = listOf(
+            "auto" to "Automático",
+            "skiagl" to "SkiaGL",
+            "skiavk" to "Skia Vulkan",
+            "skiagl-threaded" to "SkiaGL MT",
+            "skiavk-threaded" to "SkiaVK MT",
         )
 
         /** O usuário liberou "aparecer por cima de outros apps"? */

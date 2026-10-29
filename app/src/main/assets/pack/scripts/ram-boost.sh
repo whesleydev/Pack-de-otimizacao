@@ -22,11 +22,10 @@ otm_v_reset
 
 RB_EXTRA="com.spotify.music com.discord com.google.android.youtube com.netflix.mediaclient com.twitch.android.app"
 
-# quem não pode ser encerrado: jogo + protegidos no anti-relog
+# quem não pode ser encerrado: o jogo, os protegidos no anti-relog e o que
+# está em primeiro plano agora (nunca fechar o que o usuário está usando)
 rb_keep() {
-    keep="com.dts.freefireth com.dts.freefiremax"
-    [ -s "$ST/keepalive/apps" ] && keep="$keep $(tr '\n' ' ' < "$ST/keepalive/apps")"
-    printf '%s' "$keep"
+    printf 'com.dts.freefireth com.dts.freefiremax %s' "$(otm_keep_list)"
 }
 
 cmd_boost() {

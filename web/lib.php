@@ -182,7 +182,7 @@ function otm_actions(): array {
     // ----- Rápido -----
     $add(['id' => 'apply', 'group' => 'Geral', 'label' => 'Aplicar o pack recomendado',
           'desc' => 'O "faz tudo" para novato: performance, RAM, GPU, rede, latência, jogo, bateria e touch.',
-          'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Sensi e mira" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
+          'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Display & Touch" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 420]);
     $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
           'desc' => 'Analisa o seu aparelho e aplica as melhores configurações para ele.',
@@ -318,35 +318,35 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'proc_limit', 'padrao']]);
 
     // ----- Gerador de sensi (só leitura: calcula para o SEU aparelho) -----
-    $add(['id' => 'overlay.sensi', 'group' => 'Sensi e mira', 'label' => 'Painel flutuante sobre o jogo',
+    $add(['id' => 'overlay.sensi', 'group' => 'Flutuante', 'label' => 'Painel flutuante sobre o jogo',
           'desc' => 'Mostra a sensi e os perfis de toque por cima do jogo, sem sair da partida.',
           'help' => 'Abre o painel flutuante: uma janela arrastável que fica por cima do jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Assim você confere e troca o ajuste sem fechar o jogo. Na primeira vez o Android pede a permissão "aparecer por cima de outros apps". Toque de novo no botão para desligar.',
           'argv' => [], 'ui' => 'overlay']);
-    $add(['id' => 'sensi.calc', 'group' => 'Sensi e mira', 'label' => 'Gerar sensi do meu aparelho',
+    $add(['id' => 'sensi.calc', 'group' => 'Display & Touch', 'label' => 'Gerar sensi do meu aparelho',
           'desc' => 'Calcula a sensi ideal para o seu aparelho, sem alterar nada.',
           'help' => 'Lê o seu aparelho (resolução, densidade/DPI, tamanho da tela, taxa de toque, taxa de atualização, SoC, RAM e o ajuste de toque já aplicado) e calcula uma sensi sob medida: Geral, Ponto vermelho, mira 2x, 4x, AWM, além do tamanho do botão de atirar (com teto de 50%, que é o que não deixa o botão feio/grande). NÃO altera nada no aparelho: só mostra os números para você digitar no jogo. Rode de novo se mudar a resolução.',
           'argv' => ['sensi.sh', 'calc'], 'timeout' => 90]);
-    $add(['id' => 'sensi.analyze', 'group' => 'Sensi e mira', 'label' => 'Sensi: ver o que foi lido',
+    $add(['id' => 'sensi.analyze', 'group' => 'Display & Touch', 'label' => 'Sensi: ver o que foi lido',
           'desc' => 'Mostra as leituras e os fatores usados no cálculo da sensi.',
           'help' => 'Transparência total: mostra exatamente o que o gerador leu do seu aparelho (tela, DPI, polegadas, toque, Hz, SoC, RAM) e quais fatores aplicou em cada item. Assim você entende por que a sensi saiu daquele valor. Só leitura.',
           'argv' => ['sensi.sh', 'analyze'], 'timeout' => 90]);
-    $add(['id' => 'sensi.headshot', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil headshot',
+    $add(['id' => 'sensi.headshot', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil headshot',
           'desc' => 'Recalcula a sensi com foco em mira rápida na cabeça.',
           'help' => 'Mesma conta do gerador, com o perfil headshot: mira mais ágil para pegar a cabeça. Mostra os valores para digitar no jogo. Só leitura, nada é alterado no aparelho.',
           'argv' => ['sensi.sh', 'calc', 'headshot'], 'timeout' => 90]);
-    $add(['id' => 'sensi.spray', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil spray',
+    $add(['id' => 'sensi.spray', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil spray',
           'desc' => 'Recalcula a sensi com foco em controle de recuo.',
           'help' => 'Mesma conta do gerador, com o perfil spray: controle melhor no tiro contínuo (segurar o dedo atirando). Mostra os valores para digitar no jogo. Só leitura.',
           'argv' => ['sensi.sh', 'calc', 'spray'], 'timeout' => 90]);
-    $add(['id' => 'sensi.sniper', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil sniper',
+    $add(['id' => 'sensi.sniper', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil sniper',
           'desc' => 'Recalcula a sensi com foco em mira precisa de longe.',
           'help' => 'Mesma conta do gerador, com o perfil sniper: mira mais lenta e precisa para longa distância (AWM, mira 4x). Mostra os valores para digitar no jogo. Só leitura.',
           'argv' => ['sensi.sh', 'calc', 'sniper'], 'timeout' => 90]);
-    $add(['id' => 'sensi.speed', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil speed',
+    $add(['id' => 'sensi.speed', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil speed',
           'desc' => 'Recalcula a sensi com foco em reação máxima.',
           'help' => 'Mesma conta do gerador, com o perfil speed: resposta o mais rápida possível, para quem joga agressivo e vira rápido. Mostra os valores para digitar no jogo. Só leitura.',
           'argv' => ['sensi.sh', 'calc', 'speed'], 'timeout' => 90]);
-    $add(['id' => 'sensi.ff', 'group' => 'Sensi e mira', 'label' => 'Sensi: valores na ordem do FF',
+    $add(['id' => 'sensi.ff', 'group' => 'Display & Touch', 'label' => 'Sensi: valores na ordem do FF',
           'desc' => 'Imprime só os números, na ordem da tela do Free Fire.',
           'help' => 'Imprime os cinco valores separados por espaço (Geral, Ponto vermelho, 2x, 4x, AWM) na mesma ordem em que o Free Fire pede, para você digitar rápido sem procurar. Só leitura.',
           'argv' => ['sensi.sh', 'ff'], 'timeout' => 90]);

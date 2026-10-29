@@ -281,7 +281,9 @@ nativa além do necessário para conectar e rodar os comandos.
   `php -r 'require "web/auth.php"; otm_auth_login(<user>,<pass>); ob_start();
   include "web/index.php"; file_put_contents("/tmp/pan/web.html", ob_get_clean());'`
   → `python3 scratch/sync_app_panel.py /tmp/pan/web.html` (traz o nav, as seções
-  novas e o objeto `ACTIONS` do web para o app) → `python3 scratch/patch_app_panel.py`
+  novas, **remove as seções de grupo que sumiram do web** — ao renomear um grupo
+  a seção antiga ficava órfã, com o link do menu junto — e o objeto `ACTIONS` do
+  web para o app) → `python3 scratch/patch_app_panel.py`
   (tira as ações só de root e ajusta textos) → `php scratch/gen_actions.php
   app/src/main/assets/panel/actions.json app/src/main/assets/panel/index.html`.
   Ao mexer em `index.php`/`lib.php`, os dois painéis (`web/index.php` e

@@ -66,9 +66,8 @@ gc_appops() {
 # apps em 2º plano que podem ser encerrados agora (poupa o jogo e os protegidos)
 gc_killbg() {
     pkg="$1"; extra="$2"
-    keep="$pkg com.dts.freefireth com.dts.freefiremax"
-    # não mata quem você protegeu no anti-relog
-    [ -s "$ST/keepalive/apps" ] && keep="$keep $(tr '\n' ' ' < "$ST/keepalive/apps")"
+    # poupa o jogo escolhido, os protegidos no anti-relog e o que está na tela
+    keep="$pkg com.dts.freefireth com.dts.freefiremax $(otm_keep_list)"
     n="$(otm_bg_kill $keep)"
     # "max" também encerra os apps de mídia/chat conhecidos
     if [ "$extra" = "max" ]; then

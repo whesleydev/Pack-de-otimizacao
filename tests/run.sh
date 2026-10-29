@@ -110,7 +110,9 @@ case "$1" in
 esac
 exit 0
 EOF
-    # dumpsys: só o suficiente para o fallback do limite de processos
+    # dumpsys: só o suficiente para o fallback do limite de processos e para
+    # descobrir o app em PRIMEIRO PLANO (a limpeza nunca pode fechar o que está
+    # na tela). O pacote em foco vem de $TMP_STORE/fg, senão usa um padrão.
     cat > "$TMP/bin/dumpsys" <<'EOF'
 #!/bin/sh
 if [ "$1" = "activity" ] && [ "$2" = "settings" ]; then
@@ -119,6 +121,10 @@ if [ "$1" = "activity" ] && [ "$2" = "settings" ]; then
     else
         echo "  CUR_MAX_CACHED_PROCESSES=32"
     fi
+fi
+if [ "$1" = "activity" ] && [ "$2" = "activities" ]; then
+    fg="$(cat "$TMP_STORE/fg" 2>/dev/null)"
+    [ -n "$fg" ] && echo "    mResumedActivity: ActivityRecord{1a2b3c u0 $fg/.MainActivity t42}"
 fi
 exit 0
 EOF
@@ -1757,9 +1763,15 @@ t_web() {
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
         [ "$n_sec" -eq 13 ] && ok "index.php renderiza a home + 11 categorias + Terminal" || bad "seções: $n_sec (esperado 13)"
-        for cat in "Geral" "Display &amp; Touch" "Sensi e mira" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
+        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
+        # "Sensi e mira" virou "Flutuante" e ficou só com o botão do painel flutuante
+        grep -q 'Sensi e mira' "$TMP/web_html" && bad "a categoria antiga 'Sensi e mira' ainda existe" \
+            || ok "categoria 'Sensi e mira' renomeada para 'Flutuante'"
+        n_flut=$(awk '/<section id="g-Flutuante"/{f=1} f&&/data-id=/{n++} /<\/section>/{if(f){print n; exit}}' "$TMP/web_html")
+        [ "$n_flut" = "1" ] && ok "a aba Flutuante tem só o botão do painel flutuante" \
+            || bad "aba Flutuante com ${n_flut:-0} ações (esperado 1)"
         # Terminal: seção própria + campo de comando
         assert_contains "$TMP/web_html" 'id="g-Terminal"' "index.php tem a aba Terminal"
         assert_contains "$TMP/web_html" 'id="termInput"' "Terminal tem campo de comando"
@@ -2331,6 +2343,56 @@ t_clean() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_smart_clean_protect() {
+    printf '\n  # limpeza inteligente: nunca fecha o overlay, o app do pack nem o app em uso\n'
+    local f="$ROOT/scripts/clean.sh"
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/sc.log" TMP_AM_LOG="$TMP/sc.log" TMP_PM_LOG="$TMP/sc.log"
+    : > "$TMP_CMD_LOG"
+    # o app na tela agora é o jogo (o usuário está na partida)
+    printf 'com.dts.freefireth' > "$TMP_STORE/fg"
+    # escolhe um jogo no Modo Competitivo diferente do que está em foco
+    mkdir -p "$HOME/.packotm/game"; printf 'com.mojang.minecraftpe' > "$HOME/.packotm/game/pkg"
+    # protege um app no anti-relog
+    mkdir -p "$HOME/.packotm/keepalive"; printf 'com.instagram.android\n' > "$HOME/.packotm/keepalive/apps"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now fundo > "$TMP/sc_out" 2>&1
+    # o app EM PRIMEIRO PLANO nunca é encerrado
+    grep -q 'force-stop com.dts.freefireth' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou o app em primeiro plano" || ok "limpeza poupa o app em primeiro plano"
+    # o jogo escolhido no Modo Competitivo nunca é encerrado
+    grep -q 'force-stop com.mojang.minecraftpe' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou o jogo do Modo Competitivo" || ok "limpeza poupa o jogo escolhido"
+    # os protegidos no anti-relog continuam poupados
+    grep -q 'force-stop com.instagram.android' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou um protegido no anti-relog" || ok "limpeza poupa os protegidos no anti-relog"
+    # o próprio app do pack está no OTM_SYS_KEEP (nunca é encerrado)
+    grep -q 'com.otm.pack' "$ROOT/scripts/common.sh" \
+        && ok "o app do pack está na lista de protegidos" || bad "com.otm.pack fora da proteção"
+    # os outros apps de fundo SÃO encerrados (a limpeza ainda funciona)
+    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" \
+        && ok "limpeza ainda encerra os apps de fundo" || bad "limpeza não encerrou nada"
+    # o overlay do jogo (o painel flutuante) é protegido pelo pacote do app
+    printf 'com.otm.pack' > "$TMP_STORE/fg"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now fundo > /dev/null 2>&1
+    grep -q 'force-stop com.otm.pack' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou o app do pack (derrubaria o overlay)" || ok "limpeza nunca fecha o app do pack/overlay"
+    # ram-boost usa a mesma proteção
+    : > "$TMP_CMD_LOG"
+    printf 'com.dts.freefiremax' > "$TMP_STORE/fg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/ram-boost.sh" boost normal > /dev/null 2>&1
+    grep -q 'force-stop com.dts.freefiremax' "$TMP_CMD_LOG" \
+        && bad "ram-boost fechou o app em primeiro plano" || ok "ram-boost também poupa o app em primeiro plano"
+    # otm_keep_list junta jogo + anti-relog + primeiro plano, sem repetir
+    OTM_NO_COLOR=1 OTM_MODE=su sh -c '. "'"$ROOT"'/scripts/common.sh"; otm_keep_list' > "$TMP/sc_keep" 2>&1
+    assert_contains "$TMP/sc_keep" "com.dts.freefiremax" "otm_keep_list inclui o app em primeiro plano"
+    assert_contains "$TMP/sc_keep" "com.mojang.minecraftpe" "otm_keep_list inclui o jogo escolhido"
+    d=$(tr ' ' '\n' < "$TMP/sc_keep" | grep -c '^com.dts.freefiremax$')
+    [ "$d" = "1" ] && ok "otm_keep_list não repete pacotes" || bad "otm_keep_list repetiu ($d)"
+    rm -rf "$HOME/.packotm" "$TMP_STORE/fg"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
 t_privilege_detect() {
     printf '\n  # privilégio: processo que já é shell (Shizuku/ADB) não pode ser recusado\n'
     # O app roda os scripts pelo Shizuku: o processo JÁ nasce como uid 2000 e não
@@ -2724,11 +2786,23 @@ t_overlay() {
     grep -q 'text = "00"' "$svc" && ok "overlay se chama só '00'" || bad "overlay não usa o nome '00'"
     grep -q 'text = "Sensi & mira"' "$svc" && bad "overlay ainda mostra o título antigo" \
         || ok "overlay não usa mais o título antigo"
-    # organizado em seções (cabeçalho próprio), não numa lista única
-    grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
-    for s in "Sensi do seu aparelho" "Perfil de toque" "Atalhos"; do
-        grep -q "\"$s\"" "$svc" && ok "overlay tem a seção '$s'" || bad "overlay sem a seção '$s'"
+    # organizado em CATEGORIAS (abas), não numa lista única
+    grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
+    for t in Sensi Toque Motor Atalhos; do
+        grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
+    grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
+    # o botão de escolher o MOTOR de renderização está no painel flutuante
+    grep -q 'RENDERERS' "$svc" && ok "overlay tem o seletor de motor de renderização" \
+        || bad "overlay sem o seletor de motor"
+    grep -q 'listOf("renderer", e.first)' "$svc" && ok "overlay chama adb-tweaks.sh renderer" \
+        || bad "overlay não chama o renderer do pack"
+    for r in auto skiagl skiavk; do
+        grep -q "\"$r\" to" "$svc" || bad "overlay sem o motor $r"
+    done
+    ok "overlay tem os motores de renderização principais"
+    # fundo arredondado (visual mais organizado)
+    grep -q 'rounded(' "$svc" && ok "overlay usa fundo arredondado" || bad "overlay sem estilo arredondado"
     # minimizar vira só o ÍCONE do app; tocar no ícone volta ao painel completo
     grep -q 'R.mipmap.ic_launcher' "$svc" && ok "overlay minimizado usa o ícone do app" \
         || bad "overlay minimizado não usa o ícone do app"
@@ -3013,6 +3087,7 @@ t_gameclean
 t_ramboost
 t_smart_opt
 t_clean
+t_smart_clean_protect
 t_privilege_detect
 t_undo_scope
 t_undo_scopes_declared

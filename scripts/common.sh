@@ -490,6 +490,32 @@ otm_ram_livre_mb() {
     [ -n "$v" ] && echo $((v / 1024))
 }
 
+# otm_fg_pkg -> pacote do app em PRIMEIRO PLANO (o que está na tela agora).
+# Vazio quando não dá para ler. Usado para nunca fechar o que o usuário está
+# usando: o jogo aberto, o próprio painel, o app do pack.
+otm_fg_pkg() {
+    d="$(sh_get 'dumpsys activity activities' 2>/dev/null)"
+    [ -n "$d" ] || d="$(sh_get 'dumpsys window windows' 2>/dev/null)"
+    p="$(printf '%s\n' "$d" | sed -n 's/.*mResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*topResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mFocusedApp.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    printf '%s' "$p"
+}
+
+# otm_keep_list -> tudo que a limpeza NUNCA deve encerrar, separado por espaço:
+# o jogo escolhido (Modo Competitivo), os protegidos no anti-relog, o app do
+# pack e o que está em primeiro plano agora. É a lista que o clean/ram-boost usa.
+otm_keep_list() {
+    k=""
+    [ -s "$ST/game/pkg" ] && k="$k $(tr '\n' ' ' < "$ST/game/pkg")"
+    [ -s "$ST/keepalive/apps" ] && k="$k $(tr '\n' ' ' < "$ST/keepalive/apps")"
+    fg="$(otm_fg_pkg)"
+    [ -n "$fg" ] && k="$k $fg"
+    # jogos de FPS conhecidos: nunca encerrar (o usuário pode estar no meio da partida)
+    k="$k com.dts.freefireth com.dts.freefiremax com.activision.callofduty.shooter com.tencent.ig com.pubg.imobile com.garena.game.kgth com.miHoYo.GenshinImpact com.epicgames.fortnite com.riotgames.league.wildrift com.mobile.legends"
+    printf '%s' "$k" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' '
+}
+
 # otm_bg_kill <poupados...> -> encerra apps de 3º plano, poupando os citados.
 # Só mexe em apps instalados pelo usuário (pm list packages -3): não toca em
 # serviços do sistema. Ecoa a quantidade de apps encerrados.

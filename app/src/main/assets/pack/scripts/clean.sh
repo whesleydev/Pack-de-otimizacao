@@ -83,8 +83,7 @@ cl_free_ram() {
     before="$(otm_ram_livre_mb)"
     [ -n "$before" ] && say "RAM livre antes: ${before}MB"
 
-    keep="$CL_KEEP"
-    [ -s "$ST/keepalive/apps" ] && keep="$keep $(tr '\n' ' ' < "$ST/keepalive/apps")"
+    keep="$CL_KEEP $(otm_keep_list)"
     n="$(otm_bg_kill $keep)"
     otm_v_inc apply
     if [ "${n:-0}" -gt 0 ] 2>/dev/null; then otm_v_inc changed; else otm_v_inc failed; fi
