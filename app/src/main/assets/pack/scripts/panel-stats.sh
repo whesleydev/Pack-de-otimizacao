@@ -98,6 +98,37 @@ df_line="$(sh_get 'df -k /data' 2>/dev/null | tail -1)"
 stor_total_mb="$(printf '%s\n' "$df_line" | awk 'NF>=4 && $2 ~ /^[0-9]+$/ {print int($2/1024); exit}')"
 stor_livre_mb="$(printf '%s\n' "$df_line" | awk 'NF>=4 && $4 ~ /^[0-9]+$/ {print int($4/1024); exit}')"
 
+# --- FPS REAL do jogo (SurfaceFlinger) ---------------------------------------
+# Mede o FPS do app que está na tela agora — de preferência o jogo escolhido no
+# pack, se ele estiver rodando (o painel do próprio app não é jogo). A camada
+# fica em cache por pacote: resolver a camada custa um `dumpsys --list`, e o
+# poll do painel é de 4 s. Se o cache não servir mais, resolve de novo.
+fps_pkg=""
+[ -f "$ST/game/pkg" ] && fps_pkg="$(tr -d '\n' < "$ST/game/pkg" 2>/dev/null)"
+if [ -z "$fps_pkg" ] || [ -z "$(sh_get "pidof $fps_pkg" 2>/dev/null)" ]; then
+    fps_pkg="$(otm_fg_pkg)"
+fi
+fps_layer=""
+if [ -n "$fps_pkg" ]; then
+    _cached_pkg="$(sed -n '1p' "$ST/fps/layer" 2>/dev/null)"
+    _cached_layer="$(sed -n '2p' "$ST/fps/layer" 2>/dev/null)"
+    if [ "$_cached_pkg" = "$fps_pkg" ] && [ -n "$_cached_layer" ]; then
+        fps_layer="$_cached_layer"
+    else
+        fps_layer="$(otm_fps_layer "$fps_pkg")"
+        if [ -n "$fps_layer" ]; then
+            mkdir -p "$ST/fps" 2>/dev/null
+            { printf '%s\n' "$fps_pkg"; printf '%s\n' "$fps_layer"; } > "$ST/fps/layer" 2>/dev/null
+        fi
+    fi
+fi
+fps="$(otm_fps_measure "$fps_layer" | cut -f1)"
+# A camada pode ter trocado (o jogo recria a SurfaceView): resolve de novo, uma vez.
+if [ -z "$fps" ] && [ -n "$fps_pkg" ]; then
+    fps_layer="$(otm_fps_layer "$fps_pkg")"
+    fps="$(otm_fps_measure "$fps_layer" | cut -f1)"
+fi
+
 # --- uptime -------------------------------------------------------------------
 uptime_s="$(sh_get 'cat /proc/uptime' 2>/dev/null | awk '{print int($1)}')"
 
@@ -115,6 +146,8 @@ printf ',"bat_temp_c":"%s"'        "$(_clean "$bat_temp_c")"
 printf ',"bat_status":"%s"'        "$(_clean "$bat_status")"
 printf ',"refresh_hz":"%s"'        "$(_clean "$refresh_hz")"
 printf ',"refresh_peak":"%s"'      "$(_clean "$refresh_peak")"
+printf ',"fps":"%s"'               "$(_clean "$fps")"
+printf ',"fps_layer":"%s"'         "$(_clean "$fps_layer")"
 printf ',"stor_total_mb":"%s"'     "$(_clean "$stor_total_mb")"
 printf ',"stor_livre_mb":"%s"'     "$(_clean "$stor_livre_mb")"
 printf ',"uptime_s":"%s"'          "$(_clean "$uptime_s")"

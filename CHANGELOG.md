@@ -6,6 +6,12 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Corrigido
+- **O `panel-stats.sh` quebrava o JSON quando o jogo escolhido não tinha
+  pacote.** A leitura do jogo usava `tr -d '\n' < "$ST/game/pkg"`, mas o
+  redirecionamento de entrada **não** cobria o caso do arquivo não existir: o
+  erro ia para o stderr e a variável saía vazia no meio do JSON, derrubando o
+  parse das métricas (CPU fora de 0..100 e JSON inválido). Agora a leitura é
+  guardada por `[ -f "$ST/game/pkg" ]` e o valor sai limpo.
 - **Os créditos ficavam no meio da tela quando a aba tinha pouco conteúdo.** Em
   telas curtas (a aba **Flutuante**, por exemplo) o conteúdo acabava e o rodapé
   com os créditos parava logo abaixo dele, no meio do vazio. A causa era o
@@ -37,8 +43,29 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   atalho "Liberar acesso a dados de uso" continua na Home, onde o dado aparece.
 
 ### Adicionado
+- **FPS real do jogo, medido no compositor (aba "Monitor" do flutuante).** O
+  flutuante ganhou uma aba **Monitor** que mostra FPS, RAM, CPU e bateria ao
+  vivo, atualizando sozinha a cada 4 s enquanto está aberta. O FPS **não** é a
+  taxa da tela disfarçada: sai dos carimbos de apresentação dos frames do
+  `SurfaceFlinger` (`fps.sh`, `otm_fps_measure`), que é o número de frames que
+  realmente apareceram. Quando o jogo não está na tela — ou a camada não expõe
+  frames — o painel mostra **"—"** em vez de inventar um número. O mesmo valor
+  aparece na Home do painel (app e web), no card **"FPS do jogo"**.
+- **Reduzir a resolução do jogo pelo flutuante (mais FPS).** A aba **Atalhos**
+  agora traz os três perfis de downscale do `game-per-app.sh` — **FPS (0.9)**,
+  **Equilíbrio (0.75)** e **Máx (0.5)** — mais **Reset resolução** e **Ver
+  tuning**. Renderizar menos pixels dá mais FPS e esquenta menos; o tamanho na
+  tela não muda. O flutuante usa `auto`: o script resolve o jogo escolhido no
+  pack (ou o app em primeiro plano), porque o overlay não tem como saber qual é
+  o jogo. Vale para `apply`, `custom`, `mode`, `show` e `reset`.
+- **Escolher QUALQUER app instalado para nunca ser encerrado.** A aba
+  **Processos** ganhou a lista **"Todos os apps"** (`proc-mgr.sh apps`): mostra
+  todos os apps de usuário instalados, não só os que estão rodando agora, e cada
+  linha é um chip que liga/desliga a exceção com um toque. Antes só dava para
+  proteger quem já estava vivo neste instante — o caso mais comum (proteger um
+  app que ainda vai abrir, como o do banco) ficava de fora.
 - **Gerenciador de processos no painel flutuante (aba "Processos").** O
-  flutuante ganhou uma quarta aba para mexer na memória **no meio da partida**,
+  flutuante ganhou uma aba para mexer na memória **no meio da partida**,
   sem fechar o jogo: escolher quantos apps o sistema mantém em segundo plano
   (4 · jogo, 8 · meio, 32 · multitarefa ou Padrão), **"Encerrar todos"** (fecha o
   segundo plano poupando o jogo, o app em primeiro plano e as suas exceções),

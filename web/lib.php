@@ -69,7 +69,7 @@ function otm_allowed_scripts(): array {
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
         'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
-        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh',
+        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'fps.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
         'profile-custom.sh', 'smart-opt.sh', 'vitality.sh',
     ];

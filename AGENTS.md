@@ -349,9 +349,25 @@ nativa além do necessário para conectar e rodar os comandos.
 - **Painel flutuante (overlay sobre o jogo).** `OverlayService` (janela
   `TYPE_APPLICATION_OVERLAY`, precisa de `SYSTEM_ALERT_WINDOW`) mostra o painel
   por cima do Free Fire. O título é só **"00"** e o conteúdo é organizado em
-  **abas** por categoria — `TABS` = `Toque`, `Motor`, `Processos`, `Atalhos` (a
-  aba **Sensi saiu**: o overlay aplica o headshot da sensi, mas não lê mais o
-  `sensi.sh`).
+  **abas** por categoria — `TABS` = `Monitor`, `Toque`, `Motor`, `Processos`,
+  `Atalhos` (a aba **Sensi saiu**: o overlay aplica o headshot da sensi, mas não
+  lê mais o `sensi.sh`).
+  A aba **Monitor** lê o `panel-stats.sh` e se atualiza sozinha a cada 4 s
+  (enquanto estiver aberta: `monitorBox` é zerado no `selectTab` para o
+  `postDelayed` parar). O FPS mostrado é **real**, do `SurfaceFlinger`
+  (`fps.sh` / `otm_fps_measure`): `fps = (frames-1)/(último-primeiro)` sobre os
+  carimbos de apresentação — nunca a taxa da tela fingindo ser FPS. Sem frames
+  (jogo no menu, camada trocada, app fora da tela) mostra **"—"**, não um número
+  inventado. O mesmo card existe na Home do painel (app e `web/index.php`) via
+  a chave `fps` do stats.
+  A aba **Atalhos** tem a seção **Jogo** com o downscale do `game-per-app.sh`
+  (`GAME_SCALES` = `fps` 0.9 / `balanced` 0.75 / `max` 0.5, mais "Reset
+  resolução" e "Ver tuning"). O overlay sempre passa **`auto`** como pacote:
+  ele não sabe qual é o jogo, e o script resolve (jogo escolhido no pack, senão
+  o app em primeiro plano). `auto` vale para `apply`, `custom`, `mode`, `show` e
+  `reset` — todos passam por `_resolver_pkg`, que devolve o pacote por variável
+  (`RESOLVED_PKG`), **não** por stdout: capturar com `$( )` engoliria a mensagem
+  de erro junto com o valor.
   A aba **Processos** é o gerenciador de segundo plano para o meio da partida:
   seletor de limite (`PROC_LIMITS` → `adb-tweaks.sh proc_limit`), "Encerrar
   todos" (`proc-mgr.sh kill`), "RAM agora" (`ram-boost.sh boost normal`), criar
@@ -361,6 +377,11 @@ nativa além do necessário para conectar e rodar os comandos.
   legível vem do `PackageManager` (`getApplicationLabel`, com o pacote como
   reserva) e cada linha traz um chip "exceção"/"não encerra" que chama
   `proc-mgr.sh keep|unkeep`.
+  A seção **Todos os apps** (lista `procAllBox`) usa `proc-mgr.sh apps` (linhas
+  `#OTM-APP pkg=… protected=…`): todos os apps de usuário **instalados**, não só
+  os que estão rodando — é assim que se protege um app que ainda vai abrir
+  (banco, por exemplo). `parseProcList` aceita os dois prefixos e ordena por RAM
+  quando há RAM na lista, senão alfabeticamente.
   O visual segue o tema do painel: fundo arredondado, `setBackgroundBlurRadius`
   (Android 12+), botões de vidro (pílula translúcida) e a cor/fonte escolhidas
   na engrenagem. Cor e fonte vêm de `OtmUi` (SharedPreferences `otm-ui`), que o

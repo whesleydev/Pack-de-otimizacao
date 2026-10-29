@@ -126,6 +126,14 @@ if [ "$1" = "activity" ] && [ "$2" = "activities" ]; then
     fg="$(cat "$TMP_STORE/fg" 2>/dev/null)"
     [ -n "$fg" ] && echo "    mResumedActivity: ActivityRecord{1a2b3c u0 $fg/.MainActivity t42}"
 fi
+# SurfaceFlinger: as camadas e o carimbo de frames vêm de arquivos do store, para
+# o teste do FPS real controlar exatamente o que o compositor "respondeu".
+if [ "$1" = "SurfaceFlinger" ] && [ "$2" = "--list" ]; then
+    cat "$TMP_STORE/sf_list" 2>/dev/null
+fi
+if [ "$1" = "SurfaceFlinger" ] && [ "$2" = "--latency" ]; then
+    cat "$TMP_STORE/sf_latency" 2>/dev/null
+fi
 exit 0
 EOF
     # su falso: finge ser root e executa o comando como shell local
@@ -1121,6 +1129,105 @@ t_panel_stats() {
     rm -rf "$st2" "$b2"
 }
 
+t_fps_real() {
+    printf '\n  # FPS REAL do jogo: frames do SurfaceFlinger, não a taxa de tela\n'
+    # o método é o `--latency` do compositor (2ª coluna = horário REAL de
+    # apresentação de cada frame). É liberado para o uid 2000 (shell/Shizuku).
+    grep -q 'SurfaceFlinger --latency' "$ROOT/scripts/common.sh" \
+        && ok "fps: mede pelo SurfaceFlinger --latency" || bad "fps: não usa o --latency"
+    grep -q 'SurfaceFlinger --list' "$ROOT/scripts/common.sh" \
+        && ok "fps: descobre a camada do app pelo --list" || bad "fps: não lista as camadas"
+    # o FPS é derivado dos carimbos de apresentação, nunca da taxa de tela
+    grep -q 'refresh_hz' "$ROOT/scripts/fps.sh" \
+        && bad "fps: mistura taxa de tela com FPS" || ok "fps: não confunde Hz com FPS"
+    # script existe, está na whitelist e é só leitura
+    [ -f "$ROOT/scripts/fps.sh" ] && ok "fps.sh existe" || bad "fps.sh ausente"
+    grep -q "'fps.sh'" "$ROOT/web/lib.php" \
+        && ok "fps.sh está na whitelist do painel" || bad "fps.sh fora da whitelist"
+    grep -qE '^(settings put|bkp_set|sh_run)' "$ROOT/scripts/fps.sh" \
+        && bad "fps.sh escreve no sistema (devia ser só leitura)" \
+        || ok "fps.sh é só leitura"
+
+    # --- camada: prefere a SurfaceView do app em 1º plano --------------------
+    printf 'com.dts.freefireth/com.dts.freefireth.FFMainActivity#0\n' > "$TMP_STORE/sf_list"
+    printf 'SurfaceView[com.dts.freefireth/FF](BLAST)#0\n' >> "$TMP_STORE/sf_list"
+    printf 'Background for SurfaceView[com.dts.freefireth](BLAST)#0\n' >> "$TMP_STORE/sf_list"
+    printf 'com.dts.freefireth/.FFMainActivity\n' > "$TMP_STORE/fg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" layer > "$TMP/fps_layer" 2>&1
+    grep -q 'SurfaceView\[com.dts.freefireth/FF\](BLAST)#0' "$TMP/fps_layer" \
+        && ok "fps: escolhe a SurfaceView do jogo (não a camada do app)" \
+        || bad "fps: escolheu a camada errada"
+
+    # --- FPS a 60: 60 frames a cada 16,66 ms ---------------------------------
+    # 1ª linha é o período de vsync (não é frame); as demais são os carimbos.
+    { echo "16666666"
+      awk 'BEGIN{ t=1000000000; for(i=0;i<60;i++){ printf "%d\t%d\t%d\n", t, t, t; t+=16666666 } }'
+    } > "$TMP_STORE/sf_latency"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fps60" 2>&1
+    grep -q '#OTM-FPS fps=60 ' "$TMP/fps60" && ok "fps: 60 frames a 16,66 ms = 60 fps" \
+        || bad "fps: errou o cálculo a 60 fps ($(grep -o 'fps=[0-9]*' "$TMP/fps60"))"
+    grep -q 'frames=60' "$TMP/fps60" && ok "fps: conta os 60 frames" || bad "fps: contagem de frames errada"
+
+    # --- FPS a 120 com slots vazios do buffer misturados ---------------------
+    # O buffer circular de 128 posições vem com slots zerados/INT64_MAX. Eles
+    # NÃO são frames e não podem entrar na conta (senão o FPS despenca).
+    { echo "8333333"
+      echo "0	0	0"
+      echo "0	9223372036854775807	0"
+      awk 'BEGIN{ t=2000000000; for(i=0;i<40;i++){ printf "%d\t%d\t%d\n", t, t, t; t+=8333333 } }'
+      echo "0	0	0"
+    } > "$TMP_STORE/sf_latency"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fps120" 2>&1
+    grep -q '#OTM-FPS fps=120 ' "$TMP/fps120" \
+        && ok "fps: 120 fps com slots vazios ignorados" \
+        || bad "fps: slots vazios do buffer corromperam a conta ($(grep -o 'fps=[0-9]*' "$TMP/fps120"))"
+    grep -q 'frames=40' "$TMP/fps120" && ok "fps: só os frames reais entram na conta" \
+        || bad "fps: contou slots vazios como frame"
+
+    # --- sem camada / sem frames: devolve vazio, NÃO inventa ------------------
+    : > "$TMP_STORE/sf_list"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fpsnone" 2>&1
+    grep -q 'fps=' "$TMP/fpsnone" && bad "fps: inventou FPS sem camada" \
+        || ok "fps: sem camada não inventa número (mostra o motivo)"
+    # camada existe, mas o jogo está parado (só a linha de vsync)
+    printf 'SurfaceView[com.dts.freefireth/FF](BLAST)#0\n' > "$TMP_STORE/sf_list"
+    echo "16666666" > "$TMP_STORE/sf_latency"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fpsidle" 2>&1
+    grep -q 'fps=' "$TMP/fpsidle" && bad "fps: inventou FPS com o jogo parado" \
+        || ok "fps: jogo parado (sem frames) não vira número"
+
+    # --- o painel publica o FPS real no JSON ---------------------------------
+    grep -q '"fps"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: publica o campo fps" || bad "stats: sem campo fps"
+    grep -q '"fps_layer"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: publica a camada medida (fps_layer)" || bad "stats: sem fps_layer"
+    # o FPS do painel vem do otm_fps_measure (mesma conta do fps.sh), não do Hz
+    grep -q 'otm_fps_measure' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: usa a mesma medição de FPS do pack" || bad "stats: medição de FPS própria"
+    # com o jogo em 1º plano, o JSON traz o FPS real
+    { echo "16666666"
+      awk 'BEGIN{ t=1000000000; for(i=0;i<60;i++){ printf "%d\t%d\t%d\n", t, t, t; t+=16666666 } }'
+    } > "$TMP_STORE/sf_latency"
+    printf 'SurfaceView[com.dts.freefireth/FF](BLAST)#0\n' > "$TMP_STORE/sf_list"
+    printf 'com.dts.freefireth/.FFMainActivity\n' > "$TMP_STORE/fg"
+    rm -rf "$HOME/.packotm/game"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-stats.sh" > "$TMP/ps_fps" 2>&1
+    grep -q '"fps":"60"' "$TMP/ps_fps" && ok "stats: FPS real no JSON (60)" \
+        || bad "stats: FPS ausente/errado no JSON ($(grep -o '"fps":"[^"]*"' "$TMP/ps_fps"))"
+
+    # --- painéis (app e web) mostram o FPS -----------------------------------
+    for f in "$ROOT/web/index.php" "$ROOT/app/src/main/assets/panel/index.html"; do
+        n=$(basename "$f")
+        grep -q 'data-stat="fps"' "$f" && ok "$n: tem o card de FPS" || bad "$n: sem card de FPS"
+        grep -q '"fps","stor_total_mb"\|refresh_hz","fps"' "$f" \
+            && ok "$n: pede o campo fps no poll" || bad "$n: não pede o fps"
+    done
+    # o card explica que é FPS do jogo, não a taxa de tela
+    grep -q 'FPS do jogo' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: card se chama 'FPS do jogo'" || bad "app: card de FPS sem rótulo claro"
+    rm -f "$TMP_STORE/sf_list" "$TMP_STORE/sf_latency"
+}
+
 t_game_keepalive() {
     printf '\n  # modo gamer: sem restricao de bateria, no maximo 4 processos, anti-relog\n'
     rm -rf "$HOME/.packotm"
@@ -1782,6 +1889,15 @@ t_new_scripts() {
     HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" list > "$TMP/pm_list" 2>&1
     grep -q 'app(s) rodando\|nenhum app de usuário rodando' "$TMP/pm_list" \
         && ok "proc-mgr list responde" || bad "proc-mgr list mudo"
+    # apps: TODOS os instalados, para proteger quem NÃO está rodando agora
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" apps > "$TMP/pm_apps" 2>&1
+    grep -q '#OTM-APP pkg=com.instagram.android protected=0' "$TMP/pm_apps" \
+        && ok "proc-mgr apps lista todos os instalados" || bad "proc-mgr apps mudo"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep com.instagram.android >/dev/null 2>&1
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" apps > "$TMP/pm_apps2" 2>&1
+    grep -q '#OTM-APP pkg=com.instagram.android protected=1' "$TMP/pm_apps2" \
+        && ok "proc-mgr apps marca quem está protegido" || bad "proc-mgr apps sem o flag de exceção"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" unkeep com.instagram.android >/dev/null 2>&1
     # kill avisa (e não quebra) quando não há privilégio de shell
     HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" kill > "$TMP/pm_kill" 2>&1
     grep -q 'sem permissão de shell' "$TMP/pm_kill" && ok "proc-mgr kill avisa sem shell" \
@@ -1815,6 +1931,45 @@ t_new_scripts() {
     grep -q 'startStats' "$ROOT/web/index.php" && ok "painel: liga o polling das metricas" || bad "painel: sem startStats"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_game_per_app() {
+    printf '\n  # game-per-app.sh: resolução do jogo por app (downscale) e "auto"\n'
+    f="$ROOT/scripts/game-per-app.sh"
+    [ -f "$f" ] && ok "scripts/game-per-app.sh existe" || { bad "game-per-app.sh ausente"; return; }
+    rm -rf "$HOME/.packotm"
+    # o teste roda em ordem alfabética de funções: um teste anterior pode ter
+    # deixado um SDK antigo no store (o Game Mode exige API 31+).
+    printf '34' > "$TMP_STORE/prop.ro.build.version.sdk"
+    # downscale por perfil: cada perfil tem seu fator (nada de número inventado)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply com.exemplo.game fps > "$TMP/gpa_fps" 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.game" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.9*) ok "apply fps grava o downscale 0.9" ;;
+        *) bad "apply fps não gravou o overlay ($v)" ;; esac
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply com.exemplo.game max >/dev/null 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.game" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.5*) ok "apply max grava o downscale 0.5" ;;
+        *) bad "apply max não gravou o overlay ($v)" ;; esac
+    # "auto" resolve pelo jogo escolhido no pack (o flutuante não sabe qual é)
+    mkdir -p "$HOME/.packotm/game"
+    printf 'com.exemplo.escolhido\n' > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply auto fps > "$TMP/gpa_auto" 2>&1
+    [ -f "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" ] \
+        && ok "apply auto usa o jogo escolhido no pack" || bad "apply auto não resolveu o jogo"
+    # reset e show também aceitam "auto" (o flutuante usa os três)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" show auto > "$TMP/gpa_show" 2>&1
+    grep -q 'com.exemplo.escolhido' "$TMP/gpa_show" \
+        && ok "show auto mostra o jogo escolhido" || bad "show auto não resolveu o jogo"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" reset auto > "$TMP/gpa_reset" 2>&1
+    test ! -f "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" \
+        && ok "reset auto remove o overlay do jogo" || bad "reset auto não removeu"
+    # sem jogo escolhido e sem app em 1º plano: avisa em vez de chutar
+    rm -f "$HOME/.packotm/game/pkg"
+    rm -f "$TMP_STORE/fg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply auto fps > "$TMP/gpa_no" 2>&1
+    grep -qi 'não sei qual é o jogo' "$TMP/gpa_no" \
+        && ok "auto sem jogo avisa (não chuta pacote)" || bad "auto sem jogo não avisou"
+    rm -rf "$HOME/.packotm"
 }
 
 t_modules() {
@@ -2885,6 +3040,7 @@ t_footer_sticky
 t_new_features
 t_panel_state
 t_panel_stats
+t_fps_real
 t_game_keepalive
 t_game_open
 t_pack_stamp
@@ -2931,9 +3087,54 @@ t_overlay() {
         || ok "overlay não usa mais o título antigo"
     # organizado em CATEGORIAS (abas), não numa lista única
     grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
-    for t in Toque Motor Processos Atalhos; do
+    for t in Monitor Toque Motor Processos Atalhos; do
         grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
+    # a aba Monitor mostra o FPS REAL (SurfaceFlinger), não a taxa de tela
+    grep -q 'panel-stats.sh' "$svc" && ok "overlay usa o panel-stats na aba Monitor" \
+        || bad "overlay não lê o consumo real"
+    grep -q 'FPS do jogo' "$svc" && ok "overlay mostra o FPS do jogo no monitor" \
+        || bad "overlay sem FPS no monitor"
+    grep -q 's\["fps"\]\|"fps"' "$svc" && ok "overlay lê o campo fps do painel" \
+        || bad "overlay ignora o campo fps"
+    grep -q 'private fun monitorTab' "$svc" && ok "overlay tem a aba Monitor" \
+        || bad "overlay sem a aba Monitor"
+    # o monitor não inventa: campo ausente vira "—"
+    grep -q 'monitorRow' "$svc" && grep -q '?: "—"' "$svc" \
+        && ok "overlay mostra '—' no que o aparelho não informou" || bad "overlay sem fallback do monitor"
+    # o monitor se atualiza sozinho (senão o FPS fica congelado na partida)
+    grep -q 'postDelayed(4000)' "$svc" && ok "overlay atualiza o monitor sozinho" \
+        || bad "overlay com monitor congelado"
+    # a aba fica alta: precisa de rolagem, senão os últimos botões somem
+    grep -q 'ScrollView' "$svc" && ok "overlay tem rolagem (abas altas)" \
+        || bad "overlay sem rolagem"
+    # as novas ações do flutuante chamam os scripts do pack (nada reimplementado)
+    for c in 'turbo.sh' 'dns.sh' 'ram-boost.sh' 'snapshot.sh' 'game-per-app.sh'; do
+        grep -q "$c" "$svc" || bad "overlay sem atalho para $c"
+    done
+    ok "overlay tem os atalhos novos (rede, fluidez, RAM, jogo, snapshot)"
+    # a resolução por jogo usa "auto": o flutuante não sabe qual é o jogo
+    grep -q 'listOf("apply", "auto"' "$svc" \
+        && ok "overlay deixa o script resolver o jogo (auto)" \
+        || bad "overlay chuta o pacote do jogo"
+    # reduzir a resolução do jogo (mais FPS) com os 3 perfis + reset
+    grep -q 'GAME_SCALES' "$svc" && ok "overlay tem os perfis de resolução" \
+        || bad "overlay sem os perfis de resolução"
+    for s in 'fps" to "FPS' 'balanced' 'max'; do
+        grep -q "$s" "$svc" || bad "overlay sem o perfil de resolução '$s'"
+    done
+    ok "overlay tem os 3 perfis de resolução do jogo"
+    grep -q 'listOf("reset", "auto")' "$svc" \
+        && ok "overlay sabe resetar a resolução do jogo" \
+        || bad "overlay sem o reset de resolução"
+    # escolher QUALQUER app para não ser encerrado (não só o que está rodando)
+    grep -q 'listOf("apps")' "$svc" \
+        && ok "overlay lista todos os apps (exceção fora dos que rodam)" \
+        || bad "overlay só protege quem está rodando"
+    grep -q 'procAllBox' "$svc" && ok "overlay tem a lista de todos os apps" \
+        || bad "overlay sem a lista de todos os apps"
+    grep -q 'REFRESH_RATES' "$svc" && ok "overlay tem as taxas de tela fixas" \
+        || bad "overlay sem as taxas de tela"
     # a aba Processos: limite de 2º plano, encerrar todos e exceções ("X não encerra")
     grep -q 'proc-mgr.sh' "$svc" && ok "overlay usa o gerenciador de processos" \
         || bad "overlay sem proc-mgr.sh"
@@ -3275,6 +3476,7 @@ t_build_modules
 t_build_pack
 t_debloat
 t_dns
+t_game_per_app
 t_new_scripts
 t_modules
 t_web

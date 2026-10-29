@@ -19,6 +19,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +63,11 @@ class OverlayService : Service() {
     private var content: LinearLayout? = null
     /** Onde a lista de "Rodando agora" é montada (aba Processos). */
     private var procListBox: LinearLayout? = null
+
+    /** Lista de TODOS os apps instalados (exceções do "não encerrar"). */
+    private var procAllBox: LinearLayout? = null
+    /** Onde a grade do monitor é montada (aba Monitor). */
+    private var monitorBox: LinearLayout? = null
     private val tabChips = mutableListOf<TextView>()
     /** Fontes já carregadas do asset: não reler o .ttf a cada texto criado. */
     private val fontCache = HashMap<String, Typeface>()
@@ -125,7 +131,19 @@ class OverlayService : Service() {
         box.addView(tabBar())
 
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        box.addView(content, matchWrap())
+        // A aba Monitor e a aba Atalhos ficam altas: sem rolagem, os últimos
+        // botões ficariam fora da tela do jogo (o painel é uma janela pequena).
+        // A altura é limitada a ~62% da tela para o painel nunca cobrir o jogo.
+        val rolagem = ScrollView(this).apply {
+            addView(content, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+        }
+        box.addView(rolagem, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            (resources.displayMetrics.heightPixels * 0.62f).toInt(),
+        ))
 
         statusText = TextView(this).apply {
             setTextColor(col(C_MUTED))
@@ -190,6 +208,9 @@ class OverlayService : Service() {
         box.removeAllViews()
         // a lista de processos é recriada a cada visita à aba: não segurar view removida
         procListBox = null
+        procAllBox = null
+        // idem para o monitor: parar o auto-refresh da aba que saiu de cena
+        monitorBox = null
         box.addView(tabView(index), matchWrap())
         for ((i, chip) in tabChips.withIndex()) {
             val on = i == index
@@ -204,7 +225,115 @@ class OverlayService : Service() {
         0 -> touchTab()
         1 -> engineTab()
         2 -> procTab()
+        3 -> monitorTab()
         else -> shortcutsTab()
+    }
+
+    /**
+     * Aba Monitor: o consumo REAL do aparelho durante a partida, com o **FPS
+     * real do jogo** em destaque.
+     *
+     * Os números vêm do `panel-stats.sh` (o mesmo da home) e o FPS do
+     * `SurfaceFlinger` — são os frames que o jogo realmente apresentou, não a
+     * taxa de tela. Campo que o aparelho não expõe fica "—"; nada de estimativa.
+     */
+    private fun monitorTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(sectionHeader("Ao vivo"))
+        val grade = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(grade, matchWrap())
+        monitorBox = grade
+        loadMonitor()
+        return box
+    }
+
+    /** Lê o consumo real e monta a grade do monitor (atualiza a cada 4 s). */
+    private fun loadMonitor() {
+        val box = monitorBox ?: return
+        scope.launch {
+            val res = OtmExec.run(this@OverlayService, OtmRunner.current, "panel-stats.sh", emptyList())
+            val s = parseStats(joinOutput(res.stdout, res.stderr))
+            post {
+                box.removeAllViews()
+                for (linha in monitorRows(s)) box.addView(linha)
+                box.addView(TextView(this@OverlayService).apply {
+                    text = "atualizar"
+                    textSize = 11f
+                    setTextColor(col(accent()))
+                    typeface = bodyTypeface()
+                    setPadding(0, dp(8), 0, 0)
+                    setOnClickListener { loadMonitor() }
+                })
+                // enquanto a aba Monitor estiver aberta, se atualiza sozinha
+                postDelayed(4000) { if (monitorBox === box) loadMonitor() }
+            }
+        }
+    }
+
+    /** Uma métrica por linha: rótulo à esquerda, valor à direita. */
+    private fun monitorRow(rotulo: String, valor: String, destaque: Boolean = false): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        row.addView(TextView(this).apply {
+            text = rotulo
+            textSize = 11.5f
+            setTextColor(col(C_MUTED))
+            typeface = bodyTypeface()
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(TextView(this).apply {
+            text = valor
+            textSize = if (destaque) 15f else 12.5f
+            setTextColor(col(if (destaque) accent() else C_TEXT))
+            typeface = bodyTypeface()
+            setPadding(dp(6), dp(2), 0, dp(2))
+        })
+        return row
+    }
+
+    /** Monta as linhas do monitor com o que o aparelho realmente informou. */
+    private fun monitorRows(s: Map<String, String>): List<View> {
+        val linhas = ArrayList<View>()
+        val fps = s["fps"]?.takeIf { it.isNotEmpty() }
+        val hz = s["refresh_peak"]?.takeIf { it.isNotEmpty() } ?: s["refresh_hz"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow("FPS do jogo", fps ?: "—", destaque = true))
+        linhas.add(monitorRow("Teto da tela", if (hz != null) "$hz Hz" else "—"))
+        fun pct(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it%" } ?: "—"
+        fun mb(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it MB" } ?: "—"
+        linhas.add(monitorRow("RAM em uso", pct("ram_uso_pct")))
+        linhas.add(monitorRow("RAM livre", mb("ram_livre_mb")))
+        linhas.add(monitorRow("CPU", pct("cpu_uso_pct")))
+        val mhz = s["cpu_cur_mhz"]?.takeIf { it.isNotEmpty() }
+        val maxMhz = s["cpu_max_mhz"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow("Frequência", if (mhz != null) "$mhz${if (maxMhz != null) "/$maxMhz" else ""} MHz" else "—"))
+        val temp = s["bat_temp_c"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow("Temperatura", if (temp != null) "$temp °C" else "—"))
+        val bat = s["bat_level"]?.takeIf { it.isNotEmpty() }
+        val st = s["bat_status"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow("Bateria", if (bat != null) "$bat%${if (st != null) " · $st" else ""}" else "—"))
+        if (fps == null) {
+            linhas.add(procNote("sem FPS: abra o jogo (o painel precisa dele na tela)"))
+        }
+        return linhas
+    }
+
+    /**
+     * Lê o JSON de uma linha do `panel-stats.sh` (o mesmo formato da home).
+     * O JSON é plano e de strings, então um parser simples basta — e não
+     * arrasta uma dependência só para ler 20 campos.
+     */
+    private fun parseStats(out: String): Map<String, String> {
+        val map = HashMap<String, String>()
+        for (linha in out.split("\n")) {
+            val t = linha.trim()
+            if (!t.startsWith("{")) continue
+            for (m in Regex("\"([a-z_0-9]+)\"\\s*:\\s*\"([^\"]*)\"").findAll(t)) {
+                map[m.groupValues[1]] = m.groupValues[2]
+            }
+            break
+        }
+        return map
     }
 
     /** Aba Toque: perfis de sensibilidade do jogo. */
@@ -292,7 +421,31 @@ class OverlayService : Service() {
         box.addView(lista, matchWrap())
         procListBox = lista
         loadProcList()
+
+        // Proteger um app que NÃO está rodando agora (ex.: o do banco): a lista
+        // "rodando agora" só tem quem está vivo neste instante.
+        box.addView(sectionHeader("Todos os apps"))
+        box.addView(procNote("toque em um app para ele NUNCA ser encerrado"))
+        val todos = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(todos, matchWrap())
+        procAllBox = todos
+        loadAllApps()
         return box
+    }
+
+    /** Todos os apps instalados, com o chip de exceção (liga/desliga). */
+    private fun loadAllApps() {
+        val box = procAllBox ?: return
+        scope.launch {
+            val res = OtmExec.run(this@OverlayService, OtmRunner.current, "proc-mgr.sh", listOf("apps"))
+            val linhas = parseProcList(joinOutput(res.stdout, res.stderr))
+            post {
+                if (procAllBox !== box) return@post
+                box.removeAllViews()
+                if (linhas.isEmpty()) box.addView(procNote("nenhum app de usuário instalado"))
+                else for (p in linhas) box.addView(procRow(p))
+            }
+        }
     }
 
     /** Mostra os apps rodando agora, com a RAM de cada um e o que está poupado. */
@@ -383,18 +536,108 @@ class OverlayService : Service() {
         pkg
     }
 
-    /** Aba Atalhos: latência, limpeza de RAM e game clean. */
+    /**
+     * Aba Atalhos: o que se ajusta no meio da partida, em blocos curtos.
+     *
+     * Cada botão chama o MESMO script que o painel principal usa — nada é
+     * reimplementado aqui (o flutuante não pode divergir do painel).
+     */
     private fun shortcutsTab(): View {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        box.addView(sectionHeader("Atalhos"))
-        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row1.addView(smallButton("Latência") { runScript("adb-tweaks.sh", listOf("latency"), "Latência") })
-        row1.addView(smallButton("Limpar RAM") { runScript("clean.sh", listOf("now", "fundo"), "Limpeza") })
-        box.addView(row1, matchWrap())
-        val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row2.addView(smallButton("Game Clean") { runScript("game-clean.sh", listOf("on"), "Game Clean") })
-        row2.addView(smallButton("Headshot") { runScript("sensi.sh", listOf("headshot"), "Sensi: headshot") })
-        box.addView(row2, matchWrap())
+
+        box.addView(sectionHeader("Rede e latência"))
+        val rede = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        rede.addView(smallButton("Latência") { runScript("adb-tweaks.sh", listOf("latency"), "Latência") })
+        rede.addView(smallButton("DNS gamer") { runScript("dns.sh", listOf("gaming"), "DNS gaming") })
+        box.addView(rede, matchWrap())
+
+        box.addView(sectionHeader("Fluidez"))
+        var row: LinearLayout? = null
+        for ((i, r) in REFRESH_RATES.withIndex()) {
+            if (i % 2 == 0) {
+                row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(row, matchWrap())
+            }
+            row!!.addView(smallButton(r.second) {
+                // "auto" destrava (volta ao dinâmico); os Hz fixos travam
+                // min=peak e evitam a tela oscilar no meio da partida.
+                val args = if (r.first == "auto") listOf("refresh", "auto")
+                else listOf("refresh_fixed", r.first)
+                runScript("turbo.sh", args, "Tela: ${r.second}")
+            })
+        }
+        val fixo = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fixo.addView(smallButton("Perf. fixo") { runScript("turbo.sh", listOf("perfmode", "on"), "Desempenho fixo") })
+        fixo.addView(smallButton("Perf. off") { runScript("turbo.sh", listOf("perfmode", "off"), "Desempenho normal") })
+        box.addView(fixo, matchWrap())
+
+        box.addView(sectionHeader("Durante a partida"))
+        val partida = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        partida.addView(smallButton("Foco de jogo") { runScript("adb-tweaks.sh", listOf("game_focus"), "Foco de jogo") })
+        partida.addView(smallButton("Foco off") { runScript("adb-tweaks.sh", listOf("game_focus_off"), "Foco desligado") })
+        box.addView(partida, matchWrap())
+
+        val limpeza = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        limpeza.addView(smallButton("Limpar RAM") { runScript("clean.sh", listOf("now", "fundo"), "Limpeza") })
+        limpeza.addView(smallButton("RAM máximo") { runScript("ram-boost.sh", listOf("boost", "max"), "RAM máxima") })
+        box.addView(limpeza, matchWrap())
+
+        val congelar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        congelar.addView(smallButton("Hibernar") { runScript("turbo.sh", listOf("hibernate", "now"), "Hibernar apps") })
+        congelar.addView(smallButton("Congelar") { runScript("adb-tweaks.sh", listOf("freeze_apps"), "Congelar apps") })
+        box.addView(congelar, matchWrap())
+
+        val gameClean = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        gameClean.addView(smallButton("Game Clean") { runScript("game-clean.sh", listOf("on"), "Game Clean") })
+        gameClean.addView(smallButton("Game Clean off") { runScript("game-clean.sh", listOf("off"), "Game Clean desligado") })
+        box.addView(gameClean, matchWrap())
+
+        box.addView(sectionHeader("Mira e toque"))
+        val mira = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        mira.addView(smallButton("Headshot") { runScript("sensi.sh", listOf("headshot"), "Sensi: headshot") })
+        mira.addView(smallButton("Multitouch") { runScript("adb-tweaks.sh", listOf("touch_multi", "250"), "Multitouch") })
+        box.addView(mira, matchWrap())
+
+        box.addView(sectionHeader("Aparência e tela"))
+        val visual = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        visual.addView(smallButton("Efeitos off") { runScript("adb-tweaks.sh", listOf("effects", "off"), "Efeitos leves") })
+        visual.addView(smallButton("Efeitos on") { runScript("adb-tweaks.sh", listOf("effects", "on"), "Efeitos ligados") })
+        box.addView(visual, matchWrap())
+
+        val barras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        barras.addView(smallButton("Esconder topo") { runScript("adb-tweaks.sh", listOf("sysbars", "status"), "Barra de cima") })
+        barras.addView(smallButton("Mostrar tudo") { runScript("adb-tweaks.sh", listOf("sysbars", "on"), "Barras visíveis") })
+        box.addView(barras, matchWrap())
+
+        box.addView(sectionHeader("Jogo"))
+        box.addView(procNote("reduz a resolução do jogo = mais FPS (reinicie o jogo)"))
+        var jrow: LinearLayout? = null
+        for ((i, g) in GAME_SCALES.withIndex()) {
+            if (i % 2 == 0) {
+                jrow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(jrow, matchWrap())
+            }
+            // "auto" deixa o script resolver o jogo (escolhido no pack, ou o app
+            // em primeiro plano) — o flutuante não tem como saber qual é o jogo.
+            jrow!!.addView(smallButton(g.second) {
+                runScript("game-per-app.sh", listOf("apply", "auto", g.first), "Resolução: ${g.second}")
+            })
+        }
+        val jreset = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        jreset.addView(smallButton("Reset resolução") {
+            runScript("game-per-app.sh", listOf("reset", "auto"), "Resolução restaurada")
+        })
+        jreset.addView(smallButton("Ver tuning") {
+            runScript("game-per-app.sh", listOf("show", "auto"), "Tuning do jogo")
+        })
+        box.addView(jreset, matchWrap())
+
+        box.addView(sectionHeader("Snapshot"))
+        val snap = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        snap.addView(smallButton("Salvar") { runScript("snapshot.sh", listOf("save", "no-jogo"), "Snapshot salvo") })
+        snap.addView(smallButton("Restaurar") { runScript("snapshot.sh", listOf("restore", "latest"), "Snapshot restaurado") })
+        box.addView(snap, matchWrap())
+
         return box
     }
 
@@ -672,7 +915,26 @@ class OverlayService : Service() {
         )
 
         /** Categorias do painel, na ordem das abas. */
-        private val TABS = listOf("Toque", "Motor", "Processos", "Atalhos")
+        private val TABS = listOf("Monitor", "Toque", "Motor", "Processos", "Atalhos")
+
+        /** Taxas de tela fixas aceitas por `turbo.sh refresh_fixed <hz>`. */
+        private val REFRESH_RATES = listOf(
+            "60" to "60 Hz",
+            "90" to "90 Hz",
+            "120" to "120 Hz",
+            "auto" to "Automática",
+        )
+
+        /**
+         * Downscale do jogo (reduz a resolução de renderização = mais FPS).
+         * Os valores são os mesmos perfis do `game-per-app.sh`: 0.9 quase
+         * imperceptível, 0.5 serrilhado mas o mais leve.
+         */
+        private val GAME_SCALES = listOf(
+            "fps" to "FPS (0.9)",
+            "balanced" to "Equilíbrio",
+            "max" to "Máx (0.5)",
+        )
 
         /** Limite de processos em 2º plano aceito por `adb-tweaks.sh proc_limit`. */
         private val PROC_LIMITS = listOf(
@@ -693,9 +955,13 @@ class OverlayService : Service() {
             val list = ArrayList<ProcInfo>()
             for (line in out.split("\n")) {
                 val t = line.trim()
-                if (!t.startsWith("#OTM-PROC")) continue
+                val pre = when {
+                    t.startsWith("#OTM-PROC") -> "#OTM-PROC"
+                    t.startsWith("#OTM-APP") -> "#OTM-APP"
+                    else -> continue
+                }
                 var pkg = ""; var ram = 0; var prot = false
-                for (tok in t.removePrefix("#OTM-PROC").trim().split(Regex("\\s+"))) {
+                for (tok in t.removePrefix(pre).trim().split(Regex("\\s+"))) {
                     val i = tok.indexOf('=')
                     if (i <= 0) continue
                     when (tok.substring(0, i)) {
@@ -706,7 +972,9 @@ class OverlayService : Service() {
                 }
                 if (pkg.isNotEmpty()) list.add(ProcInfo(pkg, ram, prot))
             }
-            return list.sortedByDescending { it.ramMb }
+            // "Rodando agora" ordena por RAM; a lista de instalados é alfabética.
+            return if (list.any { it.ramMb > 0 }) list.sortedByDescending { it.ramMb }
+            else list.sortedBy { it.pkg }
         }
 
         /** Perfis de toque do `ff-touch.sh`, na ordem em que aparecem no painel. */

@@ -956,6 +956,11 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <div class="foot" data-stat="dispf">—</div>
               </div>
               <div class="stat">
+                <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>FPS do jogo</div>
+                <div class="v" data-stat="fps">—</div>
+                <div class="foot" data-stat="fpsf">—</div>
+              </div>
+              <div class="stat">
                 <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tempo ligado</div>
                 <div class="v" data-stat="up">—</div>
                 <div class="foot" data-stat="upf">—</div>
@@ -2050,7 +2055,7 @@ function closeAppPicker(){ const m = document.getElementById("appModal"); if (m)
 
 /* ---- HOME: métricas reais do aparelho (RAM, CPU, bateria, tela) ------------- */
 let STATS = {}, statsTimer = null, statsBusy = false, statsAt = 0;
-const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","cpu_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
+const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","cpu_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","fps","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
 const has = v => v !== undefined && v !== null && String(v) !== "";
 const num = v => { const n = parseFloat(v); return (v === "" || v === null || v === undefined || isNaN(n)) ? null : n; };
 function setBar(m, pct, cls){ const i = m && m.querySelector("i"); if (i) i.style.width = Math.max(0, Math.min(100, pct)) + "%"; if (m){ m.className = "m" + (cls ? " " + cls : ""); } }
@@ -2113,6 +2118,18 @@ function renderStats(){
   if (dispV) dispV.innerHTML = rShow !== null ? rShow + "<small>Hz</small>" : "—";
   const dispF = document.querySelector('[data-stat="dispf"]');
   if (dispF) dispF.textContent = rPeak !== null ? "taxa travada (fixa)" : (rCur !== null ? "taxa atual da tela" : "o aparelho não informou");
+  // FPS REAL do jogo: vem do SurfaceFlinger (frames apresentados de verdade),
+  // não da taxa de tela. "—" quando o jogo não está na tela ou a camada não
+  // expõe frames — melhor vazio do que um número inventado.
+  const fpsV = document.querySelector('[data-stat="fps"]');
+  const fpsN = num(S.fps);
+  if (fpsV) fpsV.innerHTML = fpsN === null ? "—" : fpsN + "<small>fps</small>";
+  const fpsF = document.querySelector('[data-stat="fpsf"]');
+  if (fpsF){
+    if (fpsN === null) fpsF.textContent = "abra o jogo para medir";
+    else if (rCur !== null && fpsN >= rCur - 3) fpsF.textContent = "no teto da tela (" + rCur + " Hz)";
+    else fpsF.textContent = "frames reais do jogo agora";
+  }
   // Tempo ligado
   const upV = document.querySelector('[data-stat="up"]');
   const up = num(S.uptime_s);

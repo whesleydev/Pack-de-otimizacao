@@ -8,6 +8,7 @@
 #  Uso:
 #     proc-mgr.sh top [n]              # N processos que mais gastam (CPU/RAM)
 #     proc-mgr.sh list [n]             # apps de usuário RODANDO agora (RAM, exceção)
+#     proc-mgr.sh apps                 # TODOS os apps instalados (proteger/liberar)
 #     proc-mgr.sh info <pkg>           # PID, RAM, nice, oom_score do app
 #     proc-mgr.sh kill                 # encerra o 2º plano (poupa exceções/1º plano/jogo)
 #     proc-mgr.sh keep <pkg>           # exceção: este app NUNCA é encerrado
@@ -195,9 +196,29 @@ cmd_kill() {
     [ -n "$r" ] && say "RAM livre agora: ${r}MB"
 }
 
+# cmd_apps -> TODOS os apps de usuário instalados, com ou sem exceção. É o que
+# permite proteger um app que NÃO está rodando agora (ex.: o app do banco, que
+# precisa continuar vivo quando a limpeza de RAM rodar mais tarde).
+cmd_apps() {
+    i=0
+    for p in $(sh_get 'pm list packages -3' | sed 's/^package://' | sort); do
+        [ -n "$p" ] || continue
+        i=$((i + 1))
+        prot=0
+        _pm_keep_has "$p" && prot=1
+        printf '#OTM-APP pkg=%s protected=%s\n' "$p" "$prot"
+    done
+    if [ "$i" -eq 0 ]; then
+        say "nenhum app de usuário instalado"
+    else
+        say "$i app(s) instalado(s) — toque para proteger/liberar"
+    fi
+}
+
 case "$1" in
     top)        shift; cmd_top "$@" ;;
     list)       shift; cmd_list "$@" ;;
+    apps)       shift; cmd_apps "$@" ;;
     info)       shift; cmd_info "$@" ;;
     kill)       shift; cmd_kill "$@" ;;
     keep)       shift; cmd_keep "$@" ;;

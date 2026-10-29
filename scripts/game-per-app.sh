@@ -78,8 +78,25 @@ listar() {
     printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | reset <pkg>\n' "$0"
 }
 
+# _resolver_pkg <pkg|auto> -> define RESOLVED_PKG. "auto" = o jogo escolhido no
+# pack (Modo Competitivo); sem escolha, o app em primeiro plano. É o que o painel
+# flutuante usa: ele não sabe qual é o jogo.
+# Devolve por variável (não por stdout) de propósito: capturar com $( ) engoliria
+# a mensagem de erro junto com o valor.
+_resolver_pkg() {
+    if [ "$1" = "auto" ] || [ "$1" = "-" ]; then
+        RESOLVED_PKG="$(sed -n '1p' "$ST/game/pkg" 2>/dev/null | tr -d '\n')"
+        [ -n "$RESOLVED_PKG" ] || RESOLVED_PKG="$(otm_fg_pkg)"
+        [ -n "$RESOLVED_PKG" ] || { err "não sei qual é o jogo (escolha um no pack)"; return 1; }
+    else
+        RESOLVED_PKG="$1"
+    fi
+    return 0
+}
+
 mostrar() {
-    pkg="$1"
+    _resolver_pkg "$1" || return 1
+    pkg="$RESOLVED_PKG"
     [ -z "$pkg" ] && { err "faltou o pacote"; return 1; }
     say "Config atual do jogo: $pkg"
     atual=$(sh_get "device_config get game_overlay $pkg")
@@ -92,7 +109,9 @@ mostrar() {
 
 aplicar() {
     pkg="$1"; perfil="$2"
-    [ -z "$pkg" ] || [ -z "$perfil" ] && { err "uso: apply <pkg> <perfil>"; return 1; }
+    [ -z "$pkg" ] || [ -z "$perfil" ] && { err "uso: apply <pkg|auto> <perfil>"; return 1; }
+    _resolver_pkg "$pkg" || return 1
+    pkg="$RESOLVED_PKG"
     requer_android12 || return 1
     d=$(perfil_valor "$perfil")
     [ -z "$d" ] && { err "perfil inválido: $perfil (use fps|balanced|max)"; return 1; }
@@ -112,7 +131,9 @@ aplicar() {
 
 aplicar_custom() {
     pkg="$1"; d="$2"; fps="$3"
-    [ -z "$pkg" ] || [ -z "$d" ] && { err "uso: custom <pkg> <downscale 0.3-1.0> [fps]"; return 1; }
+    [ -z "$pkg" ] || [ -z "$d" ] && { err "uso: custom <pkg|auto> <downscale 0.3-1.0> [fps]"; return 1; }
+    _resolver_pkg "$pkg" || return 1
+    pkg="$RESOLVED_PKG"
     requer_android12 || return 1
     bkp_begin
     antigo=$(sh_get "device_config get game_overlay $pkg")
@@ -134,14 +155,17 @@ aplicar_custom() {
 
 modo() {
     pkg="$1"; m="${2:-performance}"
-    [ -z "$pkg" ] && { err "uso: mode <pkg> [standard|performance|battery]"; return 1; }
+    [ -z "$pkg" ] && { err "uso: mode <pkg|auto> [standard|performance|battery]"; return 1; }
+    _resolver_pkg "$pkg" || return 1
+    pkg="$RESOLVED_PKG"
     say "Modo do jogo: $m ($pkg)"
     cmd_game "$pkg" "$m"
     say "pronto — REINICIE o jogo"
 }
 
 resetar() {
-    pkg="$1"
+    _resolver_pkg "$1" || return 1
+    pkg="$RESOLVED_PKG"
     [ -z "$pkg" ] && { err "faltou o pacote"; return 1; }
     say "Removendo intervention de $pkg"
     sh_run "device_config delete game_overlay $pkg" >/dev/null

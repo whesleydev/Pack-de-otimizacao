@@ -502,6 +502,57 @@ otm_fg_pkg() {
     printf '%s' "$p"
 }
 
+# otm_fps_layer [pkg] -> camada do SurfaceFlinger onde o app desenha.
+# Sem o pacote, usa o app em PRIMEIRO PLANO. Vazio quando não dá para saber.
+# O jogo desenha numa SurfaceView; ela vem primeiro na preferência porque é ali
+# que os frames do jogo são apresentados (a camada do app pode ter 0 frames).
+otm_fps_layer() {
+    _p="${1:-}"
+    [ -n "$_p" ] || _p="$(otm_fg_pkg)"
+    [ -n "$_p" ] || return 0
+    _ls="$(sh_get 'dumpsys SurfaceFlinger --list' 2>/dev/null | grep -v '^$')"
+    [ -n "$_ls" ] || return 0
+    _pick="$(printf '%s\n' "$_ls" | grep -F "$_p" | grep -F 'SurfaceView[' | head -1)"
+    [ -z "$_pick" ] && _pick="$(printf '%s\n' "$_ls" | grep -F "$_p" | grep -viE 'background|dim layer|cursor|scrim' | head -1)"
+    [ -z "$_pick" ] && _pick="$(printf '%s\n' "$_ls" | grep -F "$_p" | head -1)"
+    printf '%s' "$_pick"
+}
+
+# otm_fps_measure <camada> -> "fps<TAB>frames<TAB>janela(s)".
+# O FPS sai do carimbo de apresentação REAL de cada frame (2ª coluna de
+# `dumpsys SurfaceFlinger --latency`): fps = (n-1) / (último - primeiro). O
+# buffer guarda os últimos ~127 frames, ou seja, ~1-2 s de jogo.
+# A 1ª linha da saída é o período de vsync, não um frame — por isso o filtro
+# por NF<3. Valores-sentinela (0 e INT64_MAX) são slots vazios do buffer.
+otm_fps_measure() {
+    _l="$1"
+    [ -n "$_l" ] || return 0
+    _raw="$(sh_get "dumpsys SurfaceFlinger --latency '$_l'" 2>/dev/null)"
+    [ -n "$_raw" ] || return 0
+    printf '%s\n' "$_raw" | awk '
+        NF < 3 { next }
+        {
+            a = $2 + 0
+            if (a <= 0 || a >= 9223372036854775807) next
+            if (n == 0) first = a
+            last = a
+            n++
+        }
+        END {
+            if (n < 2) exit
+            d = last - first
+            if (d <= 0) exit
+            printf "%d\t%d\t%.1f", int((n - 1) * 1000000000 / d + 0.5), n, d / 1000000000
+        }'
+}
+
+# otm_fps_now [pkg] -> FPS real do app (vazio quando não dá para medir).
+otm_fps_now() {
+    _l="$(otm_fps_layer "${1:-}")"
+    [ -n "$_l" ] || return 0
+    otm_fps_measure "$_l" | cut -f1
+}
+
 # otm_keep_list -> tudo que a limpeza NUNCA deve encerrar, separado por espaço:
 # o jogo escolhido (Modo Competitivo), os protegidos no anti-relog, o app do
 # pack e o que está em primeiro plano agora. É a lista que o clean/ram-boost usa.
