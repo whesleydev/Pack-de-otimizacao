@@ -852,7 +852,13 @@ quando a tag `v*` chega: usa o `CHANGELOG.md` como corpo e sobe só os `.zip` de
 run ficar verde, anexe o APK e o `.sha256` no release já criado
 (`POST https://uploads.github.com/.../releases/<id>/assets?name=<arquivo>`) e
 renomeie a release para o padrão `"<versão> — <resumo>"` (o CI a cria com o nome
-igual à tag). O `body_path: CHANGELOG.md` manda o **arquivo inteiro** (todas as
+igual à tag). **Anexar o `.sha256` exige `Content-Type: text/plain`** — o
+`--data-binary` puro manda `application/x-www-form-urlencoded` e a API responde
+`422 content_type can't be ...`. **Mover a tag reescreve o corpo**: se você
+empurrar mais um commit para a branch e mover a tag (o CI roda de novo no novo
+SHA), ele sobrescreve o `body` e o `name` com o `CHANGELOG.md` inteiro — refaça o
+`PATCH` do corpo depois que **esse** run terminar.
+O `body_path: CHANGELOG.md` manda o **arquivo inteiro** (todas as
 versões, ~60 KB) — o padrão das releases boas é só a seção da versão: corte com
 `re.findall(r'^## \[<versão>\].*?(?=^## \[)', changelog, re.S|re.M)` e mande por
 `PATCH /repos/.../releases/<id>` junto do `name` novo. Fluxo completo do release:
