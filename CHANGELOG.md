@@ -6,6 +6,30 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Adicionado
+- **Aparência só-escura, com cor de destaque personalizada e fontes novas.** O
+  app passou a ter uma identidade escura única: **não existe mais tema claro nem
+  alternância** (o `<meta color-scheme>` é só `dark` e as cores escuras ficam
+  direto no `:root`). Além das paletas prontas, dá para escolher **qualquer cor**
+  (seletor do sistema + campo hex) — a cor do texto sobre o destaque e o anel de
+  foco são calculados pelo brilho do hex.
+- **Fontes empacotadas no app (9 famílias).** As fontes de destaque (Anton,
+  Bebas Neue, Caveat, JetBrains Mono, Monocraft, Orbitron, Playfair Display,
+  Press Start 2P e Russo One) vêm **dentro do app**, não de CDN: a fonte continua
+  valendo **sem internet**. Todas são OFL-1.1 e o crédito acompanha o arquivo
+  (`assets/fonts/CREDITS.md`).
+- **O painel flutuante agora tem o mesmo visual do app.** Antes era um retângulo
+  laranja chapado e igual para tudo. Agora ele usa a **mesma cor de destaque e a
+  mesma fonte** escolhidas no painel (troca na hora, sem reabrir), os botões
+  viraram pílulas de vidro e a janela pede *blur* por trás no Android 12+ (onde
+  não há suporte, o fundo translúcido mantém o aspecto). A aba **Sensi** saiu do
+  flutuante: ficam **Toque**, **Motor** e **Atalhos** (o headshot continua no
+  botão de Atalhos, mas o overlay não lê mais o `sensi.sh`).
+- **O log agora diz POR QUE algo falhou.** Cada execução guarda quantas
+  tentativas pegaram, quantas falharam, as **razões** (as linhas do script que
+  explicam a falha, com o valor lido de volta — ex.: "nao mudou (lido: cubic)")
+  e a **saída crua**. Antes o log só dizia "erro", sem dizer o que não pegou nem
+  com que valor o aparelho ficou. Como a saída crua entra no log, o arquivo é
+  podado (últimas 800 execuções).
 - **A aba "Flutuante" no painel, com um botão só: ligar o painel sobre o jogo.**
   A antiga categoria "Sensi e mira" virou **"Flutuante"** e ficou com um único
   cartão — ativar/desativar o overlay. As ações de **sensi** (gerar, analisar,
@@ -14,9 +38,8 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   morava. Nada foi removido: só ficou no lugar certo.
 - **O painel flutuante agora é organizado por categorias (abas).** Antes tudo
   saía numa lista corrida e, no meio da partida, achar um botão era lento. Agora
-  são quatro abas — **Sensi**, **Toque**, **Motor** e **Atalhos** — cada uma
-  mostrando só o seu bloco. O visual ganhou fundo arredondado e as abas viram
-  "chips" (a ativa fica destacada).
+  cada aba mostra só o seu bloco — **Toque**, **Motor** e **Atalhos**. O visual
+  ganhou fundo arredondado e as abas viram "chips" (a ativa fica destacada).
 - **Escolha do motor de renderização dentro do painel flutuante.** A aba
   **Motor** traz Automático, SkiaGL, Skia Vulkan e as variantes multithread
   (SkiaGL MT / SkiaVK MT), chamando o mesmo `adb-tweaks.sh renderer` do painel
@@ -29,6 +52,11 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   ou o overlay no meio do uso.
 
 ### Corrigido
+- **Trocar a aparência não movia o painel flutuante para o canto.** Ao recriar a
+  janela com a cor/fonte novas, o overlay posicionava a janela **antes** de
+  aplicá-la ao sistema, então o WindowManager ignorava a posição e o painel
+  voltava para o canto. Agora a posição é copiada antes de recriar a janela, e o
+  flutuante fica onde o usuário deixou.
 - **O `sync_app_panel.py` não removia seções de grupo que sumiram do web.** Ao
   renomear um grupo (ex.: "Sensi e mira" → "Flutuante"), a seção antiga ficava
   órfã no painel do app, com o conteúdo velho e um item de menu morto. Agora o
