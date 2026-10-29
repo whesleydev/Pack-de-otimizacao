@@ -16,7 +16,9 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.View.MeasureSpec
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -36,9 +38,15 @@ import kotlinx.coroutines.launch
  * motor de renderização. É um `Service` em primeiro plano com uma janela
  * `TYPE_APPLICATION_OVERLAY`, que pode ser arrastada e minimizada.
  *
- * O painel se chama só **"00"** e é organizado em **categorias (abas)** — Toque,
- * Motor, Processos e Atalhos. Antes tudo saía numa lista corrida e, no meio da
- * partida, achar um botão era lento; agora cada aba mostra só o que interessa.
+ * O painel se chama só **"00"** e é organizado em **categorias (abas)** — Monitor,
+ * Toque, Motor, Processos e Atalhos. Antes tudo saía numa lista corrida e, no
+ * meio da partida, achar um botão era lento; agora cada aba mostra só o que
+ * interessa.
+ *
+ * **Tamanho**: a janela tem **largura fixa** ([panelWidth], ~46% da tela) para
+ * não mudar de tamanho ao trocar de aba, e a altura acompanha o conteúdo até um
+ * teto ([panelMaxHeight], ~50% da tela) — aba curta fica baixa, aba longa rola.
+ * Minimizada ela vira um quadrado fixo de [BUBBLE_DP] com o ícone do app.
  *
  * **Visual**: os botões são pílulas de vidro (fundo translúcido + brilho na cor
  * de destaque) e a janela pede *blur* por trás (Android 12+ com "cross-window
@@ -123,33 +131,38 @@ class OverlayService : Service() {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(dp(18).toFloat(), "#E61A1815", "#3A3733")
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            minimumWidth = dp(250)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             elevation = dp(12).toFloat()
         }
         box.addView(titleBar())
         box.addView(tabBar())
 
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        // A aba Monitor e a aba Atalhos ficam altas: sem rolagem, os últimos
-        // botões ficariam fora da tela do jogo (o painel é uma janela pequena).
-        // A altura é limitada a ~62% da tela para o painel nunca cobrir o jogo.
-        val rolagem = ScrollView(this).apply {
+        // A janela tem LARGURA FIXA (ver [panelWidth]): com WRAP_CONTENT cada
+        // aba media um tamanho diferente e o painel "pulava" de largura ao
+        // trocar de aba. A ALTURA acompanha o conteúdo até um teto — aba curta
+        // fica baixa e aba longa rola, em vez de reservar um bloco vazio alto.
+        val rolagem = object : ScrollView(this) {
+            override fun onMeasure(w: Int, h: Int) {
+                val teto = panelMaxHeight()
+                super.onMeasure(w, MeasureSpec.makeMeasureSpec(teto, MeasureSpec.AT_MOST))
+            }
+        }.apply {
             addView(content, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
         }
         box.addView(rolagem, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
-            (resources.displayMetrics.heightPixels * 0.62f).toInt(),
         ))
 
         statusText = TextView(this).apply {
             setTextColor(col(C_MUTED))
             textSize = 11f
             typeface = bodyTypeface()
-            setPadding(0, dp(8), 0, 0)
+            setPadding(0, dp(6), 0, 0)
         }
         box.addView(statusText)
 
@@ -158,7 +171,7 @@ class OverlayService : Service() {
         bubble = bubbleView()
         root = box
 
-        val p = baseParams()
+        val p = baseParams(panelWidth())
         if (onde != null) { p.x = onde.first; p.y = onde.second }
         applyBlur(p)
         box.setOnTouchListener(dragger(p, box))
@@ -178,29 +191,48 @@ class OverlayService : Service() {
         }
     }
 
-    /** Abas: cada categoria mostra só o seu bloco, sem lista corrida. */
+    /**
+     * Abas: cada categoria mostra só o seu bloco, sem lista corrida.
+     *
+     * Em DUAS linhas (3 + 2). Cinco rótulos numa linha só, dentro de um painel
+     * estreito, ficariam ilegíveis ou cortados; em duas linhas cada chip tem
+     * largura de sobra e a barra fica sempre do mesmo tamanho.
+     */
     private fun tabBar(): View {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         tabChips.clear()
+        var linha: LinearLayout? = null
         for ((i, name) in TABS.withIndex()) {
+            if (i % TAB_COLS == 0) {
+                linha = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                col.addView(linha, matchWrap())
+            }
             val chip = tabChip(name, i)
             tabChips.add(chip)
-            row.addView(chip)
+            linha!!.addView(chip)
         }
-        return row
+        // a última linha tem menos chips: completa com espaçadores para os chips
+        // ficarem alinhados com os de cima (senão o último "esticava" sozinho)
+        val faltam = (TAB_COLS - (TABS.size % TAB_COLS)) % TAB_COLS
+        repeat(faltam) {
+            linha!!.addView(View(this), LinearLayout.LayoutParams(
+                0, 1, 1f,
+            ).apply { marginEnd = dp(4) })
+        }
+        return col
     }
 
     private fun tabChip(label: String, index: Int): TextView =
         TextView(this).apply {
             text = label
-            textSize = 11f
+            textSize = 10.5f
             gravity = Gravity.CENTER
             typeface = bodyTypeface()
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setPadding(dp(6), dp(7), dp(6), dp(7))
             setOnClickListener { selectTab(index) }
             layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-            ).apply { marginEnd = dp(5) }
+            ).apply { marginEnd = dp(4); bottomMargin = dp(4) }
         }
 
     private fun selectTab(index: Int) {
@@ -221,11 +253,16 @@ class OverlayService : Service() {
         }
     }
 
+    /**
+     * Conteúdo de cada aba. A ORDEM tem de casar com [TABS]: a barra de abas
+     * passa o índice do rótulo, então um `when` fora de sincronia mostraria o
+     * conteúdo de uma aba no rótulo de outra (o FPS saía em "Processos").
+     */
     private fun tabView(index: Int): View = when (index) {
-        0 -> touchTab()
-        1 -> engineTab()
-        2 -> procTab()
-        3 -> monitorTab()
+        0 -> monitorTab()
+        1 -> touchTab()
+        2 -> engineTab()
+        3 -> procTab()
         else -> shortcutsTab()
     }
 
@@ -307,11 +344,27 @@ class OverlayService : Service() {
         val mhz = s["cpu_cur_mhz"]?.takeIf { it.isNotEmpty() }
         val maxMhz = s["cpu_max_mhz"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Frequência", if (mhz != null) "$mhz${if (maxMhz != null) "/$maxMhz" else ""} MHz" else "—"))
+        val cores = s["ncores"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow("Núcleos", if (cores != null) cores else "—"))
+        val gov = s["cpu_gov"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow("Governador", if (gov != null) gov else "—"))
         val temp = s["bat_temp_c"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Temperatura", if (temp != null) "$temp °C" else "—"))
         val bat = s["bat_level"]?.takeIf { it.isNotEmpty() }
         val st = s["bat_status"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Bateria", if (bat != null) "$bat%${if (st != null) " · $st" else ""}" else "—"))
+        val saude = s["vital_health"]?.takeIf { it.isNotEmpty() }
+        val ciclos = s["vital_cycles"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow(
+            "Saúde da bateria",
+            if (saude != null) "$saude%${if (ciclos != null) " · $ciclos ciclos" else ""}" else "—",
+        ))
+        val storLivre = s["stor_livre_mb"]?.takeIf { it.isNotEmpty() }
+        val storTotal = s["stor_total_mb"]?.takeIf { it.isNotEmpty() }
+        linhas.add(monitorRow(
+            "Armazenamento",
+            if (storLivre != null) "$storLivre${if (storTotal != null) "/$storTotal" else ""} MB" else "—",
+        ))
         if (fps == null) {
             linhas.add(procNote("sem FPS: abra o jogo (o painel precisa dele na tela)"))
         }
@@ -646,9 +699,9 @@ class OverlayService : Service() {
         TextView(this).apply {
             this.text = text
             setTextColor(col(accent()))
-            textSize = 12f
+            textSize = 11.5f
             setTypeface(bodyTypeface(), Typeface.BOLD)
-            setPadding(0, dp(10), 0, dp(6))
+            setPadding(0, dp(8), 0, dp(4))
         }
 
     /** Barra do topo: arrasta pelo título, minimiza e fecha. */
@@ -660,7 +713,7 @@ class OverlayService : Service() {
         bar.addView(TextView(this).apply {
             text = "00"
             setTextColor(col(accent()))
-            textSize = 16f
+            textSize = 14f
             setTypeface(bodyTypeface(), Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         bar.addView(iconButton("—") { toggleMinimize() })
@@ -669,10 +722,24 @@ class OverlayService : Service() {
     }
 
     /** O app minimizado: só o ícone, sem texto — um toque devolve o painel. */
-    private fun bubbleView(): View =
-        ImageView(this).apply {
-            setImageResource(R.mipmap.ic_launcher)
-            setPadding(dp(4), dp(4), dp(4), dp(4))
+    private fun bubbleView(): View {
+        // O ícone do app é um adaptive icon (mipmap-anydpi-v26): usado direto num
+        // ImageView ele não tem tamanho intrínseco confiável e a bolha saía
+        // enorme/irregular. Aqui o tamanho é FIXO e o ImageView só preenche.
+        val lado = dp(BUBBLE_DP)
+        return FrameLayout(this).apply {
+            addView(
+                ImageView(this@OverlayService).apply {
+                    setImageResource(R.mipmap.ic_launcher)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    setPadding(dp(5), dp(5), dp(5), dp(5))
+                    setOnClickListener { setMinimized(false) }
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
             elevation = dp(10).toFloat()
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -681,6 +748,7 @@ class OverlayService : Service() {
             }
             setOnClickListener { setMinimized(false) }
         }
+    }
 
     private var minimized = false
 
@@ -695,7 +763,8 @@ class OverlayService : Service() {
         if (value == minimized) return
         val atual = root ?: return
         val novo = (if (value) bubble else panel) ?: return
-        val p = baseParams()
+        // minimizado: quadrado fixo do ícone; aberto: largura fixa do painel.
+        val p = baseParams(if (value) dp(BUBBLE_DP) else panelWidth())
         // mantém onde o usuário deixou: a janela nova nasce na mesma posição
         (atual.layoutParams as? WindowManager.LayoutParams)?.let {
             p.x = it.x; p.y = it.y
@@ -728,17 +797,17 @@ class OverlayService : Service() {
     private fun smallButton(label: String, action: () -> Unit): View =
         TextView(this).apply {
             text = label
-            textSize = 11.5f
+            textSize = 11f
             gravity = Gravity.CENTER
             typeface = bodyTypeface()
             setTextColor(col(accent()))
-            background = pill(dp(12).toFloat(), C_GLASS, accentA(0x66))
-            setPadding(dp(10), dp(9), dp(10), dp(9))
+            background = pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
+            setPadding(dp(7), dp(7), dp(7), dp(7))
             setOnClickListener { action() }
         }.also {
             it.layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-            ).apply { marginEnd = dp(5); bottomMargin = dp(5) }
+            ).apply { marginEnd = dp(4); bottomMargin = dp(4) }
         }
 
     /** Pílula de vidro arredondada com borda opcional. */
@@ -792,8 +861,13 @@ class OverlayService : Service() {
     private fun col(hex: String): Int =
         runCatching { Color.parseColor(hex) }.getOrDefault(Color.parseColor("#FF6A2B"))
 
-    private fun baseParams() = WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,
+    /**
+     * Parâmetros da janela. [largura] é fixa (em px) para o painel não mudar de
+     * tamanho ao trocar de aba; a altura continua WRAP_CONTENT, limitada pelo
+     * teto do ScrollView.
+     */
+    private fun baseParams(largura: Int = panelWidth()) = WindowManager.LayoutParams(
+        largura,
         WindowManager.LayoutParams.WRAP_CONTENT,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -805,6 +879,21 @@ class OverlayService : Service() {
         gravity = Gravity.TOP or Gravity.START
         x = dp(12); y = dp(80)
     }
+
+    /**
+     * Largura do painel: uma fração da tela, com piso e teto em dp. Fixa (e não
+     * WRAP_CONTENT) para o painel ter SEMPRE o mesmo tamanho em qualquer aba —
+     * antes cada aba media um tamanho e a janela mudava de largura ao trocar.
+     * O teto em dp evita que num tablet o painel vire uma faixa enorme.
+     */
+    private fun panelWidth(): Int {
+        val tela = resources.displayMetrics.widthPixels
+        return (tela * PANEL_W_FRAC).toInt().coerceIn(dp(170), dp(280))
+    }
+
+    /** Teto de altura do conteúdo: o resto da tela fica livre para o jogo. */
+    private fun panelMaxHeight(): Int =
+        (resources.displayMetrics.heightPixels * PANEL_H_FRAC).toInt().coerceAtLeast(dp(160))
 
     /** Arrasta a janela; um toque curto (sem mover) não consome o clique. */
     private fun dragger(params: WindowManager.LayoutParams, view: View): View.OnTouchListener {
@@ -897,6 +986,13 @@ class OverlayService : Service() {
         private const val C_TEXT = "#F3EFE7"
         private const val C_MUTED = "#B9B2A6"
 
+        /** Largura do painel: fração da tela, com piso/teto em [panelWidth]. */
+        private const val PANEL_W_FRAC = 0.46f
+        /** Teto de altura do conteúdo (o resto da tela fica para o jogo). */
+        private const val PANEL_H_FRAC = 0.50f
+        /** Lado do ícone minimizado (quadrado, sempre igual em qualquer aparelho). */
+        private const val BUBBLE_DP = 46
+
         /**
          * Fontes empacotadas (mesmos `.ttf` do painel), por chave do `FONTS` do
          * HTML. O que não estiver aqui cai na fonte do sistema.
@@ -914,8 +1010,10 @@ class OverlayService : Service() {
             "mono" to "jetbrainsmono.ttf",
         )
 
-        /** Categorias do painel, na ordem das abas. */
+        /** Categorias do painel, na ordem das abas (casa com [tabView]). */
         private val TABS = listOf("Monitor", "Toque", "Motor", "Processos", "Atalhos")
+        /** Abas por linha: 5 rótulos numa linha só não cabem no painel estreito. */
+        private const val TAB_COLS = 3
 
         /** Taxas de tela fixas aceitas por `turbo.sh refresh_fixed <hz>`. */
         private val REFRESH_RATES = listOf(

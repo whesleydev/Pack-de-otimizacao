@@ -3090,6 +3090,26 @@ t_overlay() {
     for t in Monitor Toque Motor Processos Atalhos; do
         grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
+    # a ORDEM do `when` do tabView tem de casar com a ordem de TABS: um índice
+    # trocado mostra o conteúdo de uma aba no rótulo de outra (o FPS saía em
+    # "Processos" e "Monitor" abria os perfis de toque). Compara os dois lados.
+    python3 - "$svc" <<'PY' && ok "overlay casa o índice da aba com o conteúdo certo" \
+        || bad "overlay: índice da aba fora de sincronia com TABS"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+tabs = re.search(r'TABS\s*=\s*listOf\(([^)]*)\)', src)
+tv = re.search(r'private fun tabView\(index: Int\): View = when \(index\) \{(.*?)\n    \}', src, re.S)
+if not (tabs and tv):
+    sys.exit(1)
+nomes = re.findall(r'"([^"]+)"', tabs.group(1))
+# cada aba tem de ter uma função própria, na MESMA ordem dos rótulos
+esperado = ["monitorTab", "touchTab", "engineTab", "procTab", "shortcutsTab"]
+achado = re.findall(r'(\w+Tab)\(\)', tv.group(1))
+sys.exit(0 if achado == esperado and len(nomes) == len(esperado) else 1)
+PY
+    # o FPS fica na PRIMEIRA aba (é o que o usuário abre no meio da partida)
+    grep -q '0 -> monitorTab()' "$svc" \
+        && ok "a aba do FPS é a primeira (índice 0)" || bad "o FPS não está na primeira aba"
     # a aba Monitor mostra o FPS REAL (SurfaceFlinger), não a taxa de tela
     grep -q 'panel-stats.sh' "$svc" && ok "overlay usa o panel-stats na aba Monitor" \
         || bad "overlay não lê o consumo real"
@@ -3108,6 +3128,25 @@ t_overlay() {
     # a aba fica alta: precisa de rolagem, senão os últimos botões somem
     grep -q 'ScrollView' "$svc" && ok "overlay tem rolagem (abas altas)" \
         || bad "overlay sem rolagem"
+    # TAMANHO ESTÁVEL: a janela não pode medir WRAP_CONTENT na largura, senão
+    # cada aba tem um tamanho e o painel "pula" ao trocar de aba
+    grep -q 'private fun panelWidth()' "$svc" && grep -q 'private fun panelMaxHeight()' "$svc" \
+        && ok "overlay tem largura fixa e teto de altura" \
+        || bad "overlay com tamanho variável por aba"
+    grep -q 'baseParams(panelWidth())' "$svc" \
+        && ok "o painel nasce com a largura fixa" || bad "painel nasce com largura variável"
+    grep -q 'minimumWidth' "$svc" && bad "overlay ainda usa minimumWidth (largura varia)" \
+        || ok "overlay não depende de minimumWidth"
+    # a bolha (minimizado) tem tamanho FIXO: o ícone é adaptive icon e, solto
+    # num ImageView, não tem tamanho confiável (saía grande/irregular)
+    grep -q 'BUBBLE_DP' "$svc" && ok "a bolha tem tamanho fixo (BUBBLE_DP)" \
+        || bad "bolha sem tamanho fixo"
+    grep -q 'baseParams(if (value) dp(BUBBLE_DP) else panelWidth())' "$svc" \
+        && ok "minimizar usa o tamanho certo em cada estado" \
+        || bad "minimizar não fixa o tamanho"
+    # os rótulos das 5 abas não cabem numa linha só no painel estreito
+    grep -q 'TAB_COLS' "$svc" && ok "as abas quebram em linhas (rótulo legível)" \
+        || bad "abas numa linha só (rótulo cortado)"
     # as novas ações do flutuante chamam os scripts do pack (nada reimplementado)
     for c in 'turbo.sh' 'dns.sh' 'ram-boost.sh' 'snapshot.sh' 'game-per-app.sh'; do
         grep -q "$c" "$svc" || bad "overlay sem atalho para $c"

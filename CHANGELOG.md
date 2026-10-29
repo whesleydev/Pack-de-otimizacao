@@ -3,6 +3,32 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.41.1] - 2026-10-29
+
+### Corrigido
+- **O painel flutuante abria a aba errada.** A lista de rótulos (`TABS`) e o
+  `when` que escolhe o conteúdo estavam em ordens diferentes: a aba **Monitor**
+  abria os perfis de **toque** e o **FPS real** ficava escondido dentro de
+  **Processos**. Era o motivo de parecer que o FPS "não existia". Agora o
+  índice de cada rótulo casa com o seu conteúdo — e o FPS abre na primeira aba.
+- **O painel mudava de largura ao trocar de aba.** A janela era `WRAP_CONTENT`,
+  então cada aba media um tamanho diferente e o painel "pulava" na tela. Agora a
+  largura é **fixa** (~46% da tela, com piso/teto em dp) e a altura acompanha o
+  conteúdo até um teto de ~50% — aba curta fica baixa, aba longa rola.
+
+### Mudado
+- **A bolha de minimizado tinha tamanho irregular.** O ícone do app é um
+  *adaptive icon*, que usado direto num `ImageView` não tem tamanho confiável e
+  saía enorme. Agora a bolha é um quadrado fixo de 46 dp, igual em qualquer
+  aparelho e densidade.
+- **Painel mais compacto e organizado**: botões e chips menores, as 5 abas em
+  duas linhas (os rótulos não cabiam legíveis numa linha só) e espaçamento
+  reduzido.
+- **Aba Monitor com mais informação**: além de FPS, teto da tela, RAM, CPU,
+  frequência, temperatura e bateria, agora mostra **núcleos**, **governador**,
+  **saúde/ciclos da bateria** e **armazenamento**. O que o aparelho não expõe
+  continua virando "—".
+
 ## [2.41.0] - 2026-10-29
 
 ### Corrigido
