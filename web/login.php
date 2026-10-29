@@ -1,6 +1,6 @@
 <?php
 // =============================================================================
-//  login.php - Tela de entrada do painel 00deUdia Otimizações.
+//  login.php - Tela de entrada do painel Trix.
 //  Renderizada por index.php quando não há sessão. Não mostra nada do pack
 //  antes de autenticar.
 // =============================================================================
@@ -17,16 +17,16 @@ $csrf = otm_csrf();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0c0a">
-<title>Entrar — 00deUdia Otimizações</title>
+<title>Entrar — Trix</title>
 <link rel="icon" href="assets/banner.jpeg">
 <style>
 :root{
   --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
   --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
-  --accent:#e4571c; --accent-ink:#fff; --danger:#bc332a;
+  --accent:#8d939e; --accent-ink:#fff; --danger:#bc332a;
   --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
   --blur:saturate(150%) blur(18px);
-  --ring:rgba(228,87,28,.35);
+  --ring:rgba(141,147,158,.35);
   --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35);
   --r:18px; --r-sm:11px;
   --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
@@ -34,7 +34,7 @@ $csrf = otm_csrf();
 @media (prefers-color-scheme: dark){
   :root{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
     --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
-    --accent:#ff6a2b; --accent-ink:#180d06; --danger:#ff6b5e;
+    --accent:#c7ccd6; --accent-ink:#14161a; --danger:#ff6b5e;
     --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
     --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); }
 }
@@ -113,8 +113,8 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
 <body>
 <div class="wrap">
   <div class="brand">
-    <div class="mark" aria-hidden="true">00</div>
-    <h1>00deUdia Otimizações</h1>
+    <div class="mark" aria-hidden="true">TX</div>
+    <h1>Trix</h1>
     <p>Entre para acessar o painel</p>
   </div>
 

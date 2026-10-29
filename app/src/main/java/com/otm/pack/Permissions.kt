@@ -106,7 +106,7 @@ object Permissions {
         try {
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
-                .setContentTitle("00 Otimização")
+                .setContentTitle("Trix")
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_LOW)

@@ -46,7 +46,7 @@ require __DIR__ . '/../src/layout.php';
       <input type="hidden" name="_csrf" value="<?= otm_e($auth->csrf()) ?>">
       <div class="row">
         <div class="fld"><label>Nome da marca</label>
-          <input type="text" name="brand_name" value="<?= otm_e($cfg['brand_name'] ?? '00deUdia Otimizações') ?>"></div>
+          <input type="text" name="brand_name" value="<?= otm_e($cfg['brand_name'] ?? 'Trix') ?>"></div>
       </div>
       <?php if ($auth->canWrite()): ?>
         <div class="actions"><button class="btn" type="submit">salvar</button></div>

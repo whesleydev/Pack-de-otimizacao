@@ -26,7 +26,7 @@ if (!function_exists('otm_layout_head')) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= otm_e($title) ?> · Painel 00deUdia</title>
+<title><?= otm_e($title) ?> · Trix</title>
 <link rel="stylesheet" href="assets/admin.css">
 <script>
 // Aplica o tema antes da página pintar (evita o "flash" branco). A escolha
@@ -42,7 +42,7 @@ if (!function_exists('otm_layout_head')) {
 </head>
 <body>
 <div class="topbar">
-  <span class="brand">00deUdia Otimizações <small>· painel</small></span>
+  <span class="brand">Trix <small>· painel</small></span>
   <span class="spacer"></span>
   <span class="who">usuário: <b><?= otm_e((string)($admin['username'] ?? '')) ?></b>
     <span class="tag <?= otm_e($role) ?>"><?= otm_e($role) ?></span>
@@ -72,7 +72,7 @@ if (!function_exists('otm_layout_head')) {
   </main>
 </div>
 <div class="statusbar">
-  <span>Painel 00deUdia <?= otm_e(OTM_PANEL_VERSION) ?></span>
+  <span>Trix <?= otm_e(OTM_PANEL_VERSION) ?></span>
   <span class="muted">banco: <?= otm_e(otm_db_label()) ?></span>
   <?php if ($status !== ''): ?><span><?= otm_e($status) ?></span><?php endif; ?>
   <span class="spacer"></span>

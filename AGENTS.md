@@ -100,7 +100,7 @@ GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). N�
 otimizações — quem faz isso é o `pack.sh`.
 
 O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
-**00deUdia Otimizações** — controla o pack pelo navegador. Regras ao mexer nele:
+**Trix** — controla o pack pelo navegador. Regras ao mexer nele:
 - `web/lib.php` guarda o **registro de ações** (id, grupo, argv, params, confirm, risco).
   Para expor uma ação nova, adicione ao registro — **não** invente execução de comando cru.
 - `web/index.php` é **renderizado no servidor (PHP)**: o menu de categorias e os cards de
@@ -245,7 +245,7 @@ App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
 ou por ADB Wi-Fi (pareamento) / depuração USB (só autorizar, sem parear), com os
 assets do pack embutidos.
 
-O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
+O app é o painel web (Trix) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.
 
 - `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de entrada)
@@ -807,9 +807,31 @@ trocar a chave quebra a atualização e obriga a desinstalar. O `zipalign`/`apks
 manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
-`app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
+`app/build.gradle.kts`). Nome de exibição: "Trix". O APK é
 publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git; os
 `.sha256` **são** versionados).
+
+**Marca (nome/cor/logo).** A marca é "Trix" e a cor de destaque padrão é
+**prata** (`#C7CCD6`); o laranja continua na paleta, só deixou de ser o padrão.
+Ao trocar a marca, o mesmo valor aparece em vários lugares que precisam ficar
+em sincronia: `strings.xml` (`app_name`), os `<title>` de `web/index.php`,
+`web/login.php`, `app/src/main/assets/panel/index.html`,
+`assets/panel/login.html` e `public/login.html`, o `setContentTitle` em
+`OverlayService.kt`/`Permissions.kt` e a const `OtmExec.accent` (cor padrão do
+painel flutuante). A cor padrão vive no `:root` dos **dois** painéis
+(`--accent`/`--accent-ink`/`--ring`), no `themes.xml` (`colorPrimary`) e no
+fallback `col()` do `OverlayService.kt`; o "accent" salvo usa `"prata"` como
+padrão (`localStorage.getItem("otm-accent") || "prata"`). Cuidado ao editar o
+bloco `:root`: ele tem um **comentário CSS de várias linhas** logo acima — um
+`*/` sobrando quebra todo o CSS abaixo (o painel fica sem estilo e os testes não
+pegam isso). Os ícones são gerados a partir da imagem com Pillow: os `mipmap-*`
+levam a imagem inteira (quadrado e redondo, com máscara circular) e o
+`drawable-xxxhdpi/ic_launcher_foreground.png` (432×432) leva **só o emblema**,
+recortado pelo bbox do conteúdo (`limiar < 210`) e centralizado na safe zone de
+66% — o fundo claro do logo preenche o resto, e o `ic_launcher_background` é
+`#F8F6F1` (a cor do fundo da arte). O `monochrome` aponta para
+`ic_launcher_monochrome.png` (silhueta com alfa): apontá-lo para o foreground
+deixa um bloco sólido no tema monocromático.
 
 Publicar o download: o repo **público** é `whesleydev/Pack-de-otimizacao`
 (o `00-Otimizacao` é privado, então link de asset lá não abre para o usuário).

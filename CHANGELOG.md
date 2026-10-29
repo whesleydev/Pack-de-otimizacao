@@ -3,6 +3,24 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.42.0] - 2026-10-22
+
+### Alterado
+- **O app agora se chama Trix.** Nome de exibição, notificações e os títulos das
+  telas (painel, login e painel de administração) passam a usar **Trix** — antes
+  "00 Otimização"/"00deUdia Otimizações". O `applicationId` continua
+  `com.otm.pack`, então a instalação por cima da versão anterior funciona e os
+  dados do aparelho são mantidos.
+- **Logo nova.** O ícone do app passa a ser a logo enviada, em todas as
+  densidades (mdpi a xxxhdpi, quadrado e redondo) e no ícone adaptativo do
+  Android 8+ (foreground na área segura, fundo combinando com a arte e uma
+  camada **monochrome** para o tema dinâmico — antes o "monochrome" reaproveitava
+  o foreground e virava um bloco sólido no modo monocromático).
+- **Cor padrão agora é prata.** O laranja deixa de ser a cor de destaque padrão e
+  vira **prata** (`#C7CCD6`) no painel, no login, no tema do Android
+  (`colorPrimary`) e no painel flutuante. O laranja **continua na paleta** — quem
+  preferir troca em Aparência, e a escolha salva é respeitada (só o padrão muda).
+
 ## [2.41.2] - 2026-10-29
 
 ### Adicionado

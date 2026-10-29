@@ -1,6 +1,8 @@
 {
-  "name": "00deUdia Otimizações",
+  "name": "Trix",
   "description": "Painel de controle e pack de otimização para Android (Free Fire, FPS, RAM, DNS, Touch, GPU e Debloat)",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

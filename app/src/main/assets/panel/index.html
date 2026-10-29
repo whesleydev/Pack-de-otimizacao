@@ -8,7 +8,7 @@ try { if (localStorage.getItem("otm_session") !== "b6cddaaf9333c33071ae824248927
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>00deUdia Otimizações</title>
+<title>Trix</title>
 <style>
 /* Fontes empacotadas (funcionam sem internet e sem CDN). */
 @font-face{font-family:'Press Start 2P';src:url('assets/fonts/pressstart2p.ttf') format('truetype');font-display:swap}
@@ -20,17 +20,17 @@ try { if (localStorage.getItem("otm_session") !== "b6cddaaf9333c33071ae824248927
 @font-face{font-family:'Playfair Display';src:url('assets/fonts/playfairdisplay.ttf') format('truetype');font-display:swap}
 @font-face{font-family:'JetBrains Mono';src:url('assets/fonts/jetbrainsmono.ttf') format('truetype');font-display:swap}
 @font-face{font-family:'Caveat';src:url('assets/fonts/caveat.ttf') format('truetype');font-display:swap}
-/* ---- identidade: tinta quente + laranja, com efeito de vidro ----------------
-   O app e SO modo escuro: nao existe tema claro nem alternancia. As cores
+/* ---- identidade: tinta neutra + prata, com efeito de vidro ------------------
+   O app é SÓ modo escuro: não existe tema claro nem alternância. As cores
    escuras ficam direto no :root, sem depender do sistema operacional. */
 :root{
   --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
   --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
-  --accent:#ff6a2b; --accent-ink:#180d06; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
+  --accent:#c7ccd6; --accent-ink:#14161a; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
   --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
   --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
   --blur:saturate(165%) blur(22px);
-  --ring:rgba(255,106,43,.35);
+  --ring:rgba(199,204,214,.40);
   --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
   --r:16px; --r-sm:11px;
   --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
@@ -575,8 +575,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 <body>
 <header class="top">
   <button class="iconbtn burger" id="burger" aria-label="Abrir categorias" aria-expanded="false"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
-  <div class="mark" aria-hidden="true">00</div>
-  <div class="name">Painel<small>Otimizações</small></div>
+  <div class="mark" aria-hidden="true">TX</div>
+  <div class="name">Trix<small>Otimizações</small></div>
   <div class="grow"></div>
   <button class="iconbtn" id="btnLogs" aria-label="Ver o histórico de logs" title="Logs"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
@@ -584,7 +584,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
 <div class="banner">
   <div class="in">
-    <h1>00deUdia Otimizações</h1>
+    <h1>Trix</h1>
     <p>DNS, RAM, renderizador, touch do Free Fire, debloat e ajustes profundos — tudo num lugar só. Deixe seu celular liso que nem sabão. Toque no <b>?</b> de cada cartão para saber o que ele faz.</p>
     <span class="tag"><span class="dot"></span>conectado ao pack local</span>
   </div>
@@ -5169,7 +5169,7 @@ co</h3>
       <div class="custom-color">
         <label class="cc-label" for="setAccentCustom">Cor personalizada</label>
         <div class="cc-row">
-          <input type="color" id="setAccentCustom" value="#ff6a2b" aria-label="Escolher uma cor personalizada">
+          <input type="color" id="setAccentCustom" value="#c7ccd6" aria-label="Escolher uma cor personalizada">
           <input type="text" id="setAccentHex" class="cc-hex" maxlength="7" spellcheck="false"
                  inputmode="text" placeholder="#rrggbb" aria-label="Código da cor (hex)">
           <button class="btn" id="setAccentApply" type="button">Usar esta cor</button>
@@ -5221,7 +5221,7 @@ co</h3>
 
 <script>
 
-/* ===== ponte nativa do app 00 Otimização ===== */
+/* ===== ponte nativa do app Trix ===== */
 (function(){
   const pendingCbs = {};
   let cbSeq = 0;
@@ -5371,7 +5371,7 @@ function setCustomAccent(hex){
   return true;
 }
 function applyStoredAccent(){
-  const name = localStorage.getItem("otm-accent") || "laranja";
+  const name = localStorage.getItem("otm-accent") || "prata";
   if (name === "custom"){
     const hex = localStorage.getItem("otm-accent-hex");
     if (hex && setCustomAccent(hex)) return;
@@ -5407,11 +5407,11 @@ function setFontQuiet(name){
   document.documentElement.style.setProperty("--font", FONTS[name] || FONTS.sistema);
 }
 function syncGear(){
-  const a = localStorage.getItem("otm-accent") || "laranja";
+  const a = localStorage.getItem("otm-accent") || "prata";
   document.querySelectorAll("#setAccent .sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.accent === a ? "true" : "false"));
   const cc = document.getElementById("setAccentCustom");
   const ch = document.getElementById("setAccentHex");
-  const hex = localStorage.getItem("otm-accent-hex") || "#ff6a2b";
+  const hex = localStorage.getItem("otm-accent-hex") || "#c7ccd6";
   if (cc) cc.value = hex;
   if (ch && a === "custom") ch.value = hex;
   const f = localStorage.getItem("otm-font") || "sistema";
@@ -5488,7 +5488,7 @@ function openUsageSettings(){
 const gearReset = document.getElementById("gearReset");
 if (gearReset) gearReset.onclick = () => {
   ["otm-accent","otm-accent-hex","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
-  setAccentQuiet("laranja"); setFontQuiet("sistema"); setScaleQuiet(100);
+  setAccentQuiet("prata"); setFontQuiet("sistema"); setScaleQuiet(100);
   pushUiPrefs(); syncGear(); toast("Aparência restaurada ao padrão.", "ok");
 };
 

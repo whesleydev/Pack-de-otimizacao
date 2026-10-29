@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
  * então o flutuante acompanha o tema do app.
  *
  * **Minimizado ele vira só o ícone do app**: o painel inteiro some e sobra o
- * ícone do "00 Otimização", que continua arrastável. Um toque no ícone devolve
+ * ícone do "Trix", que continua arrastável. Um toque no ícone devolve
  * o painel completo — é o mesmo gesto de minimizar/maximizar de um app.
  *
  * O acesso ao shell vem de [OtmRunner], que a Activity preenche ao conectar o
@@ -1042,9 +1042,9 @@ class OverlayService : Service() {
         return tf
     }
 
-    /** Converte "#RRGGBB" em cor; se vier algo estranho, cai no laranja padrão. */
+    /** Converte "#RRGGBB" em cor; se vier algo estranho, cai na prata padrão. */
     private fun col(hex: String): Int =
-        runCatching { Color.parseColor(hex) }.getOrDefault(Color.parseColor("#FF6A2B"))
+        runCatching { Color.parseColor(hex) }.getOrDefault(Color.parseColor("#C7CCD6"))
 
     /**
      * Parâmetros da janela. [largura] é fixa (em px) para o painel não mudar de
@@ -1146,7 +1146,7 @@ class OverlayService : Service() {
             Notification.Builder(this, CHANNEL_ID)
         else
             @Suppress("DEPRECATION") Notification.Builder(this)
-        return b.setContentTitle("00 Otimização")
+        return b.setContentTitle("Trix")
             .setContentText("Painel flutuante ativo — toque em Fechar no painel para sair.")
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)

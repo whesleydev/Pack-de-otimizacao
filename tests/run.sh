@@ -1674,6 +1674,88 @@ t_site_html() {
     fi
 }
 
+t_marca_trix() {
+    printf '\n  # marca: nome Trix, cor padrao prata e icones da logo\n'
+    # nome do app (recurso do Android) e titulo do painel/logins
+    grep -q '<string name="app_name">Trix</string>' "$ROOT/app/src/main/res/values/strings.xml" \
+        && ok "strings.xml: app_name = Trix" || bad "app_name nao e Trix"
+    grep -q 'setContentTitle("Trix")' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && grep -q 'setContentTitle("Trix")' "$ROOT/app/src/main/java/com/otm/pack/Permissions.kt" \
+        && ok "notificacoes com o titulo Trix" || bad "notificacao ainda com o nome antigo"
+    for f in "$ROOT/web/index.php" "$ROOT/web/login.php" \
+             "$ROOT/app/src/main/assets/panel/index.html" \
+             "$ROOT/app/src/main/assets/panel/login.html" "$ROOT/public/login.html"; do
+        grep -q '<title>.*Trix' "$f" && ok "titulo Trix em ${f#$ROOT/}" || bad "titulo antigo em ${f#$ROOT/}"
+    done
+    grep -q '00deUdia Otimizações' "$ROOT/web/index.php" \
+        && bad "index.php ainda mostra a marca antiga" || ok "marca antiga saiu do painel web"
+    # o nome antigo nao pode sobrar no branding (nome de usuario do login continua)
+    grep -q '<h1>00 Otimização</h1>\|<h1>00deUdia Otimizações</h1>' "$ROOT/app/src/main/assets/panel/index.html" \
+        && bad "painel do app ainda mostra a marca antiga" || ok "painel do app com a marca Trix"
+
+    # cor padrao prata (laranja segue disponivel como opcao)
+    grep -q -- '--accent:#c7ccd6' "$ROOT/web/index.php" \
+        && grep -q -- '--accent:#c7ccd6' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "cor padrao prata nos dois paineis" || bad "painel sem a cor prata padrao"
+    grep -q '<item name="colorPrimary">#C7CCD6</item>' "$ROOT/app/src/main/res/values/themes.xml" \
+        && ok "tema Android: colorPrimary prata" || bad "colorPrimary nao e prata"
+    grep -q 'data-accent="laranja"' "$ROOT/web/index.php" \
+        && ok "laranja continua na paleta (opcao do usuario)" || bad "laranja sumiu da paleta"
+    grep -q 'localStorage.getItem("otm-accent") || "prata"' "$ROOT/web/index.php" \
+        && grep -q 'localStorage.getItem("otm-accent") || "prata"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "accent padrao salvo e prata" || bad "accent padrao ainda e laranja"
+    grep -q 'accent: String = "#c7ccd6"' "$ROOT/app/src/main/java/com/otm/pack/OtmExec.kt" \
+        && ok "cor padrao do flutuante e prata" || bad "flutuante ainda abre laranja"
+
+    # icones: todas as densidades presentes, quadradas, e o foreground do adaptive.
+    # Le o cabecalho PNG direto (sem PIL: a suite nao depende de pacote externo).
+    icon_out=$(python3 - "$ROOT" <<'PYEOF'
+import struct, sys
+root = sys.argv[1]
+esp = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
+
+def tamanho(p):
+    with open(p, 'rb') as fh:
+        if fh.read(8) != b'\x89PNG\r\n\x1a\n':
+            raise ValueError('nao e PNG')
+        fh.read(4)
+        if fh.read(4) != b'IHDR':
+            raise ValueError('sem IHDR')
+        return struct.unpack('>II', fh.read(8))
+
+erros = []
+for d, n in esp.items():
+    for suf in ('ic_launcher', 'ic_launcher_round'):
+        try:
+            w, h = tamanho(f'{root}/app/src/main/res/mipmap-{d}/{suf}.png')
+        except Exception as e:
+            erros.append(f'{suf}-{d}: {e}'); continue
+        if (w, h) != (n, n): erros.append(f'{suf}-{d}: {w}x{h} != {n}x{n}')
+try:
+    w, h = tamanho(f'{root}/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png')
+    if (w, h) != (432, 432): erros.append(f'foreground: {w}x{h} != 432x432')
+except Exception as e:
+    erros.append(f'foreground: {e}')
+print('; '.join(erros))
+PYEOF
+)
+    if [ -z "$icon_out" ]; then
+        ok "icones: 5 densidades (quadrado + redondo) e foreground 432x432"
+    else
+        bad "icones com problema: $icon_out"
+    fi
+    # a logo nova substituiu a antiga: o icone nao pode ser igual ao do git
+    if git -C "$ROOT" show HEAD:app/src/main/res/mipmap-xxxhdpi/ic_launcher.png > "$TMP/ic_old.png" 2>/dev/null; then
+        if cmp -s "$TMP/ic_old.png" "$ROOT/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"; then
+            bad "ic_launcher ainda e o antigo (logo nao trocou)"
+        else
+            ok "ic_launcher trocado pela logo nova"
+        fi
+    else
+        ok "sem versao anterior do icone para comparar"
+    fi
+}
+
 t_build_plugins() {
     printf '\n  # build-plugins: empacota todos os plugins (nossos + terceiros OSS)\n'
     sh "$ROOT/scripts/build-plugins.sh" >/dev/null 2>&1
@@ -2083,7 +2165,7 @@ t_web() {
                  $_SESSION["otm_user"]="00deUdia"; $_SERVER["REQUEST_METHOD"]="GET";
                  require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_html" 2>&1
-        assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"
+        assert_contains "$TMP/web_html" "Bem-vindo ao Trix" "index.php traz a marca Trix"
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
@@ -3721,6 +3803,7 @@ PY
 t_thermal_gate
 t_secret_scanner
 t_site_html
+t_marca_trix
 t_build_plugins
 t_build_modules
 t_build_pack

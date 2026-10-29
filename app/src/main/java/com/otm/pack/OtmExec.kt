@@ -70,8 +70,8 @@ object OtmUi {
     const val PREFS = "otm-ui"
 
     /** Cor de destaque (hex #rrggbb) e a tinta do texto sobre ela. */
-    @Volatile var accent: String = "#ff6a2b"
-    @Volatile var accentInk: String = "#180d06"
+    @Volatile var accent: String = "#c7ccd6"
+    @Volatile var accentInk: String = "#14161a"
 
     /** Chave da fonte escolhida no painel (ver `FONTS` no HTML). */
     @Volatile var font: String = "sistema"
