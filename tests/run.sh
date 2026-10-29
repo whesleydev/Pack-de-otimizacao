@@ -678,7 +678,27 @@ t_app_fixes() {
     grep -q 'id="btnGear"' "$app" && ok "app: botão de engrenagem existe" || bad "app: sem engrenagem"
     grep -q 'id="gearMask"' "$app" && ok "app: modal de configurações existe" || bad "app: sem modal de config"
     grep -q 'id="btnGear"' "$web" && ok "web: botão de engrenagem existe" || bad "web: sem engrenagem"
-    grep -q 'id="setTheme"\|id="setAccent"\|id="setSound"' "$app" && ok "app: config tem tema/cor/som" || bad "app: config incompleta"
+    grep -q 'id="setAccent"\|id="setSound"' "$app" && ok "app: config tem cor/som" || bad "app: config incompleta"
+    # o app é SÓ modo escuro: nada de alternância claro/escuro nem de data-theme
+    if grep -q 'id="setTheme"\|data-theme\|otm-theme\|btnTheme' "$app"; then
+        bad "app: ainda tem alternância de tema claro/escuro"
+    else
+        ok "app: sem alternância de tema (só escuro)"
+    fi
+    if grep -q 'id="setTheme"\|data-theme\|otm-theme\|btnTheme' "$web"; then
+        bad "web: ainda tem alternância de tema claro/escuro"
+    else
+        ok "web: sem alternância de tema (só escuro)"
+    fi
+    grep -q 'name="color-scheme" content="dark"' "$app" \
+        && ok "app: color-scheme fixo em escuro" || bad "app: color-scheme não é só escuro"
+    grep -q 'id="setAccentCustom"\|id="setAccentHex"\|id="setAccentApply"' "$app" \
+        && grep -q 'id="setAccentCustom"\|id="setAccentHex"\|id="setAccentApply"' "$web" \
+        && ok "cor personalizada no app e no web" || bad "cor personalizada ausente"
+    grep -q 'accentFromHex' "$app" && grep -q 'accentFromHex' "$web" \
+        && ok "cor personalizada: hex vira accent/tinta/anel" || bad "cor personalizada sem conversão"
+    grep -q 'ui_prefs' "$src/PackBridge.kt" \
+        && ok "painel flutuante: recebe a cor/fonte do painel" || bad "overlay sem ui_prefs"
     grep -q "ui' => 'appearance'" "$ROOT/web/lib.php" && ok "registro tem a ação de aparência" || bad "sem ação de aparência"
     grep -q '"appearance"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem a ação de aparência" || bad "app: actions.json sem aparência"
@@ -827,10 +847,48 @@ t_app_fixes() {
             && ok "cor: '$c' na fonte e no app" || bad "cor: '$c' ausente"
     done
     grep -q 'prata:{accent:' "$web" && ok "cor: paleta 'prata' definida" || bad "cor: paleta 'prata' ausente"
-    for f in condensada arredondada geometrica humanista; do
+    # fontes notaveis (empacotadas, funcionam offline) — antes eram todas iguais
+    for f in sistema minecraft pixel monocraft cartaz condensada futurista quadrada serifa manuscrita mono; do
         grep -q "data-font=\"$f\"" "$web" && grep -q "data-font=\"$f\"" "$app" \
             && ok "fonte: '$f' na fonte e no app" || bad "fonte: '$f' ausente"
     done
+    # as fontes vêm empacotadas no app (nada de CDN: sem internet a fonte cai)
+    for fnt in pressstart2p monocraft anton bebasneue orbitron russoone playfairdisplay jetbrainsmono caveat; do
+        [ -f "$ROOT/web/assets/fonts/$fnt.ttf" ] && [ -f "$ROOT/app/src/main/assets/panel/assets/fonts/$fnt.ttf" ] \
+            && ok "fonte empacotada: $fnt.ttf no web e no app" || bad "fonte $fnt.ttf ausente"
+    done
+    grep -q "font-family:'Monocraft'" "$app" && ok "fonte: @font-face do app definido" || bad "fonte: sem @font-face no app"
+    # licença das fontes empacotadas (OFL pede que o crédito acompanhe o arquivo)
+    [ -f "$ROOT/web/assets/fonts/CREDITS.md" ] && grep -qi 'Open Font License' "$ROOT/web/assets/fonts/CREDITS.md" \
+        && ok "fonte: créditos/licença no web" || bad "fonte: sem créditos no web"
+    [ -f "$ROOT/app/src/main/assets/panel/assets/fonts/CREDITS.md" ] \
+        && grep -qi 'Open Font License' "$ROOT/app/src/main/assets/panel/assets/fonts/CREDITS.md" \
+        && ok "fonte: créditos/licença no app" || bad "fonte: sem créditos no app"
+    # o painel flutuante carrega o MESMO .ttf empacotado (não só a fonte do sistema)
+    grep -q 'createFromAsset(assets, "panel/assets/fonts/' "$src/OverlayService.kt" \
+        && ok "overlay: usa a fonte empacotada escolhida" || bad "overlay: fonte empacotada ausente"
+    for f in monocraft.ttf pressstart2p.ttf anton.ttf caveat.ttf jetbrainsmono.ttf; do
+        grep -q "\"$f\"" "$src/OverlayService.kt" || bad "overlay: sem o mapeamento de $f"
+    done
+    ok "overlay: mapeia as fontes empacotadas"
+    # toda chave do FONTS do painel tem arquivo no overlay (senão o flutuante cai
+    # calado na fonte do sistema e diverge do app)
+    python3 - "$app" "$src/OverlayService.kt" <<'PY' && ok "overlay: cobre todas as fontes do painel" || bad "overlay: fonte do painel sem arquivo"
+import re, sys
+html = open(sys.argv[1], encoding='utf-8').read()
+kt = open(sys.argv[2], encoding='utf-8').read()
+keys = re.findall(r'^\s{2}([a-z]+):', re.search(r'const FONTS = \{(.*?)\n\};', html, re.S).group(1), re.M)
+files = re.findall(r'^\s{12}"([a-z]+)" to "([^"]+)"', re.search(r'FONT_FILES = mapOf\((.*?)\n        \)', kt, re.S).group(1), re.M)
+mapped = dict(files)
+for k in keys:
+    if k == 'sistema':
+        continue
+    if k not in mapped:
+        print("sem mapeamento:", k); sys.exit(1)
+    if 'assets/fonts/' + mapped[k] not in kt and mapped[k] not in kt:
+        print("arquivo ausente:", k, mapped[k]); sys.exit(1)
+sys.exit(0)
+PY
 }
 
 t_new_features() {
@@ -1954,6 +2012,25 @@ t_panel_v219() {
     grep -q 'log_all' "$api" && ok "api.php: log_all" || bad "api.php sem log_all"
     grep -q 'id="logspanel"' "$app" && ok "app: painel de Logs" || bad "app sem painel de Logs"
     grep -q 'id="btnLogs"' "$app" && ok "app: botão Logs" || bad "app sem botão Logs"
+    # Logs detalhados: dizem POR QUE falhou e guardam a saída crua (não só "erro")
+    grep -q 'function otm_fail_reasons' "$lib" && ok "lib.php: extrai as razões da falha" || bad "log sem razões"
+    grep -q "'reasons' =>" "$lib" && ok "lib.php: grava as razões no log" || bad "log sem campo reasons"
+    grep -q "'out' => otm_clip" "$lib" && ok "lib.php: grava a saída crua (limitada)" || bad "log sem saída crua"
+    grep -q 'function otm_log_trim' "$lib" && grep -q 'private fun trimLog' "$src/PackBridge.kt" \
+        && ok "log: podado dos dois lados (não cresce sem fim)" || bad "log sem poda"
+    grep -q 'private fun failReasons' "$src/PackBridge.kt" && ok "bridge: extrai as razões da falha" || bad "bridge sem razões"
+    grep -q '.put("reasons", JSONArray(failReasons(out)))' "$src/PackBridge.kt" \
+        && ok "bridge: grava as razões no log" || bad "bridge log sem reasons"
+    grep -q 'has-det' "$app" && grep -q 'has-det' "$ROOT/web/index.php" \
+        && ok "app+web: log abre os detalhes no toque" || bad "log sem detalhes"
+    grep -q 'class="why"' "$app" && grep -q 'class="why"' "$ROOT/web/index.php" \
+        && ok "app+web: log mostra a lista de razões" || bad "log sem lista de razões"
+    # as duas pontes (PHP e Kotlin) gravam o MESMO formato de log
+    for k in applies changed failed reasons out; do
+        grep -q "'$k' =>" "$lib" && grep -q ".put(\"$k\"" "$src/PackBridge.kt" \
+            || bad "log: campo $k não está nos dois lados"
+    done
+    ok "log: mesmo formato no PHP e no Kotlin"
     # Terminal real: ponte + api + painel
     grep -q '"term" -> termImpl(payload)' "$src/PackBridge.kt" && ok "bridge: terminal (term)" || bad "bridge sem term"
     grep -q 'private fun termImpl' "$src/PackBridge.kt" && ok "bridge: termImpl executa comando" || bad "bridge sem termImpl"
@@ -2776,7 +2853,7 @@ t_overlay() {
     grep -q 'OtmExec.run' "$svc" \
         && ok "overlay usa o executor compartilhado" || bad "overlay não usa OtmExec"
     # a sensi e os perfis de toque estão no painel flutuante
-    grep -q 'sensi.sh' "$svc" && ok "overlay lê a sensi do aparelho" || bad "overlay sem sensi.sh"
+    grep -q 'sensi.sh' "$svc" && ok "overlay aplica o headshot da sensi" || bad "overlay sem sensi.sh"
     grep -q 'ff-touch.sh' "$svc" && ok "overlay troca o perfil de toque" || bad "overlay sem ff-touch.sh"
     for p in balanced headshot spray sniper speed; do
         grep -q "\"$p\"" "$svc" || bad "overlay sem o perfil $p"
@@ -2788,9 +2865,15 @@ t_overlay() {
         || ok "overlay não usa mais o título antigo"
     # organizado em CATEGORIAS (abas), não numa lista única
     grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
-    for t in Sensi Toque Motor Atalhos; do
+    for t in Toque Motor Atalhos; do
         grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
+    # a aba "Sensi" saiu: o flutuante é para o meio da partida, não para ler número
+    if grep -q 'sensiTab\|"Sensi"' "$svc"; then
+        bad "overlay ainda tem a aba Sensi"
+    else
+        ok "overlay sem a aba Sensi"
+    fi
     grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
     # o botão de escolher o MOTOR de renderização está no painel flutuante
     grep -q 'RENDERERS' "$svc" && ok "overlay tem o seletor de motor de renderização" \
@@ -2803,6 +2886,16 @@ t_overlay() {
     ok "overlay tem os motores de renderização principais"
     # fundo arredondado (visual mais organizado)
     grep -q 'rounded(' "$svc" && ok "overlay usa fundo arredondado" || bad "overlay sem estilo arredondado"
+    # visual melhor: botões de vidro + blur do sistema
+    grep -q 'FLAG_BLUR_BEHIND' "$svc" && grep -q 'blurBehindRadius' "$svc" \
+        && ok "overlay pede blur do fundo (Android 12+)" || bad "overlay sem blur"
+    grep -q 'private fun pill(' "$svc" && grep -q 'C_GLASS' "$svc" \
+        && ok "overlay usa botões de vidro (pílula translúcida)" || bad "overlay sem botões de vidro"
+    # o flutuante usa o tema do app (cor de destaque e fonte escolhidas no painel)
+    grep -q 'OtmUi.accent' "$svc" && grep -q 'OtmUi.font' "$svc" \
+        && ok "overlay usa a cor/fonte escolhidas no painel" || bad "overlay com tema fixo"
+    grep -q 'OtmUi.onChanged' "$svc" && grep -q 'private fun rebuild()' "$svc" \
+        && ok "overlay se redesenha quando o tema muda" || bad "overlay não acompanha o tema"
     # minimizar vira só o ÍCONE do app; tocar no ícone volta ao painel completo
     grep -q 'R.mipmap.ic_launcher' "$svc" && ok "overlay minimizado usa o ícone do app" \
         || bad "overlay minimizado não usa o ícone do app"

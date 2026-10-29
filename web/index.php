@@ -165,44 +165,36 @@ $first = array_key_first($groups);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <title>00deUdia Otimizações</title>
 <style>
-/* ---- identidade: tinta quente + laranja, com efeito de vidro ---------------- */
+/* Fontes empacotadas (funcionam sem internet e sem CDN). */
+@font-face{font-family:'Press Start 2P';src:url('assets/fonts/pressstart2p.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Monocraft';src:url('assets/fonts/monocraft.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Anton';src:url('assets/fonts/anton.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Bebas Neue';src:url('assets/fonts/bebasneue.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Orbitron';src:url('assets/fonts/orbitron.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Russo One';src:url('assets/fonts/russoone.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Playfair Display';src:url('assets/fonts/playfairdisplay.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('assets/fonts/jetbrainsmono.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Caveat';src:url('assets/fonts/caveat.ttf') format('truetype');font-display:swap}
+/* ---- identidade: tinta quente + laranja, com efeito de vidro ----------------
+   O app é SÓ modo escuro: não existe tema claro nem alternância. As cores
+   escuras ficam direto no :root, sem depender do sistema operacional. */
 :root{
-  --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
-  --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
-  --accent:#e4571c; --accent-ink:#fff; --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a;
-  --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
-  --glass-card:rgba(255,255,255,.78); --glass-bar:rgba(255,255,255,.72);
-  --blur:saturate(150%) blur(18px);
-  --ring:rgba(228,87,28,.35);
-  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35);
+  --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
+  --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
+  --accent:#ff6a2b; --accent-ink:#180d06; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
+  --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
+  --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
+  --blur:saturate(165%) blur(22px);
+  --ring:rgba(255,106,43,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
   --r:16px; --r-sm:11px;
   --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   --top:58px;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
-    --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
-    --accent:#ff6a2b; --accent-ink:#180d06; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
-    --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
-    --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
-    --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
-  }
-}
-html[data-theme="light"]{ --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
-  --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34); --accent:#e4571c; --accent-ink:#fff;
-  --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a; --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
-  --glass-card:rgba(255,255,255,.78); --glass-bar:rgba(255,255,255,.72);
-  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35); }
-html[data-theme="dark"]{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
-  --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2); --accent:#ff6a2b; --accent-ink:#180d06;
-  --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e; --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
-  --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
-  --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); }
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -499,6 +491,16 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .sw{width:34px;height:34px;border-radius:10px;border:2px solid var(--line-strong);background:var(--sw);cursor:pointer;transition:.15s}
 .sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--ring)}
+/* cor personalizada: seletor do sistema + campo hex + botão de aplicar */
+.custom-color{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.cc-label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:0 0 6px 2px}
+.cc-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cc-row input[type="color"]{width:46px;height:40px;flex:none;padding:2px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--glass-2);cursor:pointer}
+.cc-hex{flex:1 1 110px;min-width:110px;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);color:var(--ink);font-family:var(--mono);font-size:14px;letter-spacing:.04em}
+.cc-hex:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+.cc-row .btn{flex:none;width:auto;padding:10px 14px}
 .switch{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
 .switch input{width:18px;height:18px;accent-color:var(--accent)}
 .set-hint{font-size:12px;color:var(--muted);margin:6px 0 0 2px}
@@ -594,6 +596,17 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .logsrow .ts{flex:none;color:var(--muted)}
 .logsrow .lb{flex:1;min-width:0;word-break:break-word}
 .logsrow .cmd{color:var(--muted);font-size:11.5px;display:block;word-break:break-all}
+/* Detalhes do log: o que o script tentou, o que falhou e a saída crua. */
+.logsrow.has-det{cursor:pointer}
+.logsrow .det{margin:6px 0 2px;padding:8px 10px;border-left:2px solid var(--line-strong);
+  background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0}
+.logsrow .det .why{margin:0 0 6px;padding:0;list-style:none}
+.logsrow .det .why li{color:var(--danger);font-size:12px;margin:0 0 3px;word-break:break-word}
+.logsrow .det .why li::before{content:"! ";font-weight:800}
+.logsrow .det .counts{color:var(--muted);font-size:11.5px;margin:0 0 6px}
+.logsrow .det pre{margin:0;padding:0;max-height:220px;overflow:auto;font-family:var(--mono);
+  font-size:11.5px;white-space:pre-wrap;word-break:break-word;color:var(--ink);opacity:.86}
+.logsrow .chev{flex:none;color:var(--muted);font-size:11px}
 .logs-empty{color:var(--muted);padding:8px 0}
 
 /* ---- terminal real -------------------------------------------------------- */
@@ -724,7 +737,6 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="mark" aria-hidden="true">00</div>
   <div class="name">Painel<small>Otimizações</small></div>
   <div class="grow"></div>
-  <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
   <button class="iconbtn" id="btnLogs" aria-label="Ver o histórico de logs" title="Logs"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
 </header>
@@ -1262,15 +1274,6 @@ body.drawer .scrim{opacity:1;visibility:visible}
     </div>
 
     <div class="set-group">
-      <div class="set-label">Tema</div>
-      <div class="seg" id="setTheme">
-        <button class="seg-btn" data-theme="light" type="button">Claro</button>
-        <button class="seg-btn" data-theme="dark" type="button">Escuro</button>
-        <button class="seg-btn" data-theme="auto" type="button">Automático</button>
-      </div>
-    </div>
-
-    <div class="set-group">
       <div class="set-label">Cor de destaque</div>
       <div class="swatches" id="setAccent">
         <button class="sw" data-accent="laranja" style="--sw:#ff6a2b" aria-label="Laranja" type="button"></button>
@@ -1285,19 +1288,34 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <button class="sw" data-accent="grafite" style="--sw:#6b7280" aria-label="Grafite" type="button"></button>
         <button class="sw" data-accent="ambar" style="--sw:#f59e0b" aria-label="Âmbar" type="button"></button>
       </div>
+      <div class="custom-color">
+        <label class="cc-label" for="setAccentCustom">Cor personalizada</label>
+        <div class="cc-row">
+          <input type="color" id="setAccentCustom" value="#ff6a2b" aria-label="Escolher uma cor personalizada">
+          <input type="text" id="setAccentHex" class="cc-hex" maxlength="7" spellcheck="false"
+                 inputmode="text" placeholder="#rrggbb" aria-label="Código da cor (hex)">
+          <button class="btn" id="setAccentApply" type="button">Usar esta cor</button>
+        </div>
+        <div class="set-hint">Escolha no seletor ou digite um código <b>#rrggbb</b>. A cor fica salva neste aparelho.</div>
+      </div>
     </div>
 
     <div class="set-group">
       <div class="set-label">Fonte</div>
       <div class="seg" id="setFont">
         <button class="seg-btn" data-font="sistema" type="button">Sistema</button>
-        <button class="seg-btn" data-font="serif" type="button">Serifa</button>
-        <button class="seg-btn" data-font="mono" type="button">Mono</button>
+        <button class="seg-btn" data-font="minecraft" type="button">Minecraft</button>
+        <button class="seg-btn" data-font="pixel" type="button">Pixel 8-bit</button>
+        <button class="seg-btn" data-font="monocraft" type="button">Monocraft</button>
+        <button class="seg-btn" data-font="cartaz" type="button">Cartaz</button>
         <button class="seg-btn" data-font="condensada" type="button">Condensada</button>
-        <button class="seg-btn" data-font="arredondada" type="button">Arredondada</button>
-        <button class="seg-btn" data-font="geometrica" type="button">Geométrica</button>
-        <button class="seg-btn" data-font="humanista" type="button">Humanista</button>
+        <button class="seg-btn" data-font="futurista" type="button">Futurista</button>
+        <button class="seg-btn" data-font="quadrada" type="button">Quadrada</button>
+        <button class="seg-btn" data-font="serifa" type="button">Serifa</button>
+        <button class="seg-btn" data-font="manuscrita" type="button">Manuscrita</button>
+        <button class="seg-btn" data-font="mono" type="button">Mono</button>
       </div>
+      <div class="set-hint">Fontes empacotadas no app (funcionam sem internet). A "Sistema" usa a fonte do seu Android.</div>
     </div>
 
     <div class="set-group">
@@ -1333,7 +1351,7 @@ const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
 const $ = s => document.querySelector(s);
 let pending = null;
 
-/* tema + aparência (engrenagem) */
+/* tema + aparência (engrenagem) — o app é SÓ modo escuro: não há alternância */
 const ACCENTS = {
   laranja:{accent:"#ff6a2b",ink:"#180d06",ring:"rgba(255,106,43,.35)"},
   azul:{accent:"#2f7bff",ink:"#04122e",ring:"rgba(47,123,255,.35)"},
@@ -1349,17 +1367,62 @@ const ACCENTS = {
 };
 const FONTS = {
   sistema:'"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif',
-  serif:'Georgia,"Times New Roman",serif',
-  mono:'ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace',
-  condensada:'"Arial Narrow","Roboto Condensed","Helvetica Neue",system-ui,sans-serif',
-  arredondada:'"Trebuchet MS",Verdana,"Segoe UI",system-ui,sans-serif',
-  geometrica:'"Century Gothic",Futura,"Trebuchet MS",system-ui,sans-serif',
-  humanista:'Candara,Optima,"Segoe UI",system-ui,sans-serif'
+  minecraft:'"Monocraft","Press Start 2P",ui-monospace,monospace',
+  pixel:'"Press Start 2P",ui-monospace,monospace',
+  monocraft:'"Monocraft",ui-monospace,monospace',
+  cartaz:'"Anton","Arial Narrow",system-ui,sans-serif',
+  condensada:'"Bebas Neue","Arial Narrow",system-ui,sans-serif',
+  futurista:'"Orbitron","Segoe UI",system-ui,sans-serif',
+  quadrada:'"Russo One","Segoe UI",system-ui,sans-serif',
+  serifa:'"Playfair Display",Georgia,"Times New Roman",serif',
+  manuscrita:'"Caveat","Segoe Script",cursive',
+  mono:'"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace'
 };
+/* A cor personalizada é montada a partir do hex: a "tinta" (texto sobre a cor)
+   vira branco ou preto conforme o brilho, e o anel de foco usa a mesma cor. */
+function accentFromHex(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const h = "#" + m[1].toLowerCase();
+  return { accent: h, ink: lum > 0.6 ? "#14120f" : "#ffffff",
+           ring: "rgba(" + r + "," + g + "," + b + ",.38)" };
+}
 function setAccentQuiet(name){
   const a = ACCENTS[name]; if (!a) return;
   const r = document.documentElement.style;
   r.setProperty("--accent", a.accent); r.setProperty("--accent-ink", a.ink); r.setProperty("--ring", a.ring);
+}
+/* Aplica a cor personalizada e guarda o valor no localStorage. */
+function setCustomAccent(hex){
+  const a = accentFromHex(hex);
+  if (!a) return false;
+  const r = document.documentElement.style;
+  r.setProperty("--accent", a.accent); r.setProperty("--accent-ink", a.ink); r.setProperty("--ring", a.ring);
+  localStorage.setItem("otm-accent", "custom");
+  localStorage.setItem("otm-accent-hex", a.accent);
+  return true;
+}
+function applyStoredAccent(){
+  const name = localStorage.getItem("otm-accent") || "laranja";
+  if (name === "custom"){
+    const hex = localStorage.getItem("otm-accent-hex");
+    if (hex && setCustomAccent(hex)) return;
+  }
+  setAccentQuiet(name);
+}
+
+/* Avisa o app da cor/fonte atuais: o painel flutuante roda num Service e nao
+   enxerga o localStorage, entao ele le de SharedPreferences (bridge ui_prefs). */
+function pushUiPrefs(){
+  if (!window.OTM) return;
+  const r = getComputedStyle(document.documentElement);
+  const accent = (r.getPropertyValue("--accent") || "").trim();
+  const ink = (r.getPropertyValue("--accent-ink") || "").trim();
+  const font = localStorage.getItem("otm-font") || "sistema";
+  try { window.OTM.call("ui_prefs", JSON.stringify({accent: accent, ink: ink, font: font}), "ui"); } catch(e){}
 }
 /* DPI do app: zoom no <html>. A largura vira 100%/escala para o conteúdo não
    ultrapassar a tela quando o zoom AUMENTA (era o que causava o arrasto lateral).
@@ -1379,10 +1442,13 @@ function setFontQuiet(name){
   document.documentElement.style.setProperty("--font", FONTS[name] || FONTS.sistema);
 }
 function syncGear(){
-  const t = localStorage.getItem("otm-theme") || "auto";
-  document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === t ? "true" : "false"));
   const a = localStorage.getItem("otm-accent") || "laranja";
   document.querySelectorAll("#setAccent .sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.accent === a ? "true" : "false"));
+  const cc = document.getElementById("setAccentCustom");
+  const ch = document.getElementById("setAccentHex");
+  const hex = localStorage.getItem("otm-accent-hex") || "#ff6a2b";
+  if (cc) cc.value = hex;
+  if (ch && a === "custom") ch.value = hex;
   const f = localStorage.getItem("otm-font") || "sistema";
   document.querySelectorAll("#setFont .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.font === f ? "true" : "false"));
   const sc = parseInt(localStorage.getItem("otm-scale") || "100", 10);
@@ -1393,14 +1459,8 @@ function syncGear(){
   const pl = document.getElementById("setPermHint");
   if (pl && !window.OTM) pl.textContent = "No site (PC) não dá para mexer no aparelho — isso funciona no app do celular.";
 }
-function setTheme(v){
-  if (v === "auto"){ delete document.documentElement.dataset.theme; }
-  else { document.documentElement.dataset.theme = v; }
-  localStorage.setItem("otm-theme", v);
-  syncGear();
-}
-function setAccent(name){ setAccentQuiet(name); localStorage.setItem("otm-accent", name); syncGear(); }
-function setFont(name){ setFontQuiet(name); localStorage.setItem("otm-font", name); syncGear(); }
+function setAccent(name){ setAccentQuiet(name); localStorage.setItem("otm-accent", name); pushUiPrefs(); syncGear(); }
+function setFont(name){ setFontQuiet(name); localStorage.setItem("otm-font", name); pushUiPrefs(); syncGear(); }
 function setScale(pct){ setScaleQuiet(pct); localStorage.setItem("otm-scale", String(pct)); syncGear(); }
 function setSound(on){
   localStorage.setItem("otm-sound", on ? "1" : "0");
@@ -1424,24 +1484,31 @@ function askPermission(id, label){
     .catch(e => { openConsole(label, "erro: " + e); toast("Erro", "bad"); });
 }
 (function initAppearance(){
-  const t = localStorage.getItem("otm-theme"); if (t && t !== "auto") document.documentElement.dataset.theme = t;
-  const a = localStorage.getItem("otm-accent"); if (a) setAccentQuiet(a);
+  applyStoredAccent();
   const f = localStorage.getItem("otm-font"); if (f) setFontQuiet(f);
   const sc = localStorage.getItem("otm-scale"); if (sc) setScaleQuiet(parseInt(sc, 10));
   if (localStorage.getItem("otm-sound") === "0" && window.OTM)
     try { window.OTM.call("sound", "off", "init"); } catch(e){}
+  pushUiPrefs();
 })();
-$("#btnTheme").onclick = () => {
-  const cur = document.documentElement.dataset.theme ||
-    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  setTheme(cur === "dark" ? "light" : "dark");
-};
 $("#btnGear").onclick = () => { syncGear(); $("#gearMask").classList.add("open"); };
 $("#gearDone").onclick = () => $("#gearMask").classList.remove("open");
 $("#gearMask").onclick = e => { if (e.target.id === "gearMask") $("#gearMask").classList.remove("open"); };
-document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.onclick = () => setTheme(b.dataset.theme));
 document.querySelectorAll("#setAccent .sw").forEach(b => b.onclick = () => setAccent(b.dataset.accent));
 document.querySelectorAll("#setFont .seg-btn").forEach(b => b.onclick = () => setFont(b.dataset.font));
+/* Cor personalizada: o seletor de cor preenche o campo hex; "Usar esta cor"
+   aceita qualquer um dos dois. Valor inválido avisa e não muda nada. */
+const ccPick = document.getElementById("setAccentCustom");
+const ccHex = document.getElementById("setAccentHex");
+const ccApply = document.getElementById("setAccentApply");
+if (ccPick) ccPick.oninput = e => { if (ccHex) ccHex.value = e.target.value; };
+function applyCustomAccent(){
+  const v = (ccHex && ccHex.value) || (ccPick && ccPick.value) || "";
+  if (!setCustomAccent(v)){ toast("Cor inválida: use #rrggbb", "bad"); return; }
+  pushUiPrefs(); syncGear(); toast("Cor personalizada aplicada.", "ok");
+}
+if (ccApply) ccApply.onclick = applyCustomAccent;
+if (ccHex) ccHex.onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); applyCustomAccent(); } };
 document.getElementById("setScale").oninput = e => setScale(parseInt(e.target.value, 10));
 document.getElementById("setSound").onchange = e => setSound(e.target.checked);
 const PERM_ACTION = { setPermApp: "perm.app", setPermFF: "perm.ff", setPermGame: "perm.game", setPermBattery: "perm.battery" };
@@ -1451,7 +1518,8 @@ permBtn("setPermFF", "Permissões dos Free Fire");
 permBtn("setPermGame", "Permissões do meu jogo");
 permBtn("setPermBattery", "Bateria sem economia");
 /* Acesso a dados de uso: não é um script, é uma tela do sistema. No app vira
-   OTM.call("usage"); no site, avisa que só funciona no celular. */
+   OTM.call("usage"); no site, avisa que só funciona no celular. Fica no card da
+   Home (o pedido de permissão do app do pack cobre o resto em Configs). */
 function openUsageSettings(){
   if (!window.OTM){ toast("Acesso a dados de uso: use o app no celular.", "bad"); return; }
   toast("Abrindo a tela de acesso a dados de uso…", "ok");
@@ -1461,10 +1529,9 @@ const permUsageBtn = document.getElementById("setPermUsage");
 if (permUsageBtn) permUsageBtn.onclick = openUsageSettings;
 const gearReset = document.getElementById("gearReset");
 if (gearReset) gearReset.onclick = () => {
-  ["otm-theme","otm-accent","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
-  delete document.documentElement.dataset.theme;
+  ["otm-accent","otm-accent-hex","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
   setAccentQuiet("laranja"); setFontQuiet("sistema"); setScaleQuiet(100);
-  syncGear(); toast("Aparência restaurada ao padrão.", "ok");
+  pushUiPrefs(); syncGear(); toast("Aparência restaurada ao padrão.", "ok");
 };
 
 /* navegação */
@@ -1808,16 +1875,42 @@ if (btnStatus) btnStatus.onclick = async () => { openConsole("Status do aparelho
 
 /* ---- LOGS: histórico completo (sem truncar) -------------------------------- */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+/* Cada linha guarda o que o script tentou (applies/changed/failed), as razões
+   da falha e a saída crua. O resumo fica à vista; o resto abre no toque. */
 function renderLogs(list){
   const body = document.getElementById("logsBody"); if (!body) return;
   if (!list || !list.length){ body.innerHTML = '<div class="logs-empty">(nada registrado ainda)</div>'; return; }
-  body.innerHTML = list.map(x => {
+  body.innerHTML = list.map((x, i) => {
     const st = x.ok ? '<span class="st ok">[ok]</span>' : '<span class="st no">[erro]</span>';
     const ts = x.ts ? String(x.ts).replace("T"," ").replace(/\..*$/,"") : "";
     const cmd = x.cmd ? '<span class="cmd">$ ' + esc(x.cmd) + '</span>' : '';
-    return '<div class="logsrow">' + st + '<span class="ts">' + esc(ts) + '</span>'
-      + '<span class="lb">' + esc(x.label || x.id || "?") + cmd + '</span></div>';
+    const reasons = Array.isArray(x.reasons) ? x.reasons : [];
+    const counts = [];
+    if (x.applies != null) counts.push(x.applies + " tentativa(s)");
+    if (x.changed != null) counts.push(x.changed + " aplicada(s)");
+    if (x.failed != null && x.failed > 0) counts.push(x.failed + " falha(s)");
+    if (x.code != null && x.code !== 0) counts.push("código " + x.code);
+    const why = reasons.length
+      ? '<ul class="why">' + reasons.map(r => '<li>' + esc(r) + '</li>').join("") + '</ul>' : '';
+    const out = x.out ? '<pre>' + esc(x.out) + '</pre>' : '';
+    const hasDet = !!(why || out || counts.length);
+    const det = hasDet
+      ? '<div class="det" hidden>' + why
+        + (counts.length ? '<div class="counts">' + esc(counts.join(" · ")) + '</div>' : '')
+        + out + '</div>'
+      : '';
+    return '<div class="logsrow' + (hasDet ? ' has-det' : '') + '" data-i="' + i + '">'
+      + st + '<span class="ts">' + esc(ts) + '</span>'
+      + '<span class="lb">' + esc(x.label || x.id || "?") + cmd + det + '</span>'
+      + (hasDet ? '<span class="chev">▾</span>' : '') + '</div>';
   }).join("");
+  body.querySelectorAll(".logsrow.has-det").forEach(row => {
+    row.onclick = () => {
+      const d = row.querySelector(".det"); if (!d) return;
+      d.hidden = !d.hidden;
+      const c = row.querySelector(".chev"); if (c) c.textContent = d.hidden ? "▾" : "▴";
+    };
+  });
 }
 async function openLogs(){
   const p = document.getElementById("logspanel"); if (!p) return;

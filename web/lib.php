@@ -1433,7 +1433,33 @@ function otm_mode(): array {
 }
 
 // --- log ----------------------------------------------------------------------
+/**
+ * Extrai da saída as linhas que explicam POR QUE algo falhou.
+ *
+ * Os scripts marcam a falha com "✕"/"X" e dizem o valor lido de volta (ex.:
+ * "X tcp_congestion_control nao mudou (lido: cubic)"). Sem isso o log só dizia
+ * "erro", sem dizer o que não pegou nem com que valor o aparelho ficou.
+ */
+function otm_fail_reasons(string $out): array {
+    if ($out === '') return [];
+    $out = preg_replace('/\x1b\[[0-9;]*m/', '', $out);   // tira cor ANSI
+    $reasons = [];
+    foreach (preg_split('/\r?\n/', $out) as $line) {
+        $l = trim($line);
+        if ($l === '') continue;
+        $isFail = (bool)preg_match('/^[✕X]/u', $l)
+            || (bool)preg_match('/(n[ãa]o (mudou|pegou|consegui|aceitou|encontrei|dispon[íi]vel|existe|permitido)'
+                . '|falhou|falha\(s\)|sem acesso|denied|denial|not found)/iu', $l);
+        if ($isFail) {
+            $l = preg_replace('/^[✕X]\s*/u', '', $l);
+            $reasons[] = $l;
+        }
+    }
+    return array_slice(array_values(array_unique($reasons)), 0, 12);
+}
+
 function otm_log(string $id, string $label, array $argv, array $res): void {
+    $out = (string)($res['out'] ?? '');
     $rec = [
         'ts' => date('c'),
         'id' => $id,
@@ -1441,9 +1467,39 @@ function otm_log(string $id, string $label, array $argv, array $res): void {
         'cmd' => implode(' ', array_map(fn($x) => (strpos($x, ' ') !== false ? '"' . $x . '"' : $x), $argv)),
         'ok' => $res['ok'] ?? false,
         'code' => $res['code'] ?? null,
+        // detalhe: o que o script tentou (applies/changed/failed) e a saída crua
+        'applies' => $res['applies'] ?? null,
+        'changed' => $res['changed'] ?? null,
+        'failed' => $res['failed'] ?? null,
+        'reasons' => otm_fail_reasons($out),
+        'out' => otm_clip($out, 6000),
     ];
-    @file_put_contents(otm_state() . '/log.jsonl', json_encode($rec, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+    $f = otm_state() . '/log.jsonl';
+    @file_put_contents($f, json_encode($rec, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+    otm_log_trim($f);
 }
+
+/** Corta o texto sem depender do mbstring (que pode faltar no PHP do aparelho). */
+function otm_clip(string $s, int $max): string {
+    if (strlen($s) <= $max) return $s;
+    $cut = substr($s, 0, $max);
+    // não deixa um caractere UTF-8 cortado no meio
+    return (string)preg_replace('/[\x80-\xBF]+$/', '', $cut) . "\n…(cortado)";
+}
+
+/**
+ * O log agora guarda a saída crua de cada ação, então cresce rápido. Mantém as
+ * últimas [otm_log_max] linhas: o histórico continua completo para o usuário e
+ * o arquivo não vira um peso morto no aparelho.
+ */
+function otm_log_trim(string $file): void {
+    if (!is_file($file) || filesize($file) < 1500000) return;
+    $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    $keep = array_slice($lines, -otm_log_max());
+    @file_put_contents($file, implode("\n", $keep) . "\n");
+}
+
+function otm_log_max(): int { return 800; }
 
 function otm_log_read(int $n = 40, bool $full = false): array {
     $f = otm_state() . '/log.jsonl';

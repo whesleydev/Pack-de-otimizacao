@@ -35,9 +35,15 @@ import kotlinx.coroutines.launch
  * motor de renderização. É um `Service` em primeiro plano com uma janela
  * `TYPE_APPLICATION_OVERLAY`, que pode ser arrastada e minimizada.
  *
- * O painel se chama só **"00"** e é organizado em **categorias (abas)** — Sensi,
- * Toque, Motor e Atalhos. Antes tudo saía numa lista corrida e, no meio da
- * partida, achar um botão era lento; agora cada aba mostra só o que interessa.
+ * O painel se chama só **"00"** e é organizado em **categorias (abas)** — Toque,
+ * Motor e Atalhos. Antes tudo saía numa lista corrida e, no meio da partida,
+ * achar um botão era lento; agora cada aba mostra só o que interessa.
+ *
+ * **Visual**: os botões são pílulas de vidro (fundo translúcido + brilho na cor
+ * de destaque) e a janela pede *blur* por trás (Android 12+ com "cross-window
+ * blur" ligado); onde o sistema não permite, o fundo translúcido mantém o mesmo
+ * aspecto. A cor de destaque e a fonte são as escolhidas no painel ([OtmUi]),
+ * então o flutuante acompanha o tema do app.
  *
  * **Minimizado ele vira só o ícone do app**: o painel inteiro some e sobra o
  * ícone do "00 Otimização", que continua arrastável. Um toque no ícone devolve
@@ -52,10 +58,11 @@ class OverlayService : Service() {
     private var root: View? = null
     private var panel: View? = null
     private var bubble: View? = null
-    private var sensiText: TextView? = null
     private var statusText: TextView? = null
     private var content: LinearLayout? = null
     private val tabChips = mutableListOf<TextView>()
+    /** Fontes já carregadas do asset: não reler o .ttf a cada texto criado. */
+    private val fontCache = HashMap<String, Typeface>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -64,8 +71,10 @@ class OverlayService : Service() {
         super.onCreate()
         startForeground(NOTIF_ID, buildNotification())
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        OtmUi.load(this)
+        // o painel avisa quando o usuário troca a cor/fonte: o flutuante se redesenha
+        OtmUi.onChanged = { post { rebuild() } }
         addOverlay()
-        refreshSensi()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -77,6 +86,7 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
+        OtmUi.onChanged = null
         scope.cancel()
         root?.let { runCatching { windowManager.removeView(it) } }
         root = null
@@ -85,14 +95,29 @@ class OverlayService : Service() {
         super.onDestroy()
     }
 
+    /** Reconstrói a janela com a aparência atual (cor/fonte novas do painel). */
+    private fun rebuild() {
+        val atual = root ?: return
+        // a posição é copiada ANTES de remover: a janela nova nasce onde a antiga estava
+        val pos = (atual.layoutParams as? WindowManager.LayoutParams)
+        val onde = if (pos != null) pos.x to pos.y else null
+        val eraMinimizado = minimized
+        runCatching { windowManager.removeView(atual) }
+        root = null; panel = null; bubble = null
+        minimized = false
+        addOverlay(onde)
+        if (eraMinimizado) setMinimized(true)
+    }
+
     // ---- janela --------------------------------------------------------------
 
-    private fun addOverlay() {
+    private fun addOverlay(onde: Pair<Int, Int>? = null) {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(dp(16).toFloat(), "#F00D0C0A", "#3A3733")
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            minimumWidth = dp(240)
+            background = rounded(dp(18).toFloat(), "#E61A1815", "#3A3733")
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            minimumWidth = dp(250)
+            elevation = dp(12).toFloat()
         }
         box.addView(titleBar())
         box.addView(tabBar())
@@ -101,8 +126,9 @@ class OverlayService : Service() {
         box.addView(content, matchWrap())
 
         statusText = TextView(this).apply {
-            setTextColor(Color.parseColor("#B9B2A6"))
+            setTextColor(col(C_MUTED))
             textSize = 11f
+            typeface = bodyTypeface()
             setPadding(0, dp(8), 0, 0)
         }
         box.addView(statusText)
@@ -112,9 +138,24 @@ class OverlayService : Service() {
         bubble = bubbleView()
         root = box
 
-        val params = baseParams()
-        box.setOnTouchListener(dragger(params, box))
-        runCatching { windowManager.addView(box, params) }
+        val p = baseParams()
+        if (onde != null) { p.x = onde.first; p.y = onde.second }
+        applyBlur(p)
+        box.setOnTouchListener(dragger(p, box))
+        runCatching { windowManager.addView(box, p) }
+    }
+
+    /**
+     * Pede o *blur* do fundo atrás da janela (Android 12+). Precisa que o
+     * aparelho suporte "cross-window blur"; quando não suporta, o fundo
+     * translúcido do painel já dá o efeito de vidro.
+     */
+    private fun applyBlur(p: WindowManager.LayoutParams) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        runCatching {
+            p.flags = p.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+            p.blurBehindRadius = dp(18)
+        }
     }
 
     /** Abas: cada categoria mostra só o seu bloco, sem lista corrida. */
@@ -134,11 +175,12 @@ class OverlayService : Service() {
             text = label
             textSize = 11f
             gravity = Gravity.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
+            typeface = bodyTypeface()
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { selectTab(index) }
             layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-            ).apply { marginEnd = dp(4) }
+            ).apply { marginEnd = dp(5) }
         }
 
     private fun selectTab(index: Int) {
@@ -147,35 +189,17 @@ class OverlayService : Service() {
         box.addView(tabView(index), matchWrap())
         for ((i, chip) in tabChips.withIndex()) {
             val on = i == index
-            chip.setTextColor(Color.parseColor(if (on) "#12151A" else "#D8D2C7"))
-            chip.background = if (on) rounded(dp(8).toFloat(), "#E4571C")
-            else rounded(dp(8).toFloat(), "#00000000", "#3A3733")
-            chip.setTypeface(chip.typeface, if (on) Typeface.BOLD else Typeface.NORMAL)
+            chip.setTextColor(col(if (on) accentInk() else C_TEXT))
+            chip.background = if (on) pill(dp(11).toFloat(), accent())
+            else pill(dp(11).toFloat(), C_GLASS, C_LINE)
+            chip.setTypeface(bodyTypeface(), if (on) Typeface.BOLD else Typeface.NORMAL)
         }
     }
 
     private fun tabView(index: Int): View = when (index) {
-        0 -> sensiTab()
-        1 -> touchTab()
-        2 -> engineTab()
+        0 -> touchTab()
+        1 -> engineTab()
         else -> shortcutsTab()
-    }
-
-    /** Aba Sensi: o número que o usuário quer ver de relance. */
-    private fun sensiTab(): View {
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        box.addView(sectionHeader("Sensi do seu aparelho"))
-        sensiText = TextView(this).apply {
-            setTextColor(Color.parseColor("#F3EFE7"))
-            textSize = 13f
-            text = "lendo a sensi…"
-        }
-        box.addView(sensiText, matchWrap())
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(smallButton("Atualizar") { refreshSensi() })
-        row.addView(smallButton("Headshot") { runScript("sensi.sh", listOf("headshot"), "Sensi: headshot") })
-        box.addView(row, matchWrap())
-        return box
     }
 
     /** Aba Toque: perfis de sensibilidade do jogo. */
@@ -210,7 +234,7 @@ class OverlayService : Service() {
         return box
     }
 
-    /** Aba Atalhos: latência, limpeza de RAM e atualizar. */
+    /** Aba Atalhos: latência, limpeza de RAM e game clean. */
     private fun shortcutsTab(): View {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         box.addView(sectionHeader("Atalhos"))
@@ -220,7 +244,7 @@ class OverlayService : Service() {
         box.addView(row1, matchWrap())
         val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         row2.addView(smallButton("Game Clean") { runScript("game-clean.sh", listOf("on"), "Game Clean") })
-        row2.addView(smallButton("Atualizar") { refreshSensi() })
+        row2.addView(smallButton("Headshot") { runScript("sensi.sh", listOf("headshot"), "Sensi: headshot") })
         box.addView(row2, matchWrap())
         return box
     }
@@ -229,9 +253,9 @@ class OverlayService : Service() {
     private fun sectionHeader(text: String): View =
         TextView(this).apply {
             this.text = text
-            setTextColor(Color.parseColor("#E4571C"))
+            setTextColor(col(accent()))
             textSize = 12f
-            setTypeface(typeface, Typeface.BOLD)
+            setTypeface(bodyTypeface(), Typeface.BOLD)
             setPadding(0, dp(10), 0, dp(6))
         }
 
@@ -243,9 +267,9 @@ class OverlayService : Service() {
         }
         bar.addView(TextView(this).apply {
             text = "00"
-            setTextColor(Color.parseColor("#E4571C"))
-            textSize = 15f
-            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(col(accent()))
+            textSize = 16f
+            setTypeface(bodyTypeface(), Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         bar.addView(iconButton("—") { toggleMinimize() })
         bar.addView(iconButton("X") { stopSelf() })
@@ -257,10 +281,11 @@ class OverlayService : Service() {
         ImageView(this).apply {
             setImageResource(R.mipmap.ic_launcher)
             setPadding(dp(4), dp(4), dp(4), dp(4))
+            elevation = dp(10).toFloat()
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#E60D0C0A"))
-                setStroke(dp(1), Color.parseColor("#3A3733"))
+                setColor(Color.parseColor("#E61A1815"))
+                setStroke(dp(1), Color.parseColor(C_LINE))
             }
             setOnClickListener { setMinimized(false) }
         }
@@ -278,16 +303,17 @@ class OverlayService : Service() {
         if (value == minimized) return
         val atual = root ?: return
         val novo = (if (value) bubble else panel) ?: return
-        val params = baseParams()
+        val p = baseParams()
         // mantém onde o usuário deixou: a janela nova nasce na mesma posição
         (atual.layoutParams as? WindowManager.LayoutParams)?.let {
-            params.x = it.x; params.y = it.y
+            p.x = it.x; p.y = it.y
         }
+        applyBlur(p)
         minimized = value
         runCatching {
             windowManager.removeView(atual)
-            novo.setOnTouchListener(dragger(params, novo))
-            windowManager.addView(novo, params)
+            novo.setOnTouchListener(dragger(p, novo))
+            windowManager.addView(novo, p)
             root = novo
         }
     }
@@ -295,34 +321,84 @@ class OverlayService : Service() {
     private fun iconButton(label: String, action: () -> Unit): View =
         TextView(this).apply {
             text = label
-            textSize = 12f
-            setTextColor(Color.parseColor("#F3EFE7"))
-            setPadding(dp(10), dp(2), dp(10), dp(2))
+            textSize = 13f
+            setTextColor(col(C_TEXT))
+            typeface = bodyTypeface()
+            setPadding(dp(11), dp(3), dp(11), dp(3))
             setOnClickListener { action() }
         }
 
+    /**
+     * Botão do painel: pílula de vidro (translúcida + borda) com a cor de
+     * destaque na borda e no texto. É o "visual melhor" pedido — antes era um
+     * retângulo laranja chapado, igual para tudo.
+     */
     private fun smallButton(label: String, action: () -> Unit): View =
         TextView(this).apply {
             text = label
-            textSize = 11f
+            textSize = 11.5f
             gravity = Gravity.CENTER
-            setTextColor(Color.parseColor("#12151A"))
-            background = rounded(dp(8).toFloat(), "#E4571C")
-            setPadding(dp(8), dp(6), dp(8), dp(6))
+            typeface = bodyTypeface()
+            setTextColor(col(accent()))
+            background = pill(dp(12).toFloat(), C_GLASS, accentA(0x66))
+            setPadding(dp(10), dp(9), dp(10), dp(9))
             setOnClickListener { action() }
         }.also {
             it.layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-            ).apply { marginEnd = dp(4) }
+            ).apply { marginEnd = dp(5); bottomMargin = dp(5) }
         }
 
-    /** Fundo arredondado com borda opcional (usado no painel e nos chips de aba). */
-    private fun rounded(radius: Float, fill: String, stroke: String? = null): GradientDrawable =
+    /** Pílula de vidro arredondada com borda opcional. */
+    private fun pill(radius: Float, fill: String, stroke: String? = null): GradientDrawable =
         GradientDrawable().apply {
             cornerRadius = radius
             setColor(Color.parseColor(fill))
             if (stroke != null) setStroke(dp(1), Color.parseColor(stroke))
         }
+
+    /** Fundo arredondado com borda opcional (usado no painel e nos chips de aba). */
+    private fun rounded(radius: Float, fill: String, stroke: String? = null): GradientDrawable =
+        pill(radius, fill, stroke)
+
+    // ---- tema do app (cor de destaque e fonte vêm do painel) -----------------
+
+    /** Cor de destaque escolhida no painel. */
+    private fun accent(): String = OtmUi.accent
+
+    /** Tinta do texto sobre a cor de destaque (clara ou escura, conforme o brilho). */
+    private fun accentInk(): String = OtmUi.accentInk
+
+    /** Mesma cor de destaque com outra transparência (ex.: borda do botão). */
+    private fun accentA(alpha: Int): String =
+        String.format("#%02X%s", alpha, accent().removePrefix("#").uppercase())
+
+    /**
+     * Fonte escolhida no painel, aplicada ao painel flutuante.
+     *
+     * Carrega o mesmo `.ttf` empacotado que o painel usa (o overlay não tem
+     * WebView, então precisa do arquivo na mão). Fonte sem arquivo — ou que
+     * falhe ao carregar — cai numa equivalente do sistema, para o painel nunca
+     * ficar sem texto.
+     */
+    private fun bodyTypeface(): Typeface {
+        val key = OtmUi.font
+        fontCache[key]?.let { return it }
+        val tf = FONT_FILES[key]?.let { file ->
+            runCatching { Typeface.createFromAsset(assets, "panel/assets/fonts/$file") }.getOrNull()
+        } ?: when (key) {
+            "mono", "minecraft", "monocraft", "pixel" -> Typeface.MONOSPACE
+            "serifa" -> Typeface.SERIF
+            "manuscrita" -> Typeface.create("cursive", Typeface.NORMAL)
+            else -> Typeface.create("sans-serif", Typeface.NORMAL)
+        }
+        fontCache[key] = tf
+        return tf
+    }
+
+    /** Converte "#RRGGBB" em cor; se vier algo estranho, cai no laranja padrão. */
+    private fun col(hex: String): Int =
+        runCatching { Color.parseColor(hex) }.getOrDefault(Color.parseColor("#FF6A2B"))
 
     private fun baseParams() = WindowManager.LayoutParams(
         WindowManager.LayoutParams.WRAP_CONTENT,
@@ -363,23 +439,6 @@ class OverlayService : Service() {
 
     // ---- ações ---------------------------------------------------------------
 
-    private fun refreshSensi() {
-        scope.launch {
-            val out = OtmExec.run(this@OverlayService, OtmRunner.current, "sensi.sh", listOf("calc"))
-            val text = joinOutput(out.stdout, out.stderr)
-            val vals = parseSensi(text)
-            post {
-                sensiText?.text = if (vals == null) {
-                    "sem acesso — conecte o Shizuku/ADB no painel"
-                } else {
-                    "Geral ${vals[0]}  ·  Ponto ${vals[1]}\n" +
-                        "2x ${vals[2]}  ·  4x ${vals[3]}  ·  AWM ${vals[4]}\n" +
-                        "Botão de atirar ${vals[5]}%"
-                }
-            }
-        }
-    }
-
     private fun runScript(script: String, args: List<String>, label: String) {
         post { statusText?.text = "$label: aplicando…" }
         scope.launch {
@@ -398,21 +457,6 @@ class OverlayService : Service() {
                 Toast.makeText(this@OverlayService, msg, Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    /** Extrai "Geral, Ponto, 2x, 4x, AWM, botão%" das linhas do `sensi.sh calc`. */
-    private fun parseSensi(out: String): List<Int>? {
-        fun grab(label: String): Int? {
-            val line = out.lineSequence().firstOrNull { it.trimStart().startsWith(label) } ?: return null
-            return Regex("(\\d+)").find(line.substringAfter(label))?.groupValues?.get(1)?.toIntOrNull()
-        }
-        val gen = grab("Geral") ?: return null
-        val rd = grab("Ponto vermelho") ?: return null
-        val x2 = grab("Mira 2x") ?: return null
-        val x4 = grab("Mira 4x") ?: return null
-        val awm = grab("AWM") ?: return null
-        val btn = grab("Botão de atirar") ?: 0
-        return listOf(gen, rd, x2, x4, awm, btn)
     }
 
     private fun post(block: () -> Unit) = android.os.Handler(mainLooper).post(block)
@@ -452,8 +496,31 @@ class OverlayService : Service() {
         const val NOTIF_ID = 2
         const val ACTION_STOP = "com.otm.pack.overlay.STOP"
 
+        /** "Vidro": fundo translúcido e borda clara (o blur do sistema soma). */
+        private const val C_GLASS = "#1FFFFFFF"
+        private const val C_LINE = "#33FFFFFF"
+        private const val C_TEXT = "#F3EFE7"
+        private const val C_MUTED = "#B9B2A6"
+
+        /**
+         * Fontes empacotadas (mesmos `.ttf` do painel), por chave do `FONTS` do
+         * HTML. O que não estiver aqui cai na fonte do sistema.
+         */
+        private val FONT_FILES = mapOf(
+            "minecraft" to "monocraft.ttf",
+            "monocraft" to "monocraft.ttf",
+            "pixel" to "pressstart2p.ttf",
+            "cartaz" to "anton.ttf",
+            "condensada" to "bebasneue.ttf",
+            "futurista" to "orbitron.ttf",
+            "quadrada" to "russoone.ttf",
+            "serifa" to "playfairdisplay.ttf",
+            "manuscrita" to "caveat.ttf",
+            "mono" to "jetbrainsmono.ttf",
+        )
+
         /** Categorias do painel, na ordem das abas. */
-        private val TABS = listOf("Sensi", "Toque", "Motor", "Atalhos")
+        private val TABS = listOf("Toque", "Motor", "Atalhos")
 
         /** Perfis de toque do `ff-touch.sh`, na ordem em que aparecem no painel. */
         private val TOUCH_PROFILES = listOf(
@@ -472,6 +539,8 @@ class OverlayService : Service() {
             "skiagl-threaded" to "SkiaGL MT",
             "skiavk-threaded" to "SkiaVK MT",
         )
+
+        /** Retorno de `onStartCommand`: mantém o serviço vivo entre partidas. */
 
         /** O usuário liberou "aparecer por cima de outros apps"? */
         fun canDraw(context: Context): Boolean =

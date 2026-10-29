@@ -326,6 +326,29 @@ nativa além do necessário para conectar e rodar os comandos.
   abre o painel `#logspanel` e busca `log_all` (histórico **completo**, sem
   truncar) em vez de `log` (últimas 40). No app, `logAllImpl()`; no site,
   `otm_log_all()`. O botão "Histórico" foi unificado em Logs.
+  Cada linha guarda o que a ação **tentou** (`applies`), o que **mudou**
+  (`changed`), quantas **falharam** (`failed`), as `reasons` (as linhas do
+  script que explicam a falha — `✕`/`X` com o valor lido) e a saída crua
+  (`out`, cortada em 6000 caracteres). A linha com detalhe é clicável
+  (`.logsrow.has-det`) e abre as razões + a saída. O mesmo formato é gravado
+  pelo PHP (`otm_log`) e pelo Kotlin (`logAppend`), e o teste `t_logs` falha se
+  os dois lados divergirem.
+  Como a saída crua entra no log, o arquivo é **podado**: acima de ~1,5 MB
+  ficam as últimas 800 execuções (`otm_log_trim`/`trimLog`, `LOG_MAX`), no
+  mesmo limite dos dois lados.
+- **Painel flutuante (overlay sobre o jogo).** `OverlayService` (janela
+  `TYPE_APPLICATION_OVERLAY`, precisa de `SYSTEM_ALERT_WINDOW`) mostra o painel
+  por cima do Free Fire. O título é só **"00"** e o conteúdo é organizado em
+  **abas** por categoria — `TABS` = `Toque`, `Motor`, `Atalhos` (a aba **Sensi
+  saiu**: o overlay aplica o headshot da sensi, mas não lê mais o `sensi.sh`).
+  O visual segue o tema do painel: fundo arredondado, `setBackgroundBlurRadius`
+  (Android 12+), botões de vidro (pílula translúcida) e a cor/fonte escolhidas
+  na engrenagem. Cor e fonte vêm de `OtmUi` (SharedPreferences `otm-ui`), que o
+  WebView alimenta pela ponte `ui_prefs`; `OtmUi.onChanged` faz o overlay se
+  redesenhar na hora. As cores do overlay são **Strings hex** (helpers `col()`,
+  `accentA(alpha)`), não `Int`, e as fontes empacotadas são carregadas por
+  `FONT_FILES` (ver *Aparência*). O overlay usa o **mesmo executor** do painel
+  (`OtmExec.run` + `OtmRunner.current`), senão divergiria do painel.
 - **Armadilhas do painel (já custaram bug).** Duas coisas que o CSS/JS do painel
   não perdoa, porque o HTML é gerado (`web/index.php` → `scratch/`):
   (1) **CSS não pode depender de `.card-choice`** para layout de `.opts`: nem todo
@@ -624,6 +647,13 @@ selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão 
   de destaque (inclui **prata**) e fontes; os swatches/segmentos são casados por
   `data-accent`/`data-font` com essas chaves. O seletor de fonte quebra em várias
   linhas (`#setFont{flex-wrap:wrap}`) por ter 7 opções.
+  As fontes são **empacotadas** (`.ttf` em `web/assets/fonts/` e no espelho
+  `app/src/main/assets/panel/assets/fonts/`), nunca de CDN: sem internet a fonte
+  continua valendo. Todas são OFL-1.1, então o crédito viaja junto do arquivo em
+  `assets/fonts/CREDITS.md` (nos dois lados). O painel flutuante não tem WebView:
+  ele carrega o mesmo `.ttf` com `Typeface.createFromAsset` pelo mapa
+  `FONT_FILES` do `OverlayService` (chave do `FONTS` → arquivo), com cache e
+  fallback para a fonte do sistema.
 - Categorias do painel: são 7 grupos definidos em `otm_actions()` pelo campo `group`
   (`Geral`, `Display & Touch`, `Desempenho`, `DNS e rede`, `Processos`,
   `Apps e jogos`, `Sistema`) mais a **Home** (métricas, não é grupo de ações).

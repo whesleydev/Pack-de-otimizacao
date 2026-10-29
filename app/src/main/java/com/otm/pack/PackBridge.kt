@@ -95,6 +95,7 @@ class PackBridge(
                         val muted = withContext(Dispatchers.Main) { onSoundSet(want) }
                         JSONObject().put("ok", true).put("muted", muted).toString()
                     }
+                    "ui_prefs" -> uiPrefsImpl(payload)
                     else -> err("ação desconhecida: $kind")
                 }
             } catch (t: Throwable) {
@@ -160,7 +161,7 @@ class PackBridge(
         onActionSound(if (ok) PackCatalog.SND_OK else PackCatalog.SND_ERR)
 
         onRunDone(a.group, ok)
-        logAppend(id, a.label, argv.joinToString(" "), ok, res.code)
+        logAppend(id, a.label, argv.joinToString(" "), ok, res.code, text, applies, changed, failed)
 
         return JSONObject()
             .put("ok", ok).put("code", res.code).put("out", text)
@@ -245,6 +246,22 @@ class PackBridge(
         return JSONObject().put("ok", true).put("modules", arr).toString()
     }
 
+    /**
+     * Aparência escolhida no painel (cor de destaque e fonte). O WebView guarda
+     * em localStorage, que o Service não lê; aqui persistimos em
+     * SharedPreferences e o painel flutuante passa a usar o mesmo tema.
+     */
+    private fun uiPrefsImpl(bodyJson: String): String {
+        val body = try { JSONObject(bodyJson) } catch (e: Exception) { JSONObject() }
+        val accent = body.optString("accent").ifBlank { null }
+        val ink = body.optString("ink").ifBlank { null }
+        val font = body.optString("font").ifBlank { null }
+        OtmUi.save(context, accent, ink, font)
+        return JSONObject().put("ok", true)
+            .put("accent", OtmUi.accent).put("ink", OtmUi.accentInk).put("font", OtmUi.font)
+            .toString()
+    }
+
     private fun logImpl(): String {
         val f = File(packDir(), "state/log.jsonl")
         val arr = JSONArray()
@@ -321,7 +338,7 @@ class PackBridge(
         val res = shell(cmd)
         val out = joinOutput(res.stdout, res.stderr)
         termAppend(cmd, out)
-        logAppend("terminal", "Terminal: " + cmd.take(80), "sh -c " + cmd, res.ok, res.code)
+        logAppend("terminal", "Terminal: " + cmd.take(80), "sh -c " + cmd, res.ok, res.code, out)
         return JSONObject().put("ok", res.ok).put("code", res.code).put("out", out).toString()
     }
 
@@ -348,9 +365,13 @@ class PackBridge(
     /**
      * Registra a execução no histórico (`state/log.jsonl`) — é o que o painel
      * mostra em "Logs". Mesmo formato do lado PHP (`otm_log`), para os dois
-     * painéis lerem igual.
+     * painéis lerem igual: além de ok/erro, guarda o que o script tentou
+     * (applies/changed/failed), as linhas que explicam a falha e a saída crua.
      */
-    private fun logAppend(id: String, label: String, cmd: String, ok: Boolean, code: Int) {
+    private fun logAppend(
+        id: String, label: String, cmd: String, ok: Boolean, code: Int,
+        out: String = "", applies: Int = 0, changed: Int = 0, failed: Int = 0,
+    ) {
         try {
             val f = File(packDir(), "state/log.jsonl")
             f.parentFile?.mkdirs()
@@ -358,9 +379,48 @@ class PackBridge(
                 .put("ts", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date()))
                 .put("id", id).put("label", label).put("cmd", cmd)
                 .put("ok", ok).put("code", code)
+                .put("applies", applies).put("changed", changed).put("failed", failed)
+                .put("reasons", JSONArray(failReasons(out)))
+                .put("out", out.take(6000))
                 .toString()
             f.appendText(rec + "\n")
+            trimLog(f)
         } catch (_: Throwable) {}
+    }
+
+    /**
+     * O log agora guarda a saída crua de cada ação, então cresce rápido. Mantém
+     * as últimas [LOG_MAX] linhas: o histórico continua completo para o usuário
+     * e o arquivo não vira um peso morto no aparelho.
+     */
+    private fun trimLog(f: File) {
+        try {
+            if (f.length() < 1_500_000) return
+            val keep = f.readLines().filter { it.isNotBlank() }.takeLast(LOG_MAX)
+            f.writeText(keep.joinToString("\n") + "\n")
+        } catch (_: Throwable) {}
+    }
+
+    /**
+     * Linhas que explicam POR QUE falhou. Os scripts marcam a falha com "✕"/"X"
+     * e dizem o valor lido de volta (ex.: "X tcp_congestion_control nao mudou
+     * (lido: cubic)"). Sem isso o log só dizia "erro".
+     */
+    private fun failReasons(out: String): List<String> {
+        if (out.isBlank()) return emptyList()
+        val clean = out.replace(Regex("\u001B\\[[0-9;]*m"), "")
+        val hit = Regex(
+            "^[✕X]|(n[ãa]o (mudou|pegou|consegui|aceitou|encontrei|dispon[íi]vel|existe|permitido)" +
+                "|falhou|falha\\(s\\)|sem acesso|denied|denial|not found)",
+            RegexOption.IGNORE_CASE,
+        )
+        return clean.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && hit.containsMatchIn(it) }
+            .map { it.replace(Regex("^[✕X]\\s*"), "") }
+            .distinct()
+            .take(12)
+            .toList()
     }
 
     private fun actionsImpl(): String {
@@ -493,6 +553,8 @@ class PackBridge(
     }
 
     private companion object {
+        /** Quantas execuções o log guarda antes de podar as mais antigas. */
+        const val LOG_MAX = 800
         val PKG = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$")
         val HOST = Regex("^[A-Za-z0-9]([A-Za-z0-9.-]{0,61}[A-Za-z0-9])?$")
         val INT = Regex("^-?\\d+$")
