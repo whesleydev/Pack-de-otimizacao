@@ -737,3 +737,13 @@ recente; para citar uma versão fixa, use `releases/download/<tag>/<arquivo>`.
 Confirme o link **baixando** o arquivo e comparando o SHA-256 (não confie só no
 `201` do upload).
 
+O CI (`.github/workflows/build.yml`, job `plugins`) **cria a release sozinho**
+quando a tag `v*` chega: usa o `CHANGELOG.md` como corpo e sobe só os `.zip` de
+`releases/` + o `SHA256SUMS.txt`. O **APK não é publicado pelo CI** — depois do
+run ficar verde, anexe o APK e o `.sha256` no release já criado
+(`POST https://uploads.github.com/.../releases/<id>/assets?name=<arquivo>`) e
+renomeie a release para o padrão `"<versão> — <resumo>"` (o CI a cria com o nome
+igual à tag). Fluxo completo do release: bump `VERSION`/`versionCode` →
+`git tag vX.Y.Z && git push origin vX.Y.Z` → esperar o CI → anexar o APK →
+atualizar `serve/index.html` e os `.sha256` de `releases/` e `serve/`.
+
