@@ -6,6 +6,15 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Corrigido
+- **Os créditos ficavam no meio da tela quando a aba tinha pouco conteúdo.** Em
+  telas curtas (a aba **Flutuante**, por exemplo) o conteúdo acabava e o rodapé
+  com os créditos parava logo abaixo dele, no meio do vazio. A causa era o
+  `body` não ser coluna flexível: o miolo não crescia para empurrar o rodapé
+  para baixo. Agora o `body` é `display:flex; flex-direction:column` e o miolo
+  usa `flex:1 0 auto` — o rodapé fica sempre no fim da tela. Corrigido no painel
+  do app, no `web/index.php`, no `web/login.php`, na página do guia
+  (`index.html`) e na cópia publicada (`public/guia.html`). O teste
+  `t_footer_sticky` guarda a correção.
 - **O app pedia a permissão do Shizuku a cada vez que era aberto, mesmo já
   autorizado.** O binder do Shizuku (a ponte com o serviço de shell) **chega
   depois** do `onCreate`: o app pergunta ao `ShizukuProvider` e a resposta volta
@@ -28,6 +37,22 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   atalho "Liberar acesso a dados de uso" continua na Home, onde o dado aparece.
 
 ### Adicionado
+- **Gerenciador de processos no painel flutuante (aba "Processos").** O
+  flutuante ganhou uma quarta aba para mexer na memória **no meio da partida**,
+  sem fechar o jogo: escolher quantos apps o sistema mantém em segundo plano
+  (4 · jogo, 8 · meio, 32 · multitarefa ou Padrão), **"Encerrar todos"** (fecha o
+  segundo plano poupando o jogo, o app em primeiro plano e as suas exceções),
+  **"RAM agora"**, criar a exceção do **app em 1º plano** com um toque e ver a
+  lista de **apps rodando agora** com a RAM de cada um. Em cada linha da lista há
+  um chip **"exceção"/"não encerra"**: um toque marca/desmarca aquele app como
+  "nunca encerrar" (útil para uma live que fecha quando você encerra tudo).
+- **Exceções ("X app não encerra") valem para todas as limpezas.** A lista de
+  exceções do gerenciador de processos entra no `otm_keep_list`, então o
+  "Encerrar todos" do flutuante, o Clean, o RAM Boost e o Game Clean poupam os
+  mesmos apps. Também estão no painel principal (grupo Processos): "Apps rodando
+  agora", "Encerrar todos em 2º plano", "Exceção: app não encerrar", "Exceção:
+  app em 1º plano", "Exceções (não encerrar)", "Exceção: remover" e "Exceções:
+  apagar todas".
 - **Aparência só-escura, com cor de destaque personalizada e fontes novas.** O
   app passou a ter uma identidade escura única: **não existe mais tema claro nem
   alternância** (o `<meta color-scheme>` é só `dark` e as cores escuras ficam

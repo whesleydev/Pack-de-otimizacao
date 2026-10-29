@@ -891,6 +891,41 @@ sys.exit(0)
 PY
 }
 
+# --- rodapé/creditos ficam embaixo mesmo em tela curta (não no meio da tela) ---
+t_footer_sticky() {
+    printf '\n  # rodapé: créditos no fim da tela, não no meio\n'
+    # O rodapé subia para o meio da tela em páginas/abas curtas porque o body não
+    # era coluna flexível: o conteúdo acabava e o rodapé ficava logo abaixo dele,
+    # no meio do vazio. Agora body é flex column e o miolo cresce (flex:1).
+    local app="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local login="$ROOT/web/login.php"
+    local guia="$ROOT/index.html"
+    local pguia="$ROOT/public/guia.html"
+    for f in "$app" "$web"; do
+        n="$(basename "$f")"
+        tr '\n' ' ' < "$f" > "$TMP/ft_$n"
+        grep -qE 'body\{[^}]*display:flex; *flex-direction:column' "$TMP/ft_$n" \
+            && ok "$n: body é coluna flexível" || bad "$n: body não é flex column"
+        grep -qE '\.layout\{[^}]*flex:1 0 auto' "$TMP/ft_$n" \
+            && ok "$n: o miolo cresce e empurra o rodapé" || bad "$n: miolo não empurra o rodapé"
+    done
+    tr '\n' ' ' < "$login" > "$TMP/ft_login"
+    grep -qE 'body\{[^}]*display:flex; *flex-direction:column' "$TMP/ft_login" \
+        && ok "login.php: body é coluna flexível" || bad "login.php: body não é flex column"
+    # o cartão centraliza com margin:auto; o que sobra empurra os créditos ao fim
+    grep -qE '\.wrap\{[^}]*margin:auto' "$TMP/ft_login" \
+        && ok "login.php: cartão centraliza e empurra os créditos" || bad "login.php: .wrap sem margin:auto"
+    for f in "$guia" "$pguia"; do
+        tr '\n' ' ' < "$f" > "$TMP/ft_g"
+        grep -qE 'body\{[^}]*display:flex; *flex-direction:column' "$TMP/ft_g" \
+            && ok "$(basename "$f"): body é coluna flexível" || bad "$(basename "$f"): body não é flex column"
+        grep -qE 'main\.wrap\{ *flex:1 0 auto' "$TMP/ft_g" \
+            && ok "$(basename "$f"): o miolo cresce e empurra o rodapé" \
+            || bad "$(basename "$f"): miolo não empurra o rodapé"
+    done
+}
+
 t_new_features() {
     printf '\n  # novos recursos: refresh fixo, áudio, compactação, foco de jogo, boot, multitouch\n'
     rm -rf "$HOME/.packotm"
@@ -1725,6 +1760,32 @@ t_new_scripts() {
     assert_contains "$TMP/pm_top" "processos" "proc-mgr top lista os processos"
     OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" info com.exemplo > "$TMP/pm_info" 2>&1
     grep -q 'não está rodando\|nao esta rodando\|Processos' "$TMP/pm_info" && ok "proc-mgr info responde por app" || bad "proc-mgr info mudo"
+    # --- exceções ("X app não encerra") + encerrar todos ---
+    export OTM_TEST_HOME="$TMP/pm_home"; rm -rf "$OTM_TEST_HOME"; mkdir -p "$OTM_TEST_HOME"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep com.exemplo.live > "$TMP/pm_keep" 2>&1
+    assert_contains "$TMP/pm_keep" "com.exemplo.live" "proc-mgr keep cria a exceção"
+    grep -q 'com.exemplo.live' "$OTM_TEST_HOME/.packotm/procmgr/keep" \
+        && ok "exceção fica guardada no estado" || bad "exceção não foi guardada"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep-list > "$TMP/pm_klist" 2>&1
+    assert_contains "$TMP/pm_klist" "com.exemplo.live" "proc-mgr keep-list mostra a exceção"
+    # a exceção entra na lista que a limpeza respeita (common.sh)
+    k="$(HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh -c ". '$ROOT/scripts/common.sh'; otm_keep_list")"
+    case " $k " in *" com.exemplo.live "*) ok "exceção vale para o clean/ram-boost" ;;
+        *) bad "exceção não entrou em otm_keep_list" ;; esac
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" unkeep com.exemplo.live > "$TMP/pm_unk" 2>&1
+    grep -q 'com.exemplo.live' "$OTM_TEST_HOME/.packotm/procmgr/keep" \
+        && bad "unkeep não removeu a exceção" || ok "proc-mgr unkeep remove a exceção"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep com.exemplo.a >/dev/null 2>&1
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep-clear > "$TMP/pm_kclr" 2>&1
+    [ -s "$OTM_TEST_HOME/.packotm/procmgr/keep" ] && bad "keep-clear não limpou" \
+        || ok "proc-mgr keep-clear apaga todas"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" list > "$TMP/pm_list" 2>&1
+    grep -q 'app(s) rodando\|nenhum app de usuário rodando' "$TMP/pm_list" \
+        && ok "proc-mgr list responde" || bad "proc-mgr list mudo"
+    # kill avisa (e não quebra) quando não há privilégio de shell
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" kill > "$TMP/pm_kill" 2>&1
+    grep -q 'sem permissão de shell' "$TMP/pm_kill" && ok "proc-mgr kill avisa sem shell" \
+        || bad "proc-mgr kill sem aviso de permissão"
     # renice/ram/cpu/freeze/status/restore exigiam root: saíram do proc-mgr
     OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" renice com.exemplo -5 > "$TMP/pm_bad" 2>&1
     grep -qi 'módulo desconhecido\|uso:' "$TMP/pm_bad" \
@@ -2820,6 +2881,7 @@ t_pack_scripts_mirror
 t_app_login
 t_app_exec
 t_app_fixes
+t_footer_sticky
 t_new_features
 t_panel_state
 t_panel_stats
@@ -2869,9 +2931,21 @@ t_overlay() {
         || ok "overlay não usa mais o título antigo"
     # organizado em CATEGORIAS (abas), não numa lista única
     grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
-    for t in Toque Motor Atalhos; do
+    for t in Toque Motor Processos Atalhos; do
         grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
+    # a aba Processos: limite de 2º plano, encerrar todos e exceções ("X não encerra")
+    grep -q 'proc-mgr.sh' "$svc" && ok "overlay usa o gerenciador de processos" \
+        || bad "overlay sem proc-mgr.sh"
+    grep -q 'listOf("kill")' "$svc" && ok "overlay tem o encerrar todos" || bad "overlay sem encerrar todos"
+    grep -q 'keep-fg' "$svc" && ok "overlay cria exceção para o app em 1º plano" \
+        || bad "overlay sem exceção do 1º plano"
+    grep -q 'PROC_LIMITS' "$svc" && ok "overlay escolhe o limite de processos em 2º plano" \
+        || bad "overlay sem o seletor de limite"
+    grep -q '#OTM-PROC' "$svc" && ok "overlay lê a lista de apps rodando" \
+        || bad "overlay não lê a lista de processos"
+    grep -q 'getApplicationLabel' "$svc" && ok "overlay mostra o nome do app (não só o pacote)" \
+        || bad "overlay sem nome legível do app"
     # a aba "Sensi" saiu: o flutuante é para o meio da partida, não para ler número
     if grep -q 'sensiTab\|"Sensi"' "$svc"; then
         bad "overlay ainda tem a aba Sensi"

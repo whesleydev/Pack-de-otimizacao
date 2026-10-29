@@ -349,8 +349,18 @@ nativa além do necessário para conectar e rodar os comandos.
 - **Painel flutuante (overlay sobre o jogo).** `OverlayService` (janela
   `TYPE_APPLICATION_OVERLAY`, precisa de `SYSTEM_ALERT_WINDOW`) mostra o painel
   por cima do Free Fire. O título é só **"00"** e o conteúdo é organizado em
-  **abas** por categoria — `TABS` = `Toque`, `Motor`, `Atalhos` (a aba **Sensi
-  saiu**: o overlay aplica o headshot da sensi, mas não lê mais o `sensi.sh`).
+  **abas** por categoria — `TABS` = `Toque`, `Motor`, `Processos`, `Atalhos` (a
+  aba **Sensi saiu**: o overlay aplica o headshot da sensi, mas não lê mais o
+  `sensi.sh`).
+  A aba **Processos** é o gerenciador de segundo plano para o meio da partida:
+  seletor de limite (`PROC_LIMITS` → `adb-tweaks.sh proc_limit`), "Encerrar
+  todos" (`proc-mgr.sh kill`), "RAM agora" (`ram-boost.sh boost normal`), criar
+  a exceção do app em 1º plano (`proc-mgr.sh keep-fg`), ver as exceções e a lista
+  de **apps rodando agora** com a RAM de cada um. A lista vem do
+  `proc-mgr.sh list` (linhas `#OTM-PROC`, lidas por `parseProcList`), o nome
+  legível vem do `PackageManager` (`getApplicationLabel`, com o pacote como
+  reserva) e cada linha traz um chip "exceção"/"não encerra" que chama
+  `proc-mgr.sh keep|unkeep`.
   O visual segue o tema do painel: fundo arredondado, `setBackgroundBlurRadius`
   (Android 12+), botões de vidro (pílula translúcida) e a cor/fonte escolhidas
   na engrenagem. Cor e fonte vêm de `OtmUi` (SharedPreferences `otm-ui`), que o
@@ -359,7 +369,7 @@ nativa além do necessário para conectar e rodar os comandos.
   `accentA(alpha)`), não `Int`, e as fontes empacotadas são carregadas por
   `FONT_FILES` (ver *Aparência*). O overlay usa o **mesmo executor** do painel
   (`OtmExec.run` + `OtmRunner.current`), senão divergiria do painel.
-- **Armadilhas do painel (já custaram bug).** Duas coisas que o CSS/JS do painel
+- **Armadilhas do painel (já custaram bug).** Três coisas que o CSS/JS do painel
   não perdoa, porque o HTML é gerado (`web/index.php` → `scratch/`):
   (1) **CSS não pode depender de `.card-choice`** para layout de `.opts`: nem todo
   card de opções tem essa classe (o de Perfil de Desempenho não tem), e o cartão
@@ -371,6 +381,13 @@ nativa além do necessário para conectar e rodar os comandos.
   pede confirmação". O certo é abrir o modal (`askConfirm`) quando `a.confirm` e
   deixar o `runPending` reexecutar com `confirmed=true`. Ao mexer em `web/index.php`,
   replique em `assets/panel/index.html` (os dois têm o mesmo CSS/JS).
+  (3) **O rodapé com os créditos sobe para o meio da tela em páginas/abas curtas**
+  se o `body` não for coluna flexível: o conteúdo acaba e o rodapé para logo
+  abaixo dele, no meio do vazio. O `body` precisa de
+  `display:flex; flex-direction:column` e o miolo de `flex:1 0 auto` (o painel usa
+  `.layout`, o login usa `.wrap{margin:auto}`, o guia usa `main.wrap`). O teste
+  `t_footer_sticky` cobre as cinco páginas (`assets/panel/index.html`,
+  `web/index.php`, `web/login.php`, `index.html`, `public/guia.html`).
 - **Efeitos visuais desligados pelas ações de desempenho (já custou bug).** Todo
   ajuste de performance (`perf`, `gpu`, `fluidez`, `clean`, `smart-opt` e o pack
   recomendado) grava `disable_window_blurs=1` e
@@ -437,10 +454,18 @@ nativa além do necessário para conectar e rodar os comandos.
   está visível (`startStats`/`stopStats`). Só leitura; campo indisponível fica `""`
   e a UI mostra **—**. A Home é a seção `#Home` e é a primeira do menu.
 - **Gerenciador de processos** (`scripts/proc-mgr.sh`, na whitelist do `lib.php`):
-  `top [n]` (mais CPU/RAM via `/proc`), `info <pkg>`, `ram <pkg> <mb>`,
-  `cpu <pkg> <grupo>`, `renice <pkg> <nice>`, `freeze`/`unfreeze`,
-  `status`/`restore`. Sem root avisa e não aplica; a categoria **Processos**
-  agrupa essas ações.
+  só leitura + encerrar/exceções — limite de RAM, `cpuset`, `nice` e `SIGSTOP`
+  exigem root e **saíram** do pack. Comandos: `top [n]` (mais CPU/RAM via
+  `/proc`), `list [n]` (apps de usuário rodando, com RAM e o estado da exceção),
+  `info <pkg>`, `kill` (encerra o 2º plano poupando exceções/1º plano/jogo),
+  `keep <pkg>` / `unkeep <pkg>` / `keep-fg` / `keep-list` / `keep-clear`
+  (exceções "X app não encerra", guardadas em `$ST/procmgr/keep`). A categoria
+  **Processos** agrupa essas ações.
+  `list` imprime uma linha legível por máquina por app rodando
+  (`#OTM-PROC pkg=<pacote> ram=<MB> protected=<0|1>`), que é o que a aba
+  **Processos** do painel flutuante lê para montar a lista com nome e RAM.
+  As exceções entram no `otm_keep_list` (`common.sh`): valem para o "Encerrar
+  todos" do flutuante **e** para o `clean.sh`/`ram-boost.sh`/`game-clean.sh`.
 - **Anti-relog** (`scripts/keep-alive.sh`, na whitelist do `lib.php`): impede o
   app/jogo de "relogar" (abrir do zero e pedir login) ao ser morto em segundo
   plano. `on <pkg> [jogo]` isenta do Doze, libera `RUN_IN_BACKGROUND`/

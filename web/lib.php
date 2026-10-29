@@ -678,6 +678,38 @@ function otm_actions(): array {
           'help' => 'Detalha o app escolhido: quantos processos tem, quanto de RAM está usando, a prioridade (nice) e o oom_score. Tudo lido do aparelho. Só leitura.',
           'argv' => ['proc-mgr.sh', 'info', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.list', 'group' => 'Processos', 'label' => 'Apps rodando agora',
+          'desc' => 'Lista os apps de usuário rodando neste momento, com a RAM de cada um.',
+          'help' => 'Mostra os apps de usuário que estão rodando agora, com quanta RAM cada um ocupa, e marca os que estão protegidos. É a mesma lista que o painel flutuante mostra no meio da partida. Só leitura.',
+          'argv' => ['proc-mgr.sh', 'list']]);
+    $add(['id' => 'proc.kill', 'group' => 'Processos', 'label' => 'Encerrar todos em 2º plano',
+          'desc' => 'Fecha os apps de fundo de uma vez, poupando as suas exceções.',
+          'help' => 'Encerra de uma vez os apps que estão rodando em segundo plano e libera a RAM. Ficam de fora: o app em primeiro plano, o jogo do Modo Competitivo, o próprio pack e as suas exceções (procure "Exceção: não encerrar" abaixo). É o botão "encerrar todos" do painel flutuante.',
+          'argv' => ['proc-mgr.sh', 'kill'],
+          'risk' => 'careful']);
+    $add(['id' => 'proc.keep', 'group' => 'Processos', 'label' => 'Exceção: app não encerrar',
+          'desc' => 'Marca um app que NUNCA deve ser encerrado (ex.: uma live).',
+          'help' => 'Cria uma exceção: o app escolhido nunca é encerrado pelo "Encerrar todos", pelo Clean, pelo RAM Boost nem pelo Game Clean. Serve para coisas que você não quer que fechem — por exemplo, uma live do TikTok rodando em segundo plano. Remova em "Exceção: remover".',
+          'argv' => ['proc-mgr.sh', 'keep', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.keep_fg', 'group' => 'Processos', 'label' => 'Exceção: app em 1º plano',
+          'desc' => 'Cria a exceção para o app que está na tela agora.',
+          'help' => 'Descobre qual app está em primeiro plano neste momento e cria a exceção para ele, sem você precisar procurar o pacote. Útil quando a live já está aberta.',
+          'argv' => ['proc-mgr.sh', 'keep-fg']]);
+    $add(['id' => 'proc.keep_list', 'group' => 'Processos', 'label' => 'Exceções (não encerrar)',
+          'desc' => 'Lista os apps marcados como "não encerrar".',
+          'help' => 'Lista as exceções: os apps que o pack nunca encerra, nem no "Encerrar todos" nem nas limpezas. Só leitura.',
+          'argv' => ['proc-mgr.sh', 'keep-list']]);
+    $add(['id' => 'proc.unkeep', 'group' => 'Processos', 'label' => 'Exceção: remover',
+          'desc' => 'Tira o app da lista de "não encerrar".',
+          'help' => 'Remove a exceção do app escolhido: ele volta a poder ser encerrado em segundo plano como os outros.',
+          'argv' => ['proc-mgr.sh', 'unkeep', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.keep_clear', 'group' => 'Processos', 'label' => 'Exceções: apagar todas',
+          'desc' => 'Limpa de uma vez a lista de "não encerrar".',
+          'help' => 'Apaga todas as exceções de uma vez, devolvendo o comportamento normal: nenhum app fica poupado além do jogo e do que está em primeiro plano.',
+          'argv' => ['proc-mgr.sh', 'keep-clear'],
+          'risk' => 'careful']);
                             
     // ----- Manter vivo (anti-relog) -----
     $add(['id' => 'keep.on', 'group' => 'Processos', 'label' => 'Manter app vivo (não relogar)',

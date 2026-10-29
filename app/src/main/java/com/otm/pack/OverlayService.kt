@@ -36,8 +36,8 @@ import kotlinx.coroutines.launch
  * `TYPE_APPLICATION_OVERLAY`, que pode ser arrastada e minimizada.
  *
  * O painel se chama só **"00"** e é organizado em **categorias (abas)** — Toque,
- * Motor e Atalhos. Antes tudo saía numa lista corrida e, no meio da partida,
- * achar um botão era lento; agora cada aba mostra só o que interessa.
+ * Motor, Processos e Atalhos. Antes tudo saía numa lista corrida e, no meio da
+ * partida, achar um botão era lento; agora cada aba mostra só o que interessa.
  *
  * **Visual**: os botões são pílulas de vidro (fundo translúcido + brilho na cor
  * de destaque) e a janela pede *blur* por trás (Android 12+ com "cross-window
@@ -60,6 +60,8 @@ class OverlayService : Service() {
     private var bubble: View? = null
     private var statusText: TextView? = null
     private var content: LinearLayout? = null
+    /** Onde a lista de "Rodando agora" é montada (aba Processos). */
+    private var procListBox: LinearLayout? = null
     private val tabChips = mutableListOf<TextView>()
     /** Fontes já carregadas do asset: não reler o .ttf a cada texto criado. */
     private val fontCache = HashMap<String, Typeface>()
@@ -186,6 +188,8 @@ class OverlayService : Service() {
     private fun selectTab(index: Int) {
         val box = content ?: return
         box.removeAllViews()
+        // a lista de processos é recriada a cada visita à aba: não segurar view removida
+        procListBox = null
         box.addView(tabView(index), matchWrap())
         for ((i, chip) in tabChips.withIndex()) {
             val on = i == index
@@ -199,6 +203,7 @@ class OverlayService : Service() {
     private fun tabView(index: Int): View = when (index) {
         0 -> touchTab()
         1 -> engineTab()
+        2 -> procTab()
         else -> shortcutsTab()
     }
 
@@ -232,6 +237,150 @@ class OverlayService : Service() {
             })
         }
         return box
+    }
+
+    /**
+     * Aba Processos: o gerenciador de segundo plano para usar no meio da partida.
+     *
+     * - escolhe quantos apps o sistema mantém em cache (limite de 2º plano);
+     * - lista os apps rodando agora, com a RAM de cada um;
+     * - "Encerrar todos" fecha o 2º plano poupando o jogo, o 1º plano e as
+     *   exceções;
+     * - "Exceção" marca um app que nunca deve ser encerrado (ex.: a live do
+     *   TikTok, que fecha se você encerrar tudo).
+     *
+     * O app em 1º plano é identificado na hora; a lista e as exceções vêm do
+     * `proc-mgr.sh` (fonte única, a mesma do painel principal).
+     */
+    private fun procTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        box.addView(sectionHeader("Processos em 2º plano"))
+        var row: LinearLayout? = null
+        for ((i, l) in PROC_LIMITS.withIndex()) {
+            if (i % 2 == 0) {
+                row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                box.addView(row, matchWrap())
+            }
+            row!!.addView(smallButton(l.second) {
+                runScript("adb-tweaks.sh", listOf("proc_limit", l.first), "Limite: ${l.second}")
+            })
+        }
+
+        box.addView(sectionHeader("Ações"))
+        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row1.addView(smallButton("Encerrar todos") {
+            runScript("proc-mgr.sh", listOf("kill"), "Encerrar todos")
+        })
+        row1.addView(smallButton("RAM agora") {
+            runScript("ram-boost.sh", listOf("boost", "normal"), "Liberar RAM")
+        })
+        box.addView(row1, matchWrap())
+
+        box.addView(sectionHeader("Exceção: não encerrar"))
+        val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row2.addView(smallButton("App em 1º plano") {
+            runScript("proc-mgr.sh", listOf("keep-fg"), "Exceção (1º plano)")
+        })
+        row2.addView(smallButton("Ver exceções") {
+            runScript("proc-mgr.sh", listOf("keep-list"), "Exceções")
+        })
+        box.addView(row2, matchWrap())
+
+        box.addView(sectionHeader("Rodando agora"))
+        val lista = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(lista, matchWrap())
+        procListBox = lista
+        loadProcList()
+        return box
+    }
+
+    /** Mostra os apps rodando agora, com a RAM de cada um e o que está poupado. */
+    private fun loadProcList() {
+        val box = procListBox ?: return
+        box.removeAllViews()
+        box.addView(procNote("carregando…"))
+        scope.launch {
+            val res = OtmExec.run(this@OverlayService, OtmRunner.current, "proc-mgr.sh", listOf("list"))
+            val linhas = parseProcList(joinOutput(res.stdout, res.stderr))
+            post {
+                box.removeAllViews()
+                if (linhas.isEmpty()) {
+                    box.addView(procNote("nenhum app rodando (fora o pack)"))
+                } else {
+                    for (p in linhas) box.addView(procRow(p))
+                }
+                val rodando = TextView(this@OverlayService).apply {
+                    text = "atualizar lista"
+                    textSize = 11f
+                    setTextColor(col(accent()))
+                    typeface = bodyTypeface()
+                    setPadding(0, dp(8), 0, 0)
+                    setOnClickListener { loadProcList() }
+                }
+                box.addView(rodando)
+            }
+        }
+    }
+
+    /** Uma linha por app rodando: nome (ou pacote), RAM e o estado da exceção. */
+    private fun procRow(p: ProcInfo): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val nome = TextView(this).apply {
+            text = appLabel(p.pkg)
+            textSize = 11.5f
+            setTextColor(col(C_TEXT))
+            typeface = bodyTypeface()
+            maxLines = 1
+        }
+        row.addView(nome, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(TextView(this).apply {
+            text = if (p.ramMb > 0) "${p.ramMb}MB" else "—"
+            textSize = 11f
+            setTextColor(col(C_MUTED))
+            typeface = bodyTypeface()
+            setPadding(dp(6), 0, dp(6), 0)
+        })
+        // toque na linha: cria/remove a exceção deste app (o "X não encerra")
+        val chip = TextView(this).apply {
+            text = if (p.protegido) "não encerra" else "exceção"
+            textSize = 10.5f
+            gravity = Gravity.CENTER
+            typeface = bodyTypeface()
+            setTextColor(col(if (p.protegido) accentInk() else accent()))
+            background = if (p.protegido) pill(dp(10).toFloat(), accent())
+            else pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setOnClickListener {
+                runScript(
+                    "proc-mgr.sh",
+                    listOf(if (p.protegido) "unkeep" else "keep", p.pkg),
+                    if (p.protegido) "Exceção removida" else "Exceção criada",
+                )
+                postDelayed({ loadProcList() }, 900)
+            }
+        }
+        row.addView(chip)
+        return row
+    }
+
+    private fun procNote(txt: String): TextView =
+        TextView(this).apply {
+            text = txt
+            textSize = 11f
+            setTextColor(col(C_MUTED))
+            typeface = bodyTypeface()
+        }
+
+    /** Nome legível do app; se o sistema não der, cai no próprio pacote. */
+    private fun appLabel(pkg: String): String = try {
+        val pm = packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+    } catch (_: Throwable) {
+        pkg
     }
 
     /** Aba Atalhos: latência, limpeza de RAM e game clean. */
@@ -461,6 +610,9 @@ class OverlayService : Service() {
 
     private fun post(block: () -> Unit) = android.os.Handler(mainLooper).post(block)
 
+    private fun postDelayed(ms: Long, block: () -> Unit) =
+        android.os.Handler(mainLooper).postDelayed(block, ms)
+
     // ---- utilidades ----------------------------------------------------------
 
     private fun buildNotification(): Notification {
@@ -520,7 +672,42 @@ class OverlayService : Service() {
         )
 
         /** Categorias do painel, na ordem das abas. */
-        private val TABS = listOf("Toque", "Motor", "Atalhos")
+        private val TABS = listOf("Toque", "Motor", "Processos", "Atalhos")
+
+        /** Limite de processos em 2º plano aceito por `adb-tweaks.sh proc_limit`. */
+        private val PROC_LIMITS = listOf(
+            "4" to "4 · jogo",
+            "8" to "8 · meio",
+            "32" to "32 · multitarefa",
+            "padrao" to "Padrão",
+        )
+
+        /** Um app rodando, lido das linhas `#OTM-PROC` do `proc-mgr.sh list`. */
+        private data class ProcInfo(val pkg: String, val ramMb: Int, val protegido: Boolean)
+
+        /**
+         * Lê as linhas `#OTM-PROC pkg=… ram=… protected=…` que o `proc-mgr.sh`
+         * emite. Ignora qualquer outra linha (avisos, cores, o `#OTM-RESULT`).
+         */
+        private fun parseProcList(out: String): List<ProcInfo> {
+            val list = ArrayList<ProcInfo>()
+            for (line in out.split("\n")) {
+                val t = line.trim()
+                if (!t.startsWith("#OTM-PROC")) continue
+                var pkg = ""; var ram = 0; var prot = false
+                for (tok in t.removePrefix("#OTM-PROC").trim().split(Regex("\\s+"))) {
+                    val i = tok.indexOf('=')
+                    if (i <= 0) continue
+                    when (tok.substring(0, i)) {
+                        "pkg" -> pkg = tok.substring(i + 1)
+                        "ram" -> ram = tok.substring(i + 1).toIntOrNull() ?: 0
+                        "protected" -> prot = tok.substring(i + 1) == "1"
+                    }
+                }
+                if (pkg.isNotEmpty()) list.add(ProcInfo(pkg, ram, prot))
+            }
+            return list.sortedByDescending { it.ramMb }
+        }
 
         /** Perfis de toque do `ff-touch.sh`, na ordem em que aparecem no painel. */
         private val TOUCH_PROFILES = listOf(

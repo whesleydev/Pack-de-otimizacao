@@ -7,14 +7,26 @@
 #
 #  Uso:
 #     proc-mgr.sh top [n]              # N processos que mais gastam (CPU/RAM)
+#     proc-mgr.sh list [n]             # apps de usuário RODANDO agora (RAM, exceção)
 #     proc-mgr.sh info <pkg>           # PID, RAM, nice, oom_score do app
+#     proc-mgr.sh kill                 # encerra o 2º plano (poupa exceções/1º plano/jogo)
+#     proc-mgr.sh keep <pkg>           # exceção: este app NUNCA é encerrado
+#     proc-mgr.sh unkeep <pkg>         # remove a exceção
+#     proc-mgr.sh keep-fg              # cria exceção para o app em 1º plano agora
+#     proc-mgr.sh keep-list            # lista as exceções
+#     proc-mgr.sh keep-clear           # apaga todas as exceções
 #
-#  Só leitura: limite de RAM, cpuset, nice e congelamento (SIGSTOP) exigem root,
-#  então saíram deste pack.
+#  "list" imprime uma linha legível por máquina por app rodando:
+#     #OTM-PROC pkg=<pacote> ram=<MB> protected=<0|1>
+#  O painel flutuante usa essas linhas para montar a lista com nome e RAM.
+#
+#  Só leitura (fora o kill/keep): limite de RAM, cpuset, nice e congelamento
+#  (SIGSTOP) exigem root, então saíram deste pack.
 # =============================================================================
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
+scope_begin proc-mgr
 otm_v_reset
 
 PM_ST="$ST/procmgr"
@@ -74,10 +86,126 @@ cmd_info() {
     done
 }
 
+# --- exceções ("X app não vai encerrar") --------------------------------------
+# Guardadas ao lado do anti-relog, que já é a lista do que a limpeza respeita:
+# assim o "encerrar todos" e o clean/ram-boost poupam os mesmos apps.
+PM_KEEP="$ST/procmgr/keep"
+
+_pm_valid() {
+    case "$1" in ''|*[!A-Za-z0-9._]*) return 1 ;; *.*) return 0 ;; *) return 1 ;; esac
+}
+_pm_keep_has() { [ -f "$PM_KEEP" ] && grep -qxF "$1" "$PM_KEEP" 2>/dev/null; }
+_pm_keep_add() { _pm_keep_has "$1" || { mkdir -p "$PM_ST" 2>/dev/null; echo "$1" >> "$PM_KEEP"; }; }
+_pm_keep_del() {
+    [ -f "$PM_KEEP" ] || return 0
+    grep -vxF "$1" "$PM_KEEP" > "$PM_KEEP.tmp" 2>/dev/null
+    mv "$PM_KEEP.tmp" "$PM_KEEP" 2>/dev/null
+}
+
+# RAM (PSS) somada de todos os processos do app, em MB (vazio se não der).
+pm_ram_mb() {
+    total=0; achou=""
+    for p in $(pids_of "$1"); do
+        r="$(rss_of "$p")"
+        [ -n "$r" ] || continue
+        total=$((total + r)); achou=1
+    done
+    [ -n "$achou" ] && echo $((total / 1024))
+}
+
+# cmd_list [n] -> apps de usuário RODANDO agora, com RAM e se estão protegidos.
+cmd_list() {
+    n="${1:-40}"
+    case "$n" in ''|*[!0-9]*) n=40 ;; esac
+    fg="$(otm_fg_pkg)"
+    i=0
+    for p in $(sh_get 'pm list packages -3' | sed 's/^package://'); do
+        [ -n "$p" ] || continue
+        pids="$(pids_of "$p")"
+        [ -n "$pids" ] || continue
+        i=$((i + 1))
+        [ "$i" -gt "$n" ] && break
+        prot=0
+        _pm_keep_has "$p" && prot=1
+        case " $fg " in *" $p "*) prot=1 ;; esac
+        printf '#OTM-PROC pkg=%s ram=%s protected=%s\n' "$p" "$(pm_ram_mb "$p")" "$prot"
+    done
+    if [ "$i" -eq 0 ]; then
+        say "nenhum app de usuário rodando agora (fora o próprio pack)"
+    else
+        say "$i app(s) rodando — protegidos ficam de fora do encerrar"
+    fi
+}
+
+cmd_keep() {
+    pkg="$1"
+    _pm_valid "$pkg" || { err "uso: keep <pkg>"; return 1; }
+    _pm_keep_add "$pkg"
+    otm_v_inc apply; otm_v_inc changed
+    say "exceção criada: $pkg nunca será encerrado"
+}
+
+cmd_unkeep() {
+    pkg="$1"
+    _pm_valid "$pkg" || { err "uso: unkeep <pkg>"; return 1; }
+    _pm_keep_del "$pkg"
+    otm_v_inc apply; otm_v_inc changed
+    say "exceção removida: $pkg"
+}
+
+cmd_keep_fg() {
+    pkg="$(otm_fg_pkg)"
+    [ -n "$pkg" ] || { warn "não consegui identificar o app em primeiro plano"; return 1; }
+    _pm_valid "$pkg" || { err "pacote inválido em 1º plano: '$pkg'"; return 1; }
+    _pm_keep_add "$pkg"
+    otm_v_inc apply; otm_v_inc changed
+    say "exceção criada para o app em 1º plano: $pkg"
+}
+
+cmd_keep_list() {
+    if [ -s "$PM_KEEP" ]; then
+        say "Exceções (nunca encerrar):"
+        sed 's/^/    /' "$PM_KEEP"
+    else
+        say "nenhuma exceção ainda"
+    fi
+    say "crie com: proc-mgr.sh keep <pkg>"
+}
+
+cmd_keep_clear() {
+    n=0
+    [ -s "$PM_KEEP" ] && n="$(grep -c . "$PM_KEEP")"
+    : > "$PM_KEEP" 2>/dev/null
+    otm_v_inc apply
+    [ "$n" -gt 0 ] && otm_v_inc changed
+    say "exceções apagadas ($n)"
+}
+
+# cmd_kill -> encerra o 2º plano de uma vez, poupando exceções, o app em 1º
+# plano, o jogo e o essencial do sistema. É o "encerrar todos" do flutuante.
+cmd_kill() {
+    require_shell "encerrar apps de fundo" || return 1
+    keep="$(otm_keep_list) $(cat "$PM_KEEP" 2>/dev/null | tr '\n' ' ')"
+    say "Encerrando apps de fundo (exceções e 1º plano ficam)"
+    n="$(otm_bg_kill $keep)"
+    otm_v_inc apply
+    if [ "${n:-0}" -gt 0 ] 2>/dev/null; then otm_v_inc changed; else otm_v_inc failed; fi
+    say "$n app(s) encerrado(s)"
+    r="$(otm_ram_livre_mb)"
+    [ -n "$r" ] && say "RAM livre agora: ${r}MB"
+}
+
 case "$1" in
-    top)      shift; cmd_top "$@" ;;
-    info)     shift; cmd_info "$@" ;;
-    *)        sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//' ;;
+    top)        shift; cmd_top "$@" ;;
+    list)       shift; cmd_list "$@" ;;
+    info)       shift; cmd_info "$@" ;;
+    kill)       shift; cmd_kill "$@" ;;
+    keep)       shift; cmd_keep "$@" ;;
+    unkeep)     shift; cmd_unkeep "$@" ;;
+    keep-fg)    shift; cmd_keep_fg "$@" ;;
+    keep-list)  shift; cmd_keep_list "$@" ;;
+    keep-clear) shift; cmd_keep_clear "$@" ;;
+    *)          sed -n '3,26p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
 rc=$?
 otm_v_report proc-mgr

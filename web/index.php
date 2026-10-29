@@ -204,6 +204,9 @@ body{
   font-family:var(--font); color:var(--ink); line-height:1.55; min-height:100dvh;
   -webkit-text-size-adjust:100%; overflow-x:clip;
   background:var(--paper);
+  /* Coluna flexível: sem isto o rodapé sobe para o meio da tela quando a
+     categoria aberta tem pouco conteúdo (a aba Flutuante, por exemplo). */
+  display:flex; flex-direction:column;
 }
 /* papel de parede: fundo preenche a tela e a imagem aparece inteira (sem corte) */
 html::before{content:"";position:fixed;inset:0;z-index:-3;
@@ -304,7 +307,8 @@ button{font:inherit;color:inherit}
 
 /* ---- layout --------------------------------------------------------------- */
 .layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);
-  gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px)}
+  gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px);
+  width:100%; flex:1 0 auto}
 .side{align-self:start;position:static}
 .side .panel{
   position:fixed; top:calc(var(--top) + 12px); z-index:30;

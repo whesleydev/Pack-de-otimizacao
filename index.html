@@ -32,7 +32,10 @@ html{scroll-behavior:smooth}
 body{
   margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2) 60%);color:var(--txt);
   font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;
+  /* Coluna flexível: mantém o rodapé (e os créditos) embaixo quando a página é curta. */
+  display:flex; flex-direction:column; min-height:100dvh;
 }
+main.wrap{flex:1 0 auto}
 a{color:var(--acc2);text-decoration:none}
 a:hover{text-decoration:underline}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}

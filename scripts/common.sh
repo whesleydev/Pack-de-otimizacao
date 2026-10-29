@@ -509,6 +509,9 @@ otm_keep_list() {
     k=""
     [ -s "$ST/game/pkg" ] && k="$k $(tr '\n' ' ' < "$ST/game/pkg")"
     [ -s "$ST/keepalive/apps" ] && k="$k $(tr '\n' ' ' < "$ST/keepalive/apps")"
+    # exceções do gerenciador de processos ("X app não vai encerrar"): valem para
+    # o encerrar-todos do flutuante E para o clean/ram-boost/game-clean.
+    [ -s "$ST/procmgr/keep" ] && k="$k $(tr '\n' ' ' < "$ST/procmgr/keep")"
     fg="$(otm_fg_pkg)"
     [ -n "$fg" ] && k="$k $fg"
     # jogos de FPS conhecidos: nunca encerrar (o usuário pode estar no meio da partida)
