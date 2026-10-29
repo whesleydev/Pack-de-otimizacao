@@ -250,6 +250,16 @@ nativa além do necessário para conectar e rodar os comandos.
 
 - `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de entrada)
   numa WebView; acertando o login, carrega `assets/panel/index.html` (o painel).
+- **O binder do Shizuku chega DEPOIS do `onCreate`** (a resposta do
+  `ShizukuProvider` volta por Binder). Checar `hasPermission()` só no `onCreate`
+  faz o app concluir "não autorizado" com a permissão já concedida — e pedir de
+  novo a cada abertura. Por isso `PanelActivity` registra
+  `addBinderReceivedListenerSticky` + `addBinderDeadListener` e concentra a
+  conexão silenciosa em `tryAutoConnectShizuku()`, chamada também no `onResume`
+  (caso o usuário libere a permissão por fora, no app do Shizuku). Esse caminho
+  **nunca** chama `requestPermission`; o pedido só sai do botão explícito.
+  `ShizukuRunner.requestPermission` devolve `false` quando o binder ainda não
+  chegou (antes lançava). Os listeners são removidos no `onDestroy`.
 - Login por **usuário e senha**, validado localmente contra a constante `OTM_AUTH`
   (`sha256("usuario:senha")`) em `login.html`. O painel (`index.html`) tem guarda de
   sessão (`otm_session` no `localStorage`); o botão Sair limpa a sessão e volta ao login.
@@ -612,23 +622,28 @@ selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão 
   `queryAndAggregateUsageStats` p/ tempo de tela) e `PackBridge.statsImpl` funde
   isso no JSON de `panel-stats.sh` (`fg_label`, `fg_pkg`, `top_apps`, `screen_time`,
   `usage_granted`). Funciona **sem shell**. Sem autorização devolve vazio e o painel
-  mostra "—" + o aviso `#usageHint`; nada é inventado. O botão fica em Configs →
-  Permissões (`setPermUsage` → `OTM.call("usage")`).
+  mostra "—" + o aviso `#usageHint`; nada é inventado. O atalho para liberar o
+  uso é o `#btnUsagePerm` da Home (`openUsageSettings`); ele **saiu** de Configs
+  → Permissões (a engrenagem ficou só com o botão do pack).
 - Home (painel): as métricas ficam em **dois grupos** (`.stat-group` + `.glabel`):
   *Sistema agora* (RAM/CPU/bateria/armazenamento/tela/tempo ligado) e *Uso do
   aparelho* (`fg`/`usage`). O grupo de uso traz o selo `#usageNeed` e o botão
   `#btnUsagePerm` (→ `openUsageSettings`), que somem quando `usage_granted` é true.
   O botão `#btnRefreshStats` fica no cabeçalho (`.boxhead`) e o `#liveBadge` mostra
   "ao vivo · há N s". Tudo é escondido/mostrado por `renderStats` (não há `esc()`).
-- Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
-  que rodam `adb-tweaks.sh perm_app|perm_ff|perm_battery|perm_all` (grupos novos,
-  reversíveis: entram na isenção do Doze via `cmd deviceidle whitelist`, ganham
-  `appops` de `RUN_IN_BACKGROUND`/`RUN_ANY_IN_BACKGROUND`/`WAKE_LOCK`/
-  `START_FOREGROUND` e desligam economia de bateria/App Standby). No lado nativo,
-  `Permissions.kt` cuida só do que o app pede sozinho (canal de notificação,
-  `POST_NOTIFICATIONS` no Android 13+ e `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`),
-  sem bloquear o painel. `PanelActivity.injectHeaderButtons` garante o botão
-  "Conectar" após cada carga da página.
+- Permissões/segundo plano: a engrenagem tem **um botão só**, "Conceder
+  permissões ao pack" (`setPermApp` → `perm.app` → `adb-tweaks.sh perm_app`).
+  Os botões "Aos Free Fire", "Ao meu jogo", "Bateria sem economia" e "Acesso a
+  dados de uso" **saíram** das Configurações a pedido: as ações
+  (`perm_ff|perm_game|perm_battery|perm_all`) continuam no catálogo/`lib.php`
+  para quem chamar por elas. Os grupos seguem reversíveis (isenção do Doze via
+  `cmd deviceidle whitelist`, `appops` de `RUN_IN_BACKGROUND`/
+  `RUN_ANY_IN_BACKGROUND`/`WAKE_LOCK`/`START_FOREGROUND`, economia de
+  bateria/App Standby desligadas). No lado nativo, `Permissions.kt` cuida só do
+  que o app pede sozinho (canal de notificação, `POST_NOTIFICATIONS` no Android
+  13+ e `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), sem bloquear o painel.
+  `PanelActivity.injectHeaderButtons` garante o botão "Conectar" após cada carga
+  da página. O teste `t_perm_script` cobra que os quatro botões **não** voltem.
 - Arrasto lateral: o topo usa `min-height` + `flex-wrap` e a página usa
   `overflow-x:clip` (o `hidden` deixava o `body` virar contêiner de rolagem e o
   menu fixo ainda esticava a largura). Papel de parede: `contain` na camada
