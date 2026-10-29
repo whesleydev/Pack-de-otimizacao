@@ -36,9 +36,21 @@ class ShizukuRunner : ShellRunner {
         false
     }
 
-    /** Pede a permissão do Shizuku (mostra o diálogo do próprio Shizuku). */
-    fun requestPermission(requestCode: Int) {
-        Shizuku.requestPermission(requestCode)
+    /**
+     * Pede a permissão do Shizuku (mostra o diálogo do próprio Shizuku).
+     *
+     * Devolve `false` quando o binder ainda não chegou: o
+     * `Shizuku.requestPermission` lança nesse caso, e pedir permissão antes do
+     * binder existir é o que fazia o diálogo reaparecer a cada abertura do app.
+     */
+    fun requestPermission(requestCode: Int): Boolean = try {
+        if (!isAvailable()) false
+        else {
+            Shizuku.requestPermission(requestCode)
+            true
+        }
+    } catch (t: Throwable) {
+        false
     }
 
     override suspend fun exec(command: String, stdin: String?): ExecResult {

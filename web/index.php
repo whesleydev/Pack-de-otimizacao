@@ -1264,11 +1264,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <b>Acesso a dados de uso</b><span>Mostra o app em primeiro plano e o tempo de uso real na Home.</span></div></div>
       </div>
       <div class="set-actions">
-        <button class="btn primary" id="setPermApp" type="button">Conceder ao app do pack</button>
-        <button class="btn" id="setPermFF" type="button">Aos Free Fire</button>
-        <button class="btn" id="setPermGame" type="button">Ao meu jogo</button>
-        <button class="btn" id="setPermBattery" type="button">Bateria sem economia</button>
-        <button class="btn" id="setPermUsage" type="button">Acesso a dados de uso</button>
+        <button class="btn primary" id="setPermApp" type="button">Conceder permissões ao pack</button>
       </div>
       <div class="set-hint" id="setPermHint">Precisa de Shizuku, ADB por Wi-Fi ou root. Dá para desfazer em "Reverter TUDO".</div>
     </div>
@@ -1511,12 +1507,9 @@ if (ccApply) ccApply.onclick = applyCustomAccent;
 if (ccHex) ccHex.onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); applyCustomAccent(); } };
 document.getElementById("setScale").oninput = e => setScale(parseInt(e.target.value, 10));
 document.getElementById("setSound").onchange = e => setSound(e.target.checked);
-const PERM_ACTION = { setPermApp: "perm.app", setPermFF: "perm.ff", setPermGame: "perm.game", setPermBattery: "perm.battery" };
+const PERM_ACTION = { setPermApp: "perm.app" };
 const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(PERM_ACTION[id], label); };
 permBtn("setPermApp", "Permissões do app do pack");
-permBtn("setPermFF", "Permissões dos Free Fire");
-permBtn("setPermGame", "Permissões do meu jogo");
-permBtn("setPermBattery", "Bateria sem economia");
 /* Acesso a dados de uso: não é um script, é uma tela do sistema. No app vira
    OTM.call("usage"); no site, avisa que só funciona no celular. Fica no card da
    Home (o pedido de permissão do app do pack cobre o resto em Configs). */
@@ -1525,8 +1518,6 @@ function openUsageSettings(){
   toast("Abrindo a tela de acesso a dados de uso…", "ok");
   try { window.OTM.call("usage", "", "usage"); } catch(e){}
 }
-const permUsageBtn = document.getElementById("setPermUsage");
-if (permUsageBtn) permUsageBtn.onclick = openUsageSettings;
 const gearReset = document.getElementById("gearReset");
 if (gearReset) gearReset.onclick = () => {
   ["otm-accent","otm-accent-hex","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));

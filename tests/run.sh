@@ -1242,8 +1242,15 @@ t_perm_game() {
              echo $a ? ($a["argv"][1] . " " . ($a["params"][0]["type"] ?? "")) : "AUSENTE";' \
         > "$TMP/permg" 2>&1
     assert_contains "$TMP/permg" "perm_game pkg" "lib: ação perm.game com escolha de jogo"
-    grep -q 'id="setPermGame"' "$ROOT/app/src/main/assets/panel/index.html" \
-        && ok "app: engrenagem tem 'Ao meu jogo'" || bad "app: sem botão do meu jogo"
+    # a engrenagem tem SÓ o botão do pack; os outros (FF, meu jogo, bateria,
+    # uso) saíram das configs a pedido — a ação em si continua no catálogo.
+    for b in setPermFF setPermGame setPermBattery setPermUsage; do
+        if grep -q "id=\"$b\"" "$ROOT/app/src/main/assets/panel/index.html" \
+           || grep -q "id=\"$b\"" "$ROOT/web/index.php"; then
+            bad "engrenagem ainda tem o botão $b"
+        fi
+    done
+    ok "engrenagem só com 'Conceder permissões ao pack'"
     grep -q '"perm.game"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: catálogo tem perm.game" || bad "app: catálogo sem perm.game"
     rm -rf "$HOME/.packotm"
@@ -1367,9 +1374,6 @@ t_usage_access() {
     # painel (app e web) mostra os cards e o botão
     grep -q 'data-stat="fg"' "$app" && grep -q 'data-stat="usage"' "$app" \
         && ok "app: cards de uso na Home" || bad "app: sem cards de uso"
-    grep -q 'id="setPermUsage"' "$app" && grep -q 'id="setPermUsage"' "$web" \
-        && ok "app+web: botão de acesso ao uso" || bad "botão de acesso ao uso ausente"
-    grep -q 'Acesso a dados de uso' "$web" && ok "web: card de permissão explicado" || bad "web: card de permissão ausente"
     # Home reorganizada: métricas em grupos, botão de liberar e atualizar no painel
     [ "$(grep -c 'stat-group' "$app")" -ge 2 ] && ok "app: métricas separadas em grupos" || bad "app: sem grupos de métricas"
     grep -q 'glabel' "$app" && grep -q 'Uso do aparelho' "$app" \
@@ -2924,6 +2928,32 @@ t_overlay() {
         && ok "catálogo do app tem a ação do painel flutuante" || bad "actions.json sem overlay.sensi"
 }
 
+t_shizuku_reconnect() {
+    printf '\n  # Shizuku: não pedir permissão de novo a cada abertura\n'
+    local pa="$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt"
+
+    # A causa do bug: o binder do Shizuku chega DEPOIS do onCreate. Checar a
+    # permissão só lá dentro concluía "não autorizado" com a permissão já dada.
+    grep -q 'addBinderReceivedListenerSticky' "$pa" \
+        && ok "espera o binder chegar (listener sticky)" || bad "não espera o binder (bug do pedido repetido)"
+    grep -q 'OnBinderReceivedListener' "$pa" \
+        && ok "reconecta quando o binder chega" || bad "sem OnBinderReceivedListener"
+    grep -q 'addBinderDeadListener' "$pa" \
+        && ok "limpa o runner quando o Shizuku morre" || bad "sem OnBinderDeadListener"
+    # reconectar é silencioso: nada de requestPermission no caminho automático
+    grep -q 'fun tryAutoConnectShizuku' "$pa" \
+        && ok "conexão automática num ponto único" || bad "sem tryAutoConnectShizuku"
+    awk '/fun tryAutoConnectShizuku/,/^    }/' "$pa" | grep -q 'requestPermission' \
+        && bad "auto-conexão pede permissão (volta o bug)" \
+        || ok "auto-conexão não pede permissão"
+    # e volta do app do Shizuku reconecta sem perguntar
+    grep -q 'override fun onResume' "$pa" \
+        && ok "onResume tenta reconectar" || bad "sem onResume (permissão dada por fora não conecta)"
+    # os listeners são removidos para não vazar a Activity
+    grep -q 'removeBinderReceivedListener' "$pa" && grep -q 'removeBinderDeadListener' "$pa" \
+        && ok "listeners removidos no onDestroy" || bad "listeners não removidos (vaza Activity)"
+}
+
 t_vitality() {
     printf '\n  # vitalidade: motor de longevidade (sem aparelho)\n'
     local vit="$ROOT/scripts/vitality.sh"
@@ -3192,6 +3222,7 @@ t_latency
 t_sensi
 t_effects
 t_overlay
+t_shizuku_reconnect
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

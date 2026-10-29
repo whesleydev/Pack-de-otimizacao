@@ -33,6 +33,33 @@ class PanelActivity : AppCompatActivity() {
     private var runner: ShellRunner? = null
     private var pendingAfterConnect: (() -> Unit)? = null
 
+    /**
+     * O binder do Shizuku chega depois do `onCreate`: o app pergunta ao
+     * `ShizukuProvider` e a resposta volta por Binder. Se a gente checar
+     * `hasPermission()` só no `onCreate`, a resposta ainda não chegou, o app
+     * conclui "não autorizado" e pede a permissão de novo — toda vez que o app
+     * é aberto, mesmo com a permissão já concedida. Por isso a conexão também
+     * é tentada quando o binder chega (sticky) e quando ele morre (o serviço
+     * do Shizuku reiniciou), que é o estado real do aparelho.
+     */
+    private val onBinderReceived = Shizuku.OnBinderReceivedListener { tryAutoConnectShizuku() }
+    private val onBinderDead = Shizuku.OnBinderDeadListener {
+        if (runner === shizuku) {
+            runner = null
+            OtmRunner.current = null
+        }
+    }
+    private val onPermissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        if (requestCode == REQ_SHIZUKU) {
+            if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                activateShizuku()
+            } else {
+                toast("Permissão do Shizuku negada.")
+                pendingAfterConnect = null
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.parseColor("#0D0C0A")
@@ -45,28 +72,51 @@ class PanelActivity : AppCompatActivity() {
         root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
         setContentView(root)
 
-        // Se o Shizuku já está autorizado, conecta direto e esconde a capa.
-        if (shizuku.isAvailable() && shizuku.hasPermission()) {
-            runner = shizuku
-            OtmRunner.current = shizuku
-            overlay.visibility = View.GONE
-        }
-
-        Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
-            if (requestCode == REQ_SHIZUKU) {
-                if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    activateShizuku()
-                } else {
-                    toast("Permissão do Shizuku negada.")
-                    pendingAfterConnect = null
-                }
-            }
-        }
+        // Registra os listeners ANTES de tentar conectar: o sticky entrega o
+        // binder atual na hora se ele já existir, e avisa quando ele chegar.
+        Shizuku.addBinderReceivedListenerSticky(onBinderReceived)
+        Shizuku.addBinderDeadListener(onBinderDead)
+        Shizuku.addRequestPermissionResultListener(onPermissionResult)
+        tryAutoConnectShizuku()
 
         setupWeb()
         web.loadUrl("file:///android_asset/panel/login.html")
         Permissions.ensureChannel(applicationContext)
         Permissions.askOnce(this)
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeBinderReceivedListener(onBinderReceived)
+        Shizuku.removeBinderDeadListener(onBinderDead)
+        Shizuku.removeRequestPermissionResultListener(onPermissionResult)
+        super.onDestroy()
+    }
+
+    /**
+     * Volta do app do Shizuku (ou de qualquer tela do sistema) já conectado. O
+     * listener sticky só avisa na chegada do binder; se ele já estava aqui e o
+     * usuário liberou a permissão por fora, ninguém avisa o app — então a
+     * checagem se repete a cada volta para a tela.
+     */
+    override fun onResume() {
+        super.onResume()
+        tryAutoConnectShizuku()
+    }
+
+    /**
+     * Conecta sem perguntar nada SE o Shizuku já está rodando e a permissão já
+     * foi concedida antes. Só nesse caso a capa some e o painel abre direto;
+     * se falta a permissão, nada acontece aqui (o pedido é explícito, no botão).
+     */
+    private fun tryAutoConnectShizuku() {
+        if (runner != null) return
+        if (shizuku.isAvailable() && shizuku.hasPermission()) {
+            runner = shizuku
+            OtmRunner.current = shizuku
+            overlay.visibility = View.GONE
+            pendingAfterConnect?.invoke()
+            pendingAfterConnect = null
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -262,7 +312,9 @@ class PanelActivity : AppCompatActivity() {
             activateShizuku()
         } else {
             toast("Peça a permissão no diálogo do Shizuku…")
-            shizuku.requestPermission(REQ_SHIZUKU)
+            if (!shizuku.requestPermission(REQ_SHIZUKU)) {
+                toast("Shizuku ainda não respondeu. Tente de novo em um instante.")
+            }
         }
     }
 

@@ -5,6 +5,28 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Corrigido
+- **O app pedia a permissão do Shizuku a cada vez que era aberto, mesmo já
+  autorizado.** O binder do Shizuku (a ponte com o serviço de shell) **chega
+  depois** do `onCreate`: o app pergunta ao `ShizukuProvider` e a resposta volta
+  por Binder. A checagem de permissão acontecia só no `onCreate`, quando a
+  resposta ainda não tinha chegado — então o app concluía "não autorizado",
+  mostrava a capa e pedia a permissão de novo, toda vez. Agora a conexão também
+  é tentada **quando o binder chega** (`addBinderReceivedListenerSticky`), é
+  refeita quando o usuário **volta para a tela** (`onResume`) e o runner é
+  limpo quando o serviço do Shizuku reinicia (`addBinderDeadListener`). Se a
+  permissão já foi concedida, o app conecta em silêncio e vai direto ao painel.
+  O indicador de acesso do painel também é reconsultado quando a tela volta,
+  para não continuar dizendo "sem acesso" depois de conectar.
+
+### Removido
+- **Saíram das Configurações os botões de permissão que não faziam sentido ali.**
+  A engrenagem tinha "Aos Free Fire", "Ao meu jogo", "Bateria sem economia" e
+  "Acesso a dados de uso" ao lado do botão do pack. Ficou **só o "Conceder
+  permissões ao pack"**, que é o que o usuário precisa mexer. As ações em si
+  continuam no catálogo (quem quiser chamar por elas ainda consegue), e o
+  atalho "Liberar acesso a dados de uso" continua na Home, onde o dado aparece.
+
 ### Adicionado
 - **Aparência só-escura, com cor de destaque personalizada e fontes novas.** O
   app passou a ter uma identidade escura única: **não existe mais tema claro nem
