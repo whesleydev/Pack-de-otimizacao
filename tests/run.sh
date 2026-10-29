@@ -1658,6 +1658,20 @@ t_site_html() {
     # a lista de comandos tem categorias de renderizador e congelar
     grep -q 'skiavk' "$f" && ok "inclui comando Vulkan (skiavk)" || bad "sem comando Vulkan"
     grep -q 'pm suspend' "$f" && ok "inclui congelar apps (pm suspend)" || bad "sem congelar apps"
+    # a resolução (wm size) está na área de comandos
+    grep -q 'wm size reset' "$f" && ok "inclui resolução (wm size)" || bad "sem comando de resolução"
+    # o site e a cópia publicada (public/guia.html) precisam ter a MESMA lista de
+    # comandos: são dois arquivos, e uma edição só num deles passa despercebida.
+    if [ -f "$ROOT/public/guia.html" ]; then
+        a="$TMP/guia_site"; b="$TMP/guia_pub"
+        sed -n '/^const CMDS = \[/,/^\];/p' "$f" > "$a"
+        sed -n '/^const CMDS = \[/,/^\];/p' "$ROOT/public/guia.html" > "$b"
+        if [ -s "$a" ] && cmp -s "$a" "$b"; then
+            ok "public/guia.html tem a mesma lista de comandos do index.html"
+        else
+            bad "public/guia.html e index.html divergem na lista de comandos"
+        fi
+    fi
 }
 
 t_build_plugins() {
