@@ -38,7 +38,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh"
 otm_v_reset
 
-_num() { printf '%s' "$1" | tr -cd '0-9'; }
+_num() { printf '%s' "$1" | tr -cd '0-9' | cut -c1-9; }
 
 # -----------------------------------------------------------------------------
 #  LEITURA

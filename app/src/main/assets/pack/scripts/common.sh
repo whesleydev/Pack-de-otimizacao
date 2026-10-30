@@ -104,6 +104,33 @@ _otm_shell() {
 sh_run() { _otm_shell "$1" 2>/dev/null; }
 sh_get() { _otm_shell "$1" 2>/dev/null | tr -d '\r'; }
 
+# otm_echo <texto> -> escreve o texto no stdout SEM passar por argv de um binário.
+# No Android o `printf`/`sed`/`grep` são binários do toybox (não são builtins do
+# shell): um argumento de centenas de KB estoura o limite do kernel e o comando
+# morre com "Argument list too long". Um dump grande (`dumpsys display` passa de
+# 400 KB num Samsung) tinha esse destino. O heredoc entrega o texto pelo stdin,
+# que não tem esse limite.
+otm_echo() {
+    cat <<OTM_ECHO_EOF
+$1
+OTM_ECHO_EOF
+}
+
+# otm_batt_field <texto do dumpsys battery> <chave> -> 1º valor numérico da linha
+# CANÔNICA "<chave>:" (ex.: "  level: 85"). O padrão é ancorado de propósito: o
+# dump tem dezenas de linhas que também contêm " level:" (uma por UID), e um
+# casamento solto pegava a errada — juntando todos os números num valor só.
+otm_batt_field() {
+    otm_echo "$1" | awk -F: -v k="$2" '
+        $1 ~ "^[[:space:]]*" k "$" { v = $2; gsub(/[^0-9]/, "", v); if (v != "") { print v; exit } }'
+}
+
+# otm_batt_get <chave> -> lê o dumpsys battery uma vez e devolve o valor da chave
+otm_batt_get() {
+    sh_get 'dumpsys battery' 2>/dev/null | awk -F: -v k="$1" '
+        $1 ~ "^[[:space:]]*" k "$" { v = $2; gsub(/[^0-9]/, "", v); if (v != "") { print v; exit } }'
+}
+
 sh_ok() { [ "$(sh_get 'id -u')" = "0" ]; }
 have()  { command -v "$1" >/dev/null 2>&1; }
 
@@ -497,13 +524,13 @@ otm_fg_pkg() {
     d="$(sh_get 'dumpsys activity activities' 2>/dev/null)"
     [ -n "$d" ] || d="$(sh_get 'dumpsys window windows' 2>/dev/null)"
     [ -n "$d" ] || d="$(sh_get 'dumpsys window' 2>/dev/null)"
-    p="$(printf '%s\n' "$d" | sed -n 's/.*mResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
-    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*topResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
-    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mFocusedApp.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    p="$(otm_echo "$d" | sed -n 's/.*mResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*topResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mFocusedApp.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
     # o formato da linha muda entre versões do Android (mCurrentFocus usa o
     # ActivityRecord sem as chaves, ex.: "mCurrentFocus=Window{... u0 pkg/act}").
-    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mCurrentFocus.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
-    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mFocusedWindow.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mCurrentFocus.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mFocusedWindow.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
     printf '%s' "$p"
 }
 
@@ -537,9 +564,9 @@ otm_fps_layer() {
     [ -n "$_p" ] || return 0
     _ls="$(sh_get 'dumpsys SurfaceFlinger --list' 2>/dev/null | grep -v '^$')"
     [ -n "$_ls" ] || return 0
-    _pick="$(printf '%s\n' "$_ls" | grep -F "$_p" | grep -F 'SurfaceView[' | head -1)"
-    [ -z "$_pick" ] && _pick="$(printf '%s\n' "$_ls" | grep -F "$_p" | grep -viE 'background|dim layer|cursor|scrim' | head -1)"
-    [ -z "$_pick" ] && _pick="$(printf '%s\n' "$_ls" | grep -F "$_p" | head -1)"
+    _pick="$(otm_echo "$_ls" | grep -F "$_p" | grep -F 'SurfaceView[' | head -1)"
+    [ -z "$_pick" ] && _pick="$(otm_echo "$_ls" | grep -F "$_p" | grep -viE 'background|dim layer|cursor|scrim' | head -1)"
+    [ -z "$_pick" ] && _pick="$(otm_echo "$_ls" | grep -F "$_p" | head -1)"
     printf '%s' "$_pick"
 }
 
@@ -554,7 +581,7 @@ otm_fps_measure() {
     [ -n "$_l" ] || return 0
     _raw="$(sh_get "dumpsys SurfaceFlinger --latency '$_l'" 2>/dev/null)"
     [ -n "$_raw" ] || return 0
-    printf '%s\n' "$_raw" | awk '
+    otm_echo "$_raw" | awk '
         NF < 3 { next }
         {
             a = $2 + 0
@@ -627,7 +654,7 @@ otm_temp() {
         echo "$v"
         return 0
     done
-    v="$(sh_get 'dumpsys battery' | awk -F': ' '/ temperature:/{print $2}')"
+    v="$(otm_batt_get temperature)"
     case "$v" in '' | *[!0-9]*) return 0 ;; esac
     echo "$((v / 10))"
 }

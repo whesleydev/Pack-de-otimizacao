@@ -37,8 +37,8 @@ collect() {
 
     # bateria (nível + temperatura em °C, dumpsys reporta décimos de °C)
     bat="$(sh_get 'dumpsys battery')"
-    bat_level="$(printf '%s\n' "$bat" | awk -F': ' '/ level:/{print $2}')"
-    bat_temp="$(printf '%s\n' "$bat" | awk -F': ' '/ temperature:/{print $2}')"
+    bat_level="$(otm_batt_field "$bat" level)"
+    bat_temp="$(otm_batt_field "$bat" temperature)"
     [ -n "$bat_temp" ] && bat_temp_c=$(awk "BEGIN{printf \"%.1f\", $bat_temp/10}")
 
     # governador e frequência da CPU (melhor esforço)

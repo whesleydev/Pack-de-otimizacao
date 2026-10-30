@@ -14,7 +14,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/common.sh" 2>/dev/null
 
 _clean() { printf '%s' "$1" | tr -d '"\\\n\r' | cut -c1-120; }
-_num()   { printf '%s' "$1" | tr -cd '0-9'; }
+_num()   { printf '%s' "$1" | tr -cd '0-9' | cut -c1-9; }
 
 # --- RAM (/proc/meminfo é universal) ------------------------------------------
 mi="$(sh_get 'cat /proc/meminfo' 2>/dev/null)"
@@ -66,9 +66,9 @@ cpu_max_khz="$(_num "$cpu_max")"; [ -n "$cpu_max_khz" ] && cpu_max_mhz=$((cpu_ma
 
 # --- bateria / temperatura ----------------------------------------------------
 bat="$(sh_get 'dumpsys battery' 2>/dev/null)"
-bat_level="$(printf '%s\n' "$bat" | awk -F': ' '/ level:/{print $2; exit}')"
-bat_temp="$(printf '%s\n' "$bat" | awk -F': ' '/ temperature:/{print $2; exit}')"
-bat_status="$(printf '%s\n' "$bat" | awk -F': ' '/ status:/{print $2; exit}')"
+bat_level="$(otm_batt_field "$bat" level)"
+bat_temp="$(otm_batt_field "$bat" temperature)"
+bat_status="$(otm_batt_field "$bat" status)"
 bat_temp_c=""
 [ -n "$bat_temp" ] && bat_temp_c="$(awk "BEGIN{printf \"%.1f\", $bat_temp/10}")"
 # `dumpsys battery` devolve o status como código (1..5); o painel mostrava "3".

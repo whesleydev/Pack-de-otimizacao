@@ -744,6 +744,32 @@ continua existindo e é para quem QUER o máximo (mais FPS, esquenta mais). O ca
 durar. Nenhum dos dois substitui o outro — e **nada do pack original pode ser
 removido** (há guarda de regressão em `t_vitality`).
 
+### Bug histórico: "Argument list too long" com dump grande (ainda vale como regra)
+
+No Android o `printf`, `sed` e `grep` são **binários do toybox**, não builtins do shell
+(no `dash`/`bash` do PC o `printf` é builtin e esconde o problema). Um argumento de
+centenas de KB estoura o limite do kernel e o comando morre com `Argument list too long`;
+o erro aponta a linha do shell que *atribui* a saída, não o comando culpado, então parece
+um bug aleatório no meio do fluxo. O `dumpsys display` de um Samsung passa de **400 KB** e
+era passado como argv do `printf` em `display_max_hz` (efeito: a taxa de tela vinha vazia
+e o `auto` morria ~6×). Regra: texto que veio de `dumpsys`/`getprop` grande **nunca** vai
+como argumento — use `otm_echo` (heredoc por stdin, sem limite). Os testes não reproduzem
+o E2BIG no PC (o `sh` daqui tem `printf` builtin), então `t_smart_bigdump` prova o
+mecanismo (400 KB saem inteiros pelo `otm_echo`) e reprova se alguém voltar a passar o
+dump por argv.
+
+### Bug histórico: bateria com número gigante e resumo duplicado
+
+Dois defeitos de parsing que apareciam juntos no painel:
+- **Bateria** (`808182838…`): o `dumpsys battery` do Android 14+ traz uma linha `level:`
+  por UID (dezenas). O `awk` sem `exit` imprimia todas e o `_num` colava os dígitos. Regra:
+  use `otm_batt_get`/`otm_batt_field`, que ancoram na linha canônica (`^[[:space:]]*level$`
+  com `-F:`) e validam a faixa. Vale para `temperature:` e `status:`.
+- **Resumo duplicado**: o `printf` **reaproveita o formato** quando sobram argumentos. As
+  linhas `printf '  %s…\n' "$C_D" "$C_R"` tinham **um `%s` e dois argumentos**, então a
+  frase saía duas vezes. Regra: o número de `%s` tem de casar com o de argumentos — para
+  embelezar (cor/volta ao normal) use `'%s…%s\n' "$C_D" "$C_R"`.
+
 ### Bug histórico: bolha flutuante que não arrastava
 
 O painel flutuante minimizado (a bolha com o ícone do app) ficava **preso no lugar**.

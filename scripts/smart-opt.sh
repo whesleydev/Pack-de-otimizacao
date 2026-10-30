@@ -86,7 +86,7 @@ so_mem_set() {   # so_mem_set <chave> <valor>
 # quantas vezes o otimizador já rodou por aqui (ele melhora com o uso)
 so_mem_runs() { so_mem_get runs; }
 
-_num() { printf '%s' "$1" | tr -cd '0-9'; }
+_num() { printf '%s' "$1" | tr -cd '0-9' | cut -c1-9; }
 
 # =============================================================================
 #  1) LEITURA DO APARELHO
@@ -141,11 +141,13 @@ cpu_cores() {
 }
 
 display_max_hz() {   # maior taxa suportada (0 se não der para ler)
+    # o dump do `dumpsys display` passa de 400 KB; ele NUNCA pode ir como
+    # argumento (otm_echo manda por stdin) nem pode ser lido duas vezes à toa.
     out="$(sh_get 'dumpsys display')"
     hz=""
     if [ -n "$out" ]; then
-        hz="$(printf '%s\n' "$out" | grep -oE 'fps=[0-9]+(\.[0-9]+)?' | cut -d= -f2 | sort -n | tail -1)"
-        [ -z "$hz" ] && hz="$(printf '%s\n' "$out" | grep -oE '[0-9]+(\.[0-9]+)?fps' | tr -d 'fps' | sort -n | tail -1)"
+        hz="$(otm_echo "$out" | grep -oE 'fps=[0-9]+(\.[0-9]+)?' | cut -d= -f2 | sort -n | tail -1)"
+        [ -z "$hz" ] && hz="$(otm_echo "$out" | grep -oE '[0-9]+(\.[0-9]+)?fps' | tr -d 'fps' | sort -n | tail -1)"
     fi
     case "$hz" in ''|*[!0-9.]*) echo 0; return ;; esac
     printf '%s' "$hz" | awk '{printf "%d", $1}'
@@ -159,9 +161,12 @@ storage_free_mb() {
 }
 
 battery_level() {
-    v="$(sh_get 'dumpsys battery' | awk -F': ' '/ level:/{print $2}')"
-    v="$(_num "$v")"
-    [ -n "$v" ] && [ "$v" -gt 0 ] 2>/dev/null && echo "$v" || echo ""
+    # `dumpsys battery` tem dezenas de linhas casando " level:" (uma por UID no
+    # Android 14+). Um casamento solto pegava todas e o _num colava os dígitos
+    # num número gigante — era o "2133932000...". otm_batt_get ancora na linha
+    # canônica e valida a faixa (0..100), senão devolve vazio.
+    v="$(otm_batt_get level)"
+    [ -n "$v" ] && [ "$v" -gt 0 ] 2>/dev/null && [ "$v" -le 100 ] 2>/dev/null && echo "$v" || echo ""
 }
 
 # collect -> preenche as variáveis da análise (uma leitura só)
@@ -498,8 +503,8 @@ cmd_auto() {
         "${v_render:-$D_RENDERER}" \
         "$([ -n "$v_hz" ] && printf ' + %sHz' "$v_hz" || printf ' + taxa padrão')"
     [ -n "$v_nota" ] && printf '  %snota medida:%s %s/100\n' "$C_A" "$C_R" "$v_nota"
-    printf '  %so que ficou no seu aparelho é o melhor que deu para medir aqui.\n' "$C_D" "$C_R"
-    printf '  %srodando de novo, ele parte desta combinação e tenta melhorar.\n' "$C_D" "$C_R"
+    printf '  %so que ficou no seu aparelho é o melhor que deu para medir aqui.%s\n' "$C_D" "$C_R"
+    printf '  %srodando de novo, ele parte desta combinação e tenta melhorar.%s\n' "$C_D" "$C_R"
 }
 
 tier_label() {

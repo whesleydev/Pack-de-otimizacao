@@ -3,6 +3,41 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.44.1] - 2026-10-30
+
+### Corrigido
+- **"Argument list too long" ao analisar o aparelho.** No Android o `printf`,
+  `sed` e `grep` são binários do toybox (não são builtins do shell, ao contrário
+  do `dash`/`bash` do PC). A leitura da taxa de tela mandava a saída inteira do
+  `dumpsys display` — mais de **400 KB** num Samsung — como **argumento** do
+  `printf`: o kernel recusa e o comando morre com `Argument list too long`. O erro
+  aparecia numa linha distante da real, então parecia um bug aleatório no meio do
+  fluxo `auto`. O novo `otm_echo` entrega o texto pelo **stdin** (via heredoc), que
+  não tem esse limite, e substituiu todos os pontos que passavam dumps grandes por
+  argv (`display_max_hz`, app em primeiro plano, camada do FPS, medição de FPS).
+- **Nível de bateria virava um número gigante.** O `dumpsys battery` do Android 14+
+  traz uma linha `level:` por UID (dezenas delas). O `awk` sem `exit` imprimia
+  **todas** e o `_num` colava os dígitos num valor só (ex.: `808182838…`), que
+  estourava a linha do painel. O novo `otm_batt_get`/`otm_batt_field` ancora na
+  linha canônica (`level:`, `temperature:`, `status:`) e valida a faixa — o mesmo
+  vale para a temperatura. O `_num` também foi limitado a 9 dígitos.
+- **Linhas repetidas no fim do resumo.** O `printf` reaproveita o formato quando
+  sobram argumentos: duas linhas do resumo tinham **um `%s` e dois argumentos**, e
+  a frase inteira saía duplicada. O formato agora consome os dois.
+
+### Adicionado
+- Teste de regressão `t_smart_bigdump`: monta um `dumpsys display` de ~400 KB e um
+  `dumpsys battery` com várias linhas `level:` e reprova se voltar o E2BIG, se a
+  taxa de tela sumir ou se a bateria vier com dígitos colados.
+
+## [2.44.0] - 2026-10-30
+
+### Adicionado
+- **Backup cifrado**: exportar/importar as preferências e o estado do otimizador
+  protegidos por senha, com a chave no `AndroidKeyStore`.
+- **Otimizador que aprende**: memória por assinatura de hardware, mede antes e
+  depois e decide o perfil sozinho.
+
 ## [2.43.1] - 2026-10-22
 
 ### Corrigido

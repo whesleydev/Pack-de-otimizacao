@@ -2746,6 +2746,83 @@ t_smart_opt() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_smart_bigdump() {
+    printf '\n  # dumpsys grande (Samsung) não pode estourar o argv nem colar a bateria\n'
+    local f="$ROOT/scripts/smart-opt.sh"
+    local bin="$TMP/bin_big" st="$TMP/store_big"
+    rm -rf "$bin" "$st"; mkdir -p "$bin" "$st"
+    # `dumpsys display` passa de 380 KB (o caso real do SM-A075M) e o battery traz
+    # uma linha " level:" por UID, como no Android 14+. O dump grande ia como
+    # ARGUMENTO do printf externo (toybox) e morria com E2BIG.
+    cat > "$bin/dumpsys" <<'EOF'
+#!/bin/sh
+case "$1" in
+display)
+  i=0
+  while [ $i -lt 5000 ]; do
+    echo "  DisplayDeviceInfo$i: fps=120.0 modeId=$i padding padding padding padding"
+    i=$((i + 1))
+  done
+  ;;
+battery)
+  echo "  AC powered: false"
+  # o dump real traz uma linha " level: NN" por UID/consumidor (dezenas delas).
+  # O awk sem `exit` imprimia TODAS e o _num colava os dígitos num número só —
+  # era o "lixo" de centenas de dígitos na linha da bateria.
+  i=0
+  while [ $i -lt 40 ]; do
+    echo "  uid $i level: 8$((i % 10))"
+    i=$((i + 1))
+  done
+  echo "  level: 85"
+  echo "  temperature: 300"
+  ;;
+*) echo "" ;;
+esac
+exit 0
+EOF
+    chmod +x "$bin/dumpsys"
+    out="$(TMP_STORE="$st" PATH="$bin:$PATH" OTM_NO_COLOR=1 OTM_MODE=local \
+        sh "$f" analyze 2>&1)"
+    # o dump tem de ser grande o bastante para estourar o limite de argv
+    [ "$("$bin/dumpsys" display | wc -c)" -gt 131072 ] \
+        && ok "cenário: dumpsys display acima do limite de argv" \
+        || bad "cenário de teste fraco (dump pequeno)"
+    # o caminho seguro é o stdin (otm_echo): um argumento de 400 KB estoura o
+    # limite do kernel no Android, onde printf/sed/grep são binários (toybox).
+    # Aqui o `sh` do PC tem printf builtin e não reproduz o E2BIG, então o teste
+    # prova o MECANISMO: o texto grande tem de sair inteiro pelo otm_echo.
+    big="$(python3 -c 'print("x" * 400000)')"
+    n="$(. "$ROOT/scripts/common.sh" 2>/dev/null; otm_echo "$big" | wc -c)"
+    [ "$n" -ge 400000 ] \
+        && ok "otm_echo entrega 400 KB pelo stdin (sem passar por argv)" \
+        || bad "otm_echo truncou o texto grande ($n bytes)"
+    # e a leitura da taxa de tela NÃO pode mandar o dump como argumento
+    grep -q "printf '%s\\\\n' \"\$out\"" "$f" \
+        && bad "display_max_hz ainda passa o dump como argumento" \
+        || ok "display_max_hz não passa o dump como argumento"
+    printf '%s\n' "$out" | grep -q 'Argument list too long' \
+        && bad "o dump grande foi passado como argumento (E2BIG)" \
+        || ok "dump grande não vai mais como argumento (sem E2BIG)"
+    # a taxa de tela volta a ser lida (era o efeito prático do E2BIG)
+    printf '%s\n' "$out" | grep -q '120 Hz suportado' \
+        && ok "lê a taxa de tela com dump grande (120 Hz)" \
+        || bad "não leu a taxa de tela: $(printf '%s\n' "$out" | grep 'tela ')"
+    # a bateria é um número só (não os dígitos de todas as linhas colados)
+    printf '%s\n' "$out" | grep -q 'bateria *85%' \
+        && ok "bateria correta com várias linhas ' level:' (85%)" \
+        || bad "bateria errada: $(printf '%s\n' "$out" | grep 'bateria ')"
+    # e o valor gigante colado não aparece em lugar nenhum
+    printf '%s\n' "$out" | grep -qE 'bateria[^0-9]*[0-9]{4,}' \
+        && bad "a bateria ainda vem com dígitos colados" \
+        || ok "sem número gigante de bateria"
+    # a temperatura (mesmo padrão multi-linha) também vem de uma linha só
+    grep -q "otm_batt_get temperature" "$ROOT/scripts/common.sh" \
+        && ok "temperatura lê a linha canônica (otm_batt_get)" \
+        || bad "temperatura ainda soma as linhas"
+    rm -rf "$bin" "$st"
+}
+
 t_smart_learning() {
     printf '\n  # otimizador que APRENDE: memória por aparelho e ciclo completo\n'
     local f="$ROOT/scripts/smart-opt.sh"
@@ -4315,6 +4392,7 @@ t_gameclean
 t_ramboost
 t_resolution
 t_smart_opt
+t_smart_bigdump
 t_smart_learning
 t_backup_crypto
 t_smart_card_single
