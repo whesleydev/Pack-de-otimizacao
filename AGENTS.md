@@ -290,6 +290,15 @@ nativa além do necessário para conectar e rodar os comandos.
   O painel do app é o HTML do PHP já renderizado. O pipeline é:
   `php -r 'require "web/auth.php"; otm_auth_login(<user>,<pass>); ob_start();
   include "web/index.php"; file_put_contents("/tmp/pan/web.html", ob_get_clean());'`
+  **Armadilha:** a credencial padrão (`00deUdia`) é hash de uma senha que não
+  está no código, então `otm_auth_login` devolve `false` e o render sai como
+  página de **login** (arquivo pequeno, sem os cards) — o pipeline "funciona" e
+  propaga um painel vazio. Use um `HOME` temporário e defina a credencial ali:
+  `HOME=/tmp/panhome php -r 'require "web/auth.php"; otm_auth_set("dev","dev12345");
+  otm_auth_login("dev","dev12345"); ob_start(); include "web/index.php";
+  file_put_contents("/tmp/pan/web.html", ob_get_clean());'`
+  (o `auth.json` fica em `$HOME/.packotm/web/`, então não toca na sua sessão).
+  Confira o tamanho: o painel renderizado tem ~500 KB; login tem poucos KB.
   → `python3 scratch/sync_app_panel.py /tmp/pan/web.html` (traz o nav, as seções
   novas, **remove as seções de grupo que sumiram do web** — ao renomear um grupo
   a seção antiga ficava órfã, com o link do menu junto — e o objeto `ACTIONS` do
@@ -399,7 +408,7 @@ nativa além do necessário para conectar e rodar os comandos.
   `accentA(alpha)`), não `Int`, e as fontes empacotadas são carregadas por
   `FONT_FILES` (ver *Aparência*). O overlay usa o **mesmo executor** do painel
   (`OtmExec.run` + `OtmRunner.current`), senão divergiria do painel.
-- **Armadilhas do painel (já custaram bug).** Três coisas que o CSS/JS do painel
+- **Armadilhas do painel (já custaram bug).** Coisas que o CSS/JS do painel
   não perdoa, porque o HTML é gerado (`web/index.php` → `scratch/`):
   (1) **CSS não pode depender de `.card-choice`** para layout de `.opts`: nem todo
   card de opções tem essa classe (o de Perfil de Desempenho não tem), e o cartão
@@ -418,6 +427,13 @@ nativa além do necessário para conectar e rodar os comandos.
   `.layout`, o login usa `.wrap{margin:auto}`, o guia usa `main.wrap`). O teste
   `t_footer_sticky` cobre as cinco páginas (`assets/panel/index.html`,
   `web/index.php`, `web/login.php`, `index.html`, `public/guia.html`).
+  (4) **`onclick` cru fura o guarda de toque.** O `tapOnly` só dispara em toque
+  parado e curto; um `onclick=` no HTML ignora isso e o clique sintético do fim
+  do scroll aciona o botão. Use `data-qa="<id>"` (ou `data-run`/`data-game-home`)
+  e deixe o JS ligar o handler passando por `tapOnly`. O guarda cancela por três
+  vias — variação > 14 px, `scroll` e `pointerleave` — porque o `pointercancel`
+  sozinho não chega quando o dedo **começa** no botão e arrasta. O `t_tap_only`
+  reprova se voltar `onclick=` no HTML.
 - **Efeitos visuais desligados pelas ações de desempenho (já custou bug).** Todo
   ajuste de performance (`perf`, `gpu`, `fluidez`, `clean`, `smart-opt` e o pack
   recomendado) grava `disable_window_blurs=1` e
@@ -461,6 +477,17 @@ nativa além do necessário para conectar e rodar os comandos.
   de mDNS próprio (`discoverViaMulticast`/`parseMdnsAnswer`) porque o NsdManager do
   sistema falha em algumas redes. Lembrar: no cabeçalho SRV a porta está no
   **offset 4** (prioridade,peso,porta), não no 0.
+  (4) **Pedir a permissão e abrir o diálogo na mesma hora não funciona.** O
+  `askMdns` antigo chamava `requestPermissions` e o `WifiDialog` abria em seguida:
+  o usuário digitava o código antes de a permissão existir, o mDNS falhava em
+  silêncio e a conexão nunca completava. Use `Permissions.askMdnsThen(activity)
+  { granted -> ... }` e trate `REQ_MDNS` no `onRequestPermissionsResult` (o
+  `Permissions.onMdnsResult` resolve o callback pendente).
+  (5) **`connect()` devolver `true` só diz que o socket abriu.** O adbd demora a
+  publicar o serviço depois do pareamento, então o painel anunciava "conectado" e
+  toda ação falhava. `AdbRunner.verify()` manda um comando de teste com timeout e
+  `connectAndVerify(attempts, waitMs)` reconecta antes de verificar. Vale para o
+  Wi-Fi **e** para o USB (`useAdbLocal`).
   O pareamento também usa API oculta do Conscrypt (`exportKeyingMaterial`, TLS 1.3),
   liberada pelo `OtmApp` (`HiddenApiBypass.addHiddenApiExemptions("L")` + `PRNGFixes`).
 - **Taxa de atualização (Hz).** Cartão de escolha com 60/90/120/Automático
@@ -577,6 +604,19 @@ nativa além do necessário para conectar e rodar os comandos.
   `pack.sh smart auto <perfil>` aceitam o perfil escolhido no hub. **Debloat não
   faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
+
+  **Perfil personalizado (42 recursos, uma fonte).** As opções vivem em
+  `otm_custom_profile_opts()` (`web/lib.php`), que é a **fonte única**: o `argv`
+  de `profile.custom.apply` é montado com `array_map` dessa lista, então o painel
+  não consegue pedir uma chave que o script não conhece. Só o `PC_ORDER` do
+  `scripts/profile-custom.sh` continua escrito à mão — ele tem de ficar na MESMA
+  ordem das opções, porque o painel manda os valores **posicionais**. Ao
+  acrescentar uma opção: mexa na lista, acrescente o caso em `pc_opts()` e
+  `pc_apply()`, e ponha a chave no `PC_ORDER` no mesmo lugar. O espelho
+  `app/src/main/assets/pack/scripts/profile-custom.sh` é cópia (o `syncPackAssets`
+  do Gradle refaz no build, mas copie à mão ao testar sem build).
+  `dexopt` usa `turbo.sh dexopt-bg` (só **agenda** a compilação); `art-all`
+  compila na hora e demora — daí o `timeout` de 900s na ação.
 
   **Medir para provar (`bench`/`compare`).** O `auto` não termina mais em "confie
   em mim": ele mede antes, aplica e mede depois (`so_measure`), dizendo se
