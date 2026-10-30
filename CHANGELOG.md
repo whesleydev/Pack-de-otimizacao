@@ -3,6 +3,53 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.43.0] - 2026-10-22
+
+### Adicionado
+- **Perfil personalizado completo (28 recursos).** O menu do perfil personalizado
+  passou de 7 para **28 ajustes independentes**, cobrindo desempenho, memória,
+  gráficos, tela, toque, rede, bateria, notificações e limpeza. As chaves de
+  escolha (`anim`, `ram`, `hz`, `touch`, `clean`, `renderer`, `dns`, `proc`,
+  `efeitos`, `barras`, `res`, `touchlat`) e as de liga/desliga (`telemetry`,
+  `hibernate`, `gpu`, `net`, `latency`, `wifi`, `battery`, `doze`, `freezer`,
+  `dnd`, `gamefocus`, `notif`, `perfmode`, `vitality`, `mobile`, `janelas`) ficam
+  na **mesma ordem** em três lugares que precisam casar: o `argv` de
+  `profile.custom.apply` (`web/lib.php`), a const `CPROF` do HTML e o `PC_ORDER`
+  do `scripts/profile-custom.sh`.
+
+### Corrigido
+- **A telemetria nunca era desligada pelo perfil personalizado.** A chave
+  `telemetry` estava declarada no menu, mas o `pc_apply` não a aplicava — marcar
+  "desligar telemetria" não fazia nada. Agora ela é aplicada de verdade.
+- **O interruptor de telemetria estava invertido.** Ligar o interruptor
+  *religava* a telemetria, e desligá-lo não mexia em nada. Agora `nao` significa
+  "não mexer" (padrão) e `off` desliga de fato — igual às outras chaves.
+- **Arrastar a lista disparava o botão onde o dedo soltou.** O gatilho das ações
+  usava `onclick` puro, que também dispara no "clique" sintético que o navegador
+  emite no fim de um scroll. Os dois painéis (app e site) passam a exigir toque
+  parado e curto (`tapOnly`, com `pointercancel`), o mesmo critério que os botões
+  do cabeçalho já usavam.
+- **O flutuante voltava a funcionar sozinho depois de o processo ser morto.** As
+  próprias ações de limpeza podem encerrar o processo do painel; o transporte de
+  shell (`OtmRunner.current`) voltava nulo e **toda** ação do flutuante dava erro
+  no meio da partida. O serviço agora reconecta o Shizuku sozinho (a permissão já
+  foi concedida) e o monitor não fica preso em erro.
+- **"Exceção (1º plano)" e o jogo `auto` falhavam sem jogo escolhido.** Quando o
+  `dumpsys` não dizia quem estava na tela (tela bloqueada, formato novo do
+  Android), o `proc-mgr.sh keep-fg` e o `game-per-app.sh auto` devolviam erro em
+  vez de cair no jogo escolhido / Free Fire — a mesma decisão do `game_open`.
+- **A conexão por ADB Wi-Fi caía sempre no mesmo endereço.** O plano B (loopback)
+  e o plano A (host descoberto) compartilhavam o mesmo gerenciador, e o segundo
+  ficava com o endereço do primeiro. O endereço passa a ser reaplicado a cada
+  chamada.
+- **Conexão por depuração sem fio agora pede só o código.** O diálogo tinha um
+  bloco "Avançado" com IP e portas para preencher na mão; as portas e o endereço
+  são descobertos sozinhos pela rede (mDNS). Ficou só o campo do código de 6
+  números, com uma segunda tentativa quando o mDNS perde a primeira resposta.
+- **A ordem das chaves do perfil personalizado estava desalinhada entre o painel
+  e o script**, o que fazia o valor de uma chave ser aplicado em outra. As três
+  pontas foram realinhadas e há teste cobrindo a ordem.
+
 ## [2.42.1] - 2026-10-22
 
 ### Corrigido

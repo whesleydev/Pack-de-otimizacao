@@ -156,6 +156,10 @@ cmd_unkeep() {
 
 cmd_keep_fg() {
     pkg="$(otm_fg_pkg)"
+    # se o dumpsys não diz quem está na tela (tela bloqueada, formato novo do
+    # Android), cai no jogo escolhido em vez de dar erro: no meio da partida o
+    # botão "exceção (1º plano)" falhava e não protegia nada.
+    [ -n "$pkg" ] || pkg="$(game_pkg_saved)"
     [ -n "$pkg" ] || { warn "não consegui identificar o app em primeiro plano"; return 1; }
     _pm_valid "$pkg" || { err "pacote inválido em 1º plano: '$pkg'"; return 1; }
     _pm_keep_add "$pkg"

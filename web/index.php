@@ -65,24 +65,13 @@ $riskLabel = ['safe' => 'seguro', 'careful' => 'cuidado', 'root' => 'root'];
 
 // --- Perfil personalizado: opções do menu (o painel monta e envia ligadas) ----
 // A ordem das chaves é a mesma do argv de profile.custom.apply em lib.php.
-$CPROF = [
-    ['k' => 'anim',      't' => 'Animações',        's' => 'Transições e efeitos da interface.',
-     'opts' => [['normal', 'Padrão'], ['half', '0.5x'], ['off', 'Desligadas']]],
-    ['k' => 'ram',       't' => 'Apps em 2º plano', 's' => 'Quantos apps podem ficar abertos na memória.',
-     'opts' => [['padrao', 'Padrão'], ['gaming', 'Gaming'], ['batata', 'Batata']]],
-    ['k' => 'hz',        't' => 'Taxa da tela',     's' => 'Trava a tela numa taxa fixa para não oscilar.',
-     'opts' => [['off', 'Automática'], ['60', '60 Hz'], ['90', '90 Hz'], ['120', '120 Hz'], ['144', '144 Hz']]],
-    ['k' => 'touch',     't' => 'Perfil de toque',  's' => 'Ajuste de resposta do toque (bom no Free Fire).',
-     'opts' => [['none', 'Nenhum'], ['balanced', 'Equilibrado'], ['headshot', 'Headshot'], ['spray', 'Spray'], ['sniper', 'Sniper'], ['speed', 'Velocidade']]],
-    ['k' => 'clean',     't' => 'Limpeza',          's' => 'Limpa cache e libera RAM na hora.',
-     'opts' => [['off', 'Nenhuma'], ['fundo', 'Fundo'], ['suave', 'Suave'], ['normal', 'Completa']]],
-    ['k' => 'telemetry', 't' => 'Telemetria e logs','s' => 'Desligar reduz atividade em segundo plano.',
-     'opts' => [['on', 'Ligada'], ['off', 'Desligada']]],
-    ['k' => 'hibernate', 't' => 'Hibernar apps',    's' => 'Suspende os apps de fundo para ganhar RAM.',
-     'opts' => [['off', 'Não'], ['on', 'Sim']]],
-];
+$CPROF = otm_custom_profile_opts();
 $CPROF_DEFAULT = [];
-foreach ($CPROF as $c) { $CPROF_DEFAULT[$c['k']] = $c['opts'][0][0]; }
+foreach ($CPROF as $c) {
+    // o padrão é o valor do estado "desligado" no toggle; nos demais, a 1ª opção
+    $CPROF_DEFAULT[$c['k']] = ($c['kind'] ?? 'seg') === 'toggle'
+        ? $c['tgl']['off'] : $c['opts'][0][0];
+}
 
 // --- Terminal (aba própria): executa comandos crus via api.php do=term ---------
 // O Terminal é renderizado no servidor como uma seção a mais do menu. Ele não é
@@ -520,6 +509,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .cp-info span{font-size:11.5px;color:var(--muted)}
 .cp-seg{flex-wrap:wrap}
 .cp-seg .seg-btn{flex:1 1 auto;min-width:72px;font-size:12.5px;padding:8px 10px}
+.cp-row[data-kind="toggle"]{display:flex;align-items:center;gap:12px}
+.cp-row[data-kind="toggle"] .cp-info{margin:0;flex:1}
+.sw{flex:0 0 auto;width:46px;height:26px;border:0;border-radius:999px;background:var(--line);position:relative;cursor:pointer;padding:0;transition:background .18s}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s}
+.sw[aria-checked="true"]{background:var(--accent)}
+.sw[aria-checked="true"] i{transform:translateX(20px)}
 .set-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .set-actions .btn{flex:1;min-width:120px}
 .perms{display:flex;flex-direction:column;gap:8px}
@@ -1227,13 +1222,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
     <div class="cp-list" id="profList">
 <?php foreach ($CPROF as $c): ?>
-      <div class="cp-row" data-key="<?= htmlspecialchars($c['k'], ENT_QUOTES) ?>">
+      <div class="cp-row" data-key="<?= htmlspecialchars($c['k'], ENT_QUOTES) ?>"<?= ($c['kind'] ?? 'seg') === 'toggle' ? ' data-kind="toggle"' : '' ?>>
         <div class="cp-info"><b><?= htmlspecialchars($c['t'], ENT_QUOTES) ?></b><span><?= htmlspecialchars($c['s'], ENT_QUOTES) ?></span></div>
+<?php if (($c['kind'] ?? 'seg') === 'toggle'): ?>
+        <button class="sw" type="button" role="switch" aria-checked="false" aria-label="<?= htmlspecialchars($c['t'], ENT_QUOTES) ?>"
+                data-on="<?= htmlspecialchars($c['tgl']['on'], ENT_QUOTES) ?>" data-off="<?= htmlspecialchars($c['tgl']['off'], ENT_QUOTES) ?>"><i></i></button>
+<?php else: ?>
         <div class="seg cp-seg">
 <?php foreach ($c['opts'] as $i => $o): ?>
           <button class="seg-btn" type="button" data-val="<?= htmlspecialchars($o[0], ENT_QUOTES) ?>"<?= $i === 0 ? ' aria-pressed="true"' : ' aria-pressed="false"' ?>><?= htmlspecialchars($o[1], ENT_QUOTES) ?></button>
 <?php endforeach; ?>
         </div>
+<?php endif; ?>
       </div>
 <?php endforeach; ?>
     </div>
@@ -1355,6 +1355,23 @@ const ACTIONS = <?= json_encode(array_column($actions, null, 'id'), JSON_UNESCAP
 const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
 const $ = s => document.querySelector(s);
 let pending = null;
+
+/* toque de verdade: só vale o dedo PARADO e CURTO. No fim de um arrasto (scroll)
+   o navegador emite um "click" sintético na posição onde o dedo soltou — era isso
+   que disparava botões sem querer. O pointercancel chega assim que a página começa
+   a rolar, então arrastar nunca conta como toque. */
+function tapOnly(el, fn){
+  if (!el) return;
+  let sx = 0, sy = 0, st = 0, ok = false;
+  el.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; st = Date.now(); ok = true; }, {passive:true});
+  el.addEventListener("pointermove", e => { if (ok && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) ok = false; }, {passive:true});
+  el.addEventListener("pointercancel", () => { ok = false; }, {passive:true});
+  el.addEventListener("pointerleave", () => { ok = false; }, {passive:true});
+  el.addEventListener("click", e => {
+    if (!ok || Date.now() - st > 700){ e.preventDefault(); e.stopPropagation(); return; }
+    ok = false; fn(e);
+  });
+}
 
 /* tema + aparência (engrenagem) — o app é SÓ modo escuro: não há alternância */
 const ACCENTS = {
@@ -1654,9 +1671,9 @@ async function doRun(a, params, confirmed, btn){
   }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); }
   setBusy(false, btn);
 }
-document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.closest(".card")));
+document.querySelectorAll("[data-run]").forEach(b => tapOnly(b, () => run(b.closest(".card"))));
 /* só opções de grupo de escolha: um .opt fora de .card-choice tem handler próprio */
-document.querySelectorAll(".card-choice .opt").forEach(b => b.onclick = () => selectOption(b));
+document.querySelectorAll(".card-choice .opt").forEach(b => tapOnly(b, () => selectOption(b)));
 
 /* ---- Perfil de Desempenho (turbo.sh perfmode) ------------------------------ */
 function applyPerfmode(){
@@ -1676,11 +1693,11 @@ function applyPerfmode(){
     now.textContent = txt; now.hidden = !txt;
   }
 }
-document.querySelectorAll("[data-perfmode]").forEach(b => b.onclick = () => {
+document.querySelectorAll("[data-perfmode]").forEach(b => tapOnly(b, () => {
   const a = ACTIONS[b.dataset.perfmode === "on" ? "turbo.perfmode_on" : "turbo.perfmode_off"];
   if (!a){ toast("Ação indisponível", "bad"); return; }
   Promise.resolve(doRun(a, {}, false, b)).then(applyPerfmode);
-});
+}));
 
 /* ---- vitalidade: cockpit de longevidade ------------------------------------
    O motor (scripts/vitality.sh) mede; aqui só desenhamos o que ele diz. O `tick`
@@ -1733,7 +1750,7 @@ function renderVital(){
     now.textContent = t; now.hidden = false;
   }
 }
-document.querySelectorAll("[data-vital-go]").forEach(b => b.onclick = async () => {
+document.querySelectorAll("[data-vital-go]").forEach(b => tapOnly(b, async () => {
   const go = b.dataset.vitalGo;
   const id = go === "optimize" ? "vital.optimize" : go === "care_on" ? "vital.care_on"
            : go === "care_off" ? "vital.care_off"
@@ -1742,7 +1759,7 @@ document.querySelectorAll("[data-vital-go]").forEach(b => b.onclick = async () =
   if (a.confirm){ b.dataset.vitalId = id; askConfirm(b, a); return; }
   await doRun(a, {}, false, b);
   loadStats();
-});
+}));
 
 /* ---- estado real do aparelho (renderizador em uso, toque, refresh) ---------- */
 let STATE = {};
@@ -2198,7 +2215,7 @@ function runGameHome(btn){
   if (!pkg){ toast("Escolha o jogo primeiro", "bad"); return; }
   doRun(a, { pkg }, false, btn);
 }
-document.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => runActionById(b.dataset.qa));
+document.querySelectorAll("[data-qa]").forEach(b => tapOnly(b, () => runActionById(b.dataset.qa)));
 
 /* status do botão principal (Clean Phone) enquanto a limpeza roda */
 const heroBtn = document.getElementById("rocketBtn");
@@ -2227,6 +2244,8 @@ function profPaint(){
   CPROF.forEach(c => {
     const row = document.querySelector('.cp-row[data-key="' + c.k + '"]'); if (!row) return;
     row.querySelectorAll(".seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.val === cur[c.k] ? "true" : "false"));
+    const sw = row.querySelector(".sw");
+    if (sw) sw.setAttribute("aria-checked", cur[c.k] === sw.dataset.on ? "true" : "false");
   });
 }
 function profSet(k, v){
@@ -2234,6 +2253,9 @@ function profSet(k, v){
   localStorage.setItem(CPROF_KEY, JSON.stringify(cur));
   profPaint();
 }
+// Lê o estado ligado/desligado da chave. O "on" varia por opção (on/ligados...),
+// por isso o valor vem do próprio botão, não de um "true" fixo.
+function profToggle(sw){ return sw.getAttribute("aria-checked") === "true"; }
 function profActiveCount(){
   const cur = profRead();
   return CPROF.filter(c => cur[c.k] !== CPROF_DEFAULT[c.k]).length;
@@ -2272,9 +2294,11 @@ async function applyCustomProfile(a, btn){
   }finally{ setBusy(false, btn); }
 }
 document.querySelectorAll("#profList .cp-row").forEach(row => {
-  row.querySelectorAll(".seg-btn").forEach(b => b.onclick = () => profSet(row.dataset.key, b.dataset.val));
+  row.querySelectorAll(".seg-btn").forEach(b => tapOnly(b, () => profSet(row.dataset.key, b.dataset.val)));
+  const sw = row.querySelector(".sw");
+  if (sw) tapOnly(sw, () => profSet(row.dataset.key, profToggle(sw) ? sw.dataset.off : sw.dataset.on));
 });
-document.getElementById("profApply").onclick = () => applyCustomProfile(ACTIONS["profile.custom.apply"], document.getElementById("profApply"));
+tapOnly(document.getElementById("profApply"), () => applyCustomProfile(ACTIONS["profile.custom.apply"], document.getElementById("profApply")));
 document.getElementById("profClose").onclick = () => document.getElementById("profMask").classList.remove("open");
 document.getElementById("profReset").onclick = () => {
   localStorage.removeItem(CPROF_KEY); profPaint();

@@ -79,14 +79,17 @@ listar() {
 }
 
 # _resolver_pkg <pkg|auto> -> define RESOLVED_PKG. "auto" = o jogo escolhido no
-# pack (Modo Competitivo); sem escolha, o app em primeiro plano. É o que o painel
-# flutuante usa: ele não sabe qual é o jogo.
+# pack (Modo Competitivo); sem escolha, o app em primeiro plano; e, se nem isso
+# der para ler (tela bloqueada, dumpsys sem a linha), o Free Fire — a MESMA
+# decisão do `adb-tweaks.sh game_open`. Sem esse último degrau o flutuante
+# devolvia erro no meio da partida só porque o usuário nunca escolheu um jogo.
 # Devolve por variável (não por stdout) de propósito: capturar com $( ) engoliria
 # a mensagem de erro junto com o valor.
 _resolver_pkg() {
     if [ "$1" = "auto" ] || [ "$1" = "-" ]; then
         RESOLVED_PKG="$(sed -n '1p' "$ST/game/pkg" 2>/dev/null | tr -d '\n')"
         [ -n "$RESOLVED_PKG" ] || RESOLVED_PKG="$(otm_fg_pkg)"
+        [ -n "$RESOLVED_PKG" ] || RESOLVED_PKG="$GAME_PKG_DEFAULT"
         [ -n "$RESOLVED_PKG" ] || { err "não sei qual é o jogo (escolha um no pack)"; return 1; }
     else
         RESOLVED_PKG="$1"

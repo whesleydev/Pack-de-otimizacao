@@ -171,6 +171,79 @@ function otm_choices(): array {
 
 // --- registro de ações --------------------------------------------------------
 // risco: safe | careful | root    confirm: pede confirmação no painel
+/**
+ * Opções do PERFIL PERSONALIZADO. É a fonte única das três pontas que precisam
+ * casar: os parâmetros de `profile.custom.apply` (abaixo), a const CPROF do HTML
+ * (web/index.php e o painel do app) e a ordem de PC_ORDER em
+ * scripts/profile-custom.sh. Mexer na ordem aqui exige mexer lá.
+ */
+function otm_custom_profile_opts(): array {
+    // kind: 'seg' (escolha entre opções) ou 'toggle' (chave liga/desliga).
+    // No toggle só 'tgl' importa: o switch manda o valor de ligado/desligado, e
+    // 'opts' (os rótulos) nunca aparece na tela.
+    return [
+        // --- escolha entre opções ---
+        ['k' => 'anim',      't' => 'Animações',         's' => 'Transições e efeitos da interface.',
+         'opts' => [['normal', 'Padrão'], ['half', '0.5x'], ['off', 'Desligadas']]],
+        ['k' => 'ram',       't' => 'Apps em 2º plano',  's' => 'Quantos apps podem ficar abertos na memória.',
+         'opts' => [['padrao', 'Padrão'], ['gaming', 'Gaming'], ['batata', 'Batata']]],
+        ['k' => 'hz',        't' => 'Taxa da tela',      's' => 'Trava a tela numa taxa fixa para não oscilar.',
+         'opts' => [['off', 'Automática'], ['60', '60 Hz'], ['90', '90 Hz'], ['120', '120 Hz'], ['144', '144 Hz']]],
+        ['k' => 'touch',     't' => 'Perfil de toque',   's' => 'Ajuste de resposta do toque (bom no Free Fire).',
+         'opts' => [['none', 'Nenhum'], ['balanced', 'Equilibrado'], ['headshot', 'Headshot'], ['spray', 'Spray'], ['sniper', 'Sniper'], ['speed', 'Velocidade']]],
+        ['k' => 'clean',     't' => 'Limpeza',           's' => 'Limpa cache e libera RAM na hora.',
+         'opts' => [['off', 'Nenhuma'], ['fundo', 'Fundo'], ['suave', 'Suave'], ['normal', 'Completa']]],
+        ['k' => 'renderer',  't' => 'Motor gráfico',     's' => 'SkiaGL ou Skia Vulkan (o sistema ignora valores inválidos).',
+         'opts' => [['nao', 'Não mexer'], ['skiagl', 'SkiaGL'], ['skiavk', 'Skia Vulkan']]],
+        ['k' => 'dns',       't' => 'DNS privado',       's' => 'Servidor de DNS criptografado (DoT).',
+         'opts' => [['nao', 'Não mexer'], ['cloudflare', 'Cloudflare'], ['adguard', 'AdGuard'], ['quad9', 'Quad9'], ['google', 'Google']]],
+        ['k' => 'proc',      't' => 'Limite de processos', 's' => 'Máximo de apps em 2º plano (mais RAM ao jogo).',
+         'opts' => [['nao', 'Não mexer'], ['4', '4 apps'], ['8', '8 apps'], ['16', '16 apps']]],
+        ['k' => 'efeitos',   't' => 'Efeitos visuais',   's' => 'Desfoque e transparência da interface.',
+         'opts' => [['nao', 'Não mexer'], ['ligados', 'Ligados'], ['leves', 'Desligados (leve)']]],
+        ['k' => 'barras',    't' => 'Barras do sistema', 's' => 'Modo imersivo: esconde a barra de cima, a de baixo ou as duas.',
+         'opts' => [['nao', 'Não mexer'], ['visiveis', 'Visíveis'], ['status', 'Só a de baixo'], ['nav', 'Só a de cima'], ['full', 'Imersivo']]],
+        ['k' => 'res',       't' => 'Resolução',         's' => 'Resolução lógica: menos pixels, mais FPS.',
+         'opts' => [['nao', 'Não mexer'], ['auto', 'Recomendada'], ['720x1600', '720p'], ['1080x1920', '1080p'], ['1080x2340', '1080p+']]],
+        ['k' => 'touchlat',  't' => 'Latência de toque', 's' => 'Responsividade e janelas de toque (só o que o aparelho aceita).',
+         'opts' => [['nao', 'Não mexer'], ['leve', 'Leve'], ['forte', 'Forte']]],
+
+        // --- chaves liga/desliga ---
+        ['k' => 'telemetry', 't' => 'Desligar telemetria e logs', 's' => 'Corta logs e scans "sempre disponível" em 2º plano.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'off']],
+        ['k' => 'hibernate', 't' => 'Hibernar apps',     's' => 'Suspende os apps de fundo para ganhar RAM.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'off', 'on' => 'on']],
+        ['k' => 'gpu',       't' => 'Renderização por GPU', 's' => 'Força a GPU na interface e libera o driver do jogo.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'net',       't' => 'Rede / buffers TCP', 's' => 'DNS Cloudflare e buffers TCP maiores.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'latency',   't' => 'Latência / ping',   's' => 'BBR, low latency, ECN e fila curta: menos ping.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'wifi',      't' => 'Wi-Fi sem economia', 's' => 'Sem scan em 2º plano nem economia de energia.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'battery',   't' => 'Economia de bateria', 's' => 'Liga a economia de energia e o Doze.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'doze',      't' => 'Sono profundo rápido', 's' => 'Dorme ~2 min após a tela apagar (era ~30 min).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'freezer',   't' => 'Congelar apps em cache', 's' => 'Congela o que está em cache para liberar CPU.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'dnd',       't' => 'Não perturbe',      's' => 'Silencia notificações sem bloquear alarmes.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'gamefocus', 't' => 'Foco de jogo',      's' => 'DND extremo: nada aparece por cima do jogo.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'notif',     't' => 'Menos notificações', 's' => 'Desliga heads-up e bolhas de notificação.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'perfmode',  't' => 'Modo desempenho fixo', 's' => 'Trava o aparelho em desempenho máximo (esquenta mais).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'vitality',  't' => 'Longevidade da bateria', 's' => 'Cuida da bateria (limite de carga em 80%).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'mobile',    't' => 'Rede móvel',        's' => 'Sem economia de dados e sem largar o Wi-Fi ruim.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'janelas',   't' => 'Transições 0.5x',   's' => 'Metade do tempo nas animações de janela.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+    ];
+}
+
 function otm_actions(): array {
     $A = [];
 
@@ -1285,18 +1358,22 @@ function otm_actions(): array {
           'argv' => [], 'ui' => 'customprofile']);
     $add(['id' => 'profile.custom.apply', 'group' => 'Geral', 'label' => 'Aplicar perfil personalizado',
           'desc' => 'Liga os recursos escolhidos no menu do perfil personalizado.',
-          'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso.',
-          'argv' => ['profile-custom.sh', 'apply', '{anim}', '{ram}', '{hz}', '{touch}',
-                     '{telemetry}', '{clean}', '{hibernate}'],
-          'params' => [
-              ['name' => 'anim', 'type' => 'enum', 'label' => 'Animações', 'options' => ['normal', 'half', 'off'], 'default' => 'normal'],
-              ['name' => 'ram', 'type' => 'enum', 'label' => 'RAM', 'options' => ['padrao', 'gaming', 'batata'], 'default' => 'padrao'],
-              ['name' => 'hz', 'type' => 'enum', 'label' => 'Taxa da tela', 'options' => ['off', '60', '90', '120', '144'], 'default' => 'off'],
-              ['name' => 'touch', 'type' => 'enum', 'label' => 'Toque', 'options' => ['none', 'balanced', 'headshot', 'spray', 'sniper', 'speed'], 'default' => 'none'],
-              ['name' => 'telemetry', 'type' => 'enum', 'label' => 'Telemetria', 'options' => ['on', 'off'], 'default' => 'on'],
-              ['name' => 'clean', 'type' => 'enum', 'label' => 'Limpeza', 'options' => ['off', 'fundo', 'suave', 'normal'], 'default' => 'off'],
-              ['name' => 'hibernate', 'type' => 'enum', 'label' => 'Hibernar apps', 'options' => ['off', 'on'], 'default' => 'off'],
-          ],
+          'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso. São dezenas de ajustes independentes: desempenho, memória, gráficos, tela, toque, rede, bateria, notificações e limpeza.',
+          'argv' => ['profile-custom.sh', 'apply',
+                     '{anim}', '{ram}', '{hz}', '{touch}', '{clean}', '{renderer}',
+                     '{dns}', '{proc}', '{efeitos}', '{barras}', '{res}', '{touchlat}',
+                     '{telemetry}', '{hibernate}', '{gpu}', '{net}', '{latency}', '{wifi}',
+                     '{battery}', '{doze}', '{freezer}', '{dnd}', '{gamefocus}', '{notif}',
+                     '{perfmode}', '{vitality}', '{mobile}', '{janelas}'],
+          'params' => array_map(static function (array $c): array {
+              // No toggle o switch manda 'off' ou 'on'; nos dois casos o valor
+              // enviado é o da chave 'tgl'. Por isso o default é sempre o
+              // "desligado": ligar é escolha do usuário, nunca o de fábrica.
+              $tgl = ($c['kind'] ?? 'seg') === 'toggle';
+              $opts = $tgl ? [$c['tgl']['off'], $c['tgl']['on']] : array_column($c['opts'], 0);
+              return ['name' => $c['k'], 'type' => 'enum', 'label' => $c['t'],
+                      'options' => $opts, 'default' => $opts[0]];
+          }, otm_custom_profile_opts()),
           'confirm' => true, 'risk' => 'careful', 'timeout' => 300]);
     $add(['id' => 'profile.custom.off', 'group' => 'Geral', 'label' => 'Perfil personalizado: desligar',
           'desc' => 'Desfaz o perfil personalizado e volta o aparelho ao padrão.',

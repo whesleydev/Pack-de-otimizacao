@@ -6,14 +6,40 @@
 #  recurso é opcional e ligado por conta própria. O script guarda a escolha em
 #  $ST/profile-custom/config e aplica SÓ o que estiver ligado.
 #
-#  Recursos (chave=valor):
-#     anim=off|half|normal     animações do sistema (off=0x, half=0.5x)
-#     ram=padrao|gaming|batata limite de apps em 2º plano
-#     hz=off|60|90|120|144     trava a tela numa taxa fixa
+#  Cada recurso tem um valor "nao" (ou o padrão equivalente) que significa
+#  "não mexer". A lista completa e a ordem ficam em PC_ORDER, que é a MESMA
+#  ordem dos parâmetros do painel (web/lib.php, profile.custom.apply) e da
+#  const CPROF do HTML. Mexer na ordem de um lado exige mexer no outro.
+#
+#  Recursos:
+#     anim=normal|half|off        animações do sistema (off=0x, half=0.5x)
+#     ram=padrao|gaming|batata    limite de apps em 2º plano
+#     hz=off|60|90|120|144        trava a tela numa taxa fixa
 #     touch=none|balanced|headshot|spray|sniper|speed
-#     telemetry=on|off         desliga logs/telemetria e scans
+#     telemetry=nao|off           off desliga logs/telemetria e scans
 #     clean=off|fundo|suave|normal  limpeza de RAM/cache + suavização
-#     hibernate=on|off         hiberna os apps de fundo
+#     hibernate=on|off            hiberna os apps de fundo
+#     gpu=nao|on                  renderização por GPU + driver do jogo
+#     renderer=nao|skiagl|skiavk  motor gráfico da interface
+#     dns=nao|cloudflare|adguard|quad9|google
+#     net=nao|on                  DNS + buffers TCP
+#     latency=nao|on              BBR, low latency, ECN (ping)
+#     wifi=nao|on                 Wi-Fi sem scan/economia em 2º plano
+#     battery=nao|on              economia de bateria ligada
+#     doze=nao|on                 sono profundo mais rápido
+#     proc=nao|4|8|16             limite de processos em 2º plano
+#     freezer=nao|on              congela apps em cache
+#     efeitos=nao|ligados|leves   desfoque/transparência
+#     barras=nao|visiveis|status|nav|full  barras do sistema (imersivo)
+#     dnd=nao|on                  não perturbe
+#     gamefocus=nao|on            foco de jogo (DND extremo)
+#     notif=nao|on                menos notificações heads-up
+#     res=nao|auto|720x1600|1080x1920|1080x2340  resolução lógica
+#     perfmode=nao|on             modo desempenho fixo
+#     vitality=nao|on             longevidade da bateria (carga 80%)
+#     mobile=nao|on               rede móvel sem economia de dados
+#     janelas=nao|on              transições 0.5x
+#     touchlat=nao|leve|forte     latência de toque (responsividade/slop)
 #
 #  Uso:
 #     profile-custom.sh show                    # mostra a configuração salva
@@ -37,14 +63,71 @@ mkdir -p "$PC_ST" 2>/dev/null
 PC_CFG="$PC_ST/config"       # opções escolhidas (chave=valor)
 PC_CUR="$PC_ST/current"      # marca que o perfil está ativo
 
-PKG="${OTM_FF_PKG:-com.dts.freefireth}"
 PC_A=0; PC_C=0; PC_F=0
 
-# --- valores padrão (tudo desligado) ------------------------------------------
-pc_defaults() {
-    PC_ANIM=normal; PC_RAM=padrao; PC_HZ=off; PC_TOUCH=none
-    PC_TELEMETRY=on; PC_CLEAN=off; PC_HIBERNATE=off
+# Ordem canônica das chaves. Casa com o argv de profile.custom.apply e com a
+# const CPROF do painel: os três têm de estar na MESMA ordem.
+PC_ORDER="anim ram hz touch clean renderer \
+dns proc efeitos barras res touchlat \
+telemetry hibernate gpu net latency wifi \
+battery doze freezer dnd gamefocus notif \
+perfmode vitality mobile janelas"
+
+# --- valores aceitos por chave (o primeiro é o padrão "não mexer") ------------
+pc_opts() {
+    case "$1" in
+        anim)      echo "normal half off" ;;
+        ram)       echo "padrao gaming batata" ;;
+        hz)        echo "off 60 90 120 144" ;;
+        touch)     echo "none balanced headshot spray sniper speed" ;;
+        telemetry) echo "nao off" ;;
+        clean)     echo "off fundo suave normal" ;;
+        hibernate) echo "off on" ;;
+        gpu)       echo "nao on" ;;
+        renderer)  echo "nao skiagl skiavk" ;;
+        dns)       echo "nao cloudflare adguard quad9 google" ;;
+        net)       echo "nao on" ;;
+        latency)   echo "nao on" ;;
+        wifi)      echo "nao on" ;;
+        battery)   echo "nao on" ;;
+        doze)      echo "nao on" ;;
+        proc)      echo "nao 4 8 16" ;;
+        freezer)   echo "nao on" ;;
+        efeitos)   echo "nao ligados leves" ;;
+        barras)    echo "nao visiveis status nav full" ;;
+        dnd)       echo "nao on" ;;
+        gamefocus) echo "nao on" ;;
+        notif)     echo "nao on" ;;
+        res)       echo "nao auto 720x1600 1080x1920 1080x2340" ;;
+        perfmode)  echo "nao on" ;;
+        vitality)  echo "nao on" ;;
+        mobile)    echo "nao on" ;;
+        janelas)   echo "nao on" ;;
+        touchlat)  echo "nao leve forte" ;;
+        *)         echo "" ;;
+    esac
 }
+
+# --- acesso por chave: a variável é PC_<CHAVE> em maiúsculas ------------------
+pc_key_ok() { case " $PC_ORDER " in *" $1 "*) return 0 ;; esac; return 1; }
+pc_var()    { printf '%s' "PC_$(printf '%s' "$1" | tr 'a-z' 'A-Z')"; }
+pc_setvar() { eval "$(pc_var "$1")=\"\$2\""; }
+pc_getvar() { eval "printf '%s' \"\${$(pc_var "$1"):-}\""; }
+
+pc_default() {
+    case "$1" in
+        anim)      echo normal ;;
+        ram)       echo padrao ;;
+        hz)        echo off ;;
+        touch)     echo none ;;
+        telemetry) echo nao ;;
+        clean)     echo off ;;
+        hibernate) echo off ;;
+        *)         echo nao ;;
+    esac
+}
+
+pc_defaults() { for _k in $PC_ORDER; do pc_setvar "$_k" "$(pc_default "$_k")"; done; }
 
 # --- lê a configuração salva por cima dos padrões ------------------------------
 pc_load() {
@@ -53,29 +136,14 @@ pc_load() {
     while IFS= read -r _l; do
         case "$_l" in ''|'#'*) continue ;; esac
         _k="${_l%%=*}"; _v="${_l#*=}"
-        case "$_k" in
-            anim)      PC_ANIM="$_v" ;;
-            ram)       PC_RAM="$_v" ;;
-            hz)        PC_HZ="$_v" ;;
-            touch)     PC_TOUCH="$_v" ;;
-            telemetry) PC_TELEMETRY="$_v" ;;
-            clean)     PC_CLEAN="$_v" ;;
-            hibernate) PC_HIBERNATE="$_v" ;;
-        esac
+        pc_key_ok "$_k" && pc_setvar "$_k" "$_v"
     done < "$PC_CFG"
 }
 
 # --- valida uma chave=valor ----------------------------------------------------
 pc_valid() {
-    case "$1" in
-        anim)      case "$2" in off|half|normal) return 0 ;; esac ;;
-        ram)       case "$2" in padrao|gaming|batata) return 0 ;; esac ;;
-        hz)        case "$2" in off|60|90|120|144) return 0 ;; esac ;;
-        touch)     case "$2" in none|balanced|headshot|spray|sniper|speed) return 0 ;; esac ;;
-        telemetry) case "$2" in on|off) return 0 ;; esac ;;
-        clean)     case "$2" in off|fundo|suave|normal) return 0 ;; esac ;;
-        hibernate) case "$2" in on|off) return 0 ;; esac ;;
-    esac
+    pc_key_ok "$1" || return 1
+    case " $(pc_opts "$1") " in *" $2 "*) return 0 ;; esac
     return 1
 }
 
@@ -145,10 +213,10 @@ pc_set_all() {
 
 # --- salva as opções na ORDEM fixa usada pelo painel --------------------------
 # O painel manda uma ação só, com os valores posicionais; aqui eles viram
-# chave=valor. Omitir um argumento mantém o que já estava salvo.
+# chave=valor. Omitir um argumento (vazio) mantém o que já estava salvo.
 pc_set_pos() {
     _i=1
-    for _k in anim ram hz touch telemetry clean hibernate; do
+    for _k in $PC_ORDER; do
         eval "_v=\${$_i:-}"
         if [ -n "$_v" ]; then
             if pc_valid "$_k" "$_v"; then pc_save "$_k" "$_v"
@@ -160,52 +228,118 @@ pc_set_pos() {
 }
 
 # --- aplica só o que estiver ligado -------------------------------------------
+# Cada bloco só age quando a chave saiu do valor "não mexer"; assim aplicar o
+# perfil não empilha ajuste nenhum além do que o usuário marcou.
 pc_apply() {
     pc_load
     _n=0
     say "Perfil PERSONALIZADO — aplicando só o que você ligou"
 
-    # animações
+    # --- desempenho / memória ---
+    case "$PC_TELEMETRY" in
+        off) pc_run turbo.sh telemetry off; _n=$((_n+1)) ;;
+    esac
     case "$PC_ANIM" in
         off)    pc_run adb-tweaks.sh perf_max; _n=$((_n+1)) ;;
         half)   pc_run adb-tweaks.sh perf;     _n=$((_n+1)) ;;
-        normal) ;;
     esac
-
-    # RAM / apps em 2º plano
     case "$PC_RAM" in
         gaming|batata) pc_run adb-tweaks.sh mem "$PC_RAM"; _n=$((_n+1)) ;;
-        padrao) ;;
     esac
-
-    # taxa de atualização da tela
-    case "$PC_HZ" in
-        off) ;;
-        *) pc_run turbo.sh refresh_fixed "$PC_HZ"; _n=$((_n+1)) ;;
+    case "$PC_PROC" in
+        nao|'') ;;
+        *) pc_run adb-tweaks.sh proc_limit "$PC_PROC"; _n=$((_n+1)) ;;
     esac
-
-    # perfil de toque
-    case "$PC_TOUCH" in
-        none) ;;
-        *) pc_run ff-touch.sh "$PC_TOUCH"; _n=$((_n+1)) ;;
-    esac
-
-    # telemetria
-    case "$PC_TELEMETRY" in
-        off) pc_run turbo.sh telemetry off; _n=$((_n+1)) ;;
-        on)  ;;
-    esac
-
-    # limpeza + suavização
-    case "$PC_CLEAN" in
-        off) ;;
-        *) pc_run clean.sh now "$PC_CLEAN"; _n=$((_n+1)) ;;
-    esac
-
-    # hibernar apps de fundo
     case "$PC_HIBERNATE" in
         on) pc_run turbo.sh hibernate now; _n=$((_n+1)) ;;
-        off) ;;
+    esac
+    case "$PC_FREEZER" in
+        on) pc_run adb-tweaks.sh freezer; _n=$((_n+1)) ;;
+    esac
+    case "$PC_PERFMODE" in
+        on) pc_run turbo.sh perfmode on; _n=$((_n+1)) ;;
+    esac
+
+    # --- gráficos / tela ---
+    case "$PC_GPU" in
+        on) pc_run adb-tweaks.sh gpu; _n=$((_n+1)) ;;
+    esac
+    case "$PC_RENDERER" in
+        skiagl|skiavk) pc_run adb-tweaks.sh renderer "$PC_RENDERER"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_HZ" in
+        off|'') ;;
+        *) pc_run turbo.sh refresh_fixed "$PC_HZ"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_RES" in
+        auto) pc_run resolution.sh auto; _n=$((_n+1)) ;;
+        nao|'') ;;
+        *) pc_run resolution.sh apply "$PC_RES"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_EFEITOS" in
+        ligados) pc_run adb-tweaks.sh effects on;  _n=$((_n+1)) ;;
+        leves)   pc_run adb-tweaks.sh effects off; _n=$((_n+1)) ;;
+    esac
+    case "$PC_JANELAS" in
+        on) pc_run adb-tweaks.sh window_tweaks; _n=$((_n+1)) ;;
+    esac
+    case "$PC_BARRAS" in
+        visiveis|status|nav|full) pc_run adb-tweaks.sh sysbars "$PC_BARRAS"; _n=$((_n+1)) ;;
+    esac
+
+    # --- toque ---
+    case "$PC_TOUCH" in
+        none|'') ;;
+        *) pc_run ff-touch.sh "$PC_TOUCH"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_TOUCHLAT" in
+        leve)  pc_run adb-tweaks.sh touch_latency 110 300 0 2; _n=$((_n+1)) ;;
+        forte) pc_run adb-tweaks.sh touch_latency 100 200 0 0; _n=$((_n+1)) ;;
+    esac
+
+    # --- rede ---
+    case "$PC_DNS" in
+        cloudflare|adguard|quad9|google) pc_run dns.sh "$PC_DNS"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_NET" in
+        on) pc_run adb-tweaks.sh net; _n=$((_n+1)) ;;
+    esac
+    case "$PC_LATENCY" in
+        on) pc_run adb-tweaks.sh latency; _n=$((_n+1)) ;;
+    esac
+    case "$PC_WIFI" in
+        on) pc_run adb-tweaks.sh wifi; _n=$((_n+1)) ;;
+    esac
+    case "$PC_MOBILE" in
+        on) pc_run adb-tweaks.sh mobile_net; _n=$((_n+1)) ;;
+    esac
+
+    # --- bateria / sono ---
+    case "$PC_BATTERY" in
+        on) pc_run adb-tweaks.sh battery; _n=$((_n+1)) ;;
+    esac
+    case "$PC_DOZE" in
+        on) pc_run adb-tweaks.sh doze on; _n=$((_n+1)) ;;
+    esac
+    case "$PC_VITALITY" in
+        on) pc_run vitality.sh care on; _n=$((_n+1)) ;;
+    esac
+
+    # --- notificações ---
+    case "$PC_NOTIF" in
+        on) pc_run adb-tweaks.sh notif; _n=$((_n+1)) ;;
+    esac
+    case "$PC_DND" in
+        on) pc_run adb-tweaks.sh dnd; _n=$((_n+1)) ;;
+    esac
+    case "$PC_GAMEFOCUS" in
+        on) pc_run adb-tweaks.sh game_focus; _n=$((_n+1)) ;;
+    esac
+
+    # --- limpeza (por último: libera o que sobrou) ---
+    case "$PC_CLEAN" in
+        off|'') ;;
+        *) pc_run clean.sh now "$PC_CLEAN"; _n=$((_n+1)) ;;
     esac
 
     if [ "$_n" = "0" ]; then
@@ -224,13 +358,9 @@ pc_show() {
     printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
     _on="$(cat "$PC_CUR" 2>/dev/null)"
     printf '  %sestado:%s %s\n\n' "$C_A" "$C_R" "${_on:+ativo (aplicado)}${_on:-não aplicado}"
-    printf '   %-10s %s\n' "anim"      "$PC_ANIM"
-    printf '   %-10s %s\n' "ram"       "$PC_RAM"
-    printf '   %-10s %s\n' "hz"        "$PC_HZ"
-    printf '   %-10s %s\n' "touch"     "$PC_TOUCH"
-    printf '   %-10s %s\n' "telemetry" "$PC_TELEMETRY"
-    printf '   %-10s %s\n' "clean"     "$PC_CLEAN"
-    printf '   %-10s %s\n' "hibernate" "$PC_HIBERNATE"
+    for _k in $PC_ORDER; do
+        printf '   %-10s %s\n' "$_k" "$(pc_getvar "$_k")"
+    done
     printf '\n  %sAplicar:%s profile-custom.sh apply\n' "$C_A" "$C_R"
     printf '  %sReverter:%s profile-custom.sh off\n\n' "$C_A" "$C_R"
 }
@@ -255,9 +385,8 @@ case "$acao" in
         pc_show ;;
 
     apply|on)
-        # O painel manda tudo numa chamada só: os 8 valores na ordem fixa
-        # (anim ram hz touch telemetry clean hibernate). Também aceita
-        # "apply k=v ..." e "apply" sem nada (usa o que já está salvo).
+        # O painel manda tudo numa chamada só: os valores na ordem de PC_ORDER.
+        # Também aceita "apply k=v ..." e "apply" sem nada (usa o que já está salvo).
         if [ $# -gt 0 ]; then
             case "$1" in
                 *=*) pc_set_all "$@" || { pc_show; exit 1; } ;;
@@ -273,6 +402,9 @@ case "$acao" in
     reset)
         rm -f "$PC_CFG" "$PC_CUR" 2>/dev/null
         say "Configuração apagada (tudo desligado)" ;;
+
+    keys)
+        printf '%s\n' $PC_ORDER ;;
 
     *) pc_show ;;
 esac

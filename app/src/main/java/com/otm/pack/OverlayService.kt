@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 
 /**
  * Painel flutuante (overlay) para usar **durante o jogo**.
@@ -59,11 +61,19 @@ import kotlinx.coroutines.launch
  * o painel completo — é o mesmo gesto de minimizar/maximizar de um app.
  *
  * O acesso ao shell vem de [OtmRunner], que a Activity preenche ao conectar o
- * Shizuku/ADB — o Service não tem como pedir permissão sozinho.
+ * Shizuku/ADB. Se o Android matar o processo do painel no meio da partida (é o
+ * que as próprias ações de limpeza fazem), o estático [OtmRunner] volta nulo e
+ * NENHUMA ação do flutuante funcionava — dava erro em tudo. Como o
+ * `ShizukuProvider` está no manifesto, o Service se recupera sozinho: reconecta
+ * o Shizuku (a permissão já foi concedida) sem precisar abrir o app.
  */
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
+    private val shizuku = ShizukuRunner()
+    /** Transporte recuperado pelo próprio Service (ver [shellRunner]). */
+    private var runner: ShellRunner? = null
+    private var shizukuListener: Shizuku.OnBinderReceivedListener? = null
     private var root: View? = null
     private var panel: View? = null
     private var bubble: View? = null
@@ -90,19 +100,60 @@ class OverlayService : Service() {
         OtmUi.load(this)
         // o painel avisa quando o usuário troca a cor/fonte: o flutuante se redesenha
         OtmUi.onChanged = { post { rebuild() } }
+        registerShizukuRecovery()
         addOverlay()
     }
+
+    /**
+     * Recupera o transporte de shell sem depender da Activity.
+     *
+     * Se o processo foi reiniciado, [OtmRunner.current] está nulo. Aqui o
+     * Service pergunta ao Shizuku (o binder chega pelo `ShizukuProvider`) e, se a
+     * permissão já foi concedida, reconecta — a partir daí o overlay volta a
+     * funcionar sozinho. Sem Shizuku, as ações seguem avisando "sem acesso".
+     *
+     * O listener é registrado SEMPRE (não só quando falta transporte): se o
+     * binder do Shizuku cair depois, o estático vira nulo e sem isto o flutuante
+     * ficaria preso em erro até alguém abrir o app de novo.
+     */
+    private fun registerShizukuRecovery() {
+        try {
+            val l = Shizuku.OnBinderReceivedListener { runCatching { autoConnectShizuku() } }
+            shizukuListener = l
+            Shizuku.addBinderReceivedListenerSticky(l)
+        } catch (_: Throwable) {
+            // Shizuku não instalado: o aviso de "sem acesso" das ações basta.
+        }
+        autoConnectShizuku()
+    }
+
+    private fun autoConnectShizuku() {
+        if (runner != null || OtmRunner.current != null) return
+        try {
+            if (shizuku.isAvailable() && shizuku.hasPermission()) {
+                runner = shizuku
+                OtmRunner.current = shizuku
+            }
+        } catch (_: Throwable) {
+        }
+    }
+
+    /** Transporte atual: o do processo (se ainda vivo) ou o recuperado aqui. */
+    private fun shellRunner(): ShellRunner? = OtmRunner.current ?: runner
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             stopSelf()
             return START_NOT_STICKY
         }
+        autoConnectShizuku()
         return START_STICKY
     }
 
     override fun onDestroy() {
         OtmUi.onChanged = null
+        shizukuListener?.let { runCatching { Shizuku.removeBinderReceivedListener(it) } }
+        shizukuListener = null
         scope.cancel()
         root?.let { runCatching { windowManager.removeView(it) } }
         root = null
@@ -251,6 +302,9 @@ class OverlayService : Service() {
             else pill(dp(11).toFloat(), C_GLASS, C_LINE)
             chip.setTypeface(bodyTypeface(), if (on) Typeface.BOLD else Typeface.NORMAL)
         }
+        // se a resolução mudou enquanto o painel estava minimizado/fechado, o
+        // reajuste pode não ter chegado: refazer na troca de aba é de graça.
+        refitToScreen()
     }
 
     /**
@@ -288,8 +342,13 @@ class OverlayService : Service() {
     /** Lê o consumo real e monta a grade do monitor (atualiza a cada 4 s). */
     private fun loadMonitor() {
         val box = monitorBox ?: return
+        if (shellRunner() == null) {
+            box.removeAllViews()
+            box.addView(procNote("sem acesso — abra o app e conecte o Shizuku"))
+            return
+        }
         scope.launch {
-            val res = OtmExec.run(this@OverlayService, OtmRunner.current, "panel-stats.sh", emptyList())
+            val res = OtmExec.run(this@OverlayService, shellRunner(), "panel-stats.sh", emptyList())
             val s = parseStats(joinOutput(res.stdout, res.stderr))
             post {
                 box.removeAllViews()
@@ -636,8 +695,12 @@ class OverlayService : Service() {
     /** Todos os apps instalados, com o chip de exceção (liga/desliga). */
     private fun loadAllApps() {
         val box = procAllBox ?: return
+        if (shellRunner() == null) {
+            box.addView(procNote("sem acesso — abra o app e conecte o Shizuku"))
+            return
+        }
         scope.launch {
-            val res = OtmExec.run(this@OverlayService, OtmRunner.current, "proc-mgr.sh", listOf("apps"))
+            val res = OtmExec.run(this@OverlayService, shellRunner(), "proc-mgr.sh", listOf("apps"))
             val linhas = parseProcList(joinOutput(res.stdout, res.stderr))
             post {
                 if (procAllBox !== box) return@post
@@ -654,7 +717,7 @@ class OverlayService : Service() {
         box.removeAllViews()
         box.addView(procNote("carregando…"))
         scope.launch {
-            val res = OtmExec.run(this@OverlayService, OtmRunner.current, "proc-mgr.sh", listOf("list"))
+            val res = OtmExec.run(this@OverlayService, shellRunner(), "proc-mgr.sh", listOf("list"))
             val linhas = parseProcList(joinOutput(res.stdout, res.stderr))
             post {
                 box.removeAllViews()
@@ -1077,12 +1140,39 @@ class OverlayService : Service() {
      */
     private fun panelWidth(): Int {
         val tela = resources.displayMetrics.widthPixels
-        return (tela * PANEL_W_FRAC).toInt().coerceIn(dp(240), dp(420))
+        // o teto também não pode passar da tela: um valor fixo em dp (320) ficava
+        // MAIOR que a tela num aparelho estreito e o painel saía cortado na borda.
+        val teto = minOf(dp(320), tela - dp(16))
+        return (tela * PANEL_W_FRAC).toInt().coerceIn(dp(200), teto)
     }
 
     /** Teto de altura do conteúdo: o resto da tela fica livre para o jogo. */
     private fun panelMaxHeight(): Int =
         (resources.displayMetrics.heightPixels * PANEL_H_FRAC).toInt().coerceAtLeast(dp(160))
+
+    /**
+     * O `wm size` (aba Dispositivos / "Resolução") muda a resolução LÓGICA: a
+     * janela do overlay é posicionada em pixels absolutos, então ao reduzir a
+     * resolução o painel (calculado para a tela antiga) passava a ocupar mais do
+     * que a tela nova — ficava enorme, cortado. Recalcula o tamanho com as
+     * métricas novas, preservando o modo minimizado.
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refitToScreen()
+    }
+
+    private fun refitToScreen() {
+        val atual = root ?: return
+        val p = atual.layoutParams as? WindowManager.LayoutParams ?: return
+        val largura = if (minimized) dp(BUBBLE_DP) else panelWidth()
+        if (p.width == largura) return
+        p.width = largura
+        val tela = resources.displayMetrics
+        p.x = p.x.coerceIn(0, (tela.widthPixels - largura).coerceAtLeast(0))
+        p.y = p.y.coerceIn(0, (tela.heightPixels - dp(48)).coerceAtLeast(0))
+        runCatching { windowManager.updateViewLayout(atual, p) }
+    }
 
     /** Arrasta a janela; um toque curto (sem mover) não consome o clique. */
     private fun dragger(params: WindowManager.LayoutParams, view: View): View.OnTouchListener {
@@ -1112,13 +1202,22 @@ class OverlayService : Service() {
     private fun runScript(script: String, args: List<String>, label: String) {
         post { statusText?.text = "$label: aplicando…" }
         scope.launch {
-            val res = OtmExec.run(this@OverlayService, OtmRunner.current, script, args)
-            val v = OtmExec.parseResult(joinOutput(res.stdout, res.stderr))
+            val res = OtmExec.run(this@OverlayService, shellRunner(), script, args)
+            val out = joinOutput(res.stdout, res.stderr)
+            val v = OtmExec.parseResult(out)
             val changed = v["changed"]?.toIntOrNull() ?: 0
             val failed = v["failed"]?.toIntOrNull() ?: 0
+            val ok = v["ok"]?.toIntOrNull()
             val msg = when {
+                // sem permissão de shell é o caso mais comum de "erro em tudo":
+                // dizer o que fazer é melhor que mandar procurar o painel.
+                !res.ok && out.contains("sem permissão de shell") ->
+                    "$label: sem acesso (conecte o Shizuku)"
                 !res.ok -> "$label: falhou (veja o painel)"
                 changed > 0 -> "$label: aplicado ($changed)"
+                // ações de leitura (sensi, ver tuning) marcam ok=1 sem mudar nada:
+                // antes elas caíam em "sem mudança", que parecia erro.
+                ok == 1 -> "$label: pronto"
                 failed > 0 -> "$label: nada mudou ($failed falha(s))"
                 else -> "$label: sem mudança"
             }
@@ -1177,14 +1276,17 @@ class OverlayService : Service() {
 
         /**
          * Largura do painel: fração da tela, com piso/teto em dp ([panelWidth]).
-         * 0.70 num aparelho de 360 dp dá ~252 dp — largura de painel de verdade.
-         * Antes era 0.46 (~170 dp) e o conteúdo ficava apertado, "fino".
+         * 0.70 num aparelho de 360 dp dava ~252 dp e o painel tomava a tela no
+         * jogo; 0.58 dá ~209 dp — legível, mas ainda deixando o jogo à vista.
          */
-        private const val PANEL_W_FRAC = 0.70f
-        /** Teto de altura do conteúdo (o resto da tela fica para o jogo). */
-        private const val PANEL_H_FRAC = 0.62f
+        private const val PANEL_W_FRAC = 0.58f
+        /**
+         * Teto de altura do conteúdo (o resto da tela fica para o jogo). 0.62
+         * deixava o painel com mais da metade da tela por cima do jogo.
+         */
+        private const val PANEL_H_FRAC = 0.50f
         /** Lado do ícone minimizado (quadrado, sempre igual em qualquer aparelho). */
-        private const val BUBBLE_DP = 56
+        private const val BUBBLE_DP = 48
 
         /**
          * Fontes empacotadas (mesmos `.ttf` do painel), por chave do `FONTS` do

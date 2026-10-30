@@ -390,22 +390,12 @@ ff_open() {
 # --- jogo do modo gamer: o usuário escolhe qual jogo abre ---------------------
 # Antes o "modo gamer" abria sempre o Free Fire. Quem usa FF MAX, CODM ou
 # Minecraft não tinha como mudar. A escolha fica salva e vale para as próximas
-# vezes (o painel manda o pacote; sem pacote, usa o último salvo).
-GAME_ST="$ST/game"
-mkdir -p "$GAME_ST" 2>/dev/null
-GAME_PKG_FILE="$GAME_ST/pkg"
-GAME_PKG_DEFAULT="com.dts.freefireth"
+# vezes (o painel manda o pacote; sem pacote, usa o último salvo). O jogo padrão,
+# o arquivo da escolha e o validador de pacote vêm do common.sh: o game-per-app.sh
+# também usa o mesmo padrão no "auto".
+GAME_PKG_DEFAULT="${GAME_PKG_DEFAULT:-com.dts.freefireth}"
 
-game_pkg_saved() { [ -f "$GAME_PKG_FILE" ] && head -1 "$GAME_PKG_FILE" 2>/dev/null; }
-game_pkg_save()  { printf '%s\n' "$1" > "$GAME_PKG_FILE" 2>/dev/null; }
-
-_valid_game_pkg() {
-    case "$1" in
-        ''|*[!A-Za-z0-9._]*) return 1 ;;
-        *.*) return 0 ;;
-        *) return 1 ;;
-    esac
-}
+_valid_game_pkg() { otm_valid_game_pkg "$1"; }
 
 # abre o app pelo pacote, sem depender de saber a Activity de cada jogo
 game_launch() {

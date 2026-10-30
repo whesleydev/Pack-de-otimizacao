@@ -837,10 +837,18 @@ t_app_fixes() {
         && ok "wifi: descobre o serviço de pareamento (mDNS)" || bad "wifi: sem descoberta do pareamento"
     grep -q 'SERVICE_TYPE_TLS_CONNECT' "$src/AdbRunner.kt" && grep -q 'fun connectWireless(' "$src/AdbRunner.kt" \
         && ok "wifi: conecta sem digitar porta (connectWireless)" || bad "wifi: conexão sem porta ausente"
-    grep -q 'Código de pareamento (6 números)' "$src/WifiDialog.kt" \
+    grep -q 'Código de 6 números' "$src/WifiDialog.kt" \
         && ok "wifi: diálogo pede só o código" || bad "wifi: diálogo não simplificado"
-    grep -q 'Avançado (informar IP e portas)' "$src/WifiDialog.kt" \
-        && ok "wifi: campos manuais só no Avançado" || bad "wifi: sem bloco Avançado"
+    # o diálogo tem UM campo só (o código) e nada de IP/porta na mão: quem acha o
+    # pareamento é o mDNS. Campos manuais eram a razão de o usuário não conseguir
+    # conectar — ele não tem como saber a porta.
+    if grep -qE 'Porta de (conexão|pareamento)|Avançado|Endereço \(ex\.' "$src/WifiDialog.kt"; then
+        bad "wifi: diálogo ainda pede IP/porta na mão"
+    else
+        ok "wifi: diálogo não pede IP/porta (só o código)"
+    fi
+    grep -q 'adb.pairWithCode(' "$src/WifiDialog.kt" \
+        && ok "wifi: o diálogo pareia pelo código (mDNS)" || bad "wifi: diálogo não pareia por código"
     grep -q 'ADB por Wi-Fi (só o código)' "$src/PanelActivity.kt" \
         && ok "wifi: opção do menu de conexão simplificada" || bad "wifi: opção do menu não atualizada"
     # 9d) pareamento por Wi-Fi: as três causas da falha ficam cobertas
@@ -2117,12 +2125,21 @@ t_game_per_app() {
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" reset auto > "$TMP/gpa_reset" 2>&1
     test ! -f "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" \
         && ok "reset auto remove o overlay do jogo" || bad "reset auto não removeu"
-    # sem jogo escolhido e sem app em 1º plano: avisa em vez de chutar
+    # sem jogo escolhido e sem app em 1º plano: cai no Free Fire (o MESMO
+    # padrão do `adb-tweaks.sh game_open`) em vez de dar erro no meio da
+    # partida. Antes o "auto" do flutuante falhava nesse caso.
     rm -f "$HOME/.packotm/game/pkg"
     rm -f "$TMP_STORE/fg"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply auto fps > "$TMP/gpa_no" 2>&1
-    grep -qi 'não sei qual é o jogo' "$TMP/gpa_no" \
-        && ok "auto sem jogo avisa (não chuta pacote)" || bad "auto sem jogo não avisou"
+    grep -q 'com.dts.freefireth' "$TMP/gpa_no" \
+        && ok "auto sem jogo cai no Free Fire (não falha no flutuante)" \
+        || bad "auto sem jogo não usou o padrão do game_open"
+    # e o jogo escolhido continua ganhando do padrão
+    printf 'com.exemplo.escolhido\n' > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" show auto > "$TMP/gpa_esc" 2>&1
+    grep -q 'com.exemplo.escolhido' "$TMP/gpa_esc" \
+        && ok "auto prefere o jogo escolhido ao padrão" || bad "auto ignorou a escolha"
+    rm -f "$HOME/.packotm/game/pkg"
     rm -rf "$HOME/.packotm"
 }
 
@@ -3384,14 +3401,38 @@ PY
     # os rótulos das 5 abas não cabem numa linha só no painel estreito
     grep -q 'TAB_COLS' "$svc" && ok "as abas quebram em linhas (rótulo legível)" \
         || bad "abas numa linha só (rótulo cortado)"
-    # o painel não pode voltar a ser estreito: largura de painel de verdade
-    python3 - "$svc" <<'PY' && ok "painel tem largura de painel (não fica fino)" \
-        || bad "painel estreito demais (fracao < 0.6 da tela)"
+    # o painel não pode voltar a ser estreito nem virar a tela do jogo: a faixa
+    # sadia é "painel de verdade, mas ainda deixando o jogo à vista". 0.46 ficava
+    # fino; 0.70 tomava a tela (reclamação: "o painel tá mtt grande").
+    python3 - "$svc" <<'PY' && ok "painel tem largura de painel (não fica fino nem toma a tela)" \
+        || bad "largura do painel fora da faixa 0.5..0.65"
 import re, sys
 src = open(sys.argv[1], encoding="utf-8").read()
 m = re.search(r'PANEL_W_FRAC\s*=\s*([0-9.]+)f', src)
-sys.exit(0 if m and float(m.group(1)) >= 0.6 else 1)
+sys.exit(0 if m and 0.5 <= float(m.group(1)) <= 0.65 else 1)
 PY
+    # a altura não pode reservar mais da metade da tela por cima do jogo
+    python3 - "$svc" <<'PY' && ok "altura do painel deixa o jogo à vista (<= 0.55)" \
+        || bad "painel alto demais (altura > 0.55 da tela)"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'PANEL_H_FRAC\s*=\s*([0-9.]+)f', src)
+sys.exit(0 if m and float(m.group(1)) <= 0.55 else 1)
+PY
+    # o teto de largura não pode passar da própria tela (aparelho estreito)
+    python3 - "$svc" <<'PY' && ok "o teto da largura respeita a tela (não estoura a borda)" \
+        || bad "teto de largura pode passar da tela"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+sys.exit(0 if re.search(r'minOf\(dp\(320\),\s*tela - dp\(16\)\)', src) else 1)
+PY
+    # reduzir a resolução (wm size) muda as métricas: a janela precisa se
+    # reajustar, senão o painel fica maior que a tela nova (parecia "enorme")
+    grep -q 'override fun onConfigurationChanged' "$svc" \
+        && ok "o painel se reajusta quando a resolução muda" \
+        || bad "painel não se reajusta após wm size (fica maior que a tela)"
+    grep -q 'updateViewLayout' "$svc" \
+        && ok "o reajuste aplica a janela de novo" || bad "reajuste sem updateViewLayout"
     # a bolha usa o PNG redondo: o adaptive icon (ic_launcher) desenha o logo em
     # ~66% do quadro e deixava a bolha com um logo pequeno perdido num círculo
     grep -q 'R.mipmap.ic_launcher_round' "$svc" \
@@ -3574,6 +3615,31 @@ PY
         && ok "ponte trata o tipo overlay" || bad "ponte sem o tipo overlay"
     grep -q 'OTM.call("overlay"' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "painel do app chama o overlay" || bad "painel do app não chama o overlay"
+    # o Service se recupera sozinho se o processo for reiniciado (o estático
+    # OtmRunner volta nulo e TODA ação do flutuante dava erro no meio da partida)
+    grep -q 'private fun shellRunner()' "$svc" \
+        && ok "overlay tem um único ponto para o transporte de shell" \
+        || bad "overlay sem shellRunner()"
+    grep -q 'OtmRunner.current ?: runner' "$svc" \
+        && ok "o transporte cai no recuperado quando o estático some" \
+        || bad "overlay não usa o transporte recuperado"
+    grep -q 'private fun registerShizukuRecovery()' "$svc" \
+        && ok "overlay reconecta o Shizuku sozinho (processo reiniciado)" \
+        || bad "overlay não se recupera sem abrir o app"
+    grep -q 'addBinderReceivedListenerSticky' "$svc" \
+        && ok "recuperação espera o binder do Shizuku chegar" \
+        || bad "recuperação sem listener sticky"
+    # nenhuma ação pode voltar a ler o estático direto (era a causa dos erros)
+    grep -q 'OtmExec.run(this@OverlayService, OtmRunner.current' "$svc" \
+        && bad "alguma ação ainda lê OtmRunner.current direto" \
+        || ok "nenhuma ação lê o estático direto (só shellRunner())"
+    # o veredito respeita o "ok=" dos scripts de leitura (sensi/ver tuning):
+    # sem isso o flutuante dizia "sem mudança" no que é só leitura
+    grep -q 'v\["ok"\]' "$svc" \
+        && ok "overlay usa o veredito ok= dos scripts" || bad "overlay ignora ok="
+    grep -q 'sem permissão de shell' "$svc" \
+        && ok "overlay diz o que fazer quando falta o acesso" \
+        || bad "overlay só diz 'falhou' sem orientar"
     # no site (PC) o overlay avisa que é só no celular
     grep -q 'Painel flutuante: use o app no celular' "$ROOT/web/index.php" \
         && ok "site avisa que o overlay é só no app" || bad "site sem aviso do overlay"
@@ -3582,6 +3648,41 @@ PY
         && ok "lib.php registra a ação do painel flutuante" || bad "lib.php sem overlay.sensi"
     grep -q 'overlay.sensi' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "catálogo do app tem a ação do painel flutuante" || bad "actions.json sem overlay.sensi"
+}
+
+
+# --- toque do painel: só o dedo parado e curto dispara ------------------------
+# O bug relatado no aparelho: arrastar a lista disparava o botão onde o dedo
+# soltou (o "click" sintético do fim do scroll). A correção tem de estar no HTML
+# dos DOIS painéis: o do app (index.html) e o do site (index.php).
+t_tap_only() {
+    printf '\n  # toque: arrastar não dispara botão (só toque parado e curto)\n'
+    local app="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+
+    for f in "$app" "$web"; do
+        grep -q 'function tapOnly(el, fn)' "$f" \
+            && ok "$(basename "$f"): tem o guarda de toque (tapOnly)" \
+            || bad "$(basename "$f"): sem tapOnly (clique sintético dispara botão)"
+        grep -q 'pointercancel' "$f" \
+            && ok "$(basename "$f"): o guarda cancela no começo do arrasto" \
+            || bad "$(basename "$f"): tapOnly sem pointercancel"
+        # o disparo não pode ser um onclick puro: é isso que o scroll aciona
+        grep -qE '\[data-run\]"\)\.forEach\(b => b\.onclick' "$f" \
+            && bad "$(basename "$f"): [data-run] ainda usa onclick puro" \
+            || ok "$(basename "$f"): [data-run] passa pelo guarda"
+        grep -qE '\[data-vital-go\]"\)\.forEach\(b => b\.onclick' "$f" \
+            && bad "$(basename "$f"): botão de vitalidade ainda usa onclick puro" \
+            || ok "$(basename "$f"): botão de vitalidade passa pelo guarda"
+    done
+    # o gatilho nativo do app (o botão do cabeçalho) usa o mesmo critério
+    local pa="$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt"
+    grep -q 'function tapOnly(el, fn)' "$pa" \
+        && ok "app: o botão do cabeçalho (flutuante) usa o mesmo guarda" \
+        || bad "app: cabeçalho sem guarda de toque"
+    grep -q 'pointercancel' "$pa" \
+        && ok "app: o guarda do cabeçalho cancela no arrasto" \
+        || bad "app: guarda do cabeçalho sem pointercancel"
 }
 
 t_shizuku_reconnect() {
@@ -3815,7 +3916,7 @@ def blk(p, pat):
     m = re.search(pat, s)
     return re.sub(r'\s+', ' ', m.group(0)).strip() if m else None
 C = r'<div class="panelbox[^"]*config-gpu-card[\s\S]*?\n      </div>'
-J = r'/\* ---- vitalidade: cockpit de longevidade -+\n[\s\S]*?\n\}\);\n'
+J = r'/\* ---- vitalidade: cockpit de longevidade -+\n[\s\S]*?\n\}\)+;\n'
 print("IGUAIS" if blk(sys.argv[1], C) and blk(sys.argv[1], C) == blk(sys.argv[2], C)
       and blk(sys.argv[1], J) == blk(sys.argv[2], J) else "DIFERENTES")
 PY
@@ -3849,6 +3950,106 @@ PY
         && ok "vitality.sh espelhado no app" || bad "espelho do vitality.sh divergiu"
 }
 
+# --- perfil personalizado: escolhas (seg) e liga/desliga (toggle) -------------
+t_custom_profile() {
+    printf '\n  # perfil personalizado: escolhas e toggles liga/desliga\n'
+    local panel="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+
+    # 1) a fonte única das opções tem as duas formas: escolha e liga/desliga
+    php -r 'require "'"$ROOT"'/web/lib.php"; $o=otm_custom_profile_opts();
+             $seg=0; $tgl=0; foreach ($o as $c){ ($c["kind"] ?? "seg")==="toggle" ? $tgl++ : $seg++; }
+             echo "seg=$seg toggle=$tgl total=" . count($o) . "\n";' > "$TMP/cp_kinds" 2>&1
+    assert_contains "$TMP/cp_kinds" "toggle=" "perfil: há opções liga/desliga"
+    assert_contains "$TMP/cp_kinds" "seg=" "perfil: há opções de escolha"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $o=otm_custom_profile_opts();
+             $bad=0; foreach ($o as $c){
+               if (($c["kind"] ?? "seg") !== "toggle") continue;
+               $t=$c["tgl"] ?? null;
+               if (!is_array($t) || ($t["off"] ?? "")==="" || ($t["on"] ?? "")==="") $bad++;
+               if (($t["off"] ?? null) === ($t["on"] ?? null)) $bad++;
+             }
+             echo $bad===0 ? "OK\n" : "RUIM:$bad\n";' > "$TMP/cp_tgl" 2>&1
+    assert_contains "$TMP/cp_tgl" "OK" "perfil: todo toggle tem off e on distintos"
+
+    # 2) o argv da ação cobre TODAS as chaves, na MESMA ordem do script
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             $a=otm_actions()["profile.custom.apply"];
+             $args=array_values(array_filter($a["argv"], fn($v)=>$v!=="profile-custom.sh"&&$v!=="apply"));
+             $names=array_map(fn($p)=>"{".$p["name"]."}", $a["params"]);
+             echo implode(" ",$args) === implode(" ",$names) ? "OK\n" : "DIVERGE\n";
+             echo count($args), "\n";' > "$TMP/cp_argv" 2>&1
+    assert_contains "$TMP/cp_argv" "OK" "perfil: argv casa com params (mesma ordem)"
+    # a MESMA ordem também no script: os argumentos são posicionais, então um
+    # PC_ORDER fora de sincronia aplica a opção errada em silêncio.
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions()["profile.custom.apply"];
+             echo implode(" ", array_map(fn($p)=>$p["name"], $a["params"])), "\n";' > "$TMP/cp_php" 2>&1
+    awk '/^PC_ORDER="/{f=1} f{printf "%s ", $0} f&&/"[ \t]*$/{exit}' "$ROOT/scripts/profile-custom.sh" \
+        | tr -d '\\"' | sed 's/PC_ORDER=//' | tr -s ' ' | sed 's/^ //; s/ $//' > "$TMP/cp_sh"
+    [ "$(cat "$TMP/cp_php")" = "$(cat "$TMP/cp_sh")" ] \
+        && ok "perfil: PC_ORDER igual ao argv do painel (mesma ordem)" \
+        || bad "perfil: PC_ORDER fora de sincronia com o painel"
+
+    # 3) o toggle tem marcação, CSS e clique nos DOIS painéis
+    for f in "$panel" "$web"; do
+        grep -q 'data-kind="toggle"' "$f" \
+            && ok "$(basename "$f"): linhas de toggle marcadas" || bad "$(basename "$f"): sem data-kind"
+        grep -q 'class="sw"' "$f" \
+            && ok "$(basename "$f"): o switch existe no HTML" || bad "$(basename "$f"): sem switch"
+        grep -q 'aria-checked' "$f" \
+            && ok "$(basename "$f"): o switch tem estado acessível" || bad "$(basename "$f"): switch sem aria-checked"
+        grep -qE '^\.sw\[aria-checked="true"\]' "$f" \
+            && ok "$(basename "$f"): o CSS pinta o switch ligado" || bad "$(basename "$f"): CSS do switch ausente"
+        grep -q 'data-off=' "$f" \
+            && ok "$(basename "$f"): o switch carrega o valor desligado" || bad "$(basename "$f"): switch sem valor off"
+        grep -q 'data-on=' "$f" \
+            && ok "$(basename "$f"): o switch carrega o valor ligado" || bad "$(basename "$f"): switch sem valor on"
+        grep -q 'const CPROF_DEFAULT' "$f" \
+            && ok "$(basename "$f"): o padrão vem da fonte única" || bad "$(basename "$f"): sem CPROF_DEFAULT"
+    done
+
+    # 4) o padrão do toggle é DESLIGADO (nunca liga nada sozinho)
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions()["profile.custom.apply"];
+             $o=otm_custom_profile_opts(); $bad=[];
+             foreach ($o as $c){ if (($c["kind"] ?? "seg") !== "toggle") continue;
+               foreach ($a["params"] as $p) if ($p["name"]===$c["k"] && $p["default"]!==$c["tgl"]["off"]) $bad[]=$c["k"]; }
+             echo $bad ? "RUIM:".implode(",",$bad)."\n" : "OK\n";' > "$TMP/cp_def" 2>&1
+    assert_contains "$TMP/cp_def" "OK" "perfil: toggle começa desligado no painel"
+
+    # 5) o script aceita os valores do toggle e não quebra com valor inválido
+    local home="$TMP/cp_home" cfg="$TMP/cp_home/.packotm/profile-custom/config"
+    rm -rf "$home"; mkdir -p "$home"
+    pc() { HOME="$home" OTM_MODE=local sh "$ROOT/scripts/profile-custom.sh" "$@"; }
+    pc set telemetry=off gpu=on 2>&1 | grep -qi 'inválid\|erro' \
+        && bad "perfil: recusou um toggle válido" || ok "perfil: aceita os valores do toggle"
+    grep -q '^telemetry=off$' "$cfg" 2>/dev/null && grep -q '^gpu=on$' "$cfg" 2>/dev/null \
+        && ok "perfil: guarda a escolha do toggle" || bad "perfil: não guardou o toggle"
+    pc set telemetry=banana >/dev/null 2>&1
+    grep -q '^telemetry=off$' "$cfg" 2>/dev/null \
+        && ok "perfil: valor inválido não sobrescreve o válido" || bad "perfil: aceitou valor inválido"
+    # toda chave do PC_ORDER aceita um valor NÃO padrão (o de ligar): prova que o
+    # script reconhece a chave e grava o valor, e não só ecoa o default no `show`.
+    local key val missing="" rc
+    for key in $(awk '/^PC_ORDER="/{f=1} f{printf "%s ", $0} f&&/"[ \t]*$/{exit}' \
+                     "$ROOT/scripts/profile-custom.sh" | tr -d '\\"' | sed 's/PC_ORDER=//'); do
+        val="$(pc_opts_of "$key")"
+        pc set "$key" "$val" >/dev/null 2>&1; rc=$?
+        [ "$rc" = "0" ] || missing="$missing $key=$val(rc=$rc)"
+        grep -q "^$key=$val\$" "$home/.packotm/profile-custom/config" 2>/dev/null \
+            || missing="$missing $key=não-gravou"
+    done
+    [ -z "$missing" ] && ok "perfil: todas as chaves do script aceitam um valor de ligar" \
+        || bad "perfil: chaves recusadas:$missing"
+    rm -rf "$home"
+}
+
+# valor de "ligar" de uma chave (o último da lista), lido do próprio script: garante
+# que o teste não invente um valor que o script recusa.
+pc_opts_of() {
+    sed -n "s/^[[:space:]]*$1)[[:space:]]*echo \"\([^\"]*\)\".*/\1/p" \
+        "$ROOT/scripts/profile-custom.sh" | awk '{print $NF}'
+}
+
 t_thermal_gate
 t_secret_scanner
 t_site_html
@@ -3875,12 +4076,14 @@ t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts
 t_vitality
+t_custom_profile
 t_pack
 t_proc_limit
 t_latency
 t_sensi
 t_effects
 t_overlay
+t_tap_only
 t_shizuku_reconnect
 
 printf '\n  --------------------------------------------------\n'

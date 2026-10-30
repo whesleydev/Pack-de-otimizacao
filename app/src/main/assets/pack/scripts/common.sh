@@ -496,10 +496,35 @@ otm_ram_livre_mb() {
 otm_fg_pkg() {
     d="$(sh_get 'dumpsys activity activities' 2>/dev/null)"
     [ -n "$d" ] || d="$(sh_get 'dumpsys window windows' 2>/dev/null)"
+    [ -n "$d" ] || d="$(sh_get 'dumpsys window' 2>/dev/null)"
     p="$(printf '%s\n' "$d" | sed -n 's/.*mResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
     [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*topResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
     [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mFocusedApp.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    # o formato da linha muda entre versões do Android (mCurrentFocus usa o
+    # ActivityRecord sem as chaves, ex.: "mCurrentFocus=Window{... u0 pkg/act}").
+    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mCurrentFocus.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(printf '%s\n' "$d" | sed -n 's/.*mFocusedWindow.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
     printf '%s' "$p"
+}
+
+# --- jogo escolhido (Modo Competitivo) ---------------------------------------
+# O painel manda o pacote; sem escolha salva, cai no Free Fire. Fica aqui (e não
+# no adb-tweaks.sh) porque o game-per-app.sh também precisa do padrão: era o
+# único lugar que definia isso e o "auto" do flutuante falhava sem escolha.
+GAME_ST="$ST/game"
+mkdir -p "$GAME_ST" 2>/dev/null
+GAME_PKG_FILE="$GAME_ST/pkg"
+GAME_PKG_DEFAULT="com.dts.freefireth"
+
+game_pkg_saved() { [ -f "$GAME_PKG_FILE" ] && head -1 "$GAME_PKG_FILE" 2>/dev/null; }
+game_pkg_save()  { printf '%s\n' "$1" > "$GAME_PKG_FILE" 2>/dev/null; }
+
+otm_valid_game_pkg() {
+    case "$1" in
+        ''|*[!A-Za-z0-9._]*) return 1 ;;
+        *.*) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # otm_fps_layer [pkg] -> camada do SurfaceFlinger onde o app desenha.

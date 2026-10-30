@@ -292,7 +292,10 @@ class AdbRunner(private val context: Context) : ShellRunner {
     }
 
     private fun mgr(host: String): AbsAdbConnectionManager {
-        manager?.let { return it }
+        // O endereço é reaplicado a cada chamada: o plano B (loopback) e o plano A
+        // (host descoberto) compartilham o mesmo objeto, e antes o segundo ficava
+        // com o endereço do primeiro — a conexão "caía" sempre no mesmo lugar.
+        manager?.let { it.hostAddress = host; return it }
         val m = object : AbsAdbConnectionManager() {
             override fun getPrivateKey(): PrivateKey = adbKeyPair.private
             override fun getCertificate(): Certificate = adbCertificate

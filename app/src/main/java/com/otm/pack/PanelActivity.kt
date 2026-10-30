@@ -150,23 +150,56 @@ class PanelActivity : AppCompatActivity() {
         }
     }
 
-    /** Garante os botões do app no cabeçalho do painel (após cada carga). */
+    /**
+     * Garante os botões do app no cabeçalho do painel (após cada carga).
+     *
+     * O toque passa por [tapOnly]: um `onclick` puro disparava também quando o
+     * dedo só PASSAVA pelo botão arrastando a página (o clique sintético que o
+     * navegador emite no fim de um scroll). Era isso que abria o flutuante "sem
+     * querer". Agora só vale o toque parado e curto.
+     */
     private fun injectHeaderButtons(view: WebView) {
         val js = """
             (function(){
               var t = document.querySelector('header');
               if (!t) return;
               if (document.getElementById('otmFloat')) return;
+
+              // toque de verdade: dedo parado (pouca variação) e curto. O
+              // pointercancel acontece assim que a página começa a rolar, então
+              // arrastar nunca conta como clique.
+              function tapOnly(el, fn){
+                var sx=0, sy=0, st=0, ok=false;
+                el.addEventListener('pointerdown', function(e){
+                  sx=e.clientX; sy=e.clientY; st=Date.now(); ok=true;
+                }, {passive:true});
+                el.addEventListener('pointermove', function(e){
+                  if(!ok) return;
+                  if (Math.abs(e.clientX-sx) > 8 || Math.abs(e.clientY-sy) > 8) ok=false;
+                }, {passive:true});
+                el.addEventListener('pointercancel', function(){ ok=false; }, {passive:true});
+                el.addEventListener('pointerleave', function(){ ok=false; }, {passive:true});
+                el.addEventListener('click', function(e){
+                  if(!ok || Date.now()-st > 700){ e.preventDefault(); e.stopPropagation(); return; }
+                  ok=false; fn(e);
+                });
+              }
+
               var f = document.createElement('button');
-              f.className = 'iconbtn'; f.id = 'otmFloat'; f.title = 'Painel flutuante (sobre o jogo)';
+              f.className = 'iconbtn'; f.id = 'otmFloat'; f.type = 'button';
+              f.title = 'Painel flutuante (sobre o jogo)';
               f.textContent = 'Flutuante';
-              f.onclick = function(){ window.OTM.call('overlay','','c'); };
+              f.style.touchAction = 'manipulation';
+              tapOnly(f, function(){ window.OTM.call('overlay','','c'); });
               t.appendChild(f);
+
               if (document.getElementById('otmConnect')) return;
               var b = document.createElement('button');
-              b.className = 'iconbtn'; b.id = 'otmConnect'; b.title = 'Conectar (Shizuku/ADB)';
+              b.className = 'iconbtn'; b.id = 'otmConnect'; b.type = 'button';
+              b.title = 'Conectar (Shizuku/ADB)';
               b.textContent = 'Conectar';
-              b.onclick = function(){ window.OTM.call('connect','','c'); };
+              b.style.touchAction = 'manipulation';
+              tapOnly(b, function(){ window.OTM.call('connect','','c'); });
               t.appendChild(b);
             })();
         """.trimIndent()

@@ -4145,7 +4145,7 @@
         "group": "Geral",
         "label": "Aplicar perfil personalizado",
         "desc": "Liga os recursos escolhidos no menu do perfil personalizado.",
-        "help": "Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso.",
+        "help": "Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso. São dezenas de ajustes independentes: desempenho, memória, gráficos, tela, toque, rede, bateria, notificações e limpeza.",
         "argv": [
             "profile-custom.sh",
             "apply",
@@ -4153,9 +4153,30 @@
             "{ram}",
             "{hz}",
             "{touch}",
-            "{telemetry}",
             "{clean}",
-            "{hibernate}"
+            "{renderer}",
+            "{dns}",
+            "{proc}",
+            "{efeitos}",
+            "{barras}",
+            "{res}",
+            "{touchlat}",
+            "{telemetry}",
+            "{hibernate}",
+            "{gpu}",
+            "{net}",
+            "{latency}",
+            "{wifi}",
+            "{battery}",
+            "{doze}",
+            "{freezer}",
+            "{dnd}",
+            "{gamefocus}",
+            "{notif}",
+            "{perfmode}",
+            "{vitality}",
+            "{mobile}",
+            "{janelas}"
         ],
         "params": [
             {
@@ -4172,7 +4193,7 @@
             {
                 "name": "ram",
                 "type": "enum",
-                "label": "RAM",
+                "label": "Apps em 2º plano",
                 "options": [
                     "padrao",
                     "gaming",
@@ -4196,7 +4217,7 @@
             {
                 "name": "touch",
                 "type": "enum",
-                "label": "Toque",
+                "label": "Perfil de toque",
                 "options": [
                     "none",
                     "balanced",
@@ -4206,16 +4227,6 @@
                     "speed"
                 ],
                 "default": "none"
-            },
-            {
-                "name": "telemetry",
-                "type": "enum",
-                "label": "Telemetria",
-                "options": [
-                    "on",
-                    "off"
-                ],
-                "default": "on"
             },
             {
                 "name": "clean",
@@ -4230,6 +4241,100 @@
                 "default": "off"
             },
             {
+                "name": "renderer",
+                "type": "enum",
+                "label": "Motor gráfico",
+                "options": [
+                    "nao",
+                    "skiagl",
+                    "skiavk"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "dns",
+                "type": "enum",
+                "label": "DNS privado",
+                "options": [
+                    "nao",
+                    "cloudflare",
+                    "adguard",
+                    "quad9",
+                    "google"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "proc",
+                "type": "enum",
+                "label": "Limite de processos",
+                "options": [
+                    "nao",
+                    "4",
+                    "8",
+                    "16"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "efeitos",
+                "type": "enum",
+                "label": "Efeitos visuais",
+                "options": [
+                    "nao",
+                    "ligados",
+                    "leves"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "barras",
+                "type": "enum",
+                "label": "Barras do sistema",
+                "options": [
+                    "nao",
+                    "visiveis",
+                    "status",
+                    "nav",
+                    "full"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "res",
+                "type": "enum",
+                "label": "Resolução",
+                "options": [
+                    "nao",
+                    "auto",
+                    "720x1600",
+                    "1080x1920",
+                    "1080x2340"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "touchlat",
+                "type": "enum",
+                "label": "Latência de toque",
+                "options": [
+                    "nao",
+                    "leve",
+                    "forte"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "telemetry",
+                "type": "enum",
+                "label": "Desligar telemetria e logs",
+                "options": [
+                    "nao",
+                    "off"
+                ],
+                "default": "nao"
+            },
+            {
                 "name": "hibernate",
                 "type": "enum",
                 "label": "Hibernar apps",
@@ -4238,6 +4343,146 @@
                     "on"
                 ],
                 "default": "off"
+            },
+            {
+                "name": "gpu",
+                "type": "enum",
+                "label": "Renderização por GPU",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "net",
+                "type": "enum",
+                "label": "Rede / buffers TCP",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "latency",
+                "type": "enum",
+                "label": "Latência / ping",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "wifi",
+                "type": "enum",
+                "label": "Wi-Fi sem economia",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "battery",
+                "type": "enum",
+                "label": "Economia de bateria",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "doze",
+                "type": "enum",
+                "label": "Sono profundo rápido",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "freezer",
+                "type": "enum",
+                "label": "Congelar apps em cache",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "dnd",
+                "type": "enum",
+                "label": "Não perturbe",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "gamefocus",
+                "type": "enum",
+                "label": "Foco de jogo",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "notif",
+                "type": "enum",
+                "label": "Menos notificações",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "perfmode",
+                "type": "enum",
+                "label": "Modo desempenho fixo",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "vitality",
+                "type": "enum",
+                "label": "Longevidade da bateria",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "mobile",
+                "type": "enum",
+                "label": "Rede móvel",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
+            },
+            {
+                "name": "janelas",
+                "type": "enum",
+                "label": "Transições 0.5x",
+                "options": [
+                    "nao",
+                    "on"
+                ],
+                "default": "nao"
             }
         ],
         "confirm": true,
