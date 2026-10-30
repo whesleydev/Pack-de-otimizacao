@@ -1,6 +1,6 @@
 <?php
 // =============================================================================
-//  auth.php - Login do painel 00deUdia Otimizações.
+//  auth.php - Login do painel Trix.
 //
 //  Sem login não se vê nem executa nada: index.php e api.php exigem sessão.
 //  A senha é guardada com hash (password_hash) em ~/.packotm/web/auth.json,

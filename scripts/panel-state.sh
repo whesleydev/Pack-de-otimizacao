@@ -116,6 +116,50 @@ for _k in health cycles level temp charging score care w80 whot alert; do
     [ "$_k" = alert ] && _v="$(printf '%s' "$_v" | tr '_' ' ')"
     printf ',"vital_%s":"%s"' "$_k" "$(_clean "$_v")"
 done
+
+# --- estado dos recursos "ativáveis" (interruptores do painel) ----------------
+# Cada recurso que virou liga/desliga no painel precisa dizer se está LIGADO de
+# verdade, senão o switch mente. Só leitura; campo que o aparelho não expõe = "".
+printf ',"anim_scale":"%s"' "$(_clean "$(_g global window_animation_scale)")"
+printf ',"low_power":"%s"' "$(_clean "$(_g global low_power)")"
+printf ',"freezer":"%s"' "$(_clean "$(_g global cached_apps_freezer)")"
+printf ',"wifi_scan":"%s"' "$(_clean "$(_g global wifi_scan_always_enabled)")"
+printf ',"heads_up":"%s"' "$(_clean "$(_g global heads_up_notifications_enabled)")"
+printf ',"data_saver":"%s"' "$(_clean "$(_g global data_saver_mode)")"
+printf ',"ntp":"%s"' "$(_clean "$(_g global ntp_server)")"
+printf ',"dnd":"%s"' "$(_clean "$(_g global zen_mode)")"
+# doze afinado = device_idle_constants customizadas
+_dc="$(sh_get 'settings get global device_idle_constants' 2>/dev/null)"
+case "$_dc" in ""|null) _doze="off" ;; *) _doze="on" ;; esac
+printf ',"doze_custom":"%s"' "$(_clean "$_doze")"
+# logpersist desligado = telemetria contida
+printf ',"logpersist":"%s"' "$(_clean "$(_p persist.logd.logpersistd)")"
+# phantom killer desligado = monitor false
+printf ',"phantom":"%s"' "$(_clean "$(_g global settings_enable_monitor_phantom_procs)")"
+# refresh travado = min e peak iguais e preenchidos
+_pk="$(_g system peak_refresh_rate)"; _mn="$(_g system min_refresh_rate)"
+if [ -n "$_pk" ] && [ "$_pk" = "$_mn" ]; then _rfx="on"; else _rfx="off"; fi
+printf ',"refresh_fixed":"%s"' "$(_clean "$_rfx")"
+
+
+# fluidez: animações zeradas + taxa de tela travada
+if [ "$(_g global window_animation_scale)" = "0" ] && [ -n "$(_g system min_refresh_rate)" ]; then
+    _flu="on"
+else
+    _flu="off"
+fi
+printf ',"fluidez":"%s"' "$(_clean "$_flu")"
+# não perturbe: lido do modo zen (secure). dnd() grava aqui também.
+printf ',"dnd_zen":"%s"' "$(_clean "$(_g secure zen_mode)")"
+# economia de bateria adaptativa (0 = sem economia agressiva)
+printf ',"adaptive_batt":"%s"' "$(_clean "$(_g global adaptive_battery_management_enabled)")"
+# isenções de 2º plano: o pacote está na whitelist do Doze?
+_dw="$(sh_get 'cmd deviceidle whitelist' 2>/dev/null)"
+case "$_dw" in *com.otm.pack*) _pp=1 ;; *) _pp=0 ;; esac
+printf ',"perm_pack":"%s"' "$(_clean "$_pp")"
+case "$_dw" in *com.dts.freefireth*|*com.dts.freefiremax*) _pf=1 ;; *) _pf=0 ;; esac
+printf ',"perm_ff":"%s"' "$(_clean "$_pf")"
+
 printf ',"mode":"%s"' "$(_clean "${RUN_MODE:-local}")"
 printf '}\n'
 exit 0

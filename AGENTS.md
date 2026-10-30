@@ -100,7 +100,7 @@ GitHub), sobe o **servidor web** (`php -S`) e abre o **painel PHP** (`web/`). N�
 otimizações — quem faz isso é o `pack.sh`.
 
 O **painel web** (`web/lib.php` + `web/api.php` + `web/index.php`) — marca
-**00deUdia Otimizações** — controla o pack pelo navegador. Regras ao mexer nele:
+**Trix** — controla o pack pelo navegador. Regras ao mexer nele:
 - `web/lib.php` guarda o **registro de ações** (id, grupo, argv, params, confirm, risco).
   Para expor uma ação nova, adicione ao registro — **não** invente execução de comando cru.
 - `web/index.php` é **renderizado no servidor (PHP)**: o menu de categorias e os cards de
@@ -185,6 +185,12 @@ Publique no GitHub Pages apontando para a raiz (o `index.html` fica na raiz).
 
 ## Comandos
 
+O pipeline do painel (renderizar `web/index.php`, `scratch/gen_actions.php`,
+`sync_app_panel.py`) precisa de **PHP**. Se `php` não estiver no PATH, o
+`tests/run.sh` **pula** os testes do painel em silêncio e mostra falhas soltas
+(`php: not found`) — não confie num "0 falharam" sem conferir que o PHP rodou.
+Há um PHP estático no toolchain: `export PATH=/workspace/project/.toolchain/php:$PATH`.
+
 ```sh
 sh tests/run.sh                 # testes (stubs de settings/cmd/am/getprop/su) — deve dar 0 falhas
 sh pack.sh                      # MENU-MESTRE (interativo); ou: sh pack.sh status|apply|restore
@@ -224,13 +230,45 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 ## Pendências que dependem do dono
 
 - **Push para `origin/main`**: o `GITHUB_TOKEN` do ambiente é uma credencial de
-  integração (GitHub App) **somente leitura** — `git push` e a API de refs retornam
-  `403 Resource not accessible by integration`. Para publicar, o dono precisa conceder
-  `Contents: Read and write` ao app/token, ou rodar o push a partir da própria máquina.
-  Enquanto isso, use o bundle/patch gerados em `releases/` (ver abaixo).
+  integração (GitHub App) e **não** serve para a API de releases
+  (`Resource not accessible by integration`). Já o token embutido na URL do
+  remote `origin`/`otm-push` tem escopo `repo` e admin no repo, e o `git push`
+  passa por ele. Ainda assim, **não empurre direto para `main`**: use a branch de
+  trabalho (`sem-root`) e deixe o merge para o dono.
 - Revogar o token exposto no histórico e purgar o `apps_otm.zip` (`docs/SEGURANCA.md`).
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
+
+## Backup cifrado das configurações
+
+- `scripts/backup.sh` faz `collect` (estado → texto `#TRIX-BACKUP-V1`), `restore <arq>`
+  e `list`. O `restore` **recusa** arquivo que não começa com o cabeçalho — não aplica lixo.
+- A cifra vive em dois lugares que precisam ficar **compatíveis byte a byte**:
+  `app/src/main/java/com/otm/pack/OtmBackupCore.kt` (app) e `web/backup.php` (web).
+  Formato: `-----BEGIN TRIX BACKUP-----` / `AES-256-GCM` / base64(IV‖cifra‖tag) / rodapé.
+  Ao mexer num, teste a **ida-e-volta cruzada** (o PHP abre o que o Kotlin gravou e vice-versa);
+  já houve caso de bytes idênticos no GCM mas quebra por chave/IV de tamanho errado no teste.
+- **Chave**: no app é gerada no `AndroidKeyStore` (alias `trix-backup-key`) e **não sai do
+  aparelho**; no web é um arquivo de 32 bytes, modo `0600`, em `~/.packotm/web/backup.key`
+  (fora do repo). O IV é aleatório por arquivo — nunca reaproveite (GCM quebra com IV repetido).
+- O texto claro **não** fica em pasta compartilhada: vai pelo stdout do script; na volta é
+  escrito em `/data/local/tmp/trix-restore.txt` (que o shell do Shizuku/ADB lê) e apagado depois.
+- A chave do app é presa ao aparelho de propósito: o backup feito aqui só abre aqui.
+
+## Otimizador inteligente: memória por aparelho
+
+- `scripts/smart-opt.sh` guarda o que venceu em `~/.packotm/smart/memory`, com chave pela
+  **assinatura de hardware** (modelo|SoC|RAM|…). `decide()` consulta essa memória; `compare`
+  grava o vencedor; `auto` faz o ciclo completo e termina com UM resultado. `mem` mostra o
+  que ele aprendeu. Trocar o formato da chave invalida a memória de todos os aparelhos.
+
+## Ação `card => false` precisa de botão
+
+Uma ação declarada com `'card' => false` em `web/lib.php` **não** ganha card próprio: ela só
+existe se algum botão (`data-qa`/`data-hub`) ou mapa de JS a chamar. Ao remover o hub do
+otimizador, `restore_all` ("Reverter TUDO") e `snapshot_save` ficaram **inalcançáveis** — o
+usuário perdeu como desfazer. O teste `t_smart_card_single` reprova ação de recuperação sem
+botão nos dois painéis. Antes de tirar um botão, confira quem mais ele era o único a chamar.
 
 ## App Android (`app/`)
 
@@ -238,11 +276,21 @@ App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
 ou por ADB Wi-Fi (pareamento) / depuração USB (só autorizar, sem parear), com os
 assets do pack embutidos.
 
-O app é o painel web (00deUdia Otimizações) dentro de uma WebView: nada de UI
+O app é o painel web (Trix) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.
 
 - `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de entrada)
   numa WebView; acertando o login, carrega `assets/panel/index.html` (o painel).
+- **O binder do Shizuku chega DEPOIS do `onCreate`** (a resposta do
+  `ShizukuProvider` volta por Binder). Checar `hasPermission()` só no `onCreate`
+  faz o app concluir "não autorizado" com a permissão já concedida — e pedir de
+  novo a cada abertura. Por isso `PanelActivity` registra
+  `addBinderReceivedListenerSticky` + `addBinderDeadListener` e concentra a
+  conexão silenciosa em `tryAutoConnectShizuku()`, chamada também no `onResume`
+  (caso o usuário libere a permissão por fora, no app do Shizuku). Esse caminho
+  **nunca** chama `requestPermission`; o pedido só sai do botão explícito.
+  `ShizukuRunner.requestPermission` devolve `false` quando o binder ainda não
+  chegou (antes lançava). Os listeners são removidos no `onDestroy`.
 - Login por **usuário e senha**, validado localmente contra a constante `OTM_AUTH`
   (`sha256("usuario:senha")`) em `login.html`. O painel (`index.html`) tem guarda de
   sessão (`otm_session` no `localStorage`); o botão Sair limpa a sessão e volta ao login.
@@ -273,8 +321,19 @@ nativa além do necessário para conectar e rodar os comandos.
   O painel do app é o HTML do PHP já renderizado. O pipeline é:
   `php -r 'require "web/auth.php"; otm_auth_login(<user>,<pass>); ob_start();
   include "web/index.php"; file_put_contents("/tmp/pan/web.html", ob_get_clean());'`
+  **Armadilha:** a credencial padrão (`00deUdia`) é hash de uma senha que não
+  está no código, então `otm_auth_login` devolve `false` e o render sai como
+  página de **login** (arquivo pequeno, sem os cards) — o pipeline "funciona" e
+  propaga um painel vazio. Use um `HOME` temporário e defina a credencial ali:
+  `HOME=/tmp/panhome php -r 'require "web/auth.php"; otm_auth_set("dev","dev12345");
+  otm_auth_login("dev","dev12345"); ob_start(); include "web/index.php";
+  file_put_contents("/tmp/pan/web.html", ob_get_clean());'`
+  (o `auth.json` fica em `$HOME/.packotm/web/`, então não toca na sua sessão).
+  Confira o tamanho: o painel renderizado tem ~500 KB; login tem poucos KB.
   → `python3 scratch/sync_app_panel.py /tmp/pan/web.html` (traz o nav, as seções
-  novas e o objeto `ACTIONS` do web para o app) → `python3 scratch/patch_app_panel.py`
+  novas, **remove as seções de grupo que sumiram do web** — ao renomear um grupo
+  a seção antiga ficava órfã, com o link do menu junto — e o objeto `ACTIONS` do
+  web para o app) → `python3 scratch/patch_app_panel.py`
   (tira as ações só de root e ajusta textos) → `php scratch/gen_actions.php
   app/src/main/assets/panel/actions.json app/src/main/assets/panel/index.html`.
   Ao mexer em `index.php`/`lib.php`, os dois painéis (`web/index.php` e
@@ -317,7 +376,70 @@ nativa além do necessário para conectar e rodar os comandos.
   abre o painel `#logspanel` e busca `log_all` (histórico **completo**, sem
   truncar) em vez de `log` (últimas 40). No app, `logAllImpl()`; no site,
   `otm_log_all()`. O botão "Histórico" foi unificado em Logs.
-- **Armadilhas do painel (já custaram bug).** Duas coisas que o CSS/JS do painel
+  Cada linha guarda o que a ação **tentou** (`applies`), o que **mudou**
+  (`changed`), quantas **falharam** (`failed`), as `reasons` (as linhas do
+  script que explicam a falha — `✕`/`X` com o valor lido) e a saída crua
+  (`out`, cortada em 6000 caracteres). A linha com detalhe é clicável
+  (`.logsrow.has-det`) e abre as razões + a saída. O mesmo formato é gravado
+  pelo PHP (`otm_log`) e pelo Kotlin (`logAppend`), e o teste `t_logs` falha se
+  os dois lados divergirem.
+  Como a saída crua entra no log, o arquivo é **podado**: acima de ~1,5 MB
+  ficam as últimas 800 execuções (`otm_log_trim`/`trimLog`, `LOG_MAX`), no
+  mesmo limite dos dois lados.
+- **Painel flutuante (overlay sobre o jogo).** `OverlayService` (janela
+  `TYPE_APPLICATION_OVERLAY`, precisa de `SYSTEM_ALERT_WINDOW`) mostra o painel
+  por cima do Free Fire. O título é só **"00"** e o conteúdo é organizado em
+  **abas** por categoria — `TABS` = `Monitor`, `Toque`, `Motor`, `Processos`,
+  `Atalhos` (a aba **Sensi saiu**: o overlay aplica o headshot da sensi, mas não
+  lê mais o `sensi.sh`).
+  A aba **Monitor** lê o `panel-stats.sh` e se atualiza sozinha a cada 4 s
+  (enquanto estiver aberta: `monitorBox` é zerado no `selectTab` para o
+  `postDelayed` parar). O FPS mostrado é **real**, do `SurfaceFlinger`
+  (`fps.sh` / `otm_fps_measure`): `fps = (frames-1)/(último-primeiro)` sobre os
+  carimbos de apresentação — nunca a taxa da tela fingindo ser FPS. Sem frames
+  (jogo no menu, camada trocada, app fora da tela) mostra **"—"**, não um número
+  inventado. O mesmo card existe na Home do painel (app e `web/index.php`) via
+  a chave `fps` do stats.
+  A ordem de `TABS` **tem de casar** com o `when` do `tabView`: a barra passa o
+  índice do rótulo, então fora de sincronia o conteúdo sai na aba errada (foi
+  assim que o FPS ficou escondido em "Processos" e "Monitor" abria o toque). O
+  `tests/run.sh` compara as duas ordens justamente por isso.
+  **Tamanho**: largura **fixa** (`panelWidth`, ~46% da tela com piso/teto em dp)
+  — com `WRAP_CONTENT` cada aba media um tamanho e o painel pulava ao trocar de
+  aba. Altura acompanha o conteúdo até `panelMaxHeight` (~50% da tela). A bolha
+  de minimizado é quadrado fixo (`BUBBLE_DP`, 46 dp): o ícone é *adaptive icon*
+  e solto num `ImageView` não tem tamanho confiável (saía enorme).
+  A aba **Atalhos** tem a seção **Jogo** com o downscale do `game-per-app.sh`
+  (`GAME_SCALES` = `fps` 0.9 / `balanced` 0.75 / `max` 0.5, mais "Reset
+  resolução" e "Ver tuning"). O overlay sempre passa **`auto`** como pacote:
+  ele não sabe qual é o jogo, e o script resolve (jogo escolhido no pack, senão
+  o app em primeiro plano). `auto` vale para `apply`, `custom`, `mode`, `show` e
+  `reset` — todos passam por `_resolver_pkg`, que devolve o pacote por variável
+  (`RESOLVED_PKG`), **não** por stdout: capturar com `$( )` engoliria a mensagem
+  de erro junto com o valor.
+  A aba **Processos** é o gerenciador de segundo plano para o meio da partida:
+  seletor de limite (`PROC_LIMITS` → `adb-tweaks.sh proc_limit`), "Encerrar
+  todos" (`proc-mgr.sh kill`), "RAM agora" (`ram-boost.sh boost normal`), criar
+  a exceção do app em 1º plano (`proc-mgr.sh keep-fg`), ver as exceções e a lista
+  de **apps rodando agora** com a RAM de cada um. A lista vem do
+  `proc-mgr.sh list` (linhas `#OTM-PROC`, lidas por `parseProcList`), o nome
+  legível vem do `PackageManager` (`getApplicationLabel`, com o pacote como
+  reserva) e cada linha traz um chip "exceção"/"não encerra" que chama
+  `proc-mgr.sh keep|unkeep`.
+  A seção **Todos os apps** (lista `procAllBox`) usa `proc-mgr.sh apps` (linhas
+  `#OTM-APP pkg=… protected=…`): todos os apps de usuário **instalados**, não só
+  os que estão rodando — é assim que se protege um app que ainda vai abrir
+  (banco, por exemplo). `parseProcList` aceita os dois prefixos e ordena por RAM
+  quando há RAM na lista, senão alfabeticamente.
+  O visual segue o tema do painel: fundo arredondado, `setBackgroundBlurRadius`
+  (Android 12+), botões de vidro (pílula translúcida) e a cor/fonte escolhidas
+  na engrenagem. Cor e fonte vêm de `OtmUi` (SharedPreferences `otm-ui`), que o
+  WebView alimenta pela ponte `ui_prefs`; `OtmUi.onChanged` faz o overlay se
+  redesenhar na hora. As cores do overlay são **Strings hex** (helpers `col()`,
+  `accentA(alpha)`), não `Int`, e as fontes empacotadas são carregadas por
+  `FONT_FILES` (ver *Aparência*). O overlay usa o **mesmo executor** do painel
+  (`OtmExec.run` + `OtmRunner.current`), senão divergiria do painel.
+- **Armadilhas do painel (já custaram bug).** Coisas que o CSS/JS do painel
   não perdoa, porque o HTML é gerado (`web/index.php` → `scratch/`):
   (1) **CSS não pode depender de `.card-choice`** para layout de `.opts`: nem todo
   card de opções tem essa classe (o de Perfil de Desempenho não tem), e o cartão
@@ -329,6 +451,20 @@ nativa além do necessário para conectar e rodar os comandos.
   pede confirmação". O certo é abrir o modal (`askConfirm`) quando `a.confirm` e
   deixar o `runPending` reexecutar com `confirmed=true`. Ao mexer em `web/index.php`,
   replique em `assets/panel/index.html` (os dois têm o mesmo CSS/JS).
+  (3) **O rodapé com os créditos sobe para o meio da tela em páginas/abas curtas**
+  se o `body` não for coluna flexível: o conteúdo acaba e o rodapé para logo
+  abaixo dele, no meio do vazio. O `body` precisa de
+  `display:flex; flex-direction:column` e o miolo de `flex:1 0 auto` (o painel usa
+  `.layout`, o login usa `.wrap{margin:auto}`, o guia usa `main.wrap`). O teste
+  `t_footer_sticky` cobre as cinco páginas (`assets/panel/index.html`,
+  `web/index.php`, `web/login.php`, `index.html`, `public/guia.html`).
+  (4) **`onclick` cru fura o guarda de toque.** O `tapOnly` só dispara em toque
+  parado e curto; um `onclick=` no HTML ignora isso e o clique sintético do fim
+  do scroll aciona o botão. Use `data-qa="<id>"` (ou `data-run`/`data-game-home`)
+  e deixe o JS ligar o handler passando por `tapOnly`. O guarda cancela por três
+  vias — variação > 14 px, `scroll` e `pointerleave` — porque o `pointercancel`
+  sozinho não chega quando o dedo **começa** no botão e arrasta. O `t_tap_only`
+  reprova se voltar `onclick=` no HTML.
 - **Efeitos visuais desligados pelas ações de desempenho (já custou bug).** Todo
   ajuste de performance (`perf`, `gpu`, `fluidez`, `clean`, `smart-opt` e o pack
   recomendado) grava `disable_window_blurs=1` e
@@ -372,6 +508,17 @@ nativa além do necessário para conectar e rodar os comandos.
   de mDNS próprio (`discoverViaMulticast`/`parseMdnsAnswer`) porque o NsdManager do
   sistema falha em algumas redes. Lembrar: no cabeçalho SRV a porta está no
   **offset 4** (prioridade,peso,porta), não no 0.
+  (4) **Pedir a permissão e abrir o diálogo na mesma hora não funciona.** O
+  `askMdns` antigo chamava `requestPermissions` e o `WifiDialog` abria em seguida:
+  o usuário digitava o código antes de a permissão existir, o mDNS falhava em
+  silêncio e a conexão nunca completava. Use `Permissions.askMdnsThen(activity)
+  { granted -> ... }` e trate `REQ_MDNS` no `onRequestPermissionsResult` (o
+  `Permissions.onMdnsResult` resolve o callback pendente).
+  (5) **`connect()` devolver `true` só diz que o socket abriu.** O adbd demora a
+  publicar o serviço depois do pareamento, então o painel anunciava "conectado" e
+  toda ação falhava. `AdbRunner.verify()` manda um comando de teste com timeout e
+  `connectAndVerify(attempts, waitMs)` reconecta antes de verificar. Vale para o
+  Wi-Fi **e** para o USB (`useAdbLocal`).
   O pareamento também usa API oculta do Conscrypt (`exportKeyingMaterial`, TLS 1.3),
   liberada pelo `OtmApp` (`HiddenApiBypass.addHiddenApiExemptions("L")` + `PRNGFixes`).
 - **Taxa de atualização (Hz).** Cartão de escolha com 60/90/120/Automático
@@ -395,10 +542,18 @@ nativa além do necessário para conectar e rodar os comandos.
   está visível (`startStats`/`stopStats`). Só leitura; campo indisponível fica `""`
   e a UI mostra **—**. A Home é a seção `#Home` e é a primeira do menu.
 - **Gerenciador de processos** (`scripts/proc-mgr.sh`, na whitelist do `lib.php`):
-  `top [n]` (mais CPU/RAM via `/proc`), `info <pkg>`, `ram <pkg> <mb>`,
-  `cpu <pkg> <grupo>`, `renice <pkg> <nice>`, `freeze`/`unfreeze`,
-  `status`/`restore`. Sem root avisa e não aplica; a categoria **Processos**
-  agrupa essas ações.
+  só leitura + encerrar/exceções — limite de RAM, `cpuset`, `nice` e `SIGSTOP`
+  exigem root e **saíram** do pack. Comandos: `top [n]` (mais CPU/RAM via
+  `/proc`), `list [n]` (apps de usuário rodando, com RAM e o estado da exceção),
+  `info <pkg>`, `kill` (encerra o 2º plano poupando exceções/1º plano/jogo),
+  `keep <pkg>` / `unkeep <pkg>` / `keep-fg` / `keep-list` / `keep-clear`
+  (exceções "X app não encerra", guardadas em `$ST/procmgr/keep`). A categoria
+  **Processos** agrupa essas ações.
+  `list` imprime uma linha legível por máquina por app rodando
+  (`#OTM-PROC pkg=<pacote> ram=<MB> protected=<0|1>`), que é o que a aba
+  **Processos** do painel flutuante lê para montar a lista com nome e RAM.
+  As exceções entram no `otm_keep_list` (`common.sh`): valem para o "Encerrar
+  todos" do flutuante **e** para o `clean.sh`/`ram-boost.sh`/`game-clean.sh`.
 - **Anti-relog** (`scripts/keep-alive.sh`, na whitelist do `lib.php`): impede o
   app/jogo de "relogar" (abrir do zero e pedir login) ao ser morto em segundo
   plano. `on <pkg> [jogo]` isenta do Doze, libera `RUN_IN_BACKGROUND`/
@@ -467,9 +622,59 @@ nativa além do necessário para conectar e rodar os comandos.
   de volta** alguns ajustes (`so_verify`) para o painel não achar que "nada mudou"
   (`#OTM-RESULT`). Perfil aplicado em `$ST/smart/last`. Categoria **Geral**: uma
   **ação única**, `smart.auto` ("Otimizador inteligente"), mais um botão de mesmo
-  nome na Home dos dois painéis. `pack.sh smart [<acao>]` delega (sem argumento
-  roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
+  nome na Home dos dois painéis. O card do `smart.auto` virou um **hub**: traz um
+  seletor de perfil e botões para as leituras (`smart.report`, `smart.decide`,
+  `smart.state`), os testes (`smart.bench`, `smart.compare`) e o bloco de
+  snapshot/reversão (`snapshot_save/list/diff/restore`, `restore_all`). Essas
+  sub-ações levam `'card' => false` no `lib.php`, então **não** viram cards
+  próprios no `.grid` (ficam no `ACTIONS`, que é o que o JS usa) — antes a Geral
+  tinha 16 cards, agora tem 3 (`apply`, `smart.auto`, `profile.custom`).
+  `profile.custom.apply`/`.off` também são `card => false`: quem os dispara é o
+  modal do perfil personalizado. `module.run` saiu da Geral e mora em **Sistema**.
+  `pack.sh smart [<acao>]` delega (sem argumento roda `auto`); `smart.auto` e
+  `pack.sh smart auto <perfil>` aceitam o perfil escolhido no hub. **Debloat não
+  faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
+
+  **Perfil personalizado (42 recursos, uma fonte).** As opções vivem em
+  `otm_custom_profile_opts()` (`web/lib.php`), que é a **fonte única**: o `argv`
+  de `profile.custom.apply` é montado com `array_map` dessa lista, então o painel
+  não consegue pedir uma chave que o script não conhece. Só o `PC_ORDER` do
+  `scripts/profile-custom.sh` continua escrito à mão — ele tem de ficar na MESMA
+  ordem das opções, porque o painel manda os valores **posicionais**. Ao
+  acrescentar uma opção: mexa na lista, acrescente o caso em `pc_opts()` e
+  `pc_apply()`, e ponha a chave no `PC_ORDER` no mesmo lugar. O espelho
+  `app/src/main/assets/pack/scripts/profile-custom.sh` é cópia (o `syncPackAssets`
+  do Gradle refaz no build, mas copie à mão ao testar sem build).
+  `dexopt` usa `turbo.sh dexopt-bg` (só **agenda** a compilação); `art-all`
+  compila na hora e demora — daí o `timeout` de 900s na ação.
+
+  **Medir para provar (`bench`/`compare`).** O `auto` não termina mais em "confie
+  em mim": ele mede antes, aplica e mede depois (`so_measure`), dizendo se
+  MELHOROU, PIOROU ou ficou ESTÁVEL — e avisa para reverter se piorar. As ações
+  `bench [perfil]` (mede → aplica → mede, com 3 amostras de cada) e
+  `compare [perfil]` (testa os candidatos — Vulkan x GL e a maior taxa x 90Hz —
+  e deixa aplicada a combinação de melhor nota) são as que fecham o ciclo. A
+  medição nunca chuta: campo que o aparelho não expõe entra como "desconhecido" e
+  a comparação só considera o que foi lido. É o mesmo `so_measure` nos três
+  comandos, então `analyze`, `bench` e `compare` falam a mesma língua. No painel
+  ficam em `smart.report` (analisar), `smart.decide` (ver o plano), `smart.bench`
+  e `smart.compare` — além de `smart.state` (o que está ativo).
+
+### Dispositivos: resolução de tela (`scripts/resolution.sh`)
+
+Categoria **Dispositivos** (grupo próprio, `res.*` no `lib.php`). Reduzir a
+resolução **lógica** (não a física) é o ajuste que mais rende FPS em jogo pesado:
+menos pixels para a mesma GPU desenhar. `resolution.sh` tem `list` (degraus de
+mercado + a resolução de fábrica), `current` (fábrica x override x densidade),
+`apply <WxH>`, `custom <W>x<H>` e `reset` (volta à de fábrica). A **resolução de
+fábrica é guardada antes do primeiro override** (`$ST/resolution/factory`), então
+o `reset` volta ao valor certo mesmo depois de vários testes — não ao "padrão de
+mercado". A validação recusa valores absurdos ("pequena demais"/"grande demais"/
+formato inválido) em vez de aceitar qualquer coisa. `auto` desce para 1080p só em
+tela QHD; em tela pequena não mexe (já renderiza pouco). É tudo `wm size` (não
+precisa de root). No painel flutuante a resolução também aparece na aba **Motor**,
+porque é um ajuste para mexer no meio da partida.
 
 ### Vitalidade: cuidar para durar (`scripts/vitality.sh`)
 
@@ -539,6 +744,52 @@ continua existindo e é para quem QUER o máximo (mais FPS, esquenta mais). O ca
 durar. Nenhum dos dois substitui o outro — e **nada do pack original pode ser
 removido** (há guarda de regressão em `t_vitality`).
 
+### Bug histórico: "Argument list too long" com dump grande (ainda vale como regra)
+
+No Android o `printf`, `sed` e `grep` são **binários do toybox**, não builtins do shell
+(no `dash`/`bash` do PC o `printf` é builtin e esconde o problema). Um argumento de
+centenas de KB estoura o limite do kernel e o comando morre com `Argument list too long`;
+o erro aponta a linha do shell que *atribui* a saída, não o comando culpado, então parece
+um bug aleatório no meio do fluxo. O `dumpsys display` de um Samsung passa de **400 KB** e
+era passado como argv do `printf` em `display_max_hz` (efeito: a taxa de tela vinha vazia
+e o `auto` morria ~6×). Regra: texto que veio de `dumpsys`/`getprop` grande **nunca** vai
+como argumento — use `otm_echo` (heredoc por stdin, sem limite). Os testes não reproduzem
+o E2BIG no PC (o `sh` daqui tem `printf` builtin), então `t_smart_bigdump` prova o
+mecanismo (400 KB saem inteiros pelo `otm_echo`) e reprova se alguém voltar a passar o
+dump por argv.
+
+### Bug histórico: bateria com número gigante e resumo duplicado
+
+Dois defeitos de parsing que apareciam juntos no painel:
+- **Bateria** (`808182838…`): o `dumpsys battery` do Android 14+ traz uma linha `level:`
+  por UID (dezenas). O `awk` sem `exit` imprimia todas e o `_num` colava os dígitos. Regra:
+  use `otm_batt_get`/`otm_batt_field`, que ancoram na linha canônica (`^[[:space:]]*level$`
+  com `-F:`) e validam a faixa. Vale para `temperature:` e `status:`.
+- **Resumo duplicado**: o `printf` **reaproveita o formato** quando sobram argumentos. As
+  linhas `printf '  %s…\n' "$C_D" "$C_R"` tinham **um `%s` e dois argumentos**, então a
+  frase saía duas vezes. Regra: o número de `%s` tem de casar com o de argumentos — para
+  embelezar (cor/volta ao normal) use `'%s…%s\n' "$C_D" "$C_R"`.
+
+### Bug histórico: bolha flutuante que não arrastava
+
+O painel flutuante minimizado (a bolha com o ícone do app) ficava **preso no lugar**.
+Causa: o `setOnClickListener` que reabre o painel estava no `ImageView` de dentro do
+`FrameLayout`, e não no container. Um `View` com listener de clique fica *clickable* e
+**consome** o toque; o `OnTouchListener` do container (o `dragger`) nunca recebia o
+`ACTION_MOVE` e a bolha não se movia. Regra: em view que precisa arrastar, o clique mora
+no **container**, junto do `dragger` — nunca em view filha. O teste
+`t_overlay` verifica que o `ImageView` da bolha não tem `setOnClickListener`.
+
+### Bug histórico: cards órfãos fora das abas (apareciam sempre no rodapé)
+
+Os cards de permissão apareciam **duas vezes**: na aba Sistema e de novo soltos no fim do
+painel, empilhados junto dos créditos. Causa: um fragmento de HTML ficou **entre** o fim de
+uma `<section>` e o começo da próxima. Como não pertencia a grupo nenhum, o CSS que esconde
+as seções inativas (`.group:not(.active)`) não o alcançava e ele ficava sempre visível.
+Regra: todo `<article class="card">` tem de estar **dentro** de uma `<section>`. O
+`sync_app_panel.py` agora remove órfãos e avisa se as seções ficarem desbalanceadas; o
+teste `t_app_login` (bloco `panstruct`) falha se houver card duplicado ou fora de seção.
+
 ### Bug histórico: handler global de `.opt` (ainda vale como regra)
 
 O card antigo de Perfil de Desempenho ficou "morto" porque `document.querySelectorAll(".opt")`
@@ -580,23 +831,28 @@ selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão 
   `queryAndAggregateUsageStats` p/ tempo de tela) e `PackBridge.statsImpl` funde
   isso no JSON de `panel-stats.sh` (`fg_label`, `fg_pkg`, `top_apps`, `screen_time`,
   `usage_granted`). Funciona **sem shell**. Sem autorização devolve vazio e o painel
-  mostra "—" + o aviso `#usageHint`; nada é inventado. O botão fica em Configs →
-  Permissões (`setPermUsage` → `OTM.call("usage")`).
+  mostra "—" + o aviso `#usageHint`; nada é inventado. O atalho para liberar o
+  uso é o `#btnUsagePerm` da Home (`openUsageSettings`); ele **saiu** de Configs
+  → Permissões (a engrenagem ficou só com o botão do pack).
 - Home (painel): as métricas ficam em **dois grupos** (`.stat-group` + `.glabel`):
   *Sistema agora* (RAM/CPU/bateria/armazenamento/tela/tempo ligado) e *Uso do
   aparelho* (`fg`/`usage`). O grupo de uso traz o selo `#usageNeed` e o botão
   `#btnUsagePerm` (→ `openUsageSettings`), que somem quando `usage_granted` é true.
   O botão `#btnRefreshStats` fica no cabeçalho (`.boxhead`) e o `#liveBadge` mostra
   "ao vivo · há N s". Tudo é escondido/mostrado por `renderStats` (não há `esc()`).
-- Permissões/segundo plano: a engrenagem lista o que o app precisa e tem botões
-  que rodam `adb-tweaks.sh perm_app|perm_ff|perm_battery|perm_all` (grupos novos,
-  reversíveis: entram na isenção do Doze via `cmd deviceidle whitelist`, ganham
-  `appops` de `RUN_IN_BACKGROUND`/`RUN_ANY_IN_BACKGROUND`/`WAKE_LOCK`/
-  `START_FOREGROUND` e desligam economia de bateria/App Standby). No lado nativo,
-  `Permissions.kt` cuida só do que o app pede sozinho (canal de notificação,
-  `POST_NOTIFICATIONS` no Android 13+ e `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`),
-  sem bloquear o painel. `PanelActivity.injectHeaderButtons` garante o botão
-  "Conectar" após cada carga da página.
+- Permissões/segundo plano: a engrenagem tem **um botão só**, "Conceder
+  permissões ao pack" (`setPermApp` → `perm.app` → `adb-tweaks.sh perm_app`).
+  Os botões "Aos Free Fire", "Ao meu jogo", "Bateria sem economia" e "Acesso a
+  dados de uso" **saíram** das Configurações a pedido: as ações
+  (`perm_ff|perm_game|perm_battery|perm_all`) continuam no catálogo/`lib.php`
+  para quem chamar por elas. Os grupos seguem reversíveis (isenção do Doze via
+  `cmd deviceidle whitelist`, `appops` de `RUN_IN_BACKGROUND`/
+  `RUN_ANY_IN_BACKGROUND`/`WAKE_LOCK`/`START_FOREGROUND`, economia de
+  bateria/App Standby desligadas). No lado nativo, `Permissions.kt` cuida só do
+  que o app pede sozinho (canal de notificação, `POST_NOTIFICATIONS` no Android
+  13+ e `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), sem bloquear o painel.
+  `PanelActivity.injectHeaderButtons` garante o botão "Conectar" após cada carga
+  da página. O teste `t_perm_script` cobra que os quatro botões **não** voltem.
 - Arrasto lateral: o topo usa `min-height` + `flex-wrap` e a página usa
   `overflow-x:clip` (o `hidden` deixava o `body` virar contêiner de rolagem e o
   menu fixo ainda esticava a largura). Papel de parede: `contain` na camada
@@ -615,6 +871,13 @@ selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão 
   de destaque (inclui **prata**) e fontes; os swatches/segmentos são casados por
   `data-accent`/`data-font` com essas chaves. O seletor de fonte quebra em várias
   linhas (`#setFont{flex-wrap:wrap}`) por ter 7 opções.
+  As fontes são **empacotadas** (`.ttf` em `web/assets/fonts/` e no espelho
+  `app/src/main/assets/panel/assets/fonts/`), nunca de CDN: sem internet a fonte
+  continua valendo. Todas são OFL-1.1, então o crédito viaja junto do arquivo em
+  `assets/fonts/CREDITS.md` (nos dois lados). O painel flutuante não tem WebView:
+  ele carrega o mesmo `.ttf` com `Typeface.createFromAsset` pelo mapa
+  `FONT_FILES` do `OverlayService` (chave do `FONTS` → arquivo), com cache e
+  fallback para a fonte do sistema.
 - Categorias do painel: são 7 grupos definidos em `otm_actions()` pelo campo `group`
   (`Geral`, `Display & Touch`, `Desempenho`, `DNS e rede`, `Processos`,
   `Apps e jogos`, `Sistema`) mais a **Home** (métricas, não é grupo de ações).
@@ -670,24 +933,98 @@ aceita instalar a nova por cima da anterior. Não troque essa keystore sem avisa
 trocar a chave quebra a atualização e obriga a desinstalar. O `zipalign`/`apksigner`
 manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
+**Toque nos botões do painel: nunca use `pointerleave`.** No toque, o navegador
+emite `pointerleave` em TODO toque válido (o dedo sai do elemento ao levantar),
+e ele chega ANTES do `click`. Um guarda que cancele no `pointerleave` mata todo
+clique: o botão fica morto, sem erro nenhum na tela — parece que o toque não foi
+registrado. O `tapOnly` existe em três lugares que precisam ficar iguais:
+`web/index.php`, `app/src/main/assets/panel/index.html` e o JS injetado em
+`PanelActivity.kt` (`injectHeaderButtons`). O arrasto é pego por três vias:
+variação do dedo (`pointermove`), posição no fim do toque (`pointerup`) e
+rolagem da página (`scroll`). O teste `t_tap_only` reprova `pointerleave`
+registrado de verdade (ignora o aviso nos comentários). Para conferir sem
+aparelho, dispare toques reais via CDP (`Input.dispatchTouchEvent`) com
+`chromium --headless`: o mouse não reproduz a ordem dos eventos de toque.
+
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
-`app/build.gradle.kts`). Nome de exibição: "00 Otimização". O APK é
+`app/build.gradle.kts`). Nome de exibição: "Trix". O APK é
 publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git; os
 `.sha256` **são** versionados).
 
+**Marca (nome/cor/logo).** A marca é "Trix" e a cor de destaque padrão é
+**prata** (`#C7CCD6`); o laranja continua na paleta, só deixou de ser o padrão.
+Ao trocar a marca, o mesmo valor aparece em vários lugares que precisam ficar
+em sincronia: `strings.xml` (`app_name`), os `<title>` de `web/index.php`,
+`web/login.php`, `app/src/main/assets/panel/index.html`,
+`assets/panel/login.html` e `public/login.html`, o `setContentTitle` em
+`OverlayService.kt`/`Permissions.kt` e a const `OtmExec.accent` (cor padrão do
+painel flutuante). A cor padrão vive no `:root` dos **dois** painéis
+(`--accent`/`--accent-ink`/`--ring`), no `themes.xml` (`colorPrimary`) e no
+fallback `col()` do `OverlayService.kt`; o "accent" salvo usa `"prata"` como
+padrão (`localStorage.getItem("otm-accent") || "prata"`). Cuidado ao editar o
+bloco `:root`: ele tem um **comentário CSS de várias linhas** logo acima — um
+`*/` sobrando quebra todo o CSS abaixo (o painel fica sem estilo e os testes não
+pegam isso). Os ícones são gerados a partir da imagem com Pillow: os `mipmap-*`
+levam a imagem inteira (quadrado e redondo, com máscara circular) e o
+`drawable-xxxhdpi/ic_launcher_foreground.png` (432×432) leva **só o emblema**,
+recortado pelo bbox do conteúdo (`limiar < 210`) e centralizado na safe zone de
+66% — o fundo claro do logo preenche o resto, e o `ic_launcher_background` é
+`#F8F6F1` (a cor do fundo da arte). O `monochrome` aponta para
+`ic_launcher_monochrome.png` (silhueta com alfa): apontá-lo para o foreground
+deixa um bloco sólido no tema monocromático.
+
 Publicar o download: o repo **público** é `whesleydev/Pack-de-otimizacao`
 (o `00-Otimizacao` é privado, então link de asset lá não abre para o usuário).
-Crie a release pela API com o token do remote `otm-push` (tem escopo `repo`):
+Crie a release pela API com o token do remote `origin`/`otm-push` (tem escopo
+`repo` e admin no repo; o `GITHUB_TOKEN` do ambiente é de integração e devolve
+`Resource not accessible by integration` na API de releases):
 
 ```sh
-T=$(git config --get remote.otm-push.url | sed -E 's|https://([^@]*)@.*|\1|' | cut -d: -f2)
-# POST /repos/whesleydev/Pack-de-otimizacao/releases  {tag_name, target_commitish, name, body}
+TOK=$(git remote get-url origin | sed -E 's#https://([^@]+)@.*#\1#')
+# POST /repos/whesleydev/Pack-de-otimizacao/releases  {tag_name, name, body}
 # POST https://uploads.github.com/repos/.../releases/<id>/assets?name=<arquivo>  (binário)
 ```
 
+**O `GITHUB_TOKEN` do ambiente é de GitHub App e não escreve.** Ele lê a API
+(`/user` responde `login: whesleydev`, `permissions.admin: true`) e os *checks*
+de CI, mas `git push` devolve `403 Permission to ... denied` e
+`POST /pulls` devolve `403` — não perca tempo com ele. Para **escrever** (push,
+PR, release), use um PAT clássico com escopo `repo` (`ghp_...`) no lugar da URL:
+`git remote set-url origin https://<token>@github.com/whesleydev/Pack-de-otimizacao.git`,
+faça o push e **volte a URL sem token** (`git remote set-url origin
+https://github.com/whesleydev/Pack-de-otimizacao.git`) para não deixar o segredo
+no `.git/config`. O mesmo vale para o `otm-push`. A ferramenta `create_pr`
+também usa o token do ambiente (falha com 403): crie o PR com
+`POST /repos/<owner>/<repo>/pulls` via `urllib`/`curl` com o PAT.
+
+Se a tag **já existir** (você já fez `git push origin <tag>`), não mande
+`target_commitish` no POST: a API responde `422 Validation Failed
+(field: target_commitish)`. A release então aponta para onde a tag aponta.
 A release cria a tag no `target_commitish` no momento do POST. Se você criar a
 release **antes** de terminar os commits, a tag fica num commit velho — mova com
 `PATCH /repos/.../git/refs/tags/<tag>` com `{"sha": "<sha completo>", "force": true}`.
 O link `releases/latest/download/<arquivo>` só funciona se for a release mais
 recente; para citar uma versão fixa, use `releases/download/<tag>/<arquivo>`.
+Confirme o link **baixando** o arquivo e comparando o SHA-256 (não confie só no
+`201` do upload).
+
+O CI (`.github/workflows/build.yml`, job `plugins`) **cria a release sozinho**
+quando a tag `v*` chega: usa o `CHANGELOG.md` como corpo e sobe só os `.zip` de
+`releases/` + o `SHA256SUMS.txt`. O **APK não é publicado pelo CI** — depois do
+run ficar verde, anexe o APK e o `.sha256` no release já criado
+(`POST https://uploads.github.com/.../releases/<id>/assets?name=<arquivo>`) e
+renomeie a release para o padrão `"<versão> — <resumo>"` (o CI a cria com o nome
+igual à tag). **Anexar o `.sha256` exige `Content-Type: text/plain`** — o
+`--data-binary` puro manda `application/x-www-form-urlencoded` e a API responde
+`422 content_type can't be ...`. **Mover a tag reescreve o corpo**: se você
+empurrar mais um commit para a branch e mover a tag (o CI roda de novo no novo
+SHA), ele sobrescreve o `body` e o `name` com o `CHANGELOG.md` inteiro — refaça o
+`PATCH` do corpo depois que **esse** run terminar.
+O `body_path: CHANGELOG.md` manda o **arquivo inteiro** (todas as
+versões, ~60 KB) — o padrão das releases boas é só a seção da versão: corte com
+`re.findall(r'^## \[<versão>\].*?(?=^## \[)', changelog, re.S|re.M)` e mande por
+`PATCH /repos/.../releases/<id>` junto do `name` novo. Fluxo completo do release:
+bump `VERSION`/`versionCode` → `git tag vX.Y.Z && git push origin vX.Y.Z` →
+esperar o CI → anexar o APK → ajustar nome/corpo → atualizar `serve/index.html` e
+os `.sha256` de `releases/` e `serve/`.
 

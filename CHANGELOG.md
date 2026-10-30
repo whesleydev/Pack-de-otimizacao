@@ -3,9 +3,369 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
+## [2.44.1] - 2026-10-30
 
 ### Corrigido
+- **"Argument list too long" ao analisar o aparelho.** No Android o `printf`,
+  `sed` e `grep` são binários do toybox (não são builtins do shell, ao contrário
+  do `dash`/`bash` do PC). A leitura da taxa de tela mandava a saída inteira do
+  `dumpsys display` — mais de **400 KB** num Samsung — como **argumento** do
+  `printf`: o kernel recusa e o comando morre com `Argument list too long`. O erro
+  aparecia numa linha distante da real, então parecia um bug aleatório no meio do
+  fluxo `auto`. O novo `otm_echo` entrega o texto pelo **stdin** (via heredoc), que
+  não tem esse limite, e substituiu todos os pontos que passavam dumps grandes por
+  argv (`display_max_hz`, app em primeiro plano, camada do FPS, medição de FPS).
+- **Nível de bateria virava um número gigante.** O `dumpsys battery` do Android 14+
+  traz uma linha `level:` por UID (dezenas delas). O `awk` sem `exit` imprimia
+  **todas** e o `_num` colava os dígitos num valor só (ex.: `808182838…`), que
+  estourava a linha do painel. O novo `otm_batt_get`/`otm_batt_field` ancora na
+  linha canônica (`level:`, `temperature:`, `status:`) e valida a faixa — o mesmo
+  vale para a temperatura. O `_num` também foi limitado a 9 dígitos.
+- **Linhas repetidas no fim do resumo.** O `printf` reaproveita o formato quando
+  sobram argumentos: duas linhas do resumo tinham **um `%s` e dois argumentos**, e
+  a frase inteira saía duplicada. O formato agora consome os dois.
+
+### Adicionado
+- Teste de regressão `t_smart_bigdump`: monta um `dumpsys display` de ~400 KB e um
+  `dumpsys battery` com várias linhas `level:` e reprova se voltar o E2BIG, se a
+  taxa de tela sumir ou se a bateria vier com dígitos colados.
+
+## [2.44.0] - 2026-10-30
+
+### Adicionado
+- **Backup cifrado**: exportar/importar as preferências e o estado do otimizador
+  protegidos por senha, com a chave no `AndroidKeyStore`.
+- **Otimizador que aprende**: memória por assinatura de hardware, mede antes e
+  depois e decide o perfil sozinho.
+
+## [2.43.1] - 2026-10-22
+
+### Corrigido
+- **Botão do painel flutuante abria ao arrastar.** O guarda de toque (`tapOnly`)
+  cancelava só no `pointercancel`, que o navegador nem sempre emite quando o dedo
+  **começa** no botão e arrasta a página: o clique sintético do fim do scroll
+  abria o flutuante sem querer. Agora o arrasto é detectado por três vias — a
+  variação do dedo, a rolagem da página (`scroll`) e o `pointerleave` —, a
+  tolerância subiu de 8px para 14px e o toque tem de ser curto (600 ms). Os seis
+  `onclick` crus que furam o guarda viraram `data-qa`/`data-game-home`, que passam
+  por ele.
+- **Conexão ADB por Wi-Fi nunca completava.** `Permissions.askMdns()` pedia a
+  permissão de descoberta e o diálogo de pareamento abria **na mesma hora**, antes
+  de o usuário responder: o mDNS falhava em silêncio. O novo `askMdnsThen()` só
+  abre o diálogo depois da resposta, e o `onRequestPermissionsResult` (que não
+  tratava `REQ_MDNS`) agora resolve a permissão. O diálogo continua pedindo **só
+  o código de 6 dígitos**.
+- **"Conectado" era mentira.** `connect()` devolver `true` só diz que o socket
+  abriu, não que o shell responde. `AdbRunner.verify()` testa de verdade e
+  `connectAndVerify()` reconecta (o adbd demora a publicar o serviço após parear).
+  A depuração USB também passou a verificar antes de anunciar sucesso.
+
+### Adicionado
+- **Perfil personalizado com 42 recursos** (era 28): barra de status (bateria em %,
+  segundos no relógio, ícones secundários), janela multitouch, compilação ART,
+  poda de caches, encerrar 2º plano, processos fantasma, restrição de apps de
+  fundo, display/HWUI, recompilação agendada, modo jogo profundo, ajustes obscuros
+  e tela 10 min + 120 Hz. O `argv` de `profile.custom.apply` agora é **derivado**
+  da mesma lista das opções, então painel e script não têm como dessincronizar.
+
+## [2.43.0] - 2026-10-22
+
+### Adicionado
+- **Perfil personalizado completo (28 recursos).** O menu do perfil personalizado
+  passou de 7 para **28 ajustes independentes**, cobrindo desempenho, memória,
+  gráficos, tela, toque, rede, bateria, notificações e limpeza. As chaves de
+  escolha (`anim`, `ram`, `hz`, `touch`, `clean`, `renderer`, `dns`, `proc`,
+  `efeitos`, `barras`, `res`, `touchlat`) e as de liga/desliga (`telemetry`,
+  `hibernate`, `gpu`, `net`, `latency`, `wifi`, `battery`, `doze`, `freezer`,
+  `dnd`, `gamefocus`, `notif`, `perfmode`, `vitality`, `mobile`, `janelas`) ficam
+  na **mesma ordem** em três lugares que precisam casar: o `argv` de
+  `profile.custom.apply` (`web/lib.php`), a const `CPROF` do HTML e o `PC_ORDER`
+  do `scripts/profile-custom.sh`.
+
+### Alterado
+- **A aba Geral ficou enxuta: o otimizador virou um hub.** Antes ela misturava
+  16 cards soltos (o `auto`, cinco comandos de leitura/teste do otimizador, quatro
+  de snapshot, o `restore_all`, os módulos e dois cards enormes do perfil
+  personalizado). Agora são 3: **Aplicar o pack recomendado**, **Otimizador
+  inteligente** e **Perfil personalizado**. O card do otimizador concentra, num
+  só lugar, o seletor de perfil e os botões de leitura (`Analisar aparelho`, `Ver
+  plano`, `O que está ativo`), de teste (`Medir antes x depois`, `Comparar
+  combinações`) e de snapshot/reversão (`Salvar snapshot`, `Ver snapshots`,
+  `Comparar com o último`, `Restaurar último`, `Reverter TUDO`). O perfil
+  escolhido no hub é repassado às ações que o aceitam (`smart.bench` etc.).
+  As sub-ações levam `'card' => false` no `lib.php` e continuam no `ACTIONS` —
+  só não desenham mais um card próprio. `module.run` passou para a aba
+  **Sistema**.
+
+### Corrigido
+- **A telemetria nunca era desligada pelo perfil personalizado.** A chave
+  `telemetry` estava declarada no menu, mas o `pc_apply` não a aplicava — marcar
+  "desligar telemetria" não fazia nada. Agora ela é aplicada de verdade.
+- **O interruptor de telemetria estava invertido.** Ligar o interruptor
+  *religava* a telemetria, e desligá-lo não mexia em nada. Agora `nao` significa
+  "não mexer" (padrão) e `off` desliga de fato — igual às outras chaves.
+- **Arrastar a lista disparava o botão onde o dedo soltou.** O gatilho das ações
+  usava `onclick` puro, que também dispara no "clique" sintético que o navegador
+  emite no fim de um scroll. Os dois painéis (app e site) passam a exigir toque
+  parado e curto (`tapOnly`, com `pointercancel`), o mesmo critério que os botões
+  do cabeçalho já usavam.
+- **O flutuante voltava a funcionar sozinho depois de o processo ser morto.** As
+  próprias ações de limpeza podem encerrar o processo do painel; o transporte de
+  shell (`OtmRunner.current`) voltava nulo e **toda** ação do flutuante dava erro
+  no meio da partida. O serviço agora reconecta o Shizuku sozinho (a permissão já
+  foi concedida) e o monitor não fica preso em erro.
+- **"Exceção (1º plano)" e o jogo `auto` falhavam sem jogo escolhido.** Quando o
+  `dumpsys` não dizia quem estava na tela (tela bloqueada, formato novo do
+  Android), o `proc-mgr.sh keep-fg` e o `game-per-app.sh auto` devolviam erro em
+  vez de cair no jogo escolhido / Free Fire — a mesma decisão do `game_open`.
+- **A conexão por ADB Wi-Fi caía sempre no mesmo endereço.** O plano B (loopback)
+  e o plano A (host descoberto) compartilhavam o mesmo gerenciador, e o segundo
+  ficava com o endereço do primeiro. O endereço passa a ser reaplicado a cada
+  chamada.
+- **Conexão por depuração sem fio agora pede só o código.** O diálogo tinha um
+  bloco "Avançado" com IP e portas para preencher na mão; as portas e o endereço
+  são descobertos sozinhos pela rede (mDNS). Ficou só o campo do código de 6
+  números, com uma segunda tentativa quando o mDNS perde a primeira resposta.
+- **A ordem das chaves do perfil personalizado estava desalinhada entre o painel
+  e o script**, o que fazia o valor de uma chave ser aplicado em outra. As três
+  pontas foram realinhadas e há teste cobrindo a ordem.
+
+## [2.42.1] - 2026-10-22
+
+### Corrigido
+- **Painel flutuante minimizado agora arrasta.** O ícone minimizado ficava preso
+  no lugar: o clique para reabrir estava no `ImageView` de dentro da bolha, que
+  virava "clickable" e engolia o toque antes de chegar ao container — onde vive o
+  arrasto. O clique passou para o container, então dá para mover a bolha pela
+  tela e um toque curto continua devolvendo o painel completo.
+- **Fim dos cards repetidos no rodapé do painel.** Os cards de permissão
+  (`Permitir o app do pack`, `Permitir os Free Fire`, `Permitir o meu jogo`,
+  `Bateria sem economia agressiva`, `Aplicar todas as permissões` e
+  `Aparência e som`) apareciam **duas vezes**: uma na aba Sistema, como deviam, e
+  outra solta no fim do painel, fora de qualquer aba, empilhada junto com os
+  créditos. Era um fragmento órfão que ficou entre o fim da seção Sistema e a
+  seção seguinte; como não pertencia a grupo nenhum, o CSS que esconde as abas
+  inativas não o alcançava e ele aparecia sempre. O fragmento foi removido e o
+  gerador do painel (`sync_app_panel.py`) agora limpa órfãos e avisa se as
+  seções ficarem desbalanceadas.
+
+## [2.42.0] - 2026-10-22
+
+### Alterado
+- **O app agora se chama Trix.** Nome de exibição, notificações e os títulos das
+  telas (painel, login e painel de administração) passam a usar **Trix** — antes
+  "00 Otimização"/"00deUdia Otimizações". O `applicationId` continua
+  `com.otm.pack`, então a instalação por cima da versão anterior funciona e os
+  dados do aparelho são mantidos.
+- **Logo nova.** O ícone do app passa a ser a logo enviada, em todas as
+  densidades (mdpi a xxxhdpi, quadrado e redondo) e no ícone adaptativo do
+  Android 8+ (foreground na área segura, fundo combinando com a arte e uma
+  camada **monochrome** para o tema dinâmico — antes o "monochrome" reaproveitava
+  o foreground e virava um bloco sólido no modo monocromático).
+- **Cor padrão agora é prata.** O laranja deixa de ser a cor de destaque padrão e
+  vira **prata** (`#C7CCD6`) no painel, no login, no tema do Android
+  (`colorPrimary`) e no painel flutuante. O laranja **continua na paleta** — quem
+  preferir troca em Aparência, e a escolha salva é respeitada (só o padrão muda).
+
+## [2.41.2] - 2026-10-29
+
+### Adicionado
+- **Categoria Dispositivos: resolução de tela.** Aba nova no painel com os
+  degraus de resolução de vários aparelhos (540p a 1440p) e resolução
+  personalizada. Reduzir a resolução **lógica** é o ajuste que mais rende FPS em
+  jogo pesado — a mesma GPU desenha menos pixels. A **resolução de fábrica é
+  guardada antes do primeiro override**, então "Voltar à resolução de fábrica"
+  devolve o valor certo do seu aparelho, mesmo depois de testar vários degraus.
+  A validação recusa valores absurdos em vez de aceitar qualquer coisa. O
+  "automático" só desce para 1080p em tela QHD; em tela pequena não mexe.
+- **Otimizador: medir antes x depois.** O otimizador inteligente agora **mede** o
+  aparelho antes e depois de aplicar e diz se **melhorou, piorou ou ficou
+  estável** — em vez de só aplicar e confiar. Se piorar, avisa para reverter.
+  Ações novas: **analisar** (relatório completo, sem alterar nada), **ver o
+  plano** (o que seria aplicado e o motivo de cada escolha), **medir antes x
+  depois** e **comparar combinações** (testa Vulkan x GL e a maior taxa x 90Hz
+  no seu aparelho e fica com a de melhor nota).
+- **Análise mais profunda do aparelho.** O relatório agora lê também a frequência
+  por **cluster de CPU**, a **pressão de memória** do kernel, a **resolução
+  lógica**, o **zram em uso**, o **MGLRU**, a **entropia** e o **I/O** — e mostra
+  o que está **segurando** a nota.
+- **Guia com os comandos de resolução.** A área de comandos do site ganhou a
+  categoria **Resolução** (`wm size`): ver a atual, baixar para 1080p/720p e
+  voltar à de fábrica, para quem prefere digitar o comando em vez de usar o
+  painel.
+
+### Mudado
+- **Otimizador mais rigoroso nas escolhas.** A memória do kernel (swappiness)
+  passou a acompanhar a RAM do aparelho e a limpeza muda de fase conforme a
+  classe. Nada é chutado: o que o aparelho não expõe entra como "desconhecido" e
+  a comparação só considera o que foi realmente lido.
+- **A resolução também está no painel flutuante**, na aba **Motor** — é um
+  ajuste para mexer no meio da partida, não só antes de abrir o jogo.
+
+### Corrigido
+- **O botão "Esconder topo" do flutuante não escondia a barra.** Ele chamava
+  `sysbars status`, que é só leitura (mostra o estado), em vez de `so_status`,
+  que aplica o modo imersivo na barra de cima. O botão parecia não fazer nada.
+
+## [2.41.1] - 2026-10-29
+
+### Corrigido
+- **O painel flutuante abria a aba errada.** A lista de rótulos (`TABS`) e o
+  `when` que escolhe o conteúdo estavam em ordens diferentes: a aba **Monitor**
+  abria os perfis de **toque** e o **FPS real** ficava escondido dentro de
+  **Processos**. Era o motivo de parecer que o FPS "não existia". Agora o
+  índice de cada rótulo casa com o seu conteúdo — e o FPS abre na primeira aba.
+- **O painel mudava de largura ao trocar de aba.** A janela era `WRAP_CONTENT`,
+  então cada aba media um tamanho diferente e o painel "pulava" na tela. Agora a
+  largura é **fixa** (~46% da tela, com piso/teto em dp) e a altura acompanha o
+  conteúdo até um teto de ~50% — aba curta fica baixa, aba longa rola.
+
+### Mudado
+- **A bolha de minimizado tinha tamanho irregular.** O ícone do app é um
+  *adaptive icon*, que usado direto num `ImageView` não tem tamanho confiável e
+  saía enorme. Agora a bolha é um quadrado fixo de 46 dp, igual em qualquer
+  aparelho e densidade.
+- **Painel mais compacto e organizado**: botões e chips menores, as 5 abas em
+  duas linhas (os rótulos não cabiam legíveis numa linha só) e espaçamento
+  reduzido.
+- **Aba Monitor com mais informação**: além de FPS, teto da tela, RAM, CPU,
+  frequência, temperatura e bateria, agora mostra **núcleos**, **governador**,
+  **saúde/ciclos da bateria** e **armazenamento**. O que o aparelho não expõe
+  continua virando "—".
+
+## [2.41.0] - 2026-10-29
+
+### Corrigido
+- **O `panel-stats.sh` quebrava o JSON quando o jogo escolhido não tinha
+  pacote.** A leitura do jogo usava `tr -d '\n' < "$ST/game/pkg"`, mas o
+  redirecionamento de entrada **não** cobria o caso do arquivo não existir: o
+  erro ia para o stderr e a variável saía vazia no meio do JSON, derrubando o
+  parse das métricas (CPU fora de 0..100 e JSON inválido). Agora a leitura é
+  guardada por `[ -f "$ST/game/pkg" ]` e o valor sai limpo.
+- **Os créditos ficavam no meio da tela quando a aba tinha pouco conteúdo.** Em
+  telas curtas (a aba **Flutuante**, por exemplo) o conteúdo acabava e o rodapé
+  com os créditos parava logo abaixo dele, no meio do vazio. A causa era o
+  `body` não ser coluna flexível: o miolo não crescia para empurrar o rodapé
+  para baixo. Agora o `body` é `display:flex; flex-direction:column` e o miolo
+  usa `flex:1 0 auto` — o rodapé fica sempre no fim da tela. Corrigido no painel
+  do app, no `web/index.php`, no `web/login.php`, na página do guia
+  (`index.html`) e na cópia publicada (`public/guia.html`). O teste
+  `t_footer_sticky` guarda a correção.
+- **O app pedia a permissão do Shizuku a cada vez que era aberto, mesmo já
+  autorizado.** O binder do Shizuku (a ponte com o serviço de shell) **chega
+  depois** do `onCreate`: o app pergunta ao `ShizukuProvider` e a resposta volta
+  por Binder. A checagem de permissão acontecia só no `onCreate`, quando a
+  resposta ainda não tinha chegado — então o app concluía "não autorizado",
+  mostrava a capa e pedia a permissão de novo, toda vez. Agora a conexão também
+  é tentada **quando o binder chega** (`addBinderReceivedListenerSticky`), é
+  refeita quando o usuário **volta para a tela** (`onResume`) e o runner é
+  limpo quando o serviço do Shizuku reinicia (`addBinderDeadListener`). Se a
+  permissão já foi concedida, o app conecta em silêncio e vai direto ao painel.
+  O indicador de acesso do painel também é reconsultado quando a tela volta,
+  para não continuar dizendo "sem acesso" depois de conectar.
+
+### Removido
+- **Saíram das Configurações os botões de permissão que não faziam sentido ali.**
+  A engrenagem tinha "Aos Free Fire", "Ao meu jogo", "Bateria sem economia" e
+  "Acesso a dados de uso" ao lado do botão do pack. Ficou **só o "Conceder
+  permissões ao pack"**, que é o que o usuário precisa mexer. As ações em si
+  continuam no catálogo (quem quiser chamar por elas ainda consegue), e o
+  atalho "Liberar acesso a dados de uso" continua na Home, onde o dado aparece.
+
+### Adicionado
+- **FPS real do jogo, medido no compositor (aba "Monitor" do flutuante).** O
+  flutuante ganhou uma aba **Monitor** que mostra FPS, RAM, CPU e bateria ao
+  vivo, atualizando sozinha a cada 4 s enquanto está aberta. O FPS **não** é a
+  taxa da tela disfarçada: sai dos carimbos de apresentação dos frames do
+  `SurfaceFlinger` (`fps.sh`, `otm_fps_measure`), que é o número de frames que
+  realmente apareceram. Quando o jogo não está na tela — ou a camada não expõe
+  frames — o painel mostra **"—"** em vez de inventar um número. O mesmo valor
+  aparece na Home do painel (app e web), no card **"FPS do jogo"**.
+- **Reduzir a resolução do jogo pelo flutuante (mais FPS).** A aba **Atalhos**
+  agora traz os três perfis de downscale do `game-per-app.sh` — **FPS (0.9)**,
+  **Equilíbrio (0.75)** e **Máx (0.5)** — mais **Reset resolução** e **Ver
+  tuning**. Renderizar menos pixels dá mais FPS e esquenta menos; o tamanho na
+  tela não muda. O flutuante usa `auto`: o script resolve o jogo escolhido no
+  pack (ou o app em primeiro plano), porque o overlay não tem como saber qual é
+  o jogo. Vale para `apply`, `custom`, `mode`, `show` e `reset`.
+- **Escolher QUALQUER app instalado para nunca ser encerrado.** A aba
+  **Processos** ganhou a lista **"Todos os apps"** (`proc-mgr.sh apps`): mostra
+  todos os apps de usuário instalados, não só os que estão rodando agora, e cada
+  linha é um chip que liga/desliga a exceção com um toque. Antes só dava para
+  proteger quem já estava vivo neste instante — o caso mais comum (proteger um
+  app que ainda vai abrir, como o do banco) ficava de fora.
+- **Gerenciador de processos no painel flutuante (aba "Processos").** O
+  flutuante ganhou uma aba para mexer na memória **no meio da partida**,
+  sem fechar o jogo: escolher quantos apps o sistema mantém em segundo plano
+  (4 · jogo, 8 · meio, 32 · multitarefa ou Padrão), **"Encerrar todos"** (fecha o
+  segundo plano poupando o jogo, o app em primeiro plano e as suas exceções),
+  **"RAM agora"**, criar a exceção do **app em 1º plano** com um toque e ver a
+  lista de **apps rodando agora** com a RAM de cada um. Em cada linha da lista há
+  um chip **"exceção"/"não encerra"**: um toque marca/desmarca aquele app como
+  "nunca encerrar" (útil para uma live que fecha quando você encerra tudo).
+- **Exceções ("X app não encerra") valem para todas as limpezas.** A lista de
+  exceções do gerenciador de processos entra no `otm_keep_list`, então o
+  "Encerrar todos" do flutuante, o Clean, o RAM Boost e o Game Clean poupam os
+  mesmos apps. Também estão no painel principal (grupo Processos): "Apps rodando
+  agora", "Encerrar todos em 2º plano", "Exceção: app não encerrar", "Exceção:
+  app em 1º plano", "Exceções (não encerrar)", "Exceção: remover" e "Exceções:
+  apagar todas".
+- **Aparência só-escura, com cor de destaque personalizada e fontes novas.** O
+  app passou a ter uma identidade escura única: **não existe mais tema claro nem
+  alternância** (o `<meta color-scheme>` é só `dark` e as cores escuras ficam
+  direto no `:root`). Além das paletas prontas, dá para escolher **qualquer cor**
+  (seletor do sistema + campo hex) — a cor do texto sobre o destaque e o anel de
+  foco são calculados pelo brilho do hex.
+- **Fontes empacotadas no app (9 famílias).** As fontes de destaque (Anton,
+  Bebas Neue, Caveat, JetBrains Mono, Monocraft, Orbitron, Playfair Display,
+  Press Start 2P e Russo One) vêm **dentro do app**, não de CDN: a fonte continua
+  valendo **sem internet**. Todas são OFL-1.1 e o crédito acompanha o arquivo
+  (`assets/fonts/CREDITS.md`).
+- **O painel flutuante agora tem o mesmo visual do app.** Antes era um retângulo
+  laranja chapado e igual para tudo. Agora ele usa a **mesma cor de destaque e a
+  mesma fonte** escolhidas no painel (troca na hora, sem reabrir), os botões
+  viraram pílulas de vidro e a janela pede *blur* por trás no Android 12+ (onde
+  não há suporte, o fundo translúcido mantém o aspecto). A aba **Sensi** saiu do
+  flutuante: ficam **Toque**, **Motor** e **Atalhos** (o headshot continua no
+  botão de Atalhos, mas o overlay não lê mais o `sensi.sh`).
+- **O log agora diz POR QUE algo falhou.** Cada execução guarda quantas
+  tentativas pegaram, quantas falharam, as **razões** (as linhas do script que
+  explicam a falha, com o valor lido de volta — ex.: "nao mudou (lido: cubic)")
+  e a **saída crua**. Antes o log só dizia "erro", sem dizer o que não pegou nem
+  com que valor o aparelho ficou. Como a saída crua entra no log, o arquivo é
+  podado (últimas 800 execuções).
+- **A aba "Flutuante" no painel, com um botão só: ligar o painel sobre o jogo.**
+  A antiga categoria "Sensi e mira" virou **"Flutuante"** e ficou com um único
+  cartão — ativar/desativar o overlay. As ações de **sensi** (gerar, analisar,
+  perfis headshot/spray/sniper/speed e os valores na ordem do Free Fire) foram
+  para **"Display & Touch"**, que é onde o resto dos ajustes de mira e toque já
+  morava. Nada foi removido: só ficou no lugar certo.
+- **O painel flutuante agora é organizado por categorias (abas).** Antes tudo
+  saía numa lista corrida e, no meio da partida, achar um botão era lento. Agora
+  cada aba mostra só o seu bloco — **Toque**, **Motor** e **Atalhos**. O visual
+  ganhou fundo arredondado e as abas viram "chips" (a ativa fica destacada).
+- **Escolha do motor de renderização dentro do painel flutuante.** A aba
+  **Motor** traz Automático, SkiaGL, Skia Vulkan e as variantes multithread
+  (SkiaGL MT / SkiaVK MT), chamando o mesmo `adb-tweaks.sh renderer` do painel
+  principal — dá para trocar o renderizador sem fechar o jogo.
+- **A limpeza inteligente agora poupa quem está na sua frente.** As limpezas
+  (Clean, Liberar RAM e Game Clean) passaram a **nunca encerrar** o app em
+  **primeiro plano** (o que está na tela), o **jogo escolhido** no Modo
+  Competitivo, o **próprio app do pack** (que sustenta o painel flutuante) nem
+  os apps protegidos no **anti-relog**. Antes, uma limpeza podia fechar o jogo
+  ou o overlay no meio do uso.
+
+### Corrigido
+- **Trocar a aparência não movia o painel flutuante para o canto.** Ao recriar a
+  janela com a cor/fonte novas, o overlay posicionava a janela **antes** de
+  aplicá-la ao sistema, então o WindowManager ignorava a posição e o painel
+  voltava para o canto. Agora a posição é copiada antes de recriar a janela, e o
+  flutuante fica onde o usuário deixou.
+- **O `sync_app_panel.py` não removia seções de grupo que sumiram do web.** Ao
+  renomear um grupo (ex.: "Sensi e mira" → "Flutuante"), a seção antiga ficava
+  órfã no painel do app, com o conteúdo velho e um item de menu morto. Agora o
+  script apaga as seções do app que não existem mais no web (poupando as
+  seções exclusivas do app, como Terminal e Vitalidade) e o link do menu junto.
 - **A barra de navegação (a dos gestos: quadrado, bolinha, voltar) ficava
   diferente depois de aplicar o pack.** O grupo `window_tweaks` gravava
   `policy_control immersive.full=*`, que esconde as barras de cima e de baixo.

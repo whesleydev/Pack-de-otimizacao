@@ -49,7 +49,7 @@ $semAdmin = $auth->countAdmins() === 0;
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Entrar · Painel 00deUdia</title>
+<title>Entrar · Trix</title>
 <link rel="stylesheet" href="assets/admin.css">
 <script>
 // Aplica o tema antes de pintar (mesma lógica do layout).
@@ -68,7 +68,7 @@ $semAdmin = $auth->countAdmins() === 0;
     <input type="hidden" name="_csrf" value="<?= otm_e($auth->csrf()) ?>">
     <input type="hidden" name="next" value="<?= otm_e($next) ?>">
     <h1>Painel</h1>
-    <div class="sub">00deUdia Otimizações · administração</div>
+    <div class="sub">Trix · administração</div>
 
     <?php if ($erro !== ''): ?><?= otm_msg('err', otm_e($erro)) ?><?php endif; ?>
     <?php if ($semAdmin): ?>

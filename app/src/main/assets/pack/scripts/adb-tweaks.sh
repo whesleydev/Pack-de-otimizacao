@@ -390,22 +390,12 @@ ff_open() {
 # --- jogo do modo gamer: o usuário escolhe qual jogo abre ---------------------
 # Antes o "modo gamer" abria sempre o Free Fire. Quem usa FF MAX, CODM ou
 # Minecraft não tinha como mudar. A escolha fica salva e vale para as próximas
-# vezes (o painel manda o pacote; sem pacote, usa o último salvo).
-GAME_ST="$ST/game"
-mkdir -p "$GAME_ST" 2>/dev/null
-GAME_PKG_FILE="$GAME_ST/pkg"
-GAME_PKG_DEFAULT="com.dts.freefireth"
+# vezes (o painel manda o pacote; sem pacote, usa o último salvo). O jogo padrão,
+# o arquivo da escolha e o validador de pacote vêm do common.sh: o game-per-app.sh
+# também usa o mesmo padrão no "auto".
+GAME_PKG_DEFAULT="${GAME_PKG_DEFAULT:-com.dts.freefireth}"
 
-game_pkg_saved() { [ -f "$GAME_PKG_FILE" ] && head -1 "$GAME_PKG_FILE" 2>/dev/null; }
-game_pkg_save()  { printf '%s\n' "$1" > "$GAME_PKG_FILE" 2>/dev/null; }
-
-_valid_game_pkg() {
-    case "$1" in
-        ''|*[!A-Za-z0-9._]*) return 1 ;;
-        *.*) return 0 ;;
-        *) return 1 ;;
-    esac
-}
+_valid_game_pkg() { otm_valid_game_pkg "$1"; }
 
 # abre o app pelo pacote, sem depender de saber a Activity de cada jogo
 game_launch() {
@@ -567,8 +557,10 @@ unfreeze_apps() {
 dnd() {
     bkp_begin
     say "Não perturbe (DND)"
-    bkp_set global zen_mode 0
-    sh_run "cmd notification set_dnd off" >/dev/null
+    # modo zen em "alarmes apenas" (3): silencia tudo menos alarmes. É o que o
+    # painel lê de volta para a chave não mentir.
+    bkp_set secure zen_mode 3
+    sh_run "cmd notification set_dnd on" >/dev/null
     bkp_set global heads_up_notifications_enabled 0
     say "notificações silenciadas"
 }
@@ -576,6 +568,7 @@ dnd() {
 dnd_off() {
     bkp_begin
     say "DND desligado / heads-up on"
+    bkp_set secure zen_mode 0
     bkp_set global heads_up_notifications_enabled 1
     sh_run "cmd notification set_dnd off" >/dev/null
     say "pronto"
@@ -1037,6 +1030,150 @@ perm_all() {
 }
 
 # --- restaurar tudo -----------------------------------------------------------
+# --- reversões de liga/desliga -------------------------------------------------
+# Cada recurso "ativável" precisa do par ligar/desligar para o interruptor do
+# painel funcionar nos dois sentidos sem depender de "Reverter TUDO".
+perf_off() {
+    bkp_begin
+    say "Performance - animações ao padrão"
+    bkp_set global window_animation_scale 1.0
+    bkp_set global transition_animation_scale 1.0
+    bkp_set global animator_duration_scale 1.0
+    say "animações restauradas (1x)"
+}
+
+gpu_off() {
+    bkp_begin
+    say "GPU / renderização - desligar"
+    bkp_set global force_gpu_rendering 0
+    bkp_set global game_driver_all_apps 0
+    say "renderização por GPU devolvida ao sistema"
+}
+
+wifi_on() { wifi; }
+wifi_off() {
+    bkp_begin
+    say "Wi-Fi - restaurar"
+    bkp_set global wifi_scan_always_enabled 1
+    bkp_set global wifi_wakeup_enabled 1
+    bkp_set global wifi_power_save 0
+    say "Wi-Fi de volta ao padrão"
+}
+
+screen_off() {
+    bkp_begin
+    say "Tela - restaurar"
+    sh_run "settings delete system peak_refresh_rate" >/dev/null 2>&1
+    sh_run "settings delete system min_refresh_rate" >/dev/null 2>&1
+    say "taxa de tela devolvida ao sistema"
+}
+
+fluidez_off() {
+    bkp_begin
+    say "Fluidez - desligar"
+    bkp_set global window_animation_scale 1.0
+    bkp_set global transition_animation_scale 1.0
+    bkp_set global animator_duration_scale 1.0
+    sh_run "settings delete system multi_press_timeout" >/dev/null 2>&1
+    sh_run "settings delete system peak_refresh_rate" >/dev/null 2>&1
+    sh_run "settings delete system min_refresh_rate" >/dev/null 2>&1
+    say "fluidez devolvida ao padrão"
+}
+
+freeze_apps_off() { unfreeze_apps; }
+
+notif_on() {
+    bkp_begin
+    say "Notificações - restaurar heads-up"
+    bkp_set global heads_up_notifications_enabled 1
+    bkp_set global notification_bubbles 1
+    say "notificações normais"
+}
+
+mobile_net_off() {
+    bkp_begin
+    say "Rede móvel - restaurar economia de dados"
+    bkp_set global data_saver_mode 1
+    bkp_set global mobile_data_always_on 0
+    bkp_set global network_avoid_bad_wifi 0
+    say "economia de dados de volta ao padrão"
+}
+
+# --- rede ampliada: ajustes finos de conexão ---------------------------------
+# O que dá para melhorar sem root e sem risco de deixar o aparelho sem rede.
+net_tune() {
+    acao="${1:-status}"
+    case "$acao" in
+        on|ligar)
+            bkp_begin
+            say "Rede - ajustes finos"
+            # DNS privado em modo hostname (DoT), sem quebrar quando o host cai
+            bkp_set global private_dns_mode hostname
+            # não largar o Wi-Fi bom em favor do móvel (evita troca no meio do jogo)
+            bkp_set global network_avoid_bad_wifi 1
+            # servidor de hora estável: relógio errado quebra TLS e causa falha de conexão
+            bkp_set global ntp_server pool.ntp.org
+            # varredura de Wi-Fi/Bluetooth "sempre disponível" desligada (menos latência)
+            bkp_set global wifi_scan_always_enabled 0
+            bkp_set global wifi_scan_throttle_enabled 1
+            say "rede afinada (DNS DoT, NTP, sem varredura de fundo)"
+            ;;
+        off|desligar)
+            bkp_begin
+            say "Rede - desligar ajustes finos"
+            sh_run "settings delete global ntp_server" >/dev/null 2>&1
+            bkp_set global network_avoid_bad_wifi 0
+            bkp_set global wifi_scan_throttle_enabled 0
+            say "rede devolvida ao padrão"
+            ;;
+        status|'')
+            say "Rede (ajustes finos)"
+            printf '   DNS privado:      %s\n' "$(sh_get 'settings get global private_dns_mode')"
+            printf '   servidor de hora: %s\n' "$(sh_get 'settings get global ntp_server')"
+            printf '   evitar Wi-Fi ruim:%s\n' "$(sh_get 'settings get global network_avoid_bad_wifi')"
+            ;;
+        *) err "uso: net_tune <on|off|status>"; return 1 ;;
+    esac
+}
+
+# --- remover isenções (o inverso de perm_*) -----------------------------------
+perm_revoke_pkg() {
+    p="$1"
+    perm_run "Doze: devolver $p" "cmd deviceidle whitelist +$p" "cmd deviceidle whitelist -$p"
+    perm_run "2º plano: devolver $p" "cmd appops set $p RUN_IN_BACKGROUND allow" "cmd appops set $p RUN_IN_BACKGROUND default"
+    perm_run "sempre 2º plano: devolver $p" "cmd appops set $p RUN_ANY_IN_BACKGROUND allow" "cmd appops set $p RUN_ANY_IN_BACKGROUND default"
+    perm_run "wake lock: devolver $p" "cmd appops set $p WAKE_LOCK allow" "cmd appops set $p WAKE_LOCK default"
+    perm_run "iniciar em 2º plano: devolver $p" "cmd appops set $p START_FOREGROUND allow" "cmd appops set $p START_FOREGROUND default"
+}
+perm_revoke() {
+    bkp_begin
+    say "Removendo isenções do app do pack"
+    perm_revoke_pkg "${1:-com.otm.pack}"
+}
+perm_revoke_ff() {
+    bkp_begin
+    say "Removendo isenções dos Free Fire"
+    perm_revoke_pkg "com.dts.freefireth"
+    perm_revoke_pkg "com.dts.freefiremax"
+}
+perm_revoke_game() {
+    pkg="$1"
+    [ -z "$pkg" ] && pkg="$(game_pkg_saved)"
+    [ -z "$pkg" ] && pkg="$GAME_PKG_DEFAULT"
+    _valid_game_pkg "$pkg" || { err "pacote inválido: '$pkg'"; return 1; }
+    bkp_begin
+    say "Removendo isenções do meu jogo ($pkg)"
+    perm_revoke_pkg "$pkg"
+}
+perm_battery_off() {
+    bkp_begin
+    say "Bateria: voltar ao padrão"
+    bkp_set global low_power 0
+    bkp_set global adaptive_battery_management_enabled 1
+    bkp_set global app_standby_enabled 1
+    say "economia de bateria e App Standby devolvidos ao padrão"
+}
+
 restore_all() {
     say "Restaurando configurações originais"
     # percorre TODOS os escopos de reversão (adb-tweaks, clean, dns, debloat, ...)
@@ -1052,7 +1189,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max gpu renderer renderer_backend net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
+GRUPOS="perf perf_max perf_off perm_revoke perm_revoke_ff perm_revoke_game perm_battery_off notif notif_on mobile_net mobile_net_off net_tune gpu gpu_off wifi wifi_on wifi_off screen screen_off fluidez fluidez_off freezer freezer_off freeze_apps freeze_apps_off renderer renderer_backend net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

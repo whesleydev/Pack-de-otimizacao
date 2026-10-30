@@ -104,6 +104,33 @@ _otm_shell() {
 sh_run() { _otm_shell "$1" 2>/dev/null; }
 sh_get() { _otm_shell "$1" 2>/dev/null | tr -d '\r'; }
 
+# otm_echo <texto> -> escreve o texto no stdout SEM passar por argv de um binário.
+# No Android o `printf`/`sed`/`grep` são binários do toybox (não são builtins do
+# shell): um argumento de centenas de KB estoura o limite do kernel e o comando
+# morre com "Argument list too long". Um dump grande (`dumpsys display` passa de
+# 400 KB num Samsung) tinha esse destino. O heredoc entrega o texto pelo stdin,
+# que não tem esse limite.
+otm_echo() {
+    cat <<OTM_ECHO_EOF
+$1
+OTM_ECHO_EOF
+}
+
+# otm_batt_field <texto do dumpsys battery> <chave> -> 1º valor numérico da linha
+# CANÔNICA "<chave>:" (ex.: "  level: 85"). O padrão é ancorado de propósito: o
+# dump tem dezenas de linhas que também contêm " level:" (uma por UID), e um
+# casamento solto pegava a errada — juntando todos os números num valor só.
+otm_batt_field() {
+    otm_echo "$1" | awk -F: -v k="$2" '
+        $1 ~ "^[[:space:]]*" k "$" { v = $2; gsub(/[^0-9]/, "", v); if (v != "") { print v; exit } }'
+}
+
+# otm_batt_get <chave> -> lê o dumpsys battery uma vez e devolve o valor da chave
+otm_batt_get() {
+    sh_get 'dumpsys battery' 2>/dev/null | awk -F: -v k="$1" '
+        $1 ~ "^[[:space:]]*" k "$" { v = $2; gsub(/[^0-9]/, "", v); if (v != "") { print v; exit } }'
+}
+
 sh_ok() { [ "$(sh_get 'id -u')" = "0" ]; }
 have()  { command -v "$1" >/dev/null 2>&1; }
 
@@ -490,6 +517,111 @@ otm_ram_livre_mb() {
     [ -n "$v" ] && echo $((v / 1024))
 }
 
+# otm_fg_pkg -> pacote do app em PRIMEIRO PLANO (o que está na tela agora).
+# Vazio quando não dá para ler. Usado para nunca fechar o que o usuário está
+# usando: o jogo aberto, o próprio painel, o app do pack.
+otm_fg_pkg() {
+    d="$(sh_get 'dumpsys activity activities' 2>/dev/null)"
+    [ -n "$d" ] || d="$(sh_get 'dumpsys window windows' 2>/dev/null)"
+    [ -n "$d" ] || d="$(sh_get 'dumpsys window' 2>/dev/null)"
+    p="$(otm_echo "$d" | sed -n 's/.*mResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*topResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mFocusedApp.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    # o formato da linha muda entre versões do Android (mCurrentFocus usa o
+    # ActivityRecord sem as chaves, ex.: "mCurrentFocus=Window{... u0 pkg/act}").
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mCurrentFocus.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mFocusedWindow.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    printf '%s' "$p"
+}
+
+# --- jogo escolhido (Modo Competitivo) ---------------------------------------
+# O painel manda o pacote; sem escolha salva, cai no Free Fire. Fica aqui (e não
+# no adb-tweaks.sh) porque o game-per-app.sh também precisa do padrão: era o
+# único lugar que definia isso e o "auto" do flutuante falhava sem escolha.
+GAME_ST="$ST/game"
+mkdir -p "$GAME_ST" 2>/dev/null
+GAME_PKG_FILE="$GAME_ST/pkg"
+GAME_PKG_DEFAULT="com.dts.freefireth"
+
+game_pkg_saved() { [ -f "$GAME_PKG_FILE" ] && head -1 "$GAME_PKG_FILE" 2>/dev/null; }
+game_pkg_save()  { printf '%s\n' "$1" > "$GAME_PKG_FILE" 2>/dev/null; }
+
+otm_valid_game_pkg() {
+    case "$1" in
+        ''|*[!A-Za-z0-9._]*) return 1 ;;
+        *.*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# otm_fps_layer [pkg] -> camada do SurfaceFlinger onde o app desenha.
+# Sem o pacote, usa o app em PRIMEIRO PLANO. Vazio quando não dá para saber.
+# O jogo desenha numa SurfaceView; ela vem primeiro na preferência porque é ali
+# que os frames do jogo são apresentados (a camada do app pode ter 0 frames).
+otm_fps_layer() {
+    _p="${1:-}"
+    [ -n "$_p" ] || _p="$(otm_fg_pkg)"
+    [ -n "$_p" ] || return 0
+    _ls="$(sh_get 'dumpsys SurfaceFlinger --list' 2>/dev/null | grep -v '^$')"
+    [ -n "$_ls" ] || return 0
+    _pick="$(otm_echo "$_ls" | grep -F "$_p" | grep -F 'SurfaceView[' | head -1)"
+    [ -z "$_pick" ] && _pick="$(otm_echo "$_ls" | grep -F "$_p" | grep -viE 'background|dim layer|cursor|scrim' | head -1)"
+    [ -z "$_pick" ] && _pick="$(otm_echo "$_ls" | grep -F "$_p" | head -1)"
+    printf '%s' "$_pick"
+}
+
+# otm_fps_measure <camada> -> "fps<TAB>frames<TAB>janela(s)".
+# O FPS sai do carimbo de apresentação REAL de cada frame (2ª coluna de
+# `dumpsys SurfaceFlinger --latency`): fps = (n-1) / (último - primeiro). O
+# buffer guarda os últimos ~127 frames, ou seja, ~1-2 s de jogo.
+# A 1ª linha da saída é o período de vsync, não um frame — por isso o filtro
+# por NF<3. Valores-sentinela (0 e INT64_MAX) são slots vazios do buffer.
+otm_fps_measure() {
+    _l="$1"
+    [ -n "$_l" ] || return 0
+    _raw="$(sh_get "dumpsys SurfaceFlinger --latency '$_l'" 2>/dev/null)"
+    [ -n "$_raw" ] || return 0
+    otm_echo "$_raw" | awk '
+        NF < 3 { next }
+        {
+            a = $2 + 0
+            if (a <= 0 || a >= 9223372036854775807) next
+            if (n == 0) first = a
+            last = a
+            n++
+        }
+        END {
+            if (n < 2) exit
+            d = last - first
+            if (d <= 0) exit
+            printf "%d\t%d\t%.1f", int((n - 1) * 1000000000 / d + 0.5), n, d / 1000000000
+        }'
+}
+
+# otm_fps_now [pkg] -> FPS real do app (vazio quando não dá para medir).
+otm_fps_now() {
+    _l="$(otm_fps_layer "${1:-}")"
+    [ -n "$_l" ] || return 0
+    otm_fps_measure "$_l" | cut -f1
+}
+
+# otm_keep_list -> tudo que a limpeza NUNCA deve encerrar, separado por espaço:
+# o jogo escolhido (Modo Competitivo), os protegidos no anti-relog, o app do
+# pack e o que está em primeiro plano agora. É a lista que o clean/ram-boost usa.
+otm_keep_list() {
+    k=""
+    [ -s "$ST/game/pkg" ] && k="$k $(tr '\n' ' ' < "$ST/game/pkg")"
+    [ -s "$ST/keepalive/apps" ] && k="$k $(tr '\n' ' ' < "$ST/keepalive/apps")"
+    # exceções do gerenciador de processos ("X app não vai encerrar"): valem para
+    # o encerrar-todos do flutuante E para o clean/ram-boost/game-clean.
+    [ -s "$ST/procmgr/keep" ] && k="$k $(tr '\n' ' ' < "$ST/procmgr/keep")"
+    fg="$(otm_fg_pkg)"
+    [ -n "$fg" ] && k="$k $fg"
+    # jogos de FPS conhecidos: nunca encerrar (o usuário pode estar no meio da partida)
+    k="$k com.dts.freefireth com.dts.freefiremax com.activision.callofduty.shooter com.tencent.ig com.pubg.imobile com.garena.game.kgth com.miHoYo.GenshinImpact com.epicgames.fortnite com.riotgames.league.wildrift com.mobile.legends"
+    printf '%s' "$k" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' '
+}
+
 # otm_bg_kill <poupados...> -> encerra apps de 3º plano, poupando os citados.
 # Só mexe em apps instalados pelo usuário (pm list packages -3): não toca em
 # serviços do sistema. Ecoa a quantidade de apps encerrados.
@@ -522,7 +654,7 @@ otm_temp() {
         echo "$v"
         return 0
     done
-    v="$(sh_get 'dumpsys battery' | awk -F': ' '/ temperature:/{print $2}')"
+    v="$(otm_batt_get temperature)"
     case "$v" in '' | *[!0-9]*) return 0 ;; esac
     echo "$((v / 10))"
 }

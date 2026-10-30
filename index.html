@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pack de Otimização · Guia completo + comandos</title>
+<title>Trix · Guia completo + comandos</title>
 <meta name="description" content="Guia completo do Pack de Otimização para Android: apps, 4 níveis, plugins, módulos e uma área de comandos prontos para copiar (cache, congelar apps, renderizador Skia/Vulkan/ANGLE, RAM, bateria, touch e Free Fire).">
 <style>
 /* ============================================================
-   Pack de Otimização · site único (HTML + CSS + JS puro)
+   Trix · site único (HTML + CSS + JS puro)
    Tema escuro, responsivo, sem dependências externas.
    ============================================================ */
 :root{
@@ -32,7 +32,10 @@ html{scroll-behavior:smooth}
 body{
   margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2) 60%);color:var(--txt);
   font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;
+  /* Coluna flexível: mantém o rodapé (e os créditos) embaixo quando a página é curta. */
+  display:flex; flex-direction:column; min-height:100dvh;
 }
+main.wrap{flex:1 0 auto}
 a{color:var(--acc2);text-decoration:none}
 a:hover{text-decoration:underline}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
@@ -639,6 +642,16 @@ const CMDS = [
    s:'settings put system peak_refresh_rate 120.0\nsettings put system min_refresh_rate 120.0'},
   {c:"Tela / Refresh", t:"Aumentar o tempo de tela ligada", d:"10 minutos antes de apagar.", r:"seguro",
    s:'settings put system screen_off_timeout 600000'},
+
+  // ---------- Resolução ----------
+  {c:"Resolução", t:"Ver a resolução atual (fábrica x override)", d:"Leia antes de mudar: é para cá que você volta.", r:"seguro",
+   s:'wm size\nwm density'},
+  {c:"Resolução", t:"Baixar para 1080p (mais FPS)", d:"Menos pixels = mais FPS. Só a resolução lógica, não a física.", r:"seguro",
+   s:'wm size 1080x2400'},
+  {c:"Resolução", t:"Baixar para 720p (jogo pesado)", d:"Para aparelho fraco ou jogo muito pesado.", r:"cuidado",
+   s:'wm size 720x1600'},
+  {c:"Resolução", t:"Voltar à resolução de fábrica", d:"Desfaz o override e volta ao valor original do aparelho.", r:"seguro",
+   s:'wm size reset\nwm density reset'},
 
   // ---------- Touch ----------
   {c:"Touch / Free Fire", t:"Ver os valores atuais de toque", d:"Leia antes de mudar, para poder voltar.", r:"seguro",

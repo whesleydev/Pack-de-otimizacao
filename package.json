@@ -1,7 +1,7 @@
 {
   "name": "pack-de-otimizacao",
   "version": "2.25.0",
-  "description": "00deUdia Otimizações — Pack de Otimização Android & Painel de Controle",
+  "description": "Trix — Pack de Otimização Android & Painel de Controle",
   "type": "module",
   "main": "server.js",
   "scripts": {

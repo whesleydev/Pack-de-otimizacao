@@ -33,6 +33,33 @@ class PanelActivity : AppCompatActivity() {
     private var runner: ShellRunner? = null
     private var pendingAfterConnect: (() -> Unit)? = null
 
+    /**
+     * O binder do Shizuku chega depois do `onCreate`: o app pergunta ao
+     * `ShizukuProvider` e a resposta volta por Binder. Se a gente checar
+     * `hasPermission()` só no `onCreate`, a resposta ainda não chegou, o app
+     * conclui "não autorizado" e pede a permissão de novo — toda vez que o app
+     * é aberto, mesmo com a permissão já concedida. Por isso a conexão também
+     * é tentada quando o binder chega (sticky) e quando ele morre (o serviço
+     * do Shizuku reiniciou), que é o estado real do aparelho.
+     */
+    private val onBinderReceived = Shizuku.OnBinderReceivedListener { tryAutoConnectShizuku() }
+    private val onBinderDead = Shizuku.OnBinderDeadListener {
+        if (runner === shizuku) {
+            runner = null
+            OtmRunner.current = null
+        }
+    }
+    private val onPermissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        if (requestCode == REQ_SHIZUKU) {
+            if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                activateShizuku()
+            } else {
+                toast("Permissão do Shizuku negada.")
+                pendingAfterConnect = null
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.parseColor("#0D0C0A")
@@ -45,28 +72,68 @@ class PanelActivity : AppCompatActivity() {
         root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
         setContentView(root)
 
-        // Se o Shizuku já está autorizado, conecta direto e esconde a capa.
-        if (shizuku.isAvailable() && shizuku.hasPermission()) {
-            runner = shizuku
-            OtmRunner.current = shizuku
-            overlay.visibility = View.GONE
-        }
-
-        Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
-            if (requestCode == REQ_SHIZUKU) {
-                if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    activateShizuku()
-                } else {
-                    toast("Permissão do Shizuku negada.")
-                    pendingAfterConnect = null
-                }
-            }
-        }
+        // Registra os listeners ANTES de tentar conectar: o sticky entrega o
+        // binder atual na hora se ele já existir, e avisa quando ele chegar.
+        Shizuku.addBinderReceivedListenerSticky(onBinderReceived)
+        Shizuku.addBinderDeadListener(onBinderDead)
+        Shizuku.addRequestPermissionResultListener(onPermissionResult)
+        tryAutoConnectShizuku()
 
         setupWeb()
         web.loadUrl("file:///android_asset/panel/login.html")
         Permissions.ensureChannel(applicationContext)
         Permissions.askOnce(this)
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeBinderReceivedListener(onBinderReceived)
+        Shizuku.removeBinderDeadListener(onBinderDead)
+        Shizuku.removeRequestPermissionResultListener(onPermissionResult)
+        super.onDestroy()
+    }
+
+    /**
+     * Volta do app do Shizuku (ou de qualquer tela do sistema) já conectado. O
+     * listener sticky só avisa na chegada do binder; se ele já estava aqui e o
+     * usuário liberou a permissão por fora, ninguém avisa o app — então a
+     * checagem se repete a cada volta para a tela.
+     */
+    override fun onResume() {
+        super.onResume()
+        tryAutoConnectShizuku()
+    }
+
+    /**
+     * Sem este retorno a permissão de descoberta era pedida e esquecida: o
+     * diálogo de pareamento abria antes de o usuário responder, o mDNS falhava
+     * em silêncio e a conexão nunca completava.
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != Permissions.REQ_MDNS) return
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        Permissions.onMdnsResult(granted)
+    }
+
+    /**
+     * Conecta sem perguntar nada SE o Shizuku já está rodando e a permissão já
+     * foi concedida antes. Só nesse caso a capa some e o painel abre direto;
+     * se falta a permissão, nada acontece aqui (o pedido é explícito, no botão).
+     */
+    private fun tryAutoConnectShizuku() {
+        if (runner != null) return
+        if (shizuku.isAvailable() && shizuku.hasPermission()) {
+            runner = shizuku
+            OtmRunner.current = shizuku
+            overlay.visibility = View.GONE
+            pendingAfterConnect?.invoke()
+            pendingAfterConnect = null
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -100,23 +167,72 @@ class PanelActivity : AppCompatActivity() {
         }
     }
 
-    /** Garante os botões do app no cabeçalho do painel (após cada carga). */
+    /**
+     * Garante os botões do app no cabeçalho do painel (após cada carga).
+     *
+     * O toque passa por [tapOnly]: um `onclick` puro disparava também quando o
+     * dedo só PASSAVA pelo botão arrastando a página (o clique sintético que o
+     * navegador emite no fim de um scroll). Era isso que abria o flutuante "sem
+     * querer". Agora só vale o toque parado e curto.
+     */
     private fun injectHeaderButtons(view: WebView) {
         val js = """
             (function(){
               var t = document.querySelector('header');
               if (!t) return;
               if (document.getElementById('otmFloat')) return;
+
+              // Toque de verdade: dedo parado (pouca variação) e curto.
+              //
+              // Só o pointercancel não bastava: quando o dedo COMEÇA no botão e
+              // arrasta a página, o WebView nem sempre emite o cancelamento, e o
+              // clique sintético do fim do scroll abria o flutuante "sem querer".
+              // Agora o arrasto é detectado por três vias: a variação do dedo
+              // (pointermove), a posição no fim do toque (pointerup) e a rolagem
+              // da página.
+              // NÃO use pointerleave: no toque ele dispara em TODO toque válido,
+              // porque o dedo sai do elemento ao levantar. Ele vinha antes do
+              // click e cancelava tudo, deixando o botão morto.
+              var OTM_TAP_PX = 14, OTM_TAP_MS = 600;
+              function tapOnly(el, fn){
+                var sx=0, sy=0, st=0, ok=false, pid=null;
+                function cancel(){ ok=false; pid=null; }
+                el.addEventListener('pointerdown', function(e){
+                  if (e.pointerType === 'mouse' && e.button !== 0) { cancel(); return; }
+                  sx=e.clientX; sy=e.clientY; st=Date.now(); ok=true; pid=e.pointerId;
+                }, {passive:true});
+                el.addEventListener('pointermove', function(e){
+                  if(!ok || (pid !== null && e.pointerId !== pid)) return;
+                  if (Math.abs(e.clientX-sx) > OTM_TAP_PX || Math.abs(e.clientY-sy) > OTM_TAP_PX) cancel();
+                }, {passive:true});
+                el.addEventListener('pointerup', function(e){
+                  if(!ok || (pid !== null && e.pointerId !== pid)) return;
+                  if (Math.abs(e.clientX-sx) > OTM_TAP_PX || Math.abs(e.clientY-sy) > OTM_TAP_PX) cancel();
+                }, {passive:true});
+                el.addEventListener('pointercancel', cancel, {passive:true});
+                // se a página rolou durante o toque, o dedo estava arrastando
+                window.addEventListener('scroll', cancel, {passive:true, capture:true});
+                el.addEventListener('click', function(e){
+                  if(!ok || Date.now()-st > OTM_TAP_MS){ e.preventDefault(); e.stopPropagation(); return; }
+                  cancel(); fn(e);
+                });
+              }
+
               var f = document.createElement('button');
-              f.className = 'iconbtn'; f.id = 'otmFloat'; f.title = 'Painel flutuante (sobre o jogo)';
+              f.className = 'iconbtn'; f.id = 'otmFloat'; f.type = 'button';
+              f.title = 'Painel flutuante (sobre o jogo)';
               f.textContent = 'Flutuante';
-              f.onclick = function(){ window.OTM.call('overlay','','c'); };
+              f.style.touchAction = 'manipulation';
+              tapOnly(f, function(){ window.OTM.call('overlay','','c'); });
               t.appendChild(f);
+
               if (document.getElementById('otmConnect')) return;
               var b = document.createElement('button');
-              b.className = 'iconbtn'; b.id = 'otmConnect'; b.title = 'Conectar (Shizuku/ADB)';
+              b.className = 'iconbtn'; b.id = 'otmConnect'; b.type = 'button';
+              b.title = 'Conectar (Shizuku/ADB)';
               b.textContent = 'Conectar';
-              b.onclick = function(){ window.OTM.call('connect','','c'); };
+              b.style.touchAction = 'manipulation';
+              tapOnly(b, function(){ window.OTM.call('connect','','c'); });
               t.appendChild(b);
             })();
         """.trimIndent()
@@ -210,14 +326,22 @@ class PanelActivity : AppCompatActivity() {
                 when (which) {
                     0 -> useShizuku()
                     1 -> {
-                        Permissions.askMdns(this)
-                        WifiDialog.show(this, applicationContext) { r, msg ->
-                            runner = r
-                            OtmRunner.current = r
-                            toast(msg)
-                            sound.play("pareamento_feito_com_sucesso.mp3")
-                            pendingAfterConnect?.invoke(); pendingAfterConnect = null
-                            web.reload()
+                        // A permissão de descoberta PRECISA estar concedida antes
+                        // do diálogo: sem ela a busca do serviço de pareamento é
+                        // negada em silêncio e a conexão falha sempre.
+                        Permissions.askMdnsThen(this) { granted ->
+                            if (!granted) {
+                                toast("Sem a permissão de \"Dispositivos próximos\" o app não acha o pareamento. Autorize e tente de novo.")
+                                return@askMdnsThen
+                            }
+                            WifiDialog.show(this, applicationContext) { r, msg ->
+                                runner = r
+                                OtmRunner.current = r
+                                toast(msg)
+                                sound.play("pareamento_feito_com_sucesso.mp3")
+                                pendingAfterConnect?.invoke(); pendingAfterConnect = null
+                                web.reload()
+                            }
                         }
                     }
                     2 -> useAdbLocal()
@@ -236,7 +360,10 @@ class PanelActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val adb = AdbRunner(applicationContext)
             val r = adb.connectLocal()
-            if (r.ok) {
+            // o socket abrir não garante que o shell responde: testa antes de
+            // anunciar "conectado" e deixar o usuário com ações falhando.
+            val ok = r.ok && adb.verify().ok
+            if (ok) {
                 runner = adb
                 OtmRunner.current = adb
                 toast(r.stdout.ifBlank { "Conectado." })
@@ -244,7 +371,8 @@ class PanelActivity : AppCompatActivity() {
                 pendingAfterConnect?.invoke(); pendingAfterConnect = null
                 web.reload()
             } else {
-                toast(r.stderr.ifBlank { "Não conectou." })
+                adb.close()
+                toast(r.stderr.ifBlank { "Não conectou. Ligue a depuração USB e aceite o aviso no celular." })
             }
         }
     }
@@ -262,7 +390,9 @@ class PanelActivity : AppCompatActivity() {
             activateShizuku()
         } else {
             toast("Peça a permissão no diálogo do Shizuku…")
-            shizuku.requestPermission(REQ_SHIZUKU)
+            if (!shizuku.requestPermission(REQ_SHIZUKU)) {
+                toast("Shizuku ainda não respondeu. Tente de novo em um instante.")
+            }
         }
     }
 

@@ -57,3 +57,44 @@ object OtmRunner {
     @Volatile
     var current: ShellRunner? = null
 }
+
+/**
+ * Aparência escolhida no painel, compartilhada com o painel flutuante.
+ *
+ * A cor de destaque e a fonte são escolhidas no WebView (localStorage), que o
+ * Service não enxerga. O painel grava em `SharedPreferences` pela ponte
+ * (`OTM.call("ui_prefs", …)`) e o overlay lê daqui, então os dois ficam com o
+ * mesmo tema. [onChanged] avisa o overlay na hora, sem precisar reabrir.
+ */
+object OtmUi {
+    const val PREFS = "otm-ui"
+
+    /** Cor de destaque (hex #rrggbb) e a tinta do texto sobre ela. */
+    @Volatile var accent: String = "#c7ccd6"
+    @Volatile var accentInk: String = "#14161a"
+
+    /** Chave da fonte escolhida no painel (ver `FONTS` no HTML). */
+    @Volatile var font: String = "sistema"
+
+    /** Chamado quando a aparência muda, para o overlay se redesenhar. */
+    @Volatile var onChanged: (() -> Unit)? = null
+
+    fun load(context: Context) {
+        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        accent = sp.getString("accent", accent) ?: accent
+        accentInk = sp.getString("ink", accentInk) ?: accentInk
+        font = sp.getString("font", font) ?: font
+    }
+
+    fun save(context: Context, accentHex: String?, ink: String?, fontKey: String?) {
+        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        sp.edit().apply {
+            if (!accentHex.isNullOrBlank()) putString("accent", accentHex)
+            if (!ink.isNullOrBlank()) putString("ink", ink)
+            if (!fontKey.isNullOrBlank()) putString("font", fontKey)
+            apply()
+        }
+        load(context)
+        onChanged?.invoke()
+    }
+}

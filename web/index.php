@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /**
- * 00deUdia Otimizações — painel de controle (PHP).
+ * Trix — painel de controle (PHP).
  *
  * A estrutura (menu de categorias e cards de ação) é renderizada aqui no servidor
  * a partir do registro em lib.php. O JavaScript só cuida de trocar de categoria,
@@ -36,7 +36,7 @@ if (!otm_auth_logged_in()) {
 $actions = array_values(otm_actions());
 
 // Ordem fixa das categorias. Menu enxuto: 7 grupos (Rede/DNS separados) + a Home.
-$GROUP_ORDER = ['Geral', 'Display & Touch', 'Sensi e mira', 'Desempenho', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
+$GROUP_ORDER = ['Geral', 'Flutuante', 'Display & Touch', 'Desempenho', 'Dispositivos', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
 $GROUP_ALIAS = ['Rede e conexão' => 'DNS e rede'];
 $byGroup = [];
 foreach ($actions as $a) {
@@ -48,16 +48,21 @@ $groups = [];
 foreach ($GROUP_ORDER as $g) { if (!empty($byGroup[$g])) $groups[$g] = $byGroup[$g]; }
 foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $items; }  // fallback
 
+$togglesByGroup = [];
+foreach (otm_toggles() as $tid => $tg) {
+    $togglesByGroup[$GROUP_ALIAS[$tg['group']] ?? $tg['group']][$tid] = $tg;
+}
+
 $meta = [
     'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
-    'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, resolução e sensibilidade de toque (Free Fire).'],
+    'Flutuante'       => ['t' => 'Flutuante',        's' => 'Ative o painel flutuante (overlay) para usar a sensi e os perfis por cima do jogo.'],
+    'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, motor gráfico e sensibilidade de toque (Free Fire).'],
     'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, sono profundo, congelar apps e ajustes profundos (root).'],
     'DNS e rede'      => ['t' => 'DNS e rede',       's' => 'Escolha o DNS privado (30+ perfis), meça a latência e ajuste Wi-Fi e buffers TCP.'],
     'Processos'       => ['t' => 'Processos',        's' => 'Veja o que gasta RAM/CPU de verdade e limite, priorize ou congele um app.'],
     'Debloat'         => ['t' => 'Debloat',          's' => 'Remova bloatware com lista curada: universal (qualquer marca) ou por fabricante. Sempre reversível.'],
     'Apps e jogos'    => ['t' => 'Apps e jogos',     's' => 'Tuning por app/jogo e Game Mode. O debloat agora tem aba própria.'],
     'Latência e ping' => ['t' => 'Latência e ping','s' => 'Congestion control, buffers TCP, low latency e ECN: o que muda o ping de verdade.'],
-    'Sensi e mira'    => ['t' => 'Sensi e mira',    's' => 'Gera a sensi do Free Fire sob medida para o seu aparelho (só leitura, nada é alterado).'],
     'Sistema'         => ['t' => 'Sistema',          's' => 'Como o pack conversa com o Android, permissões, aparência e diagnóstico.'],
 ];
 
@@ -65,52 +70,47 @@ $riskLabel = ['safe' => 'seguro', 'careful' => 'cuidado', 'root' => 'root'];
 
 // --- Perfil personalizado: opções do menu (o painel monta e envia ligadas) ----
 // A ordem das chaves é a mesma do argv de profile.custom.apply em lib.php.
-$CPROF = [
-    ['k' => 'anim',      't' => 'Animações',        's' => 'Transições e efeitos da interface.',
-     'opts' => [['normal', 'Padrão'], ['half', '0.5x'], ['off', 'Desligadas']]],
-    ['k' => 'ram',       't' => 'Apps em 2º plano', 's' => 'Quantos apps podem ficar abertos na memória.',
-     'opts' => [['padrao', 'Padrão'], ['gaming', 'Gaming'], ['batata', 'Batata']]],
-    ['k' => 'hz',        't' => 'Taxa da tela',     's' => 'Trava a tela numa taxa fixa para não oscilar.',
-     'opts' => [['off', 'Automática'], ['60', '60 Hz'], ['90', '90 Hz'], ['120', '120 Hz'], ['144', '144 Hz']]],
-    ['k' => 'touch',     't' => 'Perfil de toque',  's' => 'Ajuste de resposta do toque (bom no Free Fire).',
-     'opts' => [['none', 'Nenhum'], ['balanced', 'Equilibrado'], ['headshot', 'Headshot'], ['spray', 'Spray'], ['sniper', 'Sniper'], ['speed', 'Velocidade']]],
-    ['k' => 'clean',     't' => 'Limpeza',          's' => 'Limpa cache e libera RAM na hora.',
-     'opts' => [['off', 'Nenhuma'], ['fundo', 'Fundo'], ['suave', 'Suave'], ['normal', 'Completa']]],
-    ['k' => 'telemetry', 't' => 'Telemetria e logs','s' => 'Desligar reduz atividade em segundo plano.',
-     'opts' => [['on', 'Ligada'], ['off', 'Desligada']]],
-    ['k' => 'hibernate', 't' => 'Hibernar apps',    's' => 'Suspende os apps de fundo para ganhar RAM.',
-     'opts' => [['off', 'Não'], ['on', 'Sim']]],
-];
+$CPROF = otm_custom_profile_opts();
 $CPROF_DEFAULT = [];
-foreach ($CPROF as $c) { $CPROF_DEFAULT[$c['k']] = $c['opts'][0][0]; }
+foreach ($CPROF as $c) {
+    // o padrão é o valor do estado "desligado" no toggle; nos demais, a 1ª opção
+    $CPROF_DEFAULT[$c['k']] = ($c['kind'] ?? 'seg') === 'toggle'
+        ? $c['tgl']['off'] : $c['opts'][0][0];
+}
 
 // --- Terminal (aba própria): executa comandos crus via api.php do=term ---------
 // O Terminal é renderizado no servidor como uma seção a mais do menu. Ele não é
 // um "card de ação" (o comando é livre), por isso fica fora do registro.
 $TERMINAL_HTML = <<<'HTML'
-    <section id="g-Terminal" data-g="Terminal" hidden>
+    <section id="g-Terminal" data-g="Terminal" class="term-sec" hidden>
       <div class="head">
         <h2>Terminal</h2>
-        <p>Rode comandos no aparelho pelo mesmo acesso do pack (Shizuku, ADB por Wi-Fi ou root).</p>
+        <p>Rode comandos no aparelho pelo mesmo acesso do pack (Shizuku, ADB por Wi-Fi ou root). Tela ampla, com atalhos, diretório atual e histórico.</p>
       </div>
       <div class="note">
         <span aria-hidden="true">ⓘ</span>
         <div><b>Cuidado:</b> aqui o comando vai direto para o shell do Android. Use com calma — um comando errado pode desconfigurar o aparelho. O histórico fica salvo e aparece em <b>Logs</b>.</div>
       </div>
-      <article class="card" style="gap:0">
-        <div class="row"><h3>Executar comando</h3></div>
-        <p class="sub">Exemplos: <code>getprop ro.product.model</code> · <code>settings get system peak_refresh_rate</code> · <code>pm list packages -3</code></p>
-        <div class="termwrap">
-          <pre class="termout" id="termOut" aria-live="polite"></pre>
-          <div class="termrow">
-            <span class="pfx">$</span>
-            <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
-                   placeholder="digite um comando e toque em Executar" aria-label="Comando">
-            <button class="btn primary" id="termRun" type="button" style="width:auto">Executar</button>
-          </div>
-          <p class="termhint">Histórico: use as setas ↑/↓ no campo. <button class="jump" id="termClear" type="button" style="border-radius:999px;padding:4px 10px">limpar tela</button></p>
+      <div class="term-shell">
+        <div class="term-bar">
+          <span class="term-dot" aria-hidden="true"></span><span class="term-dot" aria-hidden="true"></span><span class="term-dot" aria-hidden="true"></span>
+          <span class="term-title" id="termCwd" title="Diretório atual">~</span>
+          <span class="grow"></span>
+          <button class="term-tool" type="button" id="termCopy" title="Copiar toda a saída">copiar</button>
+          <button class="term-tool" type="button" id="termSave" title="Baixar a saída como arquivo">salvar</button>
+          <button class="term-tool" type="button" id="termClear" title="Limpar a tela">limpar</button>
         </div>
-      </article>
+        <pre class="termout" id="termOut" aria-live="polite" tabindex="0"></pre>
+        <div class="termrow">
+          <span class="pfx" id="termPfx">$</span>
+          <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 enterkeyhint="send" placeholder="digite um comando e toque em Executar" aria-label="Comando">
+          <button class="btn primary" id="termRun" type="button" style="width:auto">Executar</button>
+        </div>
+        <div class="term-quick" id="termQuick" role="group" aria-label="Comandos rápidos"></div>
+        <p class="termhint">Histórico: <code>↑</code>/<code>↓</code> no campo. <code>Ctrl</code>+<code>L</code> limpa.
+        Toque num atalho para preencher o campo.</p>
+      </div>
     </section>
 HTML;
 
@@ -165,44 +165,36 @@ $first = array_key_first($groups);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>00deUdia Otimizações</title>
+<meta name="color-scheme" content="dark">
+<title>Trix</title>
 <style>
-/* ---- identidade: tinta quente + laranja, com efeito de vidro ---------------- */
+/* Fontes empacotadas (funcionam sem internet e sem CDN). */
+@font-face{font-family:'Press Start 2P';src:url('assets/fonts/pressstart2p.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Monocraft';src:url('assets/fonts/monocraft.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Anton';src:url('assets/fonts/anton.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Bebas Neue';src:url('assets/fonts/bebasneue.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Orbitron';src:url('assets/fonts/orbitron.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Russo One';src:url('assets/fonts/russoone.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Playfair Display';src:url('assets/fonts/playfairdisplay.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('assets/fonts/jetbrainsmono.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Caveat';src:url('assets/fonts/caveat.ttf') format('truetype');font-display:swap}
+/* ---- identidade: tinta neutra + prata, com efeito de vidro ------------------
+   O app é SÓ modo escuro: não existe tema claro nem alternância. As cores
+   escuras ficam direto no :root, sem depender do sistema operacional. */
 :root{
-  --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
-  --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
-  --accent:#e4571c; --accent-ink:#fff; --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a;
-  --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
-  --glass-card:rgba(255,255,255,.78); --glass-bar:rgba(255,255,255,.72);
-  --blur:saturate(150%) blur(18px);
-  --ring:rgba(228,87,28,.35);
-  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35);
+  --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
+  --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
+  --accent:#c7ccd6; --accent-ink:#14161a; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
+  --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
+  --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
+  --blur:saturate(165%) blur(22px);
+  --ring:rgba(199,204,214,.40);
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
   --r:16px; --r-sm:11px;
   --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   --top:58px;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
-    --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
-    --accent:#ff6a2b; --accent-ink:#180d06; --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e;
-    --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
-    --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
-    --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8);
-  }
-}
-html[data-theme="light"]{ --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
-  --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34); --accent:#e4571c; --accent-ink:#fff;
-  --teal:#0e7c6b; --warn:#a9741a; --danger:#bc332a; --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
-  --glass-card:rgba(255,255,255,.78); --glass-bar:rgba(255,255,255,.72);
-  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35); }
-html[data-theme="dark"]{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
-  --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2); --accent:#ff6a2b; --accent-ink:#180d06;
-  --teal:#31c0a5; --warn:#e0a53a; --danger:#ff6b5e; --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
-  --glass-card:rgba(26,24,21,.82); --glass-bar:rgba(26,24,21,.76);
-  --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); }
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -212,6 +204,9 @@ body{
   font-family:var(--font); color:var(--ink); line-height:1.55; min-height:100dvh;
   -webkit-text-size-adjust:100%; overflow-x:clip;
   background:var(--paper);
+  /* Coluna flexível: sem isto o rodapé sobe para o meio da tela quando a
+     categoria aberta tem pouco conteúdo (a aba Flutuante, por exemplo). */
+  display:flex; flex-direction:column;
 }
 /* papel de parede: fundo preenche a tela e a imagem aparece inteira (sem corte) */
 html::before{content:"";position:fixed;inset:0;z-index:-3;
@@ -312,7 +307,8 @@ button{font:inherit;color:inherit}
 
 /* ---- layout --------------------------------------------------------------- */
 .layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);
-  gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px)}
+  gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px) clamp(12px,3vw,22px);
+  width:100%; flex:1 0 auto}
 .side{align-self:start;position:static}
 .side .panel{
   position:fixed; top:calc(var(--top) + 12px); z-index:30;
@@ -405,6 +401,20 @@ section[data-g] .head{animation:otmFade .3s both}
 .opt[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--glass-2))}
 .opt[aria-pressed="true"] .opt-t{color:var(--accent)}
 .opt[aria-pressed="true"] .opt-s{color:var(--accent)}
+/* ---- hub do otimizador inteligente (cards fundidos num só) ---------------- */
+.hub-sub-t{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:14px 0 7px}
+.hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px}
+.hub-grid .hbtn{display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:12px 8px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);cursor:pointer;color:var(--ink);text-align:center;
+  transition:transform .12s ease,border-color .15s ease,background .15s ease}
+.hub-grid .hbtn:hover{border-color:var(--accent)}
+.hub-grid .hbtn:active{transform:scale(.97)}
+.hub-grid .hbtn .opt-t{font-size:13px;font-weight:700;line-height:1.2}
+.hub-grid .hbtn .opt-s{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.hub-grid .hbtn{flex:none;min-width:0}
+.hub-grid .hbtn .opt-s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .now{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
 .now b{color:var(--ink)}
 
@@ -499,6 +509,16 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .sw{width:34px;height:34px;border-radius:10px;border:2px solid var(--line-strong);background:var(--sw);cursor:pointer;transition:.15s}
 .sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--ring)}
+/* cor personalizada: seletor do sistema + campo hex + botão de aplicar */
+.custom-color{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.cc-label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:0 0 6px 2px}
+.cc-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cc-row input[type="color"]{width:46px;height:40px;flex:none;padding:2px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--glass-2);cursor:pointer}
+.cc-hex{flex:1 1 110px;min-width:110px;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);color:var(--ink);font-family:var(--mono);font-size:14px;letter-spacing:.04em}
+.cc-hex:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+.cc-row .btn{flex:none;width:auto;padding:10px 14px}
 .switch{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
 .switch input{width:18px;height:18px;accent-color:var(--accent)}
 .set-hint{font-size:12px;color:var(--muted);margin:6px 0 0 2px}
@@ -514,6 +534,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .cp-info span{font-size:11.5px;color:var(--muted)}
 .cp-seg{flex-wrap:wrap}
 .cp-seg .seg-btn{flex:1 1 auto;min-width:72px;font-size:12.5px;padding:8px 10px}
+.cp-row[data-kind="toggle"]{display:flex;align-items:center;gap:12px}
+.cp-row[data-kind="toggle"] .cp-info{margin:0;flex:1}
+.cpsw{flex:0 0 auto;width:46px;height:26px;border:0;border-radius:999px;background:var(--line);position:relative;cursor:pointer;padding:0;transition:background .18s}
+.cpsw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s}
+.cpsw[aria-checked="true"]{background:var(--accent)}
+.cpsw[aria-checked="true"] i{transform:translateX(20px)}
 .set-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .set-actions .btn{flex:1;min-width:120px}
 .perms{display:flex;flex-direction:column;gap:8px}
@@ -594,6 +620,17 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .logsrow .ts{flex:none;color:var(--muted)}
 .logsrow .lb{flex:1;min-width:0;word-break:break-word}
 .logsrow .cmd{color:var(--muted);font-size:11.5px;display:block;word-break:break-all}
+/* Detalhes do log: o que o script tentou, o que falhou e a saída crua. */
+.logsrow.has-det{cursor:pointer}
+.logsrow .det{margin:6px 0 2px;padding:8px 10px;border-left:2px solid var(--line-strong);
+  background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0}
+.logsrow .det .why{margin:0 0 6px;padding:0;list-style:none}
+.logsrow .det .why li{color:var(--danger);font-size:12px;margin:0 0 3px;word-break:break-word}
+.logsrow .det .why li::before{content:"! ";font-weight:800}
+.logsrow .det .counts{color:var(--muted);font-size:11.5px;margin:0 0 6px}
+.logsrow .det pre{margin:0;padding:0;max-height:220px;overflow:auto;font-family:var(--mono);
+  font-size:11.5px;white-space:pre-wrap;word-break:break-word;color:var(--ink);opacity:.86}
+.logsrow .chev{flex:none;color:var(--muted);font-size:11px}
 .logs-empty{color:var(--muted);padding:8px 0}
 
 /* ---- terminal real -------------------------------------------------------- */
@@ -608,6 +645,42 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .termhint{color:var(--muted);font-size:12px;margin:6px 0 0}
 .termhint code{background:var(--glass-2);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
 
+/* ---- terminal amplo ------------------------------------------------------- */
+.term-sec .head{max-width:72ch}
+.term-shell{border:1px solid var(--line);border-radius:var(--r);background:var(--glass-card);
+  box-shadow:var(--shadow);overflow:hidden;margin-top:14px}
+@media (min-width:1181px){ .term-shell{width:min(94vw,1560px);margin-left:calc((100% - min(94vw,1560px)) / 2)} }
+.term-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--glass-2)}
+.term-dot{width:11px;height:11px;border-radius:50%;background:var(--line-strong);flex:none}
+.term-dot:first-child{background:#ff5f57}.term-dot:nth-child(2){background:#febc2e}.term-dot:nth-child(3){background:#28c840}
+.term-title{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:6px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
+.term-tool{font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;
+  border:1px solid var(--line);background:var(--glass-2);border-radius:999px;padding:4px 11px}
+.term-tool:hover{color:var(--accent);border-color:var(--accent)}
+.term-quick{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 12px;border-top:1px solid var(--line)}
+.term-chip{font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--ink);
+  border:1px solid var(--line-strong);background:var(--glass-2);border-radius:999px;padding:5px 11px}
+.term-chip:hover{border-color:var(--accent);color:var(--accent)}
+.termout:focus{outline:2px solid var(--ring);outline-offset:-2px}
+/* ---- interruptores (ativar/desativar) ------------------------------------- */
+.card-toggle{display:flex;flex-direction:column;gap:8px}
+.tg-row{display:flex;align-items:center;gap:11px;margin-top:2px}
+.tg-label{font-size:12.5px;font-weight:700;color:var(--muted)}
+.card-toggle[data-on-state="1"] .tg-label{color:var(--accent)}
+.tg-state{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--glass-2)}
+.card-toggle[data-on-state="1"] .tg-state{border-color:var(--accent);color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 14%,var(--glass-2))}
+/* ---- saude do telefone (card seletor, veio da Vitalidade) ------------------ */
+.vital-card{margin-top:14px}
+.vital-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.vpick{display:flex;flex-direction:column;gap:2px;text-align:left;cursor:pointer;font:inherit;
+  border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);padding:10px 12px;color:var(--ink)}
+.vpick:hover{border-color:var(--accent)}
+.vpick:active{transform:scale(.98)}
+.vpick .vp-t{font-size:13.5px;font-weight:800;letter-spacing:-.01em}
+.vpick .vp-s{font-size:11px;color:var(--muted);font-weight:600}
 /* ---- seletor de apps (nome + ícone) --------------------------------------- */
 .apppick{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
   border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);
@@ -721,17 +794,16 @@ body.drawer .scrim{opacity:1;visibility:visible}
 <body>
 <header class="top">
   <button class="iconbtn burger" id="burger" aria-label="Abrir categorias" aria-expanded="false"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
-  <div class="mark" aria-hidden="true">00</div>
-  <div class="name">Painel<small>Otimizações</small></div>
+  <div class="mark" aria-hidden="true">TX</div>
+  <div class="name">Trix<small>Otimizações</small></div>
   <div class="grow"></div>
-  <button class="iconbtn" id="btnTheme" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></button>
   <button class="iconbtn" id="btnLogs" aria-label="Ver o histórico de logs" title="Logs"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
   <button class="iconbtn" id="btnGear" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.32-.07.65-.07.98s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.14.24.42.34.68.22l2.49-1c.52.39 1.08.72 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.11.54.02.68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
 </header>
 
 <div class="banner">
   <div class="in">
-    <h1>Bem-vindo ao Painel</h1>
+    <h1>Bem-vindo ao Trix</h1>
     <p>DNS, RAM, renderizador, touch do Free Fire, debloat e ajustes profundos — tudo num lugar só. Deixe seu celular liso que nem sabão. Toque no <b>?</b> de cada cartão para saber o que ele faz.</p>
     <span class="tag"><span class="dot"></span>conectado ao pack local</span>
   </div>
@@ -781,7 +853,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <span class="hero-chip" data-stat="ramf">—</span>
             <span class="hero-chip" id="heroStatus">Pronto para otimizar</span>
           </div>
-          <button class="hero-btn" id="rocketBtn" type="button" onclick="runActionById('clean')">
+          <button class="hero-btn" id="rocketBtn" type="button" data-qa="clean">
             <svg class="hb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13l0-8Z"/>
             </svg>
@@ -824,11 +896,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <div><b data-vital="temp">—</b><s>temperatura</s></div>
           <div><b data-vital="w80">0</b><s>cargas acima de 80%</s></div>
         </div>
-        <div class="vital-actions">
-          <button class="btn primary" type="button" data-vital-go="optimize">Otimizar saúde do telefone</button>
-          <button class="btn" type="button" data-vital-go="care_off">Desligar</button>
-          <button class="btn" type="button" data-vital-go="diag">Diagnóstico</button>
-          <button class="btn" type="button" data-vital-go="guard">Guardião</button>
+        <div class="vital-pick" role="group" aria-label="O que fazer com a saúde do telefone">
+          <button class="vpick" type="button" data-vital-go="optimize">
+            <span class="vp-t">Otimizar saúde do telefone</span><span class="vp-s">liga o cuidado e mede a bateria</span></button>
+          <button class="vpick" type="button" data-vital-go="diag">
+            <span class="vp-t">Diagnóstico</span><span class="vp-s">capacidade, ciclos e desgaste</span></button>
+          <button class="vpick" type="button" data-vital-go="guard">
+            <span class="vp-t">Guardião de carga</span><span class="vp-s">conta cargas acima de 80%</span></button>
+          <button class="vpick" type="button" data-vital-go="care_off">
+            <span class="vp-t">Desligar cuidado</span><span class="vp-s">volta doze, Hz e scans ao padrão</span></button>
         </div>
         <div class="now" data-vital="now" hidden></div>
       </div>
@@ -847,7 +923,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Compilação Dexopt recomendada</li>
               <li>Resolução/DPI reduzida</li>
             </ul>
-            <button class="btn" onclick="runActionById('clean')" style="width:100%;">Ativar Modo Batata</button>
+            <button class="btn" type="button" data-qa="clean" style="width:100%;">Ativar Modo Batata</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm); border: 1.5px solid var(--accent);">
             <h4 style="margin:0 0 8px; color:var(--accent);">2. Modo Competitivo (Free Fire / CODM / FF MAX) — Recomendado</h4>
@@ -866,7 +942,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <?= otm_pkg_picker('home-game-pkg', 'pkg') ?>
               </div>
             </div>
-            <button class="btn primary" onclick="runGameHome(this)" style="width:100%;">Ativar Competitivo</button>
+            <button class="btn primary" type="button" data-game-home style="width:100%;">Ativar Competitivo</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">3. Modo 90Hz / 120Hz Ultra Fluido</h4>
@@ -877,7 +953,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Buffer de log reduzido para mínimo atraso</li>
               <li>Controle térmico preventivo</li>
             </ul>
-            <button class="btn" onclick="runActionById('turbo.refresh_max')" style="width:100%;">Ativar 90Hz/120Hz</button>
+            <button class="btn" type="button" data-qa="turbo.refresh_max" style="width:100%;">Ativar 90Hz/120Hz</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">4. Modo Econômico</h4>
@@ -888,12 +964,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Desativação de serviços desnecessários</li>
               <li>Menos atividade em segundo plano</li>
             </ul>
-            <button class="btn" onclick="runActionById('refresh.60')" style="width:100%;">Ativar Modo Econômico</button>
+            <button class="btn" type="button" data-qa="refresh.60" style="width:100%;">Ativar Modo Econômico</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">5. Personalizado</h4>
             <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Monte o seu perfil: ligue só o que quiser e aplique quando estiver pronto.</p>
-            <button class="btn primary" onclick="runActionById('profile.custom')" style="width:100%;">Configurar Personalizado</button>
+            <button class="btn primary" type="button" data-qa="profile.custom" style="width:100%;">Configurar Personalizado</button>
           </div>
         </div>
       </div>
@@ -938,6 +1014,11 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>Taxa de tela</div>
                 <div class="v" data-stat="disp">—</div>
                 <div class="foot" data-stat="dispf">—</div>
+              </div>
+              <div class="stat">
+                <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>FPS do jogo</div>
+                <div class="v" data-stat="fps">—</div>
+                <div class="foot" data-stat="fpsf">—</div>
               </div>
               <div class="stat">
                 <div class="k"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tempo ligado</div>
@@ -1009,6 +1090,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <?php
           $renderedChoice = [];
           foreach ($items as $ci => $a):
+            // Ações fundidas dentro do "Otimizador inteligente" não viram card
+            // próprio (card => false em lib.php): elas aparecem como botões no
+            // hub do otimizador. O id continua no ACTIONS, que é o que o JS usa.
+            if (($a['card'] ?? true) === false) continue;
             // opções de um grupo de escolha viram um único cartão, na 1ª posição
             if (!empty($a['choice'])):
               $ck = $a['choice'];
@@ -1078,6 +1163,16 @@ body.drawer .scrim{opacity:1;visibility:visible}
                         aria-label="O que faz: <?= htmlspecialchars($a['label'], ENT_QUOTES) ?>" title="O que isso faz?">?</button>
               </div>
               <?php if (!empty($a['desc'])): ?><p><?= htmlspecialchars($a['desc']) ?></p><?php endif; ?>
+              <?php if ($a['id'] === 'smart.auto'): ?>
+                <p class="sub" style="margin:12px 0 6px">Pode demorar alguns minutos: ele mede e compara as opções no seu aparelho para achar o melhor.</p>
+                <div class="hub-sub-t">Segurança</div>
+                <div class="hub-grid" role="group" aria-label="Salvar e restaurar configurações">
+                  <button class="hbtn" type="button" data-hub="backup.export"><span class="opt-t">Salvar configurações</span><span class="opt-s">arquivo seguro no aparelho</span></button>
+                  <button class="hbtn" type="button" data-hub="backup.import"><span class="opt-t">Restaurar configurações</span><span class="opt-s">volta ao que foi salvo</span></button>
+                  <button class="hbtn" type="button" data-hub="snapshot_save"><span class="opt-t">Salvar snapshot</span><span class="opt-s">ponto de retorno</span></button>
+                  <button class="hbtn" type="button" data-hub="restore_all"><span class="opt-t">Reverter TUDO</span><span class="opt-s">estado de fábrica</span></button>
+                </div>
+              <?php endif; ?>
               <?php if (!empty($a['params'])): ?>
                 <div class="fields">
                   <?php foreach ($a['params'] as $p):
@@ -1131,6 +1226,27 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <?php endif; ?>
               <div class="go">
                 <button class="btn <?= $risk === 'safe' ? 'primary' : '' ?>" data-run>Executar</button>
+              </div>
+            </article>
+          <?php endforeach; ?>
+          <?php foreach (($togglesByGroup[$g] ?? []) as $tid => $tg): ?>
+            <article class="card card-toggle" data-toggle="<?= htmlspecialchars($tid, ENT_QUOTES) ?>"
+                     data-on="<?= htmlspecialchars($tg['on'], ENT_QUOTES) ?>"
+                     data-off="<?= htmlspecialchars($tg['off'], ENT_QUOTES) ?>"
+                     data-state="<?= htmlspecialchars((string)$tg['state'], ENT_QUOTES) ?>"
+                     data-on-values="<?= htmlspecialchars(strtolower(implode(',', $tg['on_values'])), ENT_QUOTES) ?>"
+                     data-on-state="0" style="--i:<?= (int)(count($items) % 12) ?>">
+              <div class="row">
+                <h3><?= htmlspecialchars($tg['title']) ?></h3>
+                <span class="tg-state" data-tg-state>verificando…</span>
+              </div>
+              <p><?= htmlspecialchars($tg['desc']) ?></p>
+              <div class="tg-row">
+                <button class="cpsw" type="button" role="switch" aria-checked="false"
+                        aria-label="<?= htmlspecialchars($tg['title'], ENT_QUOTES) ?>"><i></i></button>
+                <span class="tg-label" data-tg-label>Desligado</span>
+                <button class="help-btn" data-help="<?= htmlspecialchars($tg['on'], ENT_QUOTES) ?>"
+                        aria-label="O que faz: <?= htmlspecialchars($tg['title'], ENT_QUOTES) ?>" title="O que isso faz?">?</button>
               </div>
             </article>
           <?php endforeach; ?>
@@ -1206,13 +1322,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
     <div class="cp-list" id="profList">
 <?php foreach ($CPROF as $c): ?>
-      <div class="cp-row" data-key="<?= htmlspecialchars($c['k'], ENT_QUOTES) ?>">
+      <div class="cp-row" data-key="<?= htmlspecialchars($c['k'], ENT_QUOTES) ?>"<?= ($c['kind'] ?? 'seg') === 'toggle' ? ' data-kind="toggle"' : '' ?>>
         <div class="cp-info"><b><?= htmlspecialchars($c['t'], ENT_QUOTES) ?></b><span><?= htmlspecialchars($c['s'], ENT_QUOTES) ?></span></div>
+<?php if (($c['kind'] ?? 'seg') === 'toggle'): ?>
+        <button class="cpsw" type="button" role="switch" aria-checked="false" aria-label="<?= htmlspecialchars($c['t'], ENT_QUOTES) ?>"
+                data-on="<?= htmlspecialchars($c['tgl']['on'], ENT_QUOTES) ?>" data-off="<?= htmlspecialchars($c['tgl']['off'], ENT_QUOTES) ?>"><i></i></button>
+<?php else: ?>
         <div class="seg cp-seg">
 <?php foreach ($c['opts'] as $i => $o): ?>
           <button class="seg-btn" type="button" data-val="<?= htmlspecialchars($o[0], ENT_QUOTES) ?>"<?= $i === 0 ? ' aria-pressed="true"' : ' aria-pressed="false"' ?>><?= htmlspecialchars($o[1], ENT_QUOTES) ?></button>
 <?php endforeach; ?>
         </div>
+<?php endif; ?>
       </div>
 <?php endforeach; ?>
     </div>
@@ -1252,22 +1373,9 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <b>Acesso a dados de uso</b><span>Mostra o app em primeiro plano e o tempo de uso real na Home.</span></div></div>
       </div>
       <div class="set-actions">
-        <button class="btn primary" id="setPermApp" type="button">Conceder ao app do pack</button>
-        <button class="btn" id="setPermFF" type="button">Aos Free Fire</button>
-        <button class="btn" id="setPermGame" type="button">Ao meu jogo</button>
-        <button class="btn" id="setPermBattery" type="button">Bateria sem economia</button>
-        <button class="btn" id="setPermUsage" type="button">Acesso a dados de uso</button>
+        <button class="btn primary" id="setPermApp" type="button">Conceder permissões ao pack</button>
       </div>
       <div class="set-hint" id="setPermHint">Precisa de Shizuku, ADB por Wi-Fi ou root. Dá para desfazer em "Reverter TUDO".</div>
-    </div>
-
-    <div class="set-group">
-      <div class="set-label">Tema</div>
-      <div class="seg" id="setTheme">
-        <button class="seg-btn" data-theme="light" type="button">Claro</button>
-        <button class="seg-btn" data-theme="dark" type="button">Escuro</button>
-        <button class="seg-btn" data-theme="auto" type="button">Automático</button>
-      </div>
     </div>
 
     <div class="set-group">
@@ -1285,19 +1393,34 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <button class="sw" data-accent="grafite" style="--sw:#6b7280" aria-label="Grafite" type="button"></button>
         <button class="sw" data-accent="ambar" style="--sw:#f59e0b" aria-label="Âmbar" type="button"></button>
       </div>
+      <div class="custom-color">
+        <label class="cc-label" for="setAccentCustom">Cor personalizada</label>
+        <div class="cc-row">
+          <input type="color" id="setAccentCustom" value="#c7ccd6" aria-label="Escolher uma cor personalizada">
+          <input type="text" id="setAccentHex" class="cc-hex" maxlength="7" spellcheck="false"
+                 inputmode="text" placeholder="#rrggbb" aria-label="Código da cor (hex)">
+          <button class="btn" id="setAccentApply" type="button">Usar esta cor</button>
+        </div>
+        <div class="set-hint">Escolha no seletor ou digite um código <b>#rrggbb</b>. A cor fica salva neste aparelho.</div>
+      </div>
     </div>
 
     <div class="set-group">
       <div class="set-label">Fonte</div>
       <div class="seg" id="setFont">
         <button class="seg-btn" data-font="sistema" type="button">Sistema</button>
-        <button class="seg-btn" data-font="serif" type="button">Serifa</button>
-        <button class="seg-btn" data-font="mono" type="button">Mono</button>
+        <button class="seg-btn" data-font="minecraft" type="button">Minecraft</button>
+        <button class="seg-btn" data-font="pixel" type="button">Pixel 8-bit</button>
+        <button class="seg-btn" data-font="monocraft" type="button">Monocraft</button>
+        <button class="seg-btn" data-font="cartaz" type="button">Cartaz</button>
         <button class="seg-btn" data-font="condensada" type="button">Condensada</button>
-        <button class="seg-btn" data-font="arredondada" type="button">Arredondada</button>
-        <button class="seg-btn" data-font="geometrica" type="button">Geométrica</button>
-        <button class="seg-btn" data-font="humanista" type="button">Humanista</button>
+        <button class="seg-btn" data-font="futurista" type="button">Futurista</button>
+        <button class="seg-btn" data-font="quadrada" type="button">Quadrada</button>
+        <button class="seg-btn" data-font="serifa" type="button">Serifa</button>
+        <button class="seg-btn" data-font="manuscrita" type="button">Manuscrita</button>
+        <button class="seg-btn" data-font="mono" type="button">Mono</button>
       </div>
+      <div class="set-hint">Fontes empacotadas no app (funcionam sem internet). A "Sistema" usa a fonte do seu Android.</div>
     </div>
 
     <div class="set-group">
@@ -1333,7 +1456,42 @@ const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
 const $ = s => document.querySelector(s);
 let pending = null;
 
-/* tema + aparência (engrenagem) */
+/* Toque de verdade: dedo parado e curto. Arrastar NUNCA dispara.
+   Só o pointercancel não bastava: quando o dedo comeca no botao e arrasta a
+   pagina, o navegador nem sempre emite o cancelamento e o clique sintetico do
+   fim do scroll acionava o botao. O arrasto e pego por tres vias: a variacao
+   do dedo (pointermove), a posicao no fim do toque (pointerup) e a rolagem da
+   pagina.
+   NÃO use pointerleave aqui: no toque ele dispara em TODO toque valido, porque
+   o dedo sai do elemento ao levantar. Ele vinha antes do click e cancelava tudo,
+   deixando os botoes mortos (clique ignorado, sem erro nenhum). */
+const TAP_PX = 14, TAP_MS = 600;
+function tapOnly(el, fn){
+  if (!el) return;
+  let sx = 0, sy = 0, st = 0, ok = false, pid = null;
+  const cancel = () => { ok = false; pid = null; };
+  el.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button !== 0){ cancel(); return; }
+    sx = e.clientX; sy = e.clientY; st = Date.now(); ok = true; pid = e.pointerId;
+  }, {passive:true});
+  el.addEventListener("pointermove", e => {
+    if (!ok || (pid !== null && e.pointerId !== pid)) return;
+    if (Math.abs(e.clientX - sx) > TAP_PX || Math.abs(e.clientY - sy) > TAP_PX) cancel();
+  }, {passive:true});
+  el.addEventListener("pointerup", e => {
+    if (!ok || (pid !== null && e.pointerId !== pid)) return;
+    if (Math.abs(e.clientX - sx) > TAP_PX || Math.abs(e.clientY - sy) > TAP_PX) cancel();
+  }, {passive:true});
+  el.addEventListener("pointercancel", cancel, {passive:true});
+  // se a pagina rolou durante o toque, o dedo estava arrastando
+  window.addEventListener("scroll", cancel, {passive:true, capture:true});
+  el.addEventListener("click", e => {
+    if (!ok || Date.now() - st > TAP_MS){ e.preventDefault(); e.stopPropagation(); return; }
+    cancel(); fn(e);
+  });
+}
+
+/* tema + aparência (engrenagem) — o app é SÓ modo escuro: não há alternância */
 const ACCENTS = {
   laranja:{accent:"#ff6a2b",ink:"#180d06",ring:"rgba(255,106,43,.35)"},
   azul:{accent:"#2f7bff",ink:"#04122e",ring:"rgba(47,123,255,.35)"},
@@ -1349,17 +1507,62 @@ const ACCENTS = {
 };
 const FONTS = {
   sistema:'"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif',
-  serif:'Georgia,"Times New Roman",serif',
-  mono:'ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace',
-  condensada:'"Arial Narrow","Roboto Condensed","Helvetica Neue",system-ui,sans-serif',
-  arredondada:'"Trebuchet MS",Verdana,"Segoe UI",system-ui,sans-serif',
-  geometrica:'"Century Gothic",Futura,"Trebuchet MS",system-ui,sans-serif',
-  humanista:'Candara,Optima,"Segoe UI",system-ui,sans-serif'
+  minecraft:'"Monocraft","Press Start 2P",ui-monospace,monospace',
+  pixel:'"Press Start 2P",ui-monospace,monospace',
+  monocraft:'"Monocraft",ui-monospace,monospace',
+  cartaz:'"Anton","Arial Narrow",system-ui,sans-serif',
+  condensada:'"Bebas Neue","Arial Narrow",system-ui,sans-serif',
+  futurista:'"Orbitron","Segoe UI",system-ui,sans-serif',
+  quadrada:'"Russo One","Segoe UI",system-ui,sans-serif',
+  serifa:'"Playfair Display",Georgia,"Times New Roman",serif',
+  manuscrita:'"Caveat","Segoe Script",cursive',
+  mono:'"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace'
 };
+/* A cor personalizada é montada a partir do hex: a "tinta" (texto sobre a cor)
+   vira branco ou preto conforme o brilho, e o anel de foco usa a mesma cor. */
+function accentFromHex(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const h = "#" + m[1].toLowerCase();
+  return { accent: h, ink: lum > 0.6 ? "#14120f" : "#ffffff",
+           ring: "rgba(" + r + "," + g + "," + b + ",.38)" };
+}
 function setAccentQuiet(name){
   const a = ACCENTS[name]; if (!a) return;
   const r = document.documentElement.style;
   r.setProperty("--accent", a.accent); r.setProperty("--accent-ink", a.ink); r.setProperty("--ring", a.ring);
+}
+/* Aplica a cor personalizada e guarda o valor no localStorage. */
+function setCustomAccent(hex){
+  const a = accentFromHex(hex);
+  if (!a) return false;
+  const r = document.documentElement.style;
+  r.setProperty("--accent", a.accent); r.setProperty("--accent-ink", a.ink); r.setProperty("--ring", a.ring);
+  localStorage.setItem("otm-accent", "custom");
+  localStorage.setItem("otm-accent-hex", a.accent);
+  return true;
+}
+function applyStoredAccent(){
+  const name = localStorage.getItem("otm-accent") || "prata";
+  if (name === "custom"){
+    const hex = localStorage.getItem("otm-accent-hex");
+    if (hex && setCustomAccent(hex)) return;
+  }
+  setAccentQuiet(name);
+}
+
+/* Avisa o app da cor/fonte atuais: o painel flutuante roda num Service e nao
+   enxerga o localStorage, entao ele le de SharedPreferences (bridge ui_prefs). */
+function pushUiPrefs(){
+  if (!window.OTM) return;
+  const r = getComputedStyle(document.documentElement);
+  const accent = (r.getPropertyValue("--accent") || "").trim();
+  const ink = (r.getPropertyValue("--accent-ink") || "").trim();
+  const font = localStorage.getItem("otm-font") || "sistema";
+  try { window.OTM.call("ui_prefs", JSON.stringify({accent: accent, ink: ink, font: font}), "ui"); } catch(e){}
 }
 /* DPI do app: zoom no <html>. A largura vira 100%/escala para o conteúdo não
    ultrapassar a tela quando o zoom AUMENTA (era o que causava o arrasto lateral).
@@ -1379,10 +1582,13 @@ function setFontQuiet(name){
   document.documentElement.style.setProperty("--font", FONTS[name] || FONTS.sistema);
 }
 function syncGear(){
-  const t = localStorage.getItem("otm-theme") || "auto";
-  document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === t ? "true" : "false"));
-  const a = localStorage.getItem("otm-accent") || "laranja";
+  const a = localStorage.getItem("otm-accent") || "prata";
   document.querySelectorAll("#setAccent .sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.accent === a ? "true" : "false"));
+  const cc = document.getElementById("setAccentCustom");
+  const ch = document.getElementById("setAccentHex");
+  const hex = localStorage.getItem("otm-accent-hex") || "#c7ccd6";
+  if (cc) cc.value = hex;
+  if (ch && a === "custom") ch.value = hex;
   const f = localStorage.getItem("otm-font") || "sistema";
   document.querySelectorAll("#setFont .seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.font === f ? "true" : "false"));
   const sc = parseInt(localStorage.getItem("otm-scale") || "100", 10);
@@ -1393,14 +1599,8 @@ function syncGear(){
   const pl = document.getElementById("setPermHint");
   if (pl && !window.OTM) pl.textContent = "No site (PC) não dá para mexer no aparelho — isso funciona no app do celular.";
 }
-function setTheme(v){
-  if (v === "auto"){ delete document.documentElement.dataset.theme; }
-  else { document.documentElement.dataset.theme = v; }
-  localStorage.setItem("otm-theme", v);
-  syncGear();
-}
-function setAccent(name){ setAccentQuiet(name); localStorage.setItem("otm-accent", name); syncGear(); }
-function setFont(name){ setFontQuiet(name); localStorage.setItem("otm-font", name); syncGear(); }
+function setAccent(name){ setAccentQuiet(name); localStorage.setItem("otm-accent", name); pushUiPrefs(); syncGear(); }
+function setFont(name){ setFontQuiet(name); localStorage.setItem("otm-font", name); pushUiPrefs(); syncGear(); }
 function setScale(pct){ setScaleQuiet(pct); localStorage.setItem("otm-scale", String(pct)); syncGear(); }
 function setSound(on){
   localStorage.setItem("otm-sound", on ? "1" : "0");
@@ -1424,47 +1624,49 @@ function askPermission(id, label){
     .catch(e => { openConsole(label, "erro: " + e); toast("Erro", "bad"); });
 }
 (function initAppearance(){
-  const t = localStorage.getItem("otm-theme"); if (t && t !== "auto") document.documentElement.dataset.theme = t;
-  const a = localStorage.getItem("otm-accent"); if (a) setAccentQuiet(a);
+  applyStoredAccent();
   const f = localStorage.getItem("otm-font"); if (f) setFontQuiet(f);
   const sc = localStorage.getItem("otm-scale"); if (sc) setScaleQuiet(parseInt(sc, 10));
   if (localStorage.getItem("otm-sound") === "0" && window.OTM)
     try { window.OTM.call("sound", "off", "init"); } catch(e){}
+  pushUiPrefs();
 })();
-$("#btnTheme").onclick = () => {
-  const cur = document.documentElement.dataset.theme ||
-    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  setTheme(cur === "dark" ? "light" : "dark");
-};
 $("#btnGear").onclick = () => { syncGear(); $("#gearMask").classList.add("open"); };
 $("#gearDone").onclick = () => $("#gearMask").classList.remove("open");
 $("#gearMask").onclick = e => { if (e.target.id === "gearMask") $("#gearMask").classList.remove("open"); };
-document.querySelectorAll("#setTheme .seg-btn").forEach(b => b.onclick = () => setTheme(b.dataset.theme));
 document.querySelectorAll("#setAccent .sw").forEach(b => b.onclick = () => setAccent(b.dataset.accent));
 document.querySelectorAll("#setFont .seg-btn").forEach(b => b.onclick = () => setFont(b.dataset.font));
+/* Cor personalizada: o seletor de cor preenche o campo hex; "Usar esta cor"
+   aceita qualquer um dos dois. Valor inválido avisa e não muda nada. */
+const ccPick = document.getElementById("setAccentCustom");
+const ccHex = document.getElementById("setAccentHex");
+const ccApply = document.getElementById("setAccentApply");
+if (ccPick) ccPick.oninput = e => { if (ccHex) ccHex.value = e.target.value; };
+function applyCustomAccent(){
+  const v = (ccHex && ccHex.value) || (ccPick && ccPick.value) || "";
+  if (!setCustomAccent(v)){ toast("Cor inválida: use #rrggbb", "bad"); return; }
+  pushUiPrefs(); syncGear(); toast("Cor personalizada aplicada.", "ok");
+}
+if (ccApply) ccApply.onclick = applyCustomAccent;
+if (ccHex) ccHex.onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); applyCustomAccent(); } };
 document.getElementById("setScale").oninput = e => setScale(parseInt(e.target.value, 10));
 document.getElementById("setSound").onchange = e => setSound(e.target.checked);
-const PERM_ACTION = { setPermApp: "perm.app", setPermFF: "perm.ff", setPermGame: "perm.game", setPermBattery: "perm.battery" };
+const PERM_ACTION = { setPermApp: "perm.app" };
 const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(PERM_ACTION[id], label); };
 permBtn("setPermApp", "Permissões do app do pack");
-permBtn("setPermFF", "Permissões dos Free Fire");
-permBtn("setPermGame", "Permissões do meu jogo");
-permBtn("setPermBattery", "Bateria sem economia");
 /* Acesso a dados de uso: não é um script, é uma tela do sistema. No app vira
-   OTM.call("usage"); no site, avisa que só funciona no celular. */
+   OTM.call("usage"); no site, avisa que só funciona no celular. Fica no card da
+   Home (o pedido de permissão do app do pack cobre o resto em Configs). */
 function openUsageSettings(){
   if (!window.OTM){ toast("Acesso a dados de uso: use o app no celular.", "bad"); return; }
   toast("Abrindo a tela de acesso a dados de uso…", "ok");
   try { window.OTM.call("usage", "", "usage"); } catch(e){}
 }
-const permUsageBtn = document.getElementById("setPermUsage");
-if (permUsageBtn) permUsageBtn.onclick = openUsageSettings;
 const gearReset = document.getElementById("gearReset");
 if (gearReset) gearReset.onclick = () => {
-  ["otm-theme","otm-accent","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
-  delete document.documentElement.dataset.theme;
-  setAccentQuiet("laranja"); setFontQuiet("sistema"); setScaleQuiet(100);
-  syncGear(); toast("Aparência restaurada ao padrão.", "ok");
+  ["otm-accent","otm-accent-hex","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
+  setAccentQuiet("prata"); setFontQuiet("sistema"); setScaleQuiet(100);
+  pushUiPrefs(); syncGear(); toast("Aparência restaurada ao padrão.", "ok");
 };
 
 /* navegação */
@@ -1559,6 +1761,8 @@ function selectOption(btn, confirmed){
 function runPending(){
   const p = pending; if (!p) return;
   if (p.dataset.vitalGo) doRun(ACTIONS[p.dataset.vitalId], {}, true, p);
+  else if (p.classList.contains("card-toggle")) doRun(ACTIONS[p._subId], {}, true, p.querySelector(".cpsw"));
+  else if (p._subId) doRun(ACTIONS[p._subId], p._subParams || {}, true, p);
   else if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
   else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
 }
@@ -1587,9 +1791,9 @@ async function doRun(a, params, confirmed, btn){
   }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); }
   setBusy(false, btn);
 }
-document.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.closest(".card")));
+document.querySelectorAll("[data-run]").forEach(b => tapOnly(b, () => run(b.closest(".card"))));
 /* só opções de grupo de escolha: um .opt fora de .card-choice tem handler próprio */
-document.querySelectorAll(".card-choice .opt").forEach(b => b.onclick = () => selectOption(b));
+document.querySelectorAll(".card-choice .opt").forEach(b => tapOnly(b, () => selectOption(b)));
 
 /* ---- Perfil de Desempenho (turbo.sh perfmode) ------------------------------ */
 function applyPerfmode(){
@@ -1609,11 +1813,11 @@ function applyPerfmode(){
     now.textContent = txt; now.hidden = !txt;
   }
 }
-document.querySelectorAll("[data-perfmode]").forEach(b => b.onclick = () => {
+document.querySelectorAll("[data-perfmode]").forEach(b => tapOnly(b, () => {
   const a = ACTIONS[b.dataset.perfmode === "on" ? "turbo.perfmode_on" : "turbo.perfmode_off"];
   if (!a){ toast("Ação indisponível", "bad"); return; }
   Promise.resolve(doRun(a, {}, false, b)).then(applyPerfmode);
-});
+}));
 
 /* ---- vitalidade: cockpit de longevidade ------------------------------------
    O motor (scripts/vitality.sh) mede; aqui só desenhamos o que ele diz. O `tick`
@@ -1666,7 +1870,7 @@ function renderVital(){
     now.textContent = t; now.hidden = false;
   }
 }
-document.querySelectorAll("[data-vital-go]").forEach(b => b.onclick = async () => {
+document.querySelectorAll("[data-vital-go]").forEach(b => tapOnly(b, async () => {
   const go = b.dataset.vitalGo;
   const id = go === "optimize" ? "vital.optimize" : go === "care_on" ? "vital.care_on"
            : go === "care_off" ? "vital.care_off"
@@ -1675,6 +1879,37 @@ document.querySelectorAll("[data-vital-go]").forEach(b => b.onclick = async () =
   if (a.confirm){ b.dataset.vitalId = id; askConfirm(b, a); return; }
   await doRun(a, {}, false, b);
   loadStats();
+}));
+
+
+/* ---- interruptores: ligar/desligar com estado real -------------------------- */
+function applyToggles(){
+  document.querySelectorAll(".card-toggle").forEach(card => {
+    const key = card.dataset.state || "";
+    const vals = String(card.dataset.onValues || "").split(",").map(v => v.trim()).filter(v => v !== "");
+    const raw = key && STATE[key] !== undefined ? String(STATE[key]).trim().toLowerCase() : null;
+    const known = raw !== null && raw !== "";
+    const on = known && vals.includes(raw);
+    card.dataset.onState = on ? "1" : "0";
+    const sw = card.querySelector(".cpsw");
+    if (sw) sw.setAttribute("aria-checked", on ? "true" : "false");
+    const lb = card.querySelector("[data-tg-label]"); if (lb) lb.textContent = on ? "Ligado" : "Desligado";
+    const st = card.querySelector("[data-tg-state]");
+    if (st) st.textContent = !key ? "sempre ativo" : (!known ? "estado desconhecido" : (on ? "ativo" : "inativo"));
+  });
+}
+async function toggleRun(card){
+  const onNow = card.dataset.onState === "1";
+  const id = onNow ? card.dataset.off : card.dataset.on;
+  const a = ACTIONS[id]; if (!a){ toast("Ação indisponível", "bad"); return; }
+  const sw = card.querySelector(".cpsw");
+  if (a.confirm){ card._subId = id; askConfirm(card, a); return; }
+  await doRun(a, {}, false, sw || card);
+  await loadState();
+}
+document.querySelectorAll(".card-toggle").forEach(card => {
+  const sw = card.querySelector(".cpsw");
+  if (sw) tapOnly(sw, () => toggleRun(card));
 });
 
 /* ---- estado real do aparelho (renderizador em uso, toque, refresh) ---------- */
@@ -1785,6 +2020,7 @@ async function loadState(){
   try{ const j = await apiGet("state"); STATE = (j && j.state) || {}; }catch(e){ STATE = {}; }
   applyState();
   applyPerfmode();
+  applyToggles();
 }
 const setBusy = (b, btn) => {
   document.querySelectorAll("[data-run]").forEach(x => x.disabled = b);
@@ -1808,16 +2044,42 @@ if (btnStatus) btnStatus.onclick = async () => { openConsole("Status do aparelho
 
 /* ---- LOGS: histórico completo (sem truncar) -------------------------------- */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+/* Cada linha guarda o que o script tentou (applies/changed/failed), as razões
+   da falha e a saída crua. O resumo fica à vista; o resto abre no toque. */
 function renderLogs(list){
   const body = document.getElementById("logsBody"); if (!body) return;
   if (!list || !list.length){ body.innerHTML = '<div class="logs-empty">(nada registrado ainda)</div>'; return; }
-  body.innerHTML = list.map(x => {
+  body.innerHTML = list.map((x, i) => {
     const st = x.ok ? '<span class="st ok">[ok]</span>' : '<span class="st no">[erro]</span>';
     const ts = x.ts ? String(x.ts).replace("T"," ").replace(/\..*$/,"") : "";
     const cmd = x.cmd ? '<span class="cmd">$ ' + esc(x.cmd) + '</span>' : '';
-    return '<div class="logsrow">' + st + '<span class="ts">' + esc(ts) + '</span>'
-      + '<span class="lb">' + esc(x.label || x.id || "?") + cmd + '</span></div>';
+    const reasons = Array.isArray(x.reasons) ? x.reasons : [];
+    const counts = [];
+    if (x.applies != null) counts.push(x.applies + " tentativa(s)");
+    if (x.changed != null) counts.push(x.changed + " aplicada(s)");
+    if (x.failed != null && x.failed > 0) counts.push(x.failed + " falha(s)");
+    if (x.code != null && x.code !== 0) counts.push("código " + x.code);
+    const why = reasons.length
+      ? '<ul class="why">' + reasons.map(r => '<li>' + esc(r) + '</li>').join("") + '</ul>' : '';
+    const out = x.out ? '<pre>' + esc(x.out) + '</pre>' : '';
+    const hasDet = !!(why || out || counts.length);
+    const det = hasDet
+      ? '<div class="det" hidden>' + why
+        + (counts.length ? '<div class="counts">' + esc(counts.join(" · ")) + '</div>' : '')
+        + out + '</div>'
+      : '';
+    return '<div class="logsrow' + (hasDet ? ' has-det' : '') + '" data-i="' + i + '">'
+      + st + '<span class="ts">' + esc(ts) + '</span>'
+      + '<span class="lb">' + esc(x.label || x.id || "?") + cmd + det + '</span>'
+      + (hasDet ? '<span class="chev">▾</span>' : '') + '</div>';
   }).join("");
+  body.querySelectorAll(".logsrow.has-det").forEach(row => {
+    row.onclick = () => {
+      const d = row.querySelector(".det"); if (!d) return;
+      d.hidden = !d.hidden;
+      const c = row.querySelector(".chev"); if (c) c.textContent = d.hidden ? "▾" : "▴";
+    };
+  });
 }
 async function openLogs(){
   const p = document.getElementById("logspanel"); if (!p) return;
@@ -1831,14 +2093,30 @@ const btnLogs = document.getElementById("btnLogs"); if (btnLogs) btnLogs.onclick
 const logsClose = document.getElementById("logsClose"); if (logsClose) logsClose.onclick = () => document.getElementById("logspanel").classList.remove("open");
 const logsRefresh = document.getElementById("logsRefresh"); if (logsRefresh) logsRefresh.onclick = openLogs;
 
-/* ---- TERMINAL: executa comandos de verdade --------------------------------- */
-let termHist = [], termIdx = -1, termText = "";
+/* ---- TERMINAL amplo: cwd, atalhos, copiar/salvar, histórico ----------------- */
+let termHist = [], termIdx = -1, termText = "", termCwd = "~";
+const TERM_QUICK = [
+  ["getprop ro.product.model", "modelo"],
+  ["getprop ro.build.version.sdk", "Android"],
+  ["settings get system peak_refresh_rate", "taxa de tela"],
+  ["settings get global private_dns_specifier", "DNS atual"],
+  ["pm list packages -3", "apps instalados"],
+  ["dumpsys battery | grep -E 'level|temperature'", "bateria"],
+  ["free -m", "RAM"],
+  ["df -h /data", "armazenamento"],
+  ["top -n 1 -b | head -15", "top (CPU)"],
+  ["dumpsys deviceidle | grep -m1 mState=", "estado do Doze"],
+  ["logcat -d -t 40", "últimas linhas do log"],
+];
 function termPaint(t){ const o = document.getElementById("termOut"); if (o) o.textContent = t; }
+function termCwdPaint(){ const e = document.getElementById("termCwd"); if (e) e.textContent = termCwd; }
+function termOutText(){ const o = document.getElementById("termOut"); return o ? o.textContent : ""; }
+function termScroll(){ const o = document.getElementById("termOut"); if (o) o.scrollTop = o.scrollHeight; }
 async function termRunCmd(cmd){
   cmd = (cmd || "").trim(); if (!cmd) return;
   termHist.push(cmd); termIdx = termHist.length;
   const o = document.getElementById("termOut");
-  if (o){ o.textContent += (o.textContent ? "\n" : "") + "$ " + cmd + "\n"; o.scrollTop = o.scrollHeight; }
+  if (o){ o.textContent += (o.textContent ? "\n" : "") + termCwd + " $ " + cmd + "\n"; termScroll(); }
   const inp = document.getElementById("termInput"); if (inp) inp.disabled = true;
   try{
     const r = await fetch("api.php?do=term", {
@@ -1846,17 +2124,23 @@ async function termRunCmd(cmd){
       body: JSON.stringify({cmd})
     });
     const j = await r.json();
-    if (o){ o.textContent += (j.out || "(sem saída)") + "\n"; o.scrollTop = o.scrollHeight; }
+    if (o){ o.textContent += (j.out || "(sem saída)") + "\n"; termScroll(); }
   }catch(e){ if (o){ o.textContent += "erro: " + e + "\n"; } }
   if (inp){ inp.disabled = false; inp.focus(); }
+  loadState();
 }
-(function initTerm(){
+function termFill(cmd){
+  const inp = document.getElementById("termInput"); if (!inp) return;
+  inp.value = cmd; inp.focus();
+}
+function initTerm(){
   const inp = document.getElementById("termInput");
   const run = document.getElementById("termRun");
   if (!inp || !run) return;
-  run.onclick = () => { const c = inp.value; inp.value = ""; termRunCmd(c); };
+  const submit = () => { const c = inp.value; inp.value = ""; termRunCmd(c); };
+  run.onclick = submit;
   inp.addEventListener("keydown", e => {
-    if (e.key === "Enter"){ e.preventDefault(); const c = inp.value; inp.value = ""; termRunCmd(c); return; }
+    if (e.key === "Enter"){ e.preventDefault(); submit(); return; }
     if (e.key === "ArrowUp"){
       if (!termHist.length) return; e.preventDefault();
       if (termIdx === termHist.length) termText = inp.value;
@@ -1868,10 +2152,35 @@ async function termRunCmd(cmd){
       inp.value = termIdx === termHist.length ? termText : termHist[termIdx];
     }
   });
-  const clr = document.getElementById("termClear"); if (clr) clr.onclick = () => termPaint("");
-  // histórico salvo no aparelho (app) — no site fica vazio
+  const clr = document.getElementById("termClear");
+  if (clr) clr.onclick = () => termPaint("");
+  const cp = document.getElementById("termCopy");
+  if (cp) cp.onclick = async () => {
+    try{ await navigator.clipboard.writeText(termOutText()); toast("Saída copiada", "ok"); }
+    catch(e){ toast("Não consegui copiar", "bad"); }
+  };
+  const sv = document.getElementById("termSave");
+  if (sv) sv.onclick = () => {
+    const blob = new Blob([termOutText()], {type:"text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "terminal-" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".txt";
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+  const q = document.getElementById("termQuick");
+  if (q) q.innerHTML = TERM_QUICK.map(([c,l]) =>
+    '<button class="term-chip" type="button" data-cmd="' + esc(c) + '">' + esc(l) + "</button>").join("");
+  if (q) q.querySelectorAll(".term-chip").forEach(b => tapOnly(b, () => termFill(b.dataset.cmd)));
+  document.addEventListener("keydown", e => {
+    const sec = document.getElementById("g-Terminal");
+    if (e.ctrlKey && (e.key === "l" || e.key === "L") && sec && !sec.hidden){
+      e.preventDefault(); termPaint("");
+    }
+  });
+  termCwdPaint();
   apiGet("term_hist").then(j => { (j.history || []).forEach(h => { if (h.cmd) termHist.push(h.cmd); }); termIdx = termHist.length; }).catch(()=>{});
-})();
+}
+initTerm();
 const btnTerm = document.getElementById("btnTerm");
 if (btnTerm) btnTerm.onclick = () => { go("Terminal"); const i = document.getElementById("termInput"); if (i) i.focus(); };
 
@@ -1962,7 +2271,7 @@ function closeAppPicker(){ const m = document.getElementById("appModal"); if (m)
 
 /* ---- HOME: métricas reais do aparelho (RAM, CPU, bateria, tela) ------------- */
 let STATS = {}, statsTimer = null, statsBusy = false, statsAt = 0;
-const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","cpu_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
+const STAT_KEYS = ["ram_total_mb","ram_livre_mb","ram_uso_pct","cpu_uso_pct","load1","ncores","cpu_gov","cpu_cur_mhz","cpu_max_mhz","bat_level","bat_temp_c","bat_status","refresh_hz","fps","stor_total_mb","stor_livre_mb","uptime_s","fg_label","screen_time"];
 const has = v => v !== undefined && v !== null && String(v) !== "";
 const num = v => { const n = parseFloat(v); return (v === "" || v === null || v === undefined || isNaN(n)) ? null : n; };
 function setBar(m, pct, cls){ const i = m && m.querySelector("i"); if (i) i.style.width = Math.max(0, Math.min(100, pct)) + "%"; if (m){ m.className = "m" + (cls ? " " + cls : ""); } }
@@ -2025,6 +2334,18 @@ function renderStats(){
   if (dispV) dispV.innerHTML = rShow !== null ? rShow + "<small>Hz</small>" : "—";
   const dispF = document.querySelector('[data-stat="dispf"]');
   if (dispF) dispF.textContent = rPeak !== null ? "taxa travada (fixa)" : (rCur !== null ? "taxa atual da tela" : "o aparelho não informou");
+  // FPS REAL do jogo: vem do SurfaceFlinger (frames apresentados de verdade),
+  // não da taxa de tela. "—" quando o jogo não está na tela ou a camada não
+  // expõe frames — melhor vazio do que um número inventado.
+  const fpsV = document.querySelector('[data-stat="fps"]');
+  const fpsN = num(S.fps);
+  if (fpsV) fpsV.innerHTML = fpsN === null ? "—" : fpsN + "<small>fps</small>";
+  const fpsF = document.querySelector('[data-stat="fpsf"]');
+  if (fpsF){
+    if (fpsN === null) fpsF.textContent = "abra o jogo para medir";
+    else if (rCur !== null && fpsN >= rCur - 3) fpsF.textContent = "no teto da tela (" + rCur + " Hz)";
+    else fpsF.textContent = "frames reais do jogo agora";
+  }
   // Tempo ligado
   const upV = document.querySelector('[data-stat="up"]');
   const up = num(S.uptime_s);
@@ -2093,7 +2414,19 @@ function runGameHome(btn){
   if (!pkg){ toast("Escolha o jogo primeiro", "bad"); return; }
   doRun(a, { pkg }, false, btn);
 }
-document.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => runActionById(b.dataset.qa));
+document.querySelectorAll("[data-qa]").forEach(b => tapOnly(b, () => runActionById(b.dataset.qa)));
+document.querySelectorAll("[data-game-home]").forEach(b => tapOnly(b, () => runGameHome(b)));
+/* botões do hub do otimizador: rodam a sub-ação pelo id, como os atalhos da Home.
+   O perfil escolhido no card é repassado às sub-ações que o aceitam. */
+document.querySelectorAll("[data-hub]").forEach(b => tapOnly(b, () => {
+  const a = ACTIONS[b.dataset.hub];
+  if (!a) return;
+  // guarda a sub-ação no próprio botão: o askConfirm põe o botão em `pending`,
+  // e o runPending precisa saber o que reexecutar depois do "ok".
+  b._subId = a.id; b._subParams = {};
+  if (a.confirm) askConfirm(b, a);
+  else doRun(a, b._subParams, false, b);
+}));
 
 /* status do botão principal (Clean Phone) enquanto a limpeza roda */
 const heroBtn = document.getElementById("rocketBtn");
@@ -2122,6 +2455,8 @@ function profPaint(){
   CPROF.forEach(c => {
     const row = document.querySelector('.cp-row[data-key="' + c.k + '"]'); if (!row) return;
     row.querySelectorAll(".seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.val === cur[c.k] ? "true" : "false"));
+    const sw = row.querySelector(".cpsw");
+    if (sw) sw.setAttribute("aria-checked", cur[c.k] === sw.dataset.on ? "true" : "false");
   });
 }
 function profSet(k, v){
@@ -2129,6 +2464,9 @@ function profSet(k, v){
   localStorage.setItem(CPROF_KEY, JSON.stringify(cur));
   profPaint();
 }
+// Lê o estado ligado/desligado da chave. O "on" varia por opção (on/ligados...),
+// por isso o valor vem do próprio botão, não de um "true" fixo.
+function profToggle(sw){ return sw.getAttribute("aria-checked") === "true"; }
 function profActiveCount(){
   const cur = profRead();
   return CPROF.filter(c => cur[c.k] !== CPROF_DEFAULT[c.k]).length;
@@ -2167,9 +2505,11 @@ async function applyCustomProfile(a, btn){
   }finally{ setBusy(false, btn); }
 }
 document.querySelectorAll("#profList .cp-row").forEach(row => {
-  row.querySelectorAll(".seg-btn").forEach(b => b.onclick = () => profSet(row.dataset.key, b.dataset.val));
+  row.querySelectorAll(".seg-btn").forEach(b => tapOnly(b, () => profSet(row.dataset.key, b.dataset.val)));
+  const sw = row.querySelector(".cpsw");
+  if (sw) tapOnly(sw, () => profSet(row.dataset.key, profToggle(sw) ? sw.dataset.off : sw.dataset.on));
 });
-document.getElementById("profApply").onclick = () => applyCustomProfile(ACTIONS["profile.custom.apply"], document.getElementById("profApply"));
+tapOnly(document.getElementById("profApply"), () => applyCustomProfile(ACTIONS["profile.custom.apply"], document.getElementById("profApply")));
 document.getElementById("profClose").onclick = () => document.getElementById("profMask").classList.remove("open");
 document.getElementById("profReset").onclick = () => {
   localStorage.removeItem(CPROF_KEY); profPaint();

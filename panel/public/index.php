@@ -16,7 +16,7 @@ require __DIR__ . '/../src/layout.php';
 ?>
 
 <h1>Visão geral</h1>
-<div class="sub">Situação do painel 00deUdia Otimizações.</div>
+<div class="sub">Situação do painel Trix.</div>
 
 <?= otm_flash() ?>
 

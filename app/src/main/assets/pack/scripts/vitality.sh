@@ -37,7 +37,7 @@ VIT_TEMP_HOT=43       # carregando e muito quente: avisa forte
 VIT_CYCLES_OK=400     # até aqui a contagem de ciclos é considerada normal
 VIT_CYCLES_HIGH=800
 
-_num() { printf '%s' "$1" | tr -cd '0-9'; }
+_num() { printf '%s' "$1" | tr -cd '0-9' | cut -c1-9; }
 
 # -----------------------------------------------------------------------------
 #  Leitura da bateria - em camadas, porque cada aparelho expõe de um jeito.
@@ -80,11 +80,11 @@ read_battery() {
         LEVEL="$(_num "$OTM_VIT_LEVEL")"; TEMP="$(_num "$OTM_VIT_TEMP")"; STATUS="$OTM_VIT_STATUS"
     else
         b="$(sh_get 'dumpsys battery' 2>/dev/null)"
-        LEVEL="$(printf '%s\n' "$b" | awk -F': ' '/ level:/{print $2; exit}')"
-        t="$(printf '%s\n' "$b" | awk -F': ' '/ temperature:/{print $2; exit}')"
+        LEVEL="$(otm_batt_field "$b" level)"
+        t="$(otm_batt_field "$b" temperature)"
         TEMP=""
         case "$t" in ''|*[!0-9]*) ;; *) TEMP=$((t / 10)) ;; esac
-        s="$(printf '%s\n' "$b" | awk -F': ' '/ status:/{print $2; exit}')"
+        s="$(otm_batt_field "$b" status)"
         case "$s" in 2|5) STATUS="charging" ;; 3|4) STATUS="discharging" ;; *) STATUS="" ;; esac
     fi
     case "$LEVEL" in ''|*[!0-9]*) LEVEL="" ;; esac

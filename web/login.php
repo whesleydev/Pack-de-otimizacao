@@ -1,6 +1,6 @@
 <?php
 // =============================================================================
-//  login.php - Tela de entrada do painel 00deUdia Otimizações.
+//  login.php - Tela de entrada do painel Trix.
 //  Renderizada por index.php quando não há sessão. Não mostra nada do pack
 //  antes de autenticar.
 // =============================================================================
@@ -17,16 +17,16 @@ $csrf = otm_csrf();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0c0a">
-<title>Entrar — 00deUdia Otimizações</title>
+<title>Entrar — Trix</title>
 <link rel="icon" href="assets/banner.jpeg">
 <style>
 :root{
   --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b;
   --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
-  --accent:#e4571c; --accent-ink:#fff; --danger:#bc332a;
+  --accent:#8d939e; --accent-ink:#fff; --danger:#bc332a;
   --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.34);
   --blur:saturate(150%) blur(18px);
-  --ring:rgba(228,87,28,.35);
+  --ring:rgba(141,147,158,.35);
   --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35);
   --r:18px; --r-sm:11px;
   --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
@@ -34,7 +34,7 @@ $csrf = otm_csrf();
 @media (prefers-color-scheme: dark){
   :root{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
     --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2);
-    --accent:#ff6a2b; --accent-ink:#180d06; --danger:#ff6b5e;
+    --accent:#c7ccd6; --accent-ink:#14161a; --danger:#ff6b5e;
     --glass:rgba(30,28,24,.5); --glass-2:rgba(30,28,24,.34);
     --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); }
 }
@@ -49,11 +49,12 @@ $csrf = otm_csrf();
 html,body{margin:0;min-height:100%}
 body{
   font-family:var(--font); color:var(--ink); line-height:1.55; min-height:100dvh;
-  display:grid; place-items:center; padding:22px; overflow-x:hidden;
+  display:flex; flex-direction:column; padding:22px; overflow-x:hidden;
   background:url('assets/wallpaper.jpeg') center/cover fixed no-repeat var(--paper);
 }
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper);opacity:.82}
-.wrap{width:100%; max-width:380px; animation:otmRise .5s cubic-bezier(.2,.7,.3,1) both}
+/* o cartão ocupa o espaço todo e fica centrado; os créditos descem para o rodapé */
+.wrap{width:100%; max-width:380px; margin:auto; animation:otmRise .5s cubic-bezier(.2,.7,.3,1) both}
 .brand{display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:18px; animation:otmFade .6s both}
 .mark{width:56px; height:56px; border-radius:16px; display:grid; place-items:center;
   background:var(--accent); color:var(--accent-ink); font-weight:800; font-size:20px;
@@ -112,8 +113,8 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
 <body>
 <div class="wrap">
   <div class="brand">
-    <div class="mark" aria-hidden="true">00</div>
-    <h1>00deUdia Otimizações</h1>
+    <div class="mark" aria-hidden="true">TX</div>
+    <h1>Trix</h1>
     <p>Entre para acessar o painel</p>
   </div>
 
@@ -139,8 +140,10 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   </form>
 
   <div class="foot">Painel local — sem root, via Shizuku ou ADB por Wi-Fi.</div>
+</div>
 
-  <div class="credits">
+<!-- Fora do .wrap: o cartão fica centrado e os créditos descem para o rodapé. -->
+<div class="credits">
     <p class="who">Criado por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
     <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
        title="Abrir meu perfil no Discord">
@@ -152,7 +155,6 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
       <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
       Servidor <span class="arw">↗</span>
     </a>
-  </div>
 </div>
 
 <script>

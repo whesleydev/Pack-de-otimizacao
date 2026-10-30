@@ -110,7 +110,9 @@ case "$1" in
 esac
 exit 0
 EOF
-    # dumpsys: só o suficiente para o fallback do limite de processos
+    # dumpsys: só o suficiente para o fallback do limite de processos e para
+    # descobrir o app em PRIMEIRO PLANO (a limpeza nunca pode fechar o que está
+    # na tela). O pacote em foco vem de $TMP_STORE/fg, senão usa um padrão.
     cat > "$TMP/bin/dumpsys" <<'EOF'
 #!/bin/sh
 if [ "$1" = "activity" ] && [ "$2" = "settings" ]; then
@@ -120,6 +122,37 @@ if [ "$1" = "activity" ] && [ "$2" = "settings" ]; then
         echo "  CUR_MAX_CACHED_PROCESSES=32"
     fi
 fi
+if [ "$1" = "activity" ] && [ "$2" = "activities" ]; then
+    fg="$(cat "$TMP_STORE/fg" 2>/dev/null)"
+    [ -n "$fg" ] && echo "    mResumedActivity: ActivityRecord{1a2b3c u0 $fg/.MainActivity t42}"
+fi
+# SurfaceFlinger: as camadas e o carimbo de frames vêm de arquivos do store, para
+# o teste do FPS real controlar exatamente o que o compositor "respondeu".
+if [ "$1" = "SurfaceFlinger" ] && [ "$2" = "--list" ]; then
+    cat "$TMP_STORE/sf_list" 2>/dev/null
+fi
+if [ "$1" = "SurfaceFlinger" ] && [ "$2" = "--latency" ]; then
+    cat "$TMP_STORE/sf_latency" 2>/dev/null
+fi
+exit 0
+EOF
+    # wm: simula `wm size` / `wm density` com override persistido, como no
+    # Android (Physical size + Override size quando há override aplicado).
+    cat > "$TMP/bin/wm" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_CMD_LOG" ] && echo "wm $*" >> "$TMP_CMD_LOG"
+case "$1" in
+  size)
+     case "$2" in
+       reset) rm -f "$TMP_STORE/wm.size" ;;
+       '')    echo "Physical size: ${WM_PHYS:-1080x2400}"
+              [ -f "$TMP_STORE/wm.size" ] && echo "Override size: $(cat "$TMP_STORE/wm.size")" ;;
+       *)     printf '%s' "$2" > "$TMP_STORE/wm.size" ;;
+     esac ;;
+  density)
+     echo "Physical density: ${WM_DENSITY:-400}"
+     [ -f "$TMP_STORE/wm.density" ] && echo "Override density: $(cat "$TMP_STORE/wm.density")" ;;
+esac
 exit 0
 EOF
     # su falso: finge ser root e executa o comando como shell local
@@ -602,6 +635,44 @@ t_app_login() {
         && ok "KeyGate removido do app" || bad "KeyGate ainda existe no app"
     [ ! -f "$ROOT/app/src/main/java/com/otm/pack/License.kt" ] \
         && ok "License removido do app" || bad "License ainda existe no app"
+    # todo link do menu tem de ter a seção correspondente: o painel é gerado por
+    # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
+    # deixando um link que não abre nada.
+    python3 - "$p/index.html" <<'PY' > "$TMP/navsec" 2>&1
+import re, sys, html as H, urllib.parse
+doc = open(sys.argv[1], encoding='utf-8').read()
+nav = re.search(r'<nav class="nav" id="nav">[\s\S]*?</nav>', doc).group(0)
+# cada link do menu aponta para a seção "g-<data-g>"; os ids vêm com o nome
+# URL-encoded e o data-g com entidade HTML (&amp;), então normalizo os dois.
+links = [H.unescape(m) for m in re.findall(r'data-g="([^"]+)"', nav)]
+secs = {urllib.parse.unquote(m) for m in re.findall(r'<section id="([^"]+)"', doc)}
+faltam = [g for g in links if 'g-' + g not in secs]
+print('OK' if not faltam else 'FALTAM:' + ','.join(faltam))
+PY
+    assert_contains "$TMP/navsec" "OK" "app: todo link do menu tem a sua seção"
+
+    # o painel do app é montado por script (sync_app_panel); um card que ficou
+    # entre o fim de uma seção e o começo da próxima não pertence a grupo nenhum
+    # e aparece SEMPRE, empilhado no rodapé, fora das abas. Também denuncia
+    # <section> desbalanceada. Já aconteceu com os cards de permissão (v2.41.2).
+    python3 - "$p/index.html" <<'PY' > "$TMP/panstruct" 2>&1
+import re, sys
+from collections import Counter
+doc = open(sys.argv[1], encoding='utf-8').read()
+# só os cards de verdade (o texto do JS também cita data-id="apply")
+cards = re.findall(r'<article class="card"[^>]*?data-id="([^"]+)"', doc)
+dup = sorted(k for k, v in Counter(cards).items() if v > 1)
+orf = [m.group(1).strip()[:60] for m in
+       re.finditer(r'</section>([\s\S]*?)(?=<section\b|</main>)', doc)
+       if '<article class="card"' in m.group(1)]
+abre, fecha = len(re.findall(r'<section\b', doc)), doc.count('</section>')
+prob = []
+if dup: prob.append('cards duplicados: ' + ','.join(dup))
+if orf: prob.append('cards fora de seção: ' + ' | '.join(orf))
+if abre != fecha: prob.append('seções desbalanceadas: %d abre x %d fecha' % (abre, fecha))
+print('OK' if not prob else ' | '.join(prob))
+PY
+    assert_contains "$TMP/panstruct" "OK" "app: nenhum card duplicado nem fora de seção"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
@@ -672,7 +743,27 @@ t_app_fixes() {
     grep -q 'id="btnGear"' "$app" && ok "app: botão de engrenagem existe" || bad "app: sem engrenagem"
     grep -q 'id="gearMask"' "$app" && ok "app: modal de configurações existe" || bad "app: sem modal de config"
     grep -q 'id="btnGear"' "$web" && ok "web: botão de engrenagem existe" || bad "web: sem engrenagem"
-    grep -q 'id="setTheme"\|id="setAccent"\|id="setSound"' "$app" && ok "app: config tem tema/cor/som" || bad "app: config incompleta"
+    grep -q 'id="setAccent"\|id="setSound"' "$app" && ok "app: config tem cor/som" || bad "app: config incompleta"
+    # o app é SÓ modo escuro: nada de alternância claro/escuro nem de data-theme
+    if grep -q 'id="setTheme"\|data-theme\|otm-theme\|btnTheme' "$app"; then
+        bad "app: ainda tem alternância de tema claro/escuro"
+    else
+        ok "app: sem alternância de tema (só escuro)"
+    fi
+    if grep -q 'id="setTheme"\|data-theme\|otm-theme\|btnTheme' "$web"; then
+        bad "web: ainda tem alternância de tema claro/escuro"
+    else
+        ok "web: sem alternância de tema (só escuro)"
+    fi
+    grep -q 'name="color-scheme" content="dark"' "$app" \
+        && ok "app: color-scheme fixo em escuro" || bad "app: color-scheme não é só escuro"
+    grep -q 'id="setAccentCustom"\|id="setAccentHex"\|id="setAccentApply"' "$app" \
+        && grep -q 'id="setAccentCustom"\|id="setAccentHex"\|id="setAccentApply"' "$web" \
+        && ok "cor personalizada no app e no web" || bad "cor personalizada ausente"
+    grep -q 'accentFromHex' "$app" && grep -q 'accentFromHex' "$web" \
+        && ok "cor personalizada: hex vira accent/tinta/anel" || bad "cor personalizada sem conversão"
+    grep -q 'ui_prefs' "$src/PackBridge.kt" \
+        && ok "painel flutuante: recebe a cor/fonte do painel" || bad "overlay sem ui_prefs"
     grep -q "ui' => 'appearance'" "$ROOT/web/lib.php" && ok "registro tem a ação de aparência" || bad "sem ação de aparência"
     grep -q '"appearance"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem a ação de aparência" || bad "app: actions.json sem aparência"
@@ -746,10 +837,18 @@ t_app_fixes() {
         && ok "wifi: descobre o serviço de pareamento (mDNS)" || bad "wifi: sem descoberta do pareamento"
     grep -q 'SERVICE_TYPE_TLS_CONNECT' "$src/AdbRunner.kt" && grep -q 'fun connectWireless(' "$src/AdbRunner.kt" \
         && ok "wifi: conecta sem digitar porta (connectWireless)" || bad "wifi: conexão sem porta ausente"
-    grep -q 'Código de pareamento (6 números)' "$src/WifiDialog.kt" \
+    grep -q 'Código de 6 números' "$src/WifiDialog.kt" \
         && ok "wifi: diálogo pede só o código" || bad "wifi: diálogo não simplificado"
-    grep -q 'Avançado (informar IP e portas)' "$src/WifiDialog.kt" \
-        && ok "wifi: campos manuais só no Avançado" || bad "wifi: sem bloco Avançado"
+    # o diálogo tem UM campo só (o código) e nada de IP/porta na mão: quem acha o
+    # pareamento é o mDNS. Campos manuais eram a razão de o usuário não conseguir
+    # conectar — ele não tem como saber a porta.
+    if grep -qE 'Porta de (conexão|pareamento)|Avançado|Endereço \(ex\.' "$src/WifiDialog.kt"; then
+        bad "wifi: diálogo ainda pede IP/porta na mão"
+    else
+        ok "wifi: diálogo não pede IP/porta (só o código)"
+    fi
+    grep -q 'adb.pairWithCode(' "$src/WifiDialog.kt" \
+        && ok "wifi: o diálogo pareia pelo código (mDNS)" || bad "wifi: diálogo não pareia por código"
     grep -q 'ADB por Wi-Fi (só o código)' "$src/PanelActivity.kt" \
         && ok "wifi: opção do menu de conexão simplificada" || bad "wifi: opção do menu não atualizada"
     # 9d) pareamento por Wi-Fi: as três causas da falha ficam cobertas
@@ -766,8 +865,26 @@ t_app_fixes() {
         && ok "wifi: permissões da descoberta no manifesto" || bad "wifi: manifesto sem permissão de descoberta"
     grep -q 'CHANGE_WIFI_MULTICAST_STATE' "$ROOT/app/src/main/AndroidManifest.xml" \
         && ok "wifi: permissão do multicast declarada" || bad "wifi: sem permissão de multicast"
-    grep -q 'fun askMdns(' "$src/Permissions.kt" && grep -q 'Permissions.askMdns(this)' "$src/PanelActivity.kt" \
+    grep -q 'fun askMdns(' "$src/Permissions.kt" && grep -q 'Permissions.askMdnsThen(this)' "$src/PanelActivity.kt" \
         && ok "wifi: pede a permissão antes de parear" || bad "wifi: não pede a permissão de descoberta"
+    # 9e) o diálogo de pareamento só abre DEPOIS de o usuário responder a
+    #     permissão. Pedir e abrir na mesma hora fazia o código ser digitado
+    #     antes de a permissão existir: o mDNS falhava em silêncio e a conexão
+    #     nunca completava. O retorno precisa chegar ao callback.
+    grep -q 'fun askMdnsThen(' "$src/Permissions.kt" \
+        && ok "wifi: pedido de permissão com callback" || bad "wifi: sem askMdnsThen"
+    grep -q 'fun onRequestPermissionsResult(' "$src/PanelActivity.kt" \
+        && grep -q 'Permissions.REQ_MDNS' "$src/PanelActivity.kt" \
+        && grep -q 'Permissions.onMdnsResult(' "$src/PanelActivity.kt" \
+        && ok "wifi: o resultado da permissão é tratado (REQ_MDNS)" || bad "wifi: REQ_MDNS não tratado"
+    # a conexão é TESTADA de verdade: connect() devolver true só diz que o socket
+    # abriu; sem o teste o painel dizia "conectado" e as ações falhavam depois.
+    grep -q 'suspend fun verify(' "$src/AdbRunner.kt" \
+        && ok "wifi: a conexão é verificada (não só o socket)" || bad "wifi: conexão não é verificada"
+    grep -q 'adb.connectAndVerify()' "$src/WifiDialog.kt" \
+        && ok "wifi: o diálogo conecta e confere" || bad "wifi: diálogo não confere a conexão"
+    grep -q 'adb.verify()' "$src/PanelActivity.kt" \
+        && ok "wifi: a depuração USB também é verificada" || bad "wifi: USB não verifica a conexão"
     #     (c) a chave e o certificado do ADB têm de ser SEMPRE do mesmo par
     if grep -q 'fun loadOrCreateCert' "$src/AdbRunner.kt"; then
         bad "wifi: certificado ainda pode sair de um par diferente da chave"
@@ -821,9 +938,82 @@ t_app_fixes() {
             && ok "cor: '$c' na fonte e no app" || bad "cor: '$c' ausente"
     done
     grep -q 'prata:{accent:' "$web" && ok "cor: paleta 'prata' definida" || bad "cor: paleta 'prata' ausente"
-    for f in condensada arredondada geometrica humanista; do
+    # fontes notaveis (empacotadas, funcionam offline) — antes eram todas iguais
+    for f in sistema minecraft pixel monocraft cartaz condensada futurista quadrada serifa manuscrita mono; do
         grep -q "data-font=\"$f\"" "$web" && grep -q "data-font=\"$f\"" "$app" \
             && ok "fonte: '$f' na fonte e no app" || bad "fonte: '$f' ausente"
+    done
+    # as fontes vêm empacotadas no app (nada de CDN: sem internet a fonte cai)
+    for fnt in pressstart2p monocraft anton bebasneue orbitron russoone playfairdisplay jetbrainsmono caveat; do
+        [ -f "$ROOT/web/assets/fonts/$fnt.ttf" ] && [ -f "$ROOT/app/src/main/assets/panel/assets/fonts/$fnt.ttf" ] \
+            && ok "fonte empacotada: $fnt.ttf no web e no app" || bad "fonte $fnt.ttf ausente"
+    done
+    grep -q "font-family:'Monocraft'" "$app" && ok "fonte: @font-face do app definido" || bad "fonte: sem @font-face no app"
+    # licença das fontes empacotadas (OFL pede que o crédito acompanhe o arquivo)
+    [ -f "$ROOT/web/assets/fonts/CREDITS.md" ] && grep -qi 'Open Font License' "$ROOT/web/assets/fonts/CREDITS.md" \
+        && ok "fonte: créditos/licença no web" || bad "fonte: sem créditos no web"
+    [ -f "$ROOT/app/src/main/assets/panel/assets/fonts/CREDITS.md" ] \
+        && grep -qi 'Open Font License' "$ROOT/app/src/main/assets/panel/assets/fonts/CREDITS.md" \
+        && ok "fonte: créditos/licença no app" || bad "fonte: sem créditos no app"
+    # o painel flutuante carrega o MESMO .ttf empacotado (não só a fonte do sistema)
+    grep -q 'createFromAsset(assets, "panel/assets/fonts/' "$src/OverlayService.kt" \
+        && ok "overlay: usa a fonte empacotada escolhida" || bad "overlay: fonte empacotada ausente"
+    for f in monocraft.ttf pressstart2p.ttf anton.ttf caveat.ttf jetbrainsmono.ttf; do
+        grep -q "\"$f\"" "$src/OverlayService.kt" || bad "overlay: sem o mapeamento de $f"
+    done
+    ok "overlay: mapeia as fontes empacotadas"
+    # toda chave do FONTS do painel tem arquivo no overlay (senão o flutuante cai
+    # calado na fonte do sistema e diverge do app)
+    python3 - "$app" "$src/OverlayService.kt" <<'PY' && ok "overlay: cobre todas as fontes do painel" || bad "overlay: fonte do painel sem arquivo"
+import re, sys
+html = open(sys.argv[1], encoding='utf-8').read()
+kt = open(sys.argv[2], encoding='utf-8').read()
+keys = re.findall(r'^\s{2}([a-z]+):', re.search(r'const FONTS = \{(.*?)\n\};', html, re.S).group(1), re.M)
+files = re.findall(r'^\s{12}"([a-z]+)" to "([^"]+)"', re.search(r'FONT_FILES = mapOf\((.*?)\n        \)', kt, re.S).group(1), re.M)
+mapped = dict(files)
+for k in keys:
+    if k == 'sistema':
+        continue
+    if k not in mapped:
+        print("sem mapeamento:", k); sys.exit(1)
+    if 'assets/fonts/' + mapped[k] not in kt and mapped[k] not in kt:
+        print("arquivo ausente:", k, mapped[k]); sys.exit(1)
+sys.exit(0)
+PY
+}
+
+# --- rodapé/creditos ficam embaixo mesmo em tela curta (não no meio da tela) ---
+t_footer_sticky() {
+    printf '\n  # rodapé: créditos no fim da tela, não no meio\n'
+    # O rodapé subia para o meio da tela em páginas/abas curtas porque o body não
+    # era coluna flexível: o conteúdo acabava e o rodapé ficava logo abaixo dele,
+    # no meio do vazio. Agora body é flex column e o miolo cresce (flex:1).
+    local app="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local login="$ROOT/web/login.php"
+    local guia="$ROOT/index.html"
+    local pguia="$ROOT/public/guia.html"
+    for f in "$app" "$web"; do
+        n="$(basename "$f")"
+        tr '\n' ' ' < "$f" > "$TMP/ft_$n"
+        grep -qE 'body\{[^}]*display:flex; *flex-direction:column' "$TMP/ft_$n" \
+            && ok "$n: body é coluna flexível" || bad "$n: body não é flex column"
+        grep -qE '\.layout\{[^}]*flex:1 0 auto' "$TMP/ft_$n" \
+            && ok "$n: o miolo cresce e empurra o rodapé" || bad "$n: miolo não empurra o rodapé"
+    done
+    tr '\n' ' ' < "$login" > "$TMP/ft_login"
+    grep -qE 'body\{[^}]*display:flex; *flex-direction:column' "$TMP/ft_login" \
+        && ok "login.php: body é coluna flexível" || bad "login.php: body não é flex column"
+    # o cartão centraliza com margin:auto; o que sobra empurra os créditos ao fim
+    grep -qE '\.wrap\{[^}]*margin:auto' "$TMP/ft_login" \
+        && ok "login.php: cartão centraliza e empurra os créditos" || bad "login.php: .wrap sem margin:auto"
+    for f in "$guia" "$pguia"; do
+        tr '\n' ' ' < "$f" > "$TMP/ft_g"
+        grep -qE 'body\{[^}]*display:flex; *flex-direction:column' "$TMP/ft_g" \
+            && ok "$(basename "$f"): body é coluna flexível" || bad "$(basename "$f"): body não é flex column"
+        grep -qE 'main\.wrap\{ *flex:1 0 auto' "$TMP/ft_g" \
+            && ok "$(basename "$f"): o miolo cresce e empurra o rodapé" \
+            || bad "$(basename "$f"): miolo não empurra o rodapé"
     done
 }
 
@@ -1022,6 +1212,105 @@ t_panel_stats() {
     rm -rf "$st2" "$b2"
 }
 
+t_fps_real() {
+    printf '\n  # FPS REAL do jogo: frames do SurfaceFlinger, não a taxa de tela\n'
+    # o método é o `--latency` do compositor (2ª coluna = horário REAL de
+    # apresentação de cada frame). É liberado para o uid 2000 (shell/Shizuku).
+    grep -q 'SurfaceFlinger --latency' "$ROOT/scripts/common.sh" \
+        && ok "fps: mede pelo SurfaceFlinger --latency" || bad "fps: não usa o --latency"
+    grep -q 'SurfaceFlinger --list' "$ROOT/scripts/common.sh" \
+        && ok "fps: descobre a camada do app pelo --list" || bad "fps: não lista as camadas"
+    # o FPS é derivado dos carimbos de apresentação, nunca da taxa de tela
+    grep -q 'refresh_hz' "$ROOT/scripts/fps.sh" \
+        && bad "fps: mistura taxa de tela com FPS" || ok "fps: não confunde Hz com FPS"
+    # script existe, está na whitelist e é só leitura
+    [ -f "$ROOT/scripts/fps.sh" ] && ok "fps.sh existe" || bad "fps.sh ausente"
+    grep -q "'fps.sh'" "$ROOT/web/lib.php" \
+        && ok "fps.sh está na whitelist do painel" || bad "fps.sh fora da whitelist"
+    grep -qE '^(settings put|bkp_set|sh_run)' "$ROOT/scripts/fps.sh" \
+        && bad "fps.sh escreve no sistema (devia ser só leitura)" \
+        || ok "fps.sh é só leitura"
+
+    # --- camada: prefere a SurfaceView do app em 1º plano --------------------
+    printf 'com.dts.freefireth/com.dts.freefireth.FFMainActivity#0\n' > "$TMP_STORE/sf_list"
+    printf 'SurfaceView[com.dts.freefireth/FF](BLAST)#0\n' >> "$TMP_STORE/sf_list"
+    printf 'Background for SurfaceView[com.dts.freefireth](BLAST)#0\n' >> "$TMP_STORE/sf_list"
+    printf 'com.dts.freefireth/.FFMainActivity\n' > "$TMP_STORE/fg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" layer > "$TMP/fps_layer" 2>&1
+    grep -q 'SurfaceView\[com.dts.freefireth/FF\](BLAST)#0' "$TMP/fps_layer" \
+        && ok "fps: escolhe a SurfaceView do jogo (não a camada do app)" \
+        || bad "fps: escolheu a camada errada"
+
+    # --- FPS a 60: 60 frames a cada 16,66 ms ---------------------------------
+    # 1ª linha é o período de vsync (não é frame); as demais são os carimbos.
+    { echo "16666666"
+      awk 'BEGIN{ t=1000000000; for(i=0;i<60;i++){ printf "%d\t%d\t%d\n", t, t, t; t+=16666666 } }'
+    } > "$TMP_STORE/sf_latency"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fps60" 2>&1
+    grep -q '#OTM-FPS fps=60 ' "$TMP/fps60" && ok "fps: 60 frames a 16,66 ms = 60 fps" \
+        || bad "fps: errou o cálculo a 60 fps ($(grep -o 'fps=[0-9]*' "$TMP/fps60"))"
+    grep -q 'frames=60' "$TMP/fps60" && ok "fps: conta os 60 frames" || bad "fps: contagem de frames errada"
+
+    # --- FPS a 120 com slots vazios do buffer misturados ---------------------
+    # O buffer circular de 128 posições vem com slots zerados/INT64_MAX. Eles
+    # NÃO são frames e não podem entrar na conta (senão o FPS despenca).
+    { echo "8333333"
+      echo "0	0	0"
+      echo "0	9223372036854775807	0"
+      awk 'BEGIN{ t=2000000000; for(i=0;i<40;i++){ printf "%d\t%d\t%d\n", t, t, t; t+=8333333 } }'
+      echo "0	0	0"
+    } > "$TMP_STORE/sf_latency"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fps120" 2>&1
+    grep -q '#OTM-FPS fps=120 ' "$TMP/fps120" \
+        && ok "fps: 120 fps com slots vazios ignorados" \
+        || bad "fps: slots vazios do buffer corromperam a conta ($(grep -o 'fps=[0-9]*' "$TMP/fps120"))"
+    grep -q 'frames=40' "$TMP/fps120" && ok "fps: só os frames reais entram na conta" \
+        || bad "fps: contou slots vazios como frame"
+
+    # --- sem camada / sem frames: devolve vazio, NÃO inventa ------------------
+    : > "$TMP_STORE/sf_list"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fpsnone" 2>&1
+    grep -q 'fps=' "$TMP/fpsnone" && bad "fps: inventou FPS sem camada" \
+        || ok "fps: sem camada não inventa número (mostra o motivo)"
+    # camada existe, mas o jogo está parado (só a linha de vsync)
+    printf 'SurfaceView[com.dts.freefireth/FF](BLAST)#0\n' > "$TMP_STORE/sf_list"
+    echo "16666666" > "$TMP_STORE/sf_latency"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/fps.sh" now > "$TMP/fpsidle" 2>&1
+    grep -q 'fps=' "$TMP/fpsidle" && bad "fps: inventou FPS com o jogo parado" \
+        || ok "fps: jogo parado (sem frames) não vira número"
+
+    # --- o painel publica o FPS real no JSON ---------------------------------
+    grep -q '"fps"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: publica o campo fps" || bad "stats: sem campo fps"
+    grep -q '"fps_layer"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: publica a camada medida (fps_layer)" || bad "stats: sem fps_layer"
+    # o FPS do painel vem do otm_fps_measure (mesma conta do fps.sh), não do Hz
+    grep -q 'otm_fps_measure' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: usa a mesma medição de FPS do pack" || bad "stats: medição de FPS própria"
+    # com o jogo em 1º plano, o JSON traz o FPS real
+    { echo "16666666"
+      awk 'BEGIN{ t=1000000000; for(i=0;i<60;i++){ printf "%d\t%d\t%d\n", t, t, t; t+=16666666 } }'
+    } > "$TMP_STORE/sf_latency"
+    printf 'SurfaceView[com.dts.freefireth/FF](BLAST)#0\n' > "$TMP_STORE/sf_list"
+    printf 'com.dts.freefireth/.FFMainActivity\n' > "$TMP_STORE/fg"
+    rm -rf "$HOME/.packotm/game"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/panel-stats.sh" > "$TMP/ps_fps" 2>&1
+    grep -q '"fps":"60"' "$TMP/ps_fps" && ok "stats: FPS real no JSON (60)" \
+        || bad "stats: FPS ausente/errado no JSON ($(grep -o '"fps":"[^"]*"' "$TMP/ps_fps"))"
+
+    # --- painéis (app e web) mostram o FPS -----------------------------------
+    for f in "$ROOT/web/index.php" "$ROOT/app/src/main/assets/panel/index.html"; do
+        n=$(basename "$f")
+        grep -q 'data-stat="fps"' "$f" && ok "$n: tem o card de FPS" || bad "$n: sem card de FPS"
+        grep -q '"fps","stor_total_mb"\|refresh_hz","fps"' "$f" \
+            && ok "$n: pede o campo fps no poll" || bad "$n: não pede o fps"
+    done
+    # o card explica que é FPS do jogo, não a taxa de tela
+    grep -q 'FPS do jogo' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: card se chama 'FPS do jogo'" || bad "app: card de FPS sem rótulo claro"
+    rm -f "$TMP_STORE/sf_list" "$TMP_STORE/sf_latency"
+}
+
 t_game_keepalive() {
     printf '\n  # modo gamer: sem restricao de bateria, no maximo 4 processos, anti-relog\n'
     rm -rf "$HOME/.packotm"
@@ -1178,8 +1467,15 @@ t_perm_game() {
              echo $a ? ($a["argv"][1] . " " . ($a["params"][0]["type"] ?? "")) : "AUSENTE";' \
         > "$TMP/permg" 2>&1
     assert_contains "$TMP/permg" "perm_game pkg" "lib: ação perm.game com escolha de jogo"
-    grep -q 'id="setPermGame"' "$ROOT/app/src/main/assets/panel/index.html" \
-        && ok "app: engrenagem tem 'Ao meu jogo'" || bad "app: sem botão do meu jogo"
+    # a engrenagem tem SÓ o botão do pack; os outros (FF, meu jogo, bateria,
+    # uso) saíram das configs a pedido — a ação em si continua no catálogo.
+    for b in setPermFF setPermGame setPermBattery setPermUsage; do
+        if grep -q "id=\"$b\"" "$ROOT/app/src/main/assets/panel/index.html" \
+           || grep -q "id=\"$b\"" "$ROOT/web/index.php"; then
+            bad "engrenagem ainda tem o botão $b"
+        fi
+    done
+    ok "engrenagem só com 'Conceder permissões ao pack'"
     grep -q '"perm.game"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: catálogo tem perm.game" || bad "app: catálogo sem perm.game"
     rm -rf "$HOME/.packotm"
@@ -1303,9 +1599,6 @@ t_usage_access() {
     # painel (app e web) mostra os cards e o botão
     grep -q 'data-stat="fg"' "$app" && grep -q 'data-stat="usage"' "$app" \
         && ok "app: cards de uso na Home" || bad "app: sem cards de uso"
-    grep -q 'id="setPermUsage"' "$app" && grep -q 'id="setPermUsage"' "$web" \
-        && ok "app+web: botão de acesso ao uso" || bad "botão de acesso ao uso ausente"
-    grep -q 'Acesso a dados de uso' "$web" && ok "web: card de permissão explicado" || bad "web: card de permissão ausente"
     # Home reorganizada: métricas em grupos, botão de liberar e atualizar no painel
     [ "$(grep -c 'stat-group' "$app")" -ge 2 ] && ok "app: métricas separadas em grupos" || bad "app: sem grupos de métricas"
     grep -q 'glabel' "$app" && grep -q 'Uso do aparelho' "$app" \
@@ -1414,6 +1707,103 @@ t_site_html() {
     # a lista de comandos tem categorias de renderizador e congelar
     grep -q 'skiavk' "$f" && ok "inclui comando Vulkan (skiavk)" || bad "sem comando Vulkan"
     grep -q 'pm suspend' "$f" && ok "inclui congelar apps (pm suspend)" || bad "sem congelar apps"
+    # a resolução (wm size) está na área de comandos
+    grep -q 'wm size reset' "$f" && ok "inclui resolução (wm size)" || bad "sem comando de resolução"
+    # o site e a cópia publicada (public/guia.html) precisam ter a MESMA lista de
+    # comandos: são dois arquivos, e uma edição só num deles passa despercebida.
+    if [ -f "$ROOT/public/guia.html" ]; then
+        a="$TMP/guia_site"; b="$TMP/guia_pub"
+        sed -n '/^const CMDS = \[/,/^\];/p' "$f" > "$a"
+        sed -n '/^const CMDS = \[/,/^\];/p' "$ROOT/public/guia.html" > "$b"
+        if [ -s "$a" ] && cmp -s "$a" "$b"; then
+            ok "public/guia.html tem a mesma lista de comandos do index.html"
+        else
+            bad "public/guia.html e index.html divergem na lista de comandos"
+        fi
+    fi
+}
+
+t_marca_trix() {
+    printf '\n  # marca: nome Trix, cor padrao prata e icones da logo\n'
+    # nome do app (recurso do Android) e titulo do painel/logins
+    grep -q '<string name="app_name">Trix</string>' "$ROOT/app/src/main/res/values/strings.xml" \
+        && ok "strings.xml: app_name = Trix" || bad "app_name nao e Trix"
+    grep -q 'setContentTitle("Trix")' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && grep -q 'setContentTitle("Trix")' "$ROOT/app/src/main/java/com/otm/pack/Permissions.kt" \
+        && ok "notificacoes com o titulo Trix" || bad "notificacao ainda com o nome antigo"
+    for f in "$ROOT/web/index.php" "$ROOT/web/login.php" \
+             "$ROOT/app/src/main/assets/panel/index.html" \
+             "$ROOT/app/src/main/assets/panel/login.html" "$ROOT/public/login.html"; do
+        grep -q '<title>.*Trix' "$f" && ok "titulo Trix em ${f#$ROOT/}" || bad "titulo antigo em ${f#$ROOT/}"
+    done
+    grep -q '00deUdia Otimizações' "$ROOT/web/index.php" \
+        && bad "index.php ainda mostra a marca antiga" || ok "marca antiga saiu do painel web"
+    # o nome antigo nao pode sobrar no branding (nome de usuario do login continua)
+    grep -q '<h1>00 Otimização</h1>\|<h1>00deUdia Otimizações</h1>' "$ROOT/app/src/main/assets/panel/index.html" \
+        && bad "painel do app ainda mostra a marca antiga" || ok "painel do app com a marca Trix"
+
+    # cor padrao prata (laranja segue disponivel como opcao)
+    grep -q -- '--accent:#c7ccd6' "$ROOT/web/index.php" \
+        && grep -q -- '--accent:#c7ccd6' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "cor padrao prata nos dois paineis" || bad "painel sem a cor prata padrao"
+    grep -q '<item name="colorPrimary">#C7CCD6</item>' "$ROOT/app/src/main/res/values/themes.xml" \
+        && ok "tema Android: colorPrimary prata" || bad "colorPrimary nao e prata"
+    grep -q 'data-accent="laranja"' "$ROOT/web/index.php" \
+        && ok "laranja continua na paleta (opcao do usuario)" || bad "laranja sumiu da paleta"
+    grep -q 'localStorage.getItem("otm-accent") || "prata"' "$ROOT/web/index.php" \
+        && grep -q 'localStorage.getItem("otm-accent") || "prata"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "accent padrao salvo e prata" || bad "accent padrao ainda e laranja"
+    grep -q 'accent: String = "#c7ccd6"' "$ROOT/app/src/main/java/com/otm/pack/OtmExec.kt" \
+        && ok "cor padrao do flutuante e prata" || bad "flutuante ainda abre laranja"
+
+    # icones: todas as densidades presentes, quadradas, e o foreground do adaptive.
+    # Le o cabecalho PNG direto (sem PIL: a suite nao depende de pacote externo).
+    icon_out=$(python3 - "$ROOT" <<'PYEOF'
+import struct, sys
+root = sys.argv[1]
+esp = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
+
+def tamanho(p):
+    with open(p, 'rb') as fh:
+        if fh.read(8) != b'\x89PNG\r\n\x1a\n':
+            raise ValueError('nao e PNG')
+        fh.read(4)
+        if fh.read(4) != b'IHDR':
+            raise ValueError('sem IHDR')
+        return struct.unpack('>II', fh.read(8))
+
+erros = []
+for d, n in esp.items():
+    for suf in ('ic_launcher', 'ic_launcher_round'):
+        try:
+            w, h = tamanho(f'{root}/app/src/main/res/mipmap-{d}/{suf}.png')
+        except Exception as e:
+            erros.append(f'{suf}-{d}: {e}'); continue
+        if (w, h) != (n, n): erros.append(f'{suf}-{d}: {w}x{h} != {n}x{n}')
+try:
+    w, h = tamanho(f'{root}/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png')
+    if (w, h) != (432, 432): erros.append(f'foreground: {w}x{h} != 432x432')
+except Exception as e:
+    erros.append(f'foreground: {e}')
+print('; '.join(erros))
+PYEOF
+)
+    if [ -z "$icon_out" ]; then
+        ok "icones: 5 densidades (quadrado + redondo) e foreground 432x432"
+    else
+        bad "icones com problema: $icon_out"
+    fi
+    # a logo nova substituiu a antiga: o icone nao pode ser igual ao de antes do
+    # rebranding (tag v2.41.2, o ultimo release com a logo velha)
+    if git -C "$ROOT" show v2.41.2:app/src/main/res/mipmap-xxxhdpi/ic_launcher.png > "$TMP/ic_old.png" 2>/dev/null; then
+        if cmp -s "$TMP/ic_old.png" "$ROOT/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"; then
+            bad "ic_launcher ainda e o antigo (logo nao trocou)"
+        else
+            ok "ic_launcher trocado pela logo nova"
+        fi
+    else
+        ok "sem versao anterior do icone para comparar"
+    fi
 }
 
 t_build_plugins() {
@@ -1657,6 +2047,41 @@ t_new_scripts() {
     assert_contains "$TMP/pm_top" "processos" "proc-mgr top lista os processos"
     OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" info com.exemplo > "$TMP/pm_info" 2>&1
     grep -q 'não está rodando\|nao esta rodando\|Processos' "$TMP/pm_info" && ok "proc-mgr info responde por app" || bad "proc-mgr info mudo"
+    # --- exceções ("X app não encerra") + encerrar todos ---
+    export OTM_TEST_HOME="$TMP/pm_home"; rm -rf "$OTM_TEST_HOME"; mkdir -p "$OTM_TEST_HOME"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep com.exemplo.live > "$TMP/pm_keep" 2>&1
+    assert_contains "$TMP/pm_keep" "com.exemplo.live" "proc-mgr keep cria a exceção"
+    grep -q 'com.exemplo.live' "$OTM_TEST_HOME/.packotm/procmgr/keep" \
+        && ok "exceção fica guardada no estado" || bad "exceção não foi guardada"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep-list > "$TMP/pm_klist" 2>&1
+    assert_contains "$TMP/pm_klist" "com.exemplo.live" "proc-mgr keep-list mostra a exceção"
+    # a exceção entra na lista que a limpeza respeita (common.sh)
+    k="$(HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh -c ". '$ROOT/scripts/common.sh'; otm_keep_list")"
+    case " $k " in *" com.exemplo.live "*) ok "exceção vale para o clean/ram-boost" ;;
+        *) bad "exceção não entrou em otm_keep_list" ;; esac
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" unkeep com.exemplo.live > "$TMP/pm_unk" 2>&1
+    grep -q 'com.exemplo.live' "$OTM_TEST_HOME/.packotm/procmgr/keep" \
+        && bad "unkeep não removeu a exceção" || ok "proc-mgr unkeep remove a exceção"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep com.exemplo.a >/dev/null 2>&1
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep-clear > "$TMP/pm_kclr" 2>&1
+    [ -s "$OTM_TEST_HOME/.packotm/procmgr/keep" ] && bad "keep-clear não limpou" \
+        || ok "proc-mgr keep-clear apaga todas"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" list > "$TMP/pm_list" 2>&1
+    grep -q 'app(s) rodando\|nenhum app de usuário rodando' "$TMP/pm_list" \
+        && ok "proc-mgr list responde" || bad "proc-mgr list mudo"
+    # apps: TODOS os instalados, para proteger quem NÃO está rodando agora
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" apps > "$TMP/pm_apps" 2>&1
+    grep -q '#OTM-APP pkg=com.instagram.android protected=0' "$TMP/pm_apps" \
+        && ok "proc-mgr apps lista todos os instalados" || bad "proc-mgr apps mudo"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" keep com.instagram.android >/dev/null 2>&1
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" apps > "$TMP/pm_apps2" 2>&1
+    grep -q '#OTM-APP pkg=com.instagram.android protected=1' "$TMP/pm_apps2" \
+        && ok "proc-mgr apps marca quem está protegido" || bad "proc-mgr apps sem o flag de exceção"
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" unkeep com.instagram.android >/dev/null 2>&1
+    # kill avisa (e não quebra) quando não há privilégio de shell
+    HOME="$OTM_TEST_HOME" OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" kill > "$TMP/pm_kill" 2>&1
+    grep -q 'sem permissão de shell' "$TMP/pm_kill" && ok "proc-mgr kill avisa sem shell" \
+        || bad "proc-mgr kill sem aviso de permissão"
     # renice/ram/cpu/freeze/status/restore exigiam root: saíram do proc-mgr
     OTM_NO_COLOR=1 OTM_MODE=local sh "$pf" renice com.exemplo -5 > "$TMP/pm_bad" 2>&1
     grep -qi 'módulo desconhecido\|uso:' "$TMP/pm_bad" \
@@ -1686,6 +2111,54 @@ t_new_scripts() {
     grep -q 'startStats' "$ROOT/web/index.php" && ok "painel: liga o polling das metricas" || bad "painel: sem startStats"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_game_per_app() {
+    printf '\n  # game-per-app.sh: resolução do jogo por app (downscale) e "auto"\n'
+    f="$ROOT/scripts/game-per-app.sh"
+    [ -f "$f" ] && ok "scripts/game-per-app.sh existe" || { bad "game-per-app.sh ausente"; return; }
+    rm -rf "$HOME/.packotm"
+    # o teste roda em ordem alfabética de funções: um teste anterior pode ter
+    # deixado um SDK antigo no store (o Game Mode exige API 31+).
+    printf '34' > "$TMP_STORE/prop.ro.build.version.sdk"
+    # downscale por perfil: cada perfil tem seu fator (nada de número inventado)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply com.exemplo.game fps > "$TMP/gpa_fps" 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.game" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.9*) ok "apply fps grava o downscale 0.9" ;;
+        *) bad "apply fps não gravou o overlay ($v)" ;; esac
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply com.exemplo.game max >/dev/null 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.game" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.5*) ok "apply max grava o downscale 0.5" ;;
+        *) bad "apply max não gravou o overlay ($v)" ;; esac
+    # "auto" resolve pelo jogo escolhido no pack (o flutuante não sabe qual é)
+    mkdir -p "$HOME/.packotm/game"
+    printf 'com.exemplo.escolhido\n' > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply auto fps > "$TMP/gpa_auto" 2>&1
+    [ -f "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" ] \
+        && ok "apply auto usa o jogo escolhido no pack" || bad "apply auto não resolveu o jogo"
+    # reset e show também aceitam "auto" (o flutuante usa os três)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" show auto > "$TMP/gpa_show" 2>&1
+    grep -q 'com.exemplo.escolhido' "$TMP/gpa_show" \
+        && ok "show auto mostra o jogo escolhido" || bad "show auto não resolveu o jogo"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" reset auto > "$TMP/gpa_reset" 2>&1
+    test ! -f "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" \
+        && ok "reset auto remove o overlay do jogo" || bad "reset auto não removeu"
+    # sem jogo escolhido e sem app em 1º plano: cai no Free Fire (o MESMO
+    # padrão do `adb-tweaks.sh game_open`) em vez de dar erro no meio da
+    # partida. Antes o "auto" do flutuante falhava nesse caso.
+    rm -f "$HOME/.packotm/game/pkg"
+    rm -f "$TMP_STORE/fg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply auto fps > "$TMP/gpa_no" 2>&1
+    grep -q 'com.dts.freefireth' "$TMP/gpa_no" \
+        && ok "auto sem jogo cai no Free Fire (não falha no flutuante)" \
+        || bad "auto sem jogo não usou o padrão do game_open"
+    # e o jogo escolhido continua ganhando do padrão
+    printf 'com.exemplo.escolhido\n' > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" show auto > "$TMP/gpa_esc" 2>&1
+    grep -q 'com.exemplo.escolhido' "$TMP/gpa_esc" \
+        && ok "auto prefere o jogo escolhido ao padrão" || bad "auto ignorou a escolha"
+    rm -f "$HOME/.packotm/game/pkg"
+    rm -rf "$HOME/.packotm"
 }
 
 t_modules() {
@@ -1751,15 +2224,21 @@ t_web() {
                  $_SESSION["otm_user"]="00deUdia"; $_SERVER["REQUEST_METHOD"]="GET";
                  require "'"$ROOT"'/web/index.php";' \
             > "$TMP/web_html" 2>&1
-        assert_contains "$TMP/web_html" "00deUdia Otimizações" "index.php traz a marca 00deUdia Otimizações"
+        assert_contains "$TMP/web_html" "Bem-vindo ao Trix" "index.php traz a marca Trix"
         n_cards=$(grep -c 'class="card"' "$TMP/web_html")
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
         [ "$n_sec" -eq 13 ] && ok "index.php renderiza a home + 11 categorias + Terminal" || bad "seções: $n_sec (esperado 13)"
-        for cat in "Geral" "Display &amp; Touch" "Sensi e mira" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
+        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "Dispositivos" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
+        # "Sensi e mira" virou "Flutuante" e ficou só com o botão do painel flutuante
+        grep -q 'Sensi e mira' "$TMP/web_html" && bad "a categoria antiga 'Sensi e mira' ainda existe" \
+            || ok "categoria 'Sensi e mira' renomeada para 'Flutuante'"
+        n_flut=$(awk '/<section id="g-Flutuante"/{f=1} f&&/data-id=/{n++} /<\/section>/{if(f){print n; exit}}' "$TMP/web_html")
+        [ "$n_flut" = "1" ] && ok "a aba Flutuante tem só o botão do painel flutuante" \
+            || bad "aba Flutuante com ${n_flut:-0} ações (esperado 1)"
         # Terminal: seção própria + campo de comando
         assert_contains "$TMP/web_html" 'id="g-Terminal"' "index.php tem a aba Terminal"
         assert_contains "$TMP/web_html" 'id="termInput"' "Terminal tem campo de comando"
@@ -1942,6 +2421,25 @@ t_panel_v219() {
     grep -q 'log_all' "$api" && ok "api.php: log_all" || bad "api.php sem log_all"
     grep -q 'id="logspanel"' "$app" && ok "app: painel de Logs" || bad "app sem painel de Logs"
     grep -q 'id="btnLogs"' "$app" && ok "app: botão Logs" || bad "app sem botão Logs"
+    # Logs detalhados: dizem POR QUE falhou e guardam a saída crua (não só "erro")
+    grep -q 'function otm_fail_reasons' "$lib" && ok "lib.php: extrai as razões da falha" || bad "log sem razões"
+    grep -q "'reasons' =>" "$lib" && ok "lib.php: grava as razões no log" || bad "log sem campo reasons"
+    grep -q "'out' => otm_clip" "$lib" && ok "lib.php: grava a saída crua (limitada)" || bad "log sem saída crua"
+    grep -q 'function otm_log_trim' "$lib" && grep -q 'private fun trimLog' "$src/PackBridge.kt" \
+        && ok "log: podado dos dois lados (não cresce sem fim)" || bad "log sem poda"
+    grep -q 'private fun failReasons' "$src/PackBridge.kt" && ok "bridge: extrai as razões da falha" || bad "bridge sem razões"
+    grep -q '.put("reasons", JSONArray(failReasons(out)))' "$src/PackBridge.kt" \
+        && ok "bridge: grava as razões no log" || bad "bridge log sem reasons"
+    grep -q 'has-det' "$app" && grep -q 'has-det' "$ROOT/web/index.php" \
+        && ok "app+web: log abre os detalhes no toque" || bad "log sem detalhes"
+    grep -q 'class="why"' "$app" && grep -q 'class="why"' "$ROOT/web/index.php" \
+        && ok "app+web: log mostra a lista de razões" || bad "log sem lista de razões"
+    # as duas pontes (PHP e Kotlin) gravam o MESMO formato de log
+    for k in applies changed failed reasons out; do
+        grep -q "'$k' =>" "$lib" && grep -q ".put(\"$k\"" "$src/PackBridge.kt" \
+            || bad "log: campo $k não está nos dois lados"
+    done
+    ok "log: mesmo formato no PHP e no Kotlin"
     # Terminal real: ponte + api + painel
     grep -q '"term" -> termImpl(payload)' "$src/PackBridge.kt" && ok "bridge: terminal (term)" || bad "bridge sem term"
     grep -q 'private fun termImpl' "$src/PackBridge.kt" && ok "bridge: termImpl executa comando" || bad "bridge sem termImpl"
@@ -2147,7 +2645,9 @@ t_smart_opt() {
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_auto1" 2>&1
     assert_contains "$TMP/so_auto1" "análise" "auto comeca pela analise do aparelho"
     assert_contains "$TMP/so_auto1" "nota" "auto mostra a nota"
-    assert_contains "$TMP/so_auto1" "otimização aplicada" "auto aplica em seguida"
+    # auto = analisa, aplica E mede antes/depois (o resultado tem de aparecer)
+    assert_contains "$TMP/so_auto1" "TESTE DE DESEMPENHO" "auto roda o teste de desempenho"
+    assert_contains "$TMP/so_auto1" "resultado:" "auto diz se melhorou, piorou ou ficou estável"
     [ -n "$(cat "$HOME/.packotm/smart/last" 2>/dev/null)" ] \
         && ok "auto grava o perfil aplicado" || bad "auto nao gravou o perfil"
     # a escolha do jogo muda o perfil automático para "jogo"
@@ -2199,6 +2699,40 @@ t_smart_opt() {
         && ok "coleta o throttling térmico (dumpsys thermalservice)" || bad "sem leitura do estado térmico"
     grep -q 'settings get global low_power' "$f" \
         && ok "coleta o estado da economia de energia" || bad "sem leitura da economia de energia"
+    # --- v2: análise mais profunda, rigor, medição e comparação ---
+    for leitura in 'proc/pressure/memory' 'vm.swappiness' 'wm density' \
+                   'cpufreq' 'Features'; do
+        grep -q "$leitura" "$f" && ok "v2: lê $leitura" || bad "v2: sem leitura de $leitura"
+    done
+    # os pontos fracos do aparelho aparecem no relatório (o que segura a nota)
+    grep -q 'SO_WEAK' "$f" && ok "v2: aponta os pontos fracos do aparelho" \
+        || bad "v2: sem pontos fracos"
+    # medição: existe a nota de desempenho e ela normaliza pelo que foi lido
+    grep -q 'so_measure()' "$f" && ok "v2: tem medição de desempenho" || bad "v2: sem medição"
+    grep -q 'so_measure_avg()' "$f" && ok "v2: mede 3× e tira a média" || bad "v2: sem média"
+    # bench: mede antes x depois e diz o resultado
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" bench equilibrado > "$TMP/so_bench" 2>&1
+    assert_contains "$TMP/so_bench" "TESTE DE DESEMPENHO" "bench anuncia o teste"
+    assert_contains "$TMP/so_bench" "antes" "bench mostra a medição de antes"
+    assert_contains "$TMP/so_bench" "depois" "bench mostra a medição de depois"
+    assert_contains "$TMP/so_bench" "resultado:" "bench conclui o resultado"
+    [ -s "$HOME/.packotm/smart/bench" ] && ok "bench guarda a medição" || bad "bench não guardou"
+    # compare: testa combinações e declara o vencedor
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" compare desempenho > "$TMP/so_cmp" 2>&1
+    assert_contains "$TMP/so_cmp" "COMPARANDO COMBINA" "compare anuncia a comparação"
+    assert_contains "$TMP/so_cmp" "testando" "compare testa mais de um caminho"
+    assert_contains "$TMP/so_cmp" "vencedor" "compare declara o vencedor"
+    # rigor: perfil inválido é recusado no bench/compare também
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" bench bogus > "$TMP/so_bad2" 2>&1
+    assert_contains "$TMP/so_bad2" "inválido" "bench recusa perfil inválido"
+    # o apply continua confirmando cada ajuste (leitura de volta)
+    grep -q 'so_verify' "$f" && ok "v2: apply confirma cada ajuste lendo de volta" \
+        || bad "v2: apply não confirma"
+    # a memória do kernel é ajustada com verificação (otm_sysctl lê de volta)
+    grep -q 'otm_sysctl vm.swappiness' "$f" \
+        && ok "v2: ajusta vm.swappiness conforme a RAM" || bad "v2: sem vm.swappiness"
     grep -q 'otm_ram_livre_mb' "$f" \
         && ok "coleta a RAM realmente livre (otm_ram_livre_mb)" || bad "sem leitura da RAM livre"
     # com o aparelho apertado, a decisão muda (menos apps em cache, limpeza funda)
@@ -2210,6 +2744,253 @@ t_smart_opt() {
         && ok "respeita a economia de energia já ligada" || bad "ignora a economia de energia ligada"
     rm -rf "$HOME/.packotm"
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
+t_smart_bigdump() {
+    printf '\n  # dumpsys grande (Samsung) não pode estourar o argv nem colar a bateria\n'
+    local f="$ROOT/scripts/smart-opt.sh"
+    local bin="$TMP/bin_big" st="$TMP/store_big"
+    rm -rf "$bin" "$st"; mkdir -p "$bin" "$st"
+    # `dumpsys display` passa de 380 KB (o caso real do SM-A075M) e o battery traz
+    # uma linha " level:" por UID, como no Android 14+. O dump grande ia como
+    # ARGUMENTO do printf externo (toybox) e morria com E2BIG.
+    cat > "$bin/dumpsys" <<'EOF'
+#!/bin/sh
+case "$1" in
+display)
+  i=0
+  while [ $i -lt 5000 ]; do
+    echo "  DisplayDeviceInfo$i: fps=120.0 modeId=$i padding padding padding padding"
+    i=$((i + 1))
+  done
+  ;;
+battery)
+  echo "  AC powered: false"
+  # o dump real traz uma linha " level: NN" por UID/consumidor (dezenas delas).
+  # O awk sem `exit` imprimia TODAS e o _num colava os dígitos num número só —
+  # era o "lixo" de centenas de dígitos na linha da bateria.
+  i=0
+  while [ $i -lt 40 ]; do
+    echo "  uid $i level: 8$((i % 10))"
+    i=$((i + 1))
+  done
+  echo "  level: 85"
+  echo "  temperature: 300"
+  ;;
+*) echo "" ;;
+esac
+exit 0
+EOF
+    chmod +x "$bin/dumpsys"
+    out="$(TMP_STORE="$st" PATH="$bin:$PATH" OTM_NO_COLOR=1 OTM_MODE=local \
+        sh "$f" analyze 2>&1)"
+    # o dump tem de ser grande o bastante para estourar o limite de argv
+    [ "$("$bin/dumpsys" display | wc -c)" -gt 131072 ] \
+        && ok "cenário: dumpsys display acima do limite de argv" \
+        || bad "cenário de teste fraco (dump pequeno)"
+    # o caminho seguro é o stdin (otm_echo): um argumento de 400 KB estoura o
+    # limite do kernel no Android, onde printf/sed/grep são binários (toybox).
+    # Aqui o `sh` do PC tem printf builtin e não reproduz o E2BIG, então o teste
+    # prova o MECANISMO: o texto grande tem de sair inteiro pelo otm_echo.
+    big="$(python3 -c 'print("x" * 400000)')"
+    n="$(. "$ROOT/scripts/common.sh" 2>/dev/null; otm_echo "$big" | wc -c)"
+    [ "$n" -ge 400000 ] \
+        && ok "otm_echo entrega 400 KB pelo stdin (sem passar por argv)" \
+        || bad "otm_echo truncou o texto grande ($n bytes)"
+    # e a leitura da taxa de tela NÃO pode mandar o dump como argumento
+    grep -q "printf '%s\\\\n' \"\$out\"" "$f" \
+        && bad "display_max_hz ainda passa o dump como argumento" \
+        || ok "display_max_hz não passa o dump como argumento"
+    printf '%s\n' "$out" | grep -q 'Argument list too long' \
+        && bad "o dump grande foi passado como argumento (E2BIG)" \
+        || ok "dump grande não vai mais como argumento (sem E2BIG)"
+    # a taxa de tela volta a ser lida (era o efeito prático do E2BIG)
+    printf '%s\n' "$out" | grep -q '120 Hz suportado' \
+        && ok "lê a taxa de tela com dump grande (120 Hz)" \
+        || bad "não leu a taxa de tela: $(printf '%s\n' "$out" | grep 'tela ')"
+    # a bateria é um número só (não os dígitos de todas as linhas colados)
+    printf '%s\n' "$out" | grep -q 'bateria *85%' \
+        && ok "bateria correta com várias linhas ' level:' (85%)" \
+        || bad "bateria errada: $(printf '%s\n' "$out" | grep 'bateria ')"
+    # e o valor gigante colado não aparece em lugar nenhum
+    printf '%s\n' "$out" | grep -qE 'bateria[^0-9]*[0-9]{4,}' \
+        && bad "a bateria ainda vem com dígitos colados" \
+        || ok "sem número gigante de bateria"
+    # a temperatura (mesmo padrão multi-linha) também vem de uma linha só
+    grep -q "otm_batt_get temperature" "$ROOT/scripts/common.sh" \
+        && ok "temperatura lê a linha canônica (otm_batt_get)" \
+        || bad "temperatura ainda soma as linhas"
+    rm -rf "$bin" "$st"
+}
+
+t_smart_learning() {
+    printf '\n  # otimizador que APRENDE: memória por aparelho e ciclo completo\n'
+    local f="$ROOT/scripts/smart-opt.sh"
+    # a memória existe e é por assinatura de hardware (não global)
+    grep -q 'SO_MEM=' "$f" && ok "v3: existe memória do aparelho (SO_MEM)" || bad "v3: sem memória"
+    grep -q 'so_mem_key()' "$f" && ok "v3: memória tem chave por hardware" || bad "v3: sem chave de memória"
+    grep -q 'so_mem_get()' "$f" && grep -q 'so_mem_set()' "$f" \
+        && ok "v3: memória tem leitura e escrita" || bad "v3: memória incompleta"
+    # decide() consulta a memória (é o que faz ele aprender de verdade)
+    grep -q 'D_MEM_RENDER="$(so_mem_get renderer)"' "$f" \
+        && ok "v3: decide usa o renderizador que venceu aqui" || bad "v3: decide ignora a memória (renderer)"
+    grep -q 'D_MEM_HZ="$(so_mem_get hz)"' "$f" \
+        && ok "v3: decide usa a taxa de tela que venceu aqui" || bad "v3: decide ignora a memória (hz)"
+    # compare grava na memória (fecha o ciclo do aprendizado)
+    grep -q 'so_mem_set renderer' "$f" && grep -q 'so_mem_set hz' "$f" \
+        && ok "v3: compare grava o vencedor na memória" || bad "v3: compare não grava na memória"
+    # auto = ciclo completo, com snapshot de segurança e resumo único
+    grep -q 'snapshot.sh" save' "$f" \
+        && ok "v3: auto tira snapshot de segurança antes" || bad "v3: auto sem snapshot de segurança"
+    grep -q 'RESULTADO FINAL' "$f" && ok "v3: auto mostra UM resultado no fim" || bad "v3: auto sem resumo final"
+    grep -q 'cmd_compare "$prof"' "$f" && ok "v3: auto testa as combinações" || bad "v3: auto não compara"
+
+    # comportamento REAL: o auto grava a memória e o `mem` mostra o que aprendeu
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_auto_mem" 2>&1
+    [ -f "$HOME/.packotm/smart/memory" ] && ok "v3: auto grava a memória do aparelho" \
+        || bad "v3: auto não gravou a memória"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" mem > "$TMP/so_mem" 2>&1
+    assert_contains "$TMP/so_mem" "APRENDEU" "v3: 'mem' mostra o que ele aprendeu"
+    assert_contains "$TMP/so_mem" "melhor renderizador" "v3: 'mem' mostra o renderizador vencedor"
+    assert_contains "$TMP/so_mem" "vezes que rodou aqui" "v3: 'mem' conta as execuções"
+
+    # a chave da assinatura sai do próprio arquivo (sem adivinhar o formato)
+    k="$(sed -n 's/^\([^ ]*\) runs=.*/\1/p' "$HOME/.packotm/smart/memory" | head -1)"
+    if [ -n "$k" ]; then
+        # a memória MUDA a decisão. O valor tem de ser DIFERENTE do padrão, senão
+        # o teste passaria mesmo sem a memória (no harness a GPU não é lida e o
+        # padrão já é skiagl — por isso aqui o vencedor é skiavk).
+        printf '%s renderer=skiavk\n%s hz=90\n' "$k" "$k" > "$HOME/.packotm/smart/memory"
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan > "$TMP/so_memplan" 2>&1
+        assert_contains "$TMP/so_memplan" "skiavk" "v3: o plano começa pelo renderizador que venceu aqui"
+        assert_contains "$TMP/so_memplan" "90 Hz" "v3: o plano começa pela taxa que venceu aqui"
+        # 'mem' mostra a taxa que venceu (só aparece depois de haver uma medida)
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" mem > "$TMP/so_mem2" 2>&1
+        assert_contains "$TMP/so_mem2" "melhor taxa de tela" "v3: 'mem' mostra a taxa vencedora"
+        # a memória de OUTRO aparelho não é herdada (chave diferente)
+        printf 'OUTRO|APARELHO|99999|0|0 renderer=skiavk\nOUTRO|APARELHO|99999|0|0 hz=90\n' \
+            > "$HOME/.packotm/smart/memory"
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan > "$TMP/so_other" 2>&1
+        grep -q 'skiavk' "$TMP/so_other" && bad "v3: herdou memória de outro aparelho" \
+            || ok "v3: memória de outro aparelho não é herdada"
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" mem > "$TMP/so_mem3" 2>&1
+        assert_contains "$TMP/so_mem3" "ainda não testei" "v3: 'mem' avisa quando não há nada aprendido aqui"
+    else
+        bad "v3: não consegui ler a chave de memória do arquivo"
+    fi
+    # o resumo final sai com o vencedor
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_full" 2>&1
+    assert_contains "$TMP/so_full" "RESULTADO FINAL" "v3: auto termina com o resultado final"
+    assert_contains "$TMP/so_full" "config aplicada" "v3: o resultado diz o que ficou aplicado"
+    [ -f "$HOME/.packotm/smart/memory" ] && ok "v3: auto grava a memória do aparelho" \
+        || bad "v3: auto não gravou a memória"
+    rm -rf "$HOME/.packotm"
+}
+
+t_backup_crypto() {
+    printf '\n  # backup: arquivo cifrado que devolve as configurações\n'
+    local f="$ROOT/scripts/backup.sh"
+    [ -f "$f" ] && ok "scripts/backup.sh existe" || { bad "backup.sh ausente"; return; }
+    sh -n "$f" 2>/dev/null && ok "backup.sh tem sintaxe válida" || bad "backup.sh com erro de sintaxe"
+
+    # ida e volta REAL: coleta, mexe no aparelho e restaura
+    rm -rf "$HOME/.packotm"
+    settings put global window_animation_scale 0.5
+    settings put global force_gpu_rendering 1
+    settings put system peak_refresh_rate 120.0
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" collect > "$TMP/bk_pack" 2>&1
+    assert_contains "$TMP/bk_pack" "#TRIX-BACKUP-V1" "collect assina o pacote"
+    assert_contains "$TMP/bk_pack" "global window_animation_scale 0.5" "collect guarda a animação atual"
+    assert_contains "$TMP/bk_pack" "system peak_refresh_rate 120.0" "collect guarda a taxa de tela"
+
+    # o otimizador mexe em tudo
+    settings put global window_animation_scale 0
+    settings put global force_gpu_rendering 0
+    settings put system peak_refresh_rate 60.0
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore "$TMP/bk_pack" > "$TMP/bk_res" 2>&1
+    assert_eq "0.5" "$(settings get global window_animation_scale)" "restore devolve a animação"
+    assert_eq "1" "$(settings get global force_gpu_rendering)" "restore devolve o force gpu"
+    assert_eq "120.0" "$(settings get system peak_refresh_rate)" "restore devolve a taxa de tela"
+
+    # arquivo que não é backup é recusado (não aplica lixo)
+    echo "isto nao e um backup" > "$TMP/bk_fake"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore "$TMP/bk_fake" > "$TMP/bk_bad" 2>&1
+    assert_contains "$TMP/bk_bad" "não é um backup" "restore recusa arquivo alheio"
+    # arquivo inexistente também é recusado com recado claro
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore "$TMP/nao_existe" > "$TMP/bk_miss" 2>&1
+    assert_contains "$TMP/bk_miss" "não encontrado" "restore avisa quando o arquivo não existe"
+
+    # o núcleo de criptografia do app: envelope, IV novo, adulteração detectada
+    local core="$ROOT/app/src/main/java/com/otm/pack/OtmBackupCore.kt"
+    [ -f "$core" ] && ok "app: OtmBackupCore.kt existe" || bad "app: sem núcleo de criptografia"
+    grep -q 'AES/GCM/NoPadding' "$core" && ok "app: usa AES-GCM (cifra + autentica)" \
+        || bad "app: cifra não é GCM"
+    grep -q 'SecureRandom' "$core" && ok "app: IV aleatório (não reaproveita)" || bad "app: IV fixo"
+    grep -q 'AndroidKeyStore' "$ROOT/app/src/main/java/com/otm/pack/OtmBackup.kt" \
+        && ok "app: a chave vive no Keystore (não sai do aparelho)" || bad "app: chave fora do Keystore"
+    # e o mesmo formato existe no lado web
+    grep -q 'aes-256-gcm' "$ROOT/web/backup.php" && ok "web: cifra com aes-256-gcm" || bad "web: sem GCM"
+    grep -q 'OTM_BKP_HEADER' "$ROOT/web/backup.php" && grep -q 'TRIX BACKUP' "$core" \
+        && ok "web e app usam o mesmo envelope" || bad "envelopes divergem"
+
+    # as ações de backup existem nos dois painéis e na whitelist
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["backup.export","backup.import","backup.list"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/bk_reg" 2>&1
+    test ! -s "$TMP/bk_reg" && ok "ações de backup no registro do painel" || bad "registro: $(cat "$TMP/bk_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("backup.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/bk_lib" 2>&1
+    assert_contains "$TMP/bk_lib" "ok" "backup.sh na whitelist"
+    grep -q '"backup.export"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o backup" || bad "app: actions.json sem backup"
+    grep -q 'data-hub="backup.export"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && grep -q 'data-hub="backup.export"' "$ROOT/web/index.php" \
+        && ok "botões de backup nos dois painéis" || bad "botões de backup divergem"
+    [ -f "$ROOT/app/src/main/assets/pack/scripts/backup.sh" ] \
+        && ok "espelho: backup.sh presente" || bad "espelho: backup.sh ausente"
+    # a ponte do app liga os botões ao código nativo (não a script)
+    grep -q '"backup_export"' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "app: a ponte atende o backup" || bad "app: ponte sem backup"
+    rm -rf "$HOME/.packotm"
+}
+
+t_smart_card_single() {
+    printf '\n  # card do otimizador: UM botão (sem hub de sub-ações)\n'
+    local web="$ROOT/web/index.php" panel="$ROOT/app/src/main/assets/panel/index.html"
+    # o hub com os 11 botões internos saiu
+    for f in "$web" "$panel"; do
+        n=$(grep -c 'data-hub="smart\.' "$f")
+        [ "$n" = "0" ] && ok "$(basename "$f"): sem sub-ações do otimizador" \
+            || bad "$(basename "$f"): ainda tem $n sub-ações do otimizador"
+        # o select de perfil do card saiu (o app decide sozinho)
+        grep -q 'data-p="perfil"' "$f" \
+            && bad "$(basename "$f"): ainda tem select de perfil" \
+            || ok "$(basename "$f"): sem select de perfil (decide sozinho)"
+        # os botões de segurança ficaram
+        grep -q 'data-hub="backup.export"' "$f" && grep -q 'data-hub="backup.import"' "$f" \
+            && ok "$(basename "$f"): salvar/restaurar presentes" || bad "$(basename "$f"): sem backup"
+        # e o aviso de que pode demorar
+        grep -q 'demorar' "$f" && ok "$(basename "$f"): avisa que pode demorar" \
+            || bad "$(basename "$f"): sem aviso de demora"
+    done
+    # a ação virou comando único, com confirmação e 'cuidado'
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.auto");
+             echo count($a["params"])===0 ? "semparams" : "temparams";' > "$TMP/sc_p" 2>&1
+    assert_contains "$TMP/sc_p" "semparams" "a ação não pede mais parâmetro (um botão só)"
+
+    # rede de segurança: as ações de recuperação precisam de botão nos DOIS
+    # painéis. Ao remover o hub do otimizador, "Reverter TUDO" e o snapshot
+    # ficaram sem nenhum botão — o usuário perdeu como desfazer.
+    for id in restore_all snapshot_save backup.export backup.import; do
+        if grep -q "data-hub=\"$id\"\|data-qa=\"$id\"" "$web" \
+           && grep -q "data-hub=\"$id\"\|data-qa=\"$id\"" "$panel"; then
+            ok "recuperação alcançável nos dois painéis: $id"
+        else
+            bad "ação de recuperação sem botão: $id"
+        fi
+    done
 }
 
 t_ramboost() {
@@ -2331,6 +3112,103 @@ t_clean() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_resolution() {
+    printf '\n  # resolução de tela: perfis de vários aparelhos + custom\n'
+    local f="$ROOT/scripts/resolution.sh"
+    [ -f "$f" ] && ok "scripts/resolution.sh existe" || { bad "resolution.sh ausente"; return; }
+    # a lista tem perfis de aparelhos reais e nomes legíveis
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" list > "$TMP/res_list" 2>&1
+    assert_contains "$TMP/res_list" "720x1600" "lista traz o 720p alto (celular comum)"
+    assert_contains "$TMP/res_list" "1080x2340" "lista traz o 1080p alto"
+    assert_contains "$TMP/res_list" "1440x3200" "lista traz o QHD alto"
+    assert_contains "$TMP/res_list" "RESOLUÇÕES DISPONÍVEIS" "lista se identifica"
+    # aplica um perfil pelo nome e confere que o wm size recebeu o valor
+    rm -rf "$HOME/.packotm"
+    : > "$TMP/res.log"; export TMP_CMD_LOG="$TMP/res.log"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 720x1600 > "$TMP/res_ap" 2>&1
+    assert_contains "$TMP/res_ap" "720x1600" "apply aplica a resolução pedida"
+    grep -q 'wm size 720x1600' "$TMP/res.log" \
+        && ok "apply manda 'wm size' com o valor certo" || bad "apply não chamou wm size"
+    # resolução custom em WxH é aceita
+    : > "$TMP/res.log"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 900x1800 > "$TMP/res_c" 2>&1
+    grep -q 'wm size 900x1800' "$TMP/res.log" \
+        && ok "apply aceita resolução personalizada" || bad "custom não passou"
+    # valores inválidos são recusados (nada de quebrar a tela)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 99x99 > "$TMP/res_bad" 2>&1
+    assert_contains "$TMP/res_bad" "pequena demais" "apply recusa resolução minúscula"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 99999x99999 > "$TMP/res_bad2" 2>&1
+    assert_contains "$TMP/res_bad2" "grande demais" "apply recusa resolução absurda"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply abc > "$TMP/res_bad3" 2>&1
+    assert_contains "$TMP/res_bad3" "desconhecido" "apply recusa nome inexistente"
+    # reset devolve a de fábrica
+    : > "$TMP/res.log"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" reset > "$TMP/res_rst" 2>&1
+    grep -q 'wm size reset' "$TMP/res.log" \
+        && ok "reset devolve a resolução de fábrica" || bad "reset não chamou wm size reset"
+    # a resolução de fábrica fica guardada (o restore do pack depende disso)
+    grep -q 'ST/res/orig' "$f" && ok "guarda a resolução de fábrica" || bad "não guarda a original"
+    unset TMP_CMD_LOG
+    # whitelist do painel + catálogo
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("resolution.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' \
+        > "$TMP/res_lib" 2>&1
+    assert_contains "$TMP/res_lib" "ok" "resolution.sh na whitelist"
+    # espelho do app
+    [ -f "$ROOT/app/src/main/assets/pack/scripts/resolution.sh" ] \
+        && ok "espelho: resolution.sh presente" || bad "espelho: resolution.sh ausente"
+}
+
+t_smart_clean_protect() {
+    printf '\n  # limpeza inteligente: nunca fecha o overlay, o app do pack nem o app em uso\n'
+    local f="$ROOT/scripts/clean.sh"
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/sc.log" TMP_AM_LOG="$TMP/sc.log" TMP_PM_LOG="$TMP/sc.log"
+    : > "$TMP_CMD_LOG"
+    # o app na tela agora é o jogo (o usuário está na partida)
+    printf 'com.dts.freefireth' > "$TMP_STORE/fg"
+    # escolhe um jogo no Modo Competitivo diferente do que está em foco
+    mkdir -p "$HOME/.packotm/game"; printf 'com.mojang.minecraftpe' > "$HOME/.packotm/game/pkg"
+    # protege um app no anti-relog
+    mkdir -p "$HOME/.packotm/keepalive"; printf 'com.instagram.android\n' > "$HOME/.packotm/keepalive/apps"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now fundo > "$TMP/sc_out" 2>&1
+    # o app EM PRIMEIRO PLANO nunca é encerrado
+    grep -q 'force-stop com.dts.freefireth' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou o app em primeiro plano" || ok "limpeza poupa o app em primeiro plano"
+    # o jogo escolhido no Modo Competitivo nunca é encerrado
+    grep -q 'force-stop com.mojang.minecraftpe' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou o jogo do Modo Competitivo" || ok "limpeza poupa o jogo escolhido"
+    # os protegidos no anti-relog continuam poupados
+    grep -q 'force-stop com.instagram.android' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou um protegido no anti-relog" || ok "limpeza poupa os protegidos no anti-relog"
+    # o próprio app do pack está no OTM_SYS_KEEP (nunca é encerrado)
+    grep -q 'com.otm.pack' "$ROOT/scripts/common.sh" \
+        && ok "o app do pack está na lista de protegidos" || bad "com.otm.pack fora da proteção"
+    # os outros apps de fundo SÃO encerrados (a limpeza ainda funciona)
+    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" \
+        && ok "limpeza ainda encerra os apps de fundo" || bad "limpeza não encerrou nada"
+    # o overlay do jogo (o painel flutuante) é protegido pelo pacote do app
+    printf 'com.otm.pack' > "$TMP_STORE/fg"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now fundo > /dev/null 2>&1
+    grep -q 'force-stop com.otm.pack' "$TMP_CMD_LOG" \
+        && bad "limpeza fechou o app do pack (derrubaria o overlay)" || ok "limpeza nunca fecha o app do pack/overlay"
+    # ram-boost usa a mesma proteção
+    : > "$TMP_CMD_LOG"
+    printf 'com.dts.freefiremax' > "$TMP_STORE/fg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$ROOT/scripts/ram-boost.sh" boost normal > /dev/null 2>&1
+    grep -q 'force-stop com.dts.freefiremax' "$TMP_CMD_LOG" \
+        && bad "ram-boost fechou o app em primeiro plano" || ok "ram-boost também poupa o app em primeiro plano"
+    # otm_keep_list junta jogo + anti-relog + primeiro plano, sem repetir
+    OTM_NO_COLOR=1 OTM_MODE=su sh -c '. "'"$ROOT"'/scripts/common.sh"; otm_keep_list' > "$TMP/sc_keep" 2>&1
+    assert_contains "$TMP/sc_keep" "com.dts.freefiremax" "otm_keep_list inclui o app em primeiro plano"
+    assert_contains "$TMP/sc_keep" "com.mojang.minecraftpe" "otm_keep_list inclui o jogo escolhido"
+    d=$(tr ' ' '\n' < "$TMP/sc_keep" | grep -c '^com.dts.freefiremax$')
+    [ "$d" = "1" ] && ok "otm_keep_list não repete pacotes" || bad "otm_keep_list repetiu ($d)"
+    rm -rf "$HOME/.packotm" "$TMP_STORE/fg"
+    unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
+}
+
 t_privilege_detect() {
     printf '\n  # privilégio: processo que já é shell (Shizuku/ADB) não pode ser recusado\n'
     # O app roda os scripts pelo Shizuku: o processo JÁ nasce como uid 2000 e não
@@ -2424,6 +3302,21 @@ t_no_silent_conflicts() {
         global policy_control
         system clock_seconds
         system status_bar_show_battery_percent
+        # Wi-Fi e rede: os pares liga/desliga (wifi_off, mobile_net_off,
+        # net_tune off) devolvem o valor oposto ao da ação de ligar.
+        global wifi_wakeup_enabled
+        global wifi_power_save
+        global mobile_data_always_on
+        global network_avoid_bad_wifi
+        global wifi_scan_throttle_enabled
+        # DND: dnd() entra em alarmes-apenas (3) e dnd_off() volta a 0.
+        secure zen_mode
+        # renderização por GPU: gpu() liga e gpu_off() devolve ao sistema.
+        global force_gpu_rendering
+        global game_driver_all_apps
+        # economia de dados: mobile_net() desliga e mobile_net_off() devolve.
+        # É o par liga/desliga (mesma chave, valores opostos), intencional.
+        global data_saver_mode
     "
     python3 - "$ROOT" "$allow" <<'PYEOF' > "$TMP/conf"
 import re,sys,glob,collections,os
@@ -2677,9 +3570,11 @@ t_pack_scripts_mirror
 t_app_login
 t_app_exec
 t_app_fixes
+t_footer_sticky
 t_new_features
 t_panel_state
 t_panel_stats
+t_fps_real
 t_game_keepalive
 t_game_open
 t_pack_stamp
@@ -2714,7 +3609,7 @@ t_overlay() {
     grep -q 'OtmExec.run' "$svc" \
         && ok "overlay usa o executor compartilhado" || bad "overlay não usa OtmExec"
     # a sensi e os perfis de toque estão no painel flutuante
-    grep -q 'sensi.sh' "$svc" && ok "overlay lê a sensi do aparelho" || bad "overlay sem sensi.sh"
+    grep -q 'sensi.sh' "$svc" && ok "overlay aplica o headshot da sensi" || bad "overlay sem sensi.sh"
     grep -q 'ff-touch.sh' "$svc" && ok "overlay troca o perfil de toque" || bad "overlay sem ff-touch.sh"
     for p in balanced headshot spray sniper speed; do
         grep -q "\"$p\"" "$svc" || bad "overlay sem o perfil $p"
@@ -2724,11 +3619,239 @@ t_overlay() {
     grep -q 'text = "00"' "$svc" && ok "overlay se chama só '00'" || bad "overlay não usa o nome '00'"
     grep -q 'text = "Sensi & mira"' "$svc" && bad "overlay ainda mostra o título antigo" \
         || ok "overlay não usa mais o título antigo"
-    # organizado em seções (cabeçalho próprio), não numa lista única
-    grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
-    for s in "Sensi do seu aparelho" "Perfil de toque" "Atalhos"; do
-        grep -q "\"$s\"" "$svc" && ok "overlay tem a seção '$s'" || bad "overlay sem a seção '$s'"
+    # organizado em CATEGORIAS (abas), não numa lista única
+    grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
+    for t in Monitor Jogo Toque Motor Processos Atalhos; do
+        grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
+    # a ORDEM do `when` do tabView tem de casar com a ordem de TABS: um índice
+    # trocado mostra o conteúdo de uma aba no rótulo de outra (o FPS saía em
+    # "Processos" e "Monitor" abria os perfis de toque). Compara os dois lados.
+    python3 - "$svc" <<'PY' && ok "overlay casa o índice da aba com o conteúdo certo" \
+        || bad "overlay: índice da aba fora de sincronia com TABS"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+tabs = re.search(r'TABS\s*=\s*listOf\(([^)]*)\)', src)
+tv = re.search(r'private fun tabView\(index: Int\): View = when \(index\) \{(.*?)\n    \}', src, re.S)
+if not (tabs and tv):
+    sys.exit(1)
+nomes = re.findall(r'"([^"]+)"', tabs.group(1))
+# cada aba tem de ter uma função própria, na MESMA ordem dos rótulos
+esperado = ["monitorTab", "gameTab", "touchTab", "engineTab", "procTab", "shortcutsTab"]
+achado = re.findall(r'(\w+Tab)\(\)', tv.group(1))
+sys.exit(0 if achado == esperado and len(nomes) == len(esperado) else 1)
+PY
+    # o FPS fica na PRIMEIRA aba (é o que o usuário abre no meio da partida)
+    grep -q '0 -> monitorTab()' "$svc" \
+        && ok "a aba do FPS é a primeira (índice 0)" || bad "o FPS não está na primeira aba"
+    # a aba Monitor mostra o FPS REAL (SurfaceFlinger), não a taxa de tela
+    grep -q 'panel-stats.sh' "$svc" && ok "overlay usa o panel-stats na aba Monitor" \
+        || bad "overlay não lê o consumo real"
+    grep -q 'FPS do jogo' "$svc" && ok "overlay mostra o FPS do jogo no monitor" \
+        || bad "overlay sem FPS no monitor"
+    grep -q 's\["fps"\]\|"fps"' "$svc" && ok "overlay lê o campo fps do painel" \
+        || bad "overlay ignora o campo fps"
+    grep -q 'private fun monitorTab' "$svc" && ok "overlay tem a aba Monitor" \
+        || bad "overlay sem a aba Monitor"
+    # o monitor não inventa: campo ausente vira "—"
+    grep -q 'monitorRow' "$svc" && grep -q '?: "—"' "$svc" \
+        && ok "overlay mostra '—' no que o aparelho não informou" || bad "overlay sem fallback do monitor"
+    # o monitor se atualiza sozinho (senão o FPS fica congelado na partida)
+    grep -q 'postDelayed(4000)' "$svc" && ok "overlay atualiza o monitor sozinho" \
+        || bad "overlay com monitor congelado"
+    # a aba fica alta: precisa de rolagem, senão os últimos botões somem
+    grep -q 'ScrollView' "$svc" && ok "overlay tem rolagem (abas altas)" \
+        || bad "overlay sem rolagem"
+    # TAMANHO ESTÁVEL: a janela não pode medir WRAP_CONTENT na largura, senão
+    # cada aba tem um tamanho e o painel "pula" ao trocar de aba
+    grep -q 'private fun panelWidth()' "$svc" && grep -q 'private fun panelMaxHeight()' "$svc" \
+        && ok "overlay tem largura fixa e teto de altura" \
+        || bad "overlay com tamanho variável por aba"
+    grep -q 'baseParams(panelWidth())' "$svc" \
+        && ok "o painel nasce com a largura fixa" || bad "painel nasce com largura variável"
+    grep -q 'minimumWidth' "$svc" && bad "overlay ainda usa minimumWidth (largura varia)" \
+        || ok "overlay não depende de minimumWidth"
+    # a bolha (minimizado) tem tamanho FIXO: o ícone é adaptive icon e, solto
+    # num ImageView, não tem tamanho confiável (saía grande/irregular)
+    grep -q 'BUBBLE_DP' "$svc" && ok "a bolha tem tamanho fixo (BUBBLE_DP)" \
+        || bad "bolha sem tamanho fixo"
+    grep -q 'baseParams(if (value) dp(BUBBLE_DP) else panelWidth())' "$svc" \
+        && ok "minimizar usa o tamanho certo em cada estado" \
+        || bad "minimizar não fixa o tamanho"
+    # os rótulos das 5 abas não cabem numa linha só no painel estreito
+    grep -q 'TAB_COLS' "$svc" && ok "as abas quebram em linhas (rótulo legível)" \
+        || bad "abas numa linha só (rótulo cortado)"
+    # o painel não pode voltar a ser estreito nem virar a tela do jogo: a faixa
+    # sadia é "painel de verdade, mas ainda deixando o jogo à vista". 0.46 ficava
+    # fino; 0.70 tomava a tela (reclamação: "o painel tá mtt grande").
+    python3 - "$svc" <<'PY' && ok "painel tem largura de painel (não fica fino nem toma a tela)" \
+        || bad "largura do painel fora da faixa 0.5..0.65"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'PANEL_W_FRAC\s*=\s*([0-9.]+)f', src)
+sys.exit(0 if m and 0.5 <= float(m.group(1)) <= 0.65 else 1)
+PY
+    # a altura não pode reservar mais da metade da tela por cima do jogo
+    python3 - "$svc" <<'PY' && ok "altura do painel deixa o jogo à vista (<= 0.55)" \
+        || bad "painel alto demais (altura > 0.55 da tela)"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'PANEL_H_FRAC\s*=\s*([0-9.]+)f', src)
+sys.exit(0 if m and float(m.group(1)) <= 0.55 else 1)
+PY
+    # o teto de largura não pode passar da própria tela (aparelho estreito)
+    python3 - "$svc" <<'PY' && ok "o teto da largura respeita a tela (não estoura a borda)" \
+        || bad "teto de largura pode passar da tela"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+sys.exit(0 if re.search(r'minOf\(dp\(320\),\s*tela - dp\(16\)\)', src) else 1)
+PY
+    # reduzir a resolução (wm size) muda as métricas: a janela precisa se
+    # reajustar, senão o painel fica maior que a tela nova (parecia "enorme")
+    grep -q 'override fun onConfigurationChanged' "$svc" \
+        && ok "o painel se reajusta quando a resolução muda" \
+        || bad "painel não se reajusta após wm size (fica maior que a tela)"
+    grep -q 'updateViewLayout' "$svc" \
+        && ok "o reajuste aplica a janela de novo" || bad "reajuste sem updateViewLayout"
+    # a bolha usa o PNG redondo: o adaptive icon (ic_launcher) desenha o logo em
+    # ~66% do quadro e deixava a bolha com um logo pequeno perdido num círculo
+    grep -q 'R.mipmap.ic_launcher_round' "$svc" \
+        && ok "a bolha usa o ícone redondo (preenche o círculo)" \
+        || bad "bolha usa o adaptive icon (logo pequeno e torto)"
+    # TODA chamada do overlay tem de apontar para um script que existe. Um nome
+    # de script errado só apareceria em runtime, no meio da partida.
+    python3 - "$svc" "$ROOT/scripts" <<'PY' && ok "overlay só chama scripts que existem" \
+        || bad "overlay chama script inexistente"
+import os, re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+d = sys.argv[2]
+chamadas = set(re.findall(r'runScript\(\s*"([^"]+\.sh)"', src))
+faltando = sorted(c for c in chamadas if not os.path.isfile(os.path.join(d, c)))
+if faltando:
+    print("     faltando:", ", ".join(faltando))
+sys.exit(1 if faltando else 0)
+PY
+    # os valores de multitouch respeitam o limite do script (100..800); 10 seria
+    # recusado e o botão não faria nada
+    python3 - "$svc" <<'PY' && ok "overlay usa multitouch dentro do limite (100..800)" \
+        || bad "overlay manda multitouch fora do limite"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+vals = [int(v) for v in re.findall(r'"touch_multi",\s*"(\d+)"', src)]
+sys.exit(1 if any(v < 100 or v > 800 for v in vals) else 0)
+PY
+    # RODA de verdade cada chamada do overlay contra os stubs. O que se procura
+    # aqui é ERRO DE ARGUMENTO (perfil inexistente, valor fora do limite, ação
+    # desconhecida) — isso só apareceria no meio da partida, quando o usuário
+    # apertasse o botão. Chamadas com valor dinâmico (vindo de uma lista) são
+    # puladas: o valor real não está no fonte.
+    python3 - "$svc" > "$TMP/overlay_calls" <<'PY'
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+pat = re.compile(r'runScript\(\s*"([^"]+)"\s*,\s*listOf\(([^)]*)\)', re.S)
+for m in pat.finditer(src):
+    inner = m.group(2).strip()
+    if not inner:
+        print(m.group(1)); continue
+    # separa os argumentos no nível de cima e exige que TODOS sejam literal
+    args, buf, depth, instr = [], "", 0, False
+    for ch in inner:
+        if ch == '"': instr = not instr
+        elif ch == '(' and not instr: depth += 1
+        elif ch == ')' and not instr: depth -= 1
+        elif ch == ',' and depth == 0 and not instr:
+            args.append(buf.strip()); buf = ""; continue
+        buf += ch
+    args.append(buf.strip())
+    if any(not re.fullmatch(r'"[^"]*"', a) for a in args):
+        continue  # valor dinâmico: não dá para saber aqui
+    print(m.group(1) + "\t" + "\t".join(a[1:-1] for a in args))
+PY
+    n_ok=0; n_bad=0
+    while IFS="$(printf '\t')" read -r script a1 a2 a3 a4; do
+        [ -z "$script" ] && continue
+        set -- $script $a1 $a2 $a3 $a4
+        out=$(OTM_NO_COLOR=1 OTM_MODE=su timeout 25 sh "$ROOT/scripts/$1" "$2" "$3" "$4" "$5" 2>&1)
+        # Argumento recusado = "uso: ..." / "perfil desconhecido:" / "ação
+        # desconhecida:" (os `err` dos scripts põem os dois-pontos). NÃO conta
+        # "desconhecido" solto (o smart-opt chama assim um SoC que não conhece)
+        # nem o "Uso:" da ajuda do ff-touch (maiúsculo, é texto de ajuda).
+        if printf '%s' "$out" | grep -qE 'uso:|desconhecid[oa]:|inv[aá]lid'; then
+            n_bad=$((n_bad+1))
+            printf '       %s %s -> %s\n' "$1" "$2 $3 $4 $5" "$(printf '%s' "$out" | head -1)"
+        else
+            n_ok=$((n_ok+1))
+        fi
+    done < "$TMP/overlay_calls"
+    [ "$n_bad" = 0 ] && ok "todo argumento do overlay é aceito pelo script ($n_ok chamadas)" \
+        || bad "overlay manda $n_bad argumento(s) que o script recusa"
+    # as novas ações do flutuante chamam os scripts do pack (nada reimplementado)
+    for c in 'turbo.sh' 'dns.sh' 'ram-boost.sh' 'snapshot.sh' 'game-per-app.sh'; do
+        grep -q "$c" "$svc" || bad "overlay sem atalho para $c"
+    done
+    ok "overlay tem os atalhos novos (rede, fluidez, RAM, jogo, snapshot)"
+    # a resolução por jogo usa "auto": o flutuante não sabe qual é o jogo
+    grep -q 'listOf("apply", "auto"' "$svc" \
+        && ok "overlay deixa o script resolver o jogo (auto)" \
+        || bad "overlay chuta o pacote do jogo"
+    # reduzir a resolução do jogo (mais FPS) com os 3 perfis + reset
+    grep -q 'GAME_SCALES' "$svc" && ok "overlay tem os perfis de resolução" \
+        || bad "overlay sem os perfis de resolução"
+    for s in 'fps" to "FPS' 'balanced' 'max'; do
+        grep -q "$s" "$svc" || bad "overlay sem o perfil de resolução '$s'"
+    done
+    ok "overlay tem os 3 perfis de resolução do jogo"
+    grep -q 'listOf("reset", "auto")' "$svc" \
+        && ok "overlay sabe resetar a resolução do jogo" \
+        || bad "overlay sem o reset de resolução"
+    # escolher QUALQUER app para não ser encerrado (não só o que está rodando)
+    grep -q 'listOf("apps")' "$svc" \
+        && ok "overlay lista todos os apps (exceção fora dos que rodam)" \
+        || bad "overlay só protege quem está rodando"
+    grep -q 'procAllBox' "$svc" && ok "overlay tem a lista de todos os apps" \
+        || bad "overlay sem a lista de todos os apps"
+    grep -q 'REFRESH_RATES' "$svc" && ok "overlay tem as taxas de tela fixas" \
+        || bad "overlay sem as taxas de tela"
+    # a aba Processos: limite de 2º plano, encerrar todos e exceções ("X não encerra")
+    grep -q 'proc-mgr.sh' "$svc" && ok "overlay usa o gerenciador de processos" \
+        || bad "overlay sem proc-mgr.sh"
+    grep -q 'listOf("kill")' "$svc" && ok "overlay tem o encerrar todos" || bad "overlay sem encerrar todos"
+    grep -q 'keep-fg' "$svc" && ok "overlay cria exceção para o app em 1º plano" \
+        || bad "overlay sem exceção do 1º plano"
+    grep -q 'PROC_LIMITS' "$svc" && ok "overlay escolhe o limite de processos em 2º plano" \
+        || bad "overlay sem o seletor de limite"
+    grep -q '#OTM-PROC' "$svc" && ok "overlay lê a lista de apps rodando" \
+        || bad "overlay não lê a lista de processos"
+    grep -q 'getApplicationLabel' "$svc" && ok "overlay mostra o nome do app (não só o pacote)" \
+        || bad "overlay sem nome legível do app"
+    # a aba "Sensi" saiu: o flutuante é para o meio da partida, não para ler número
+    if grep -q 'sensiTab\|"Sensi"' "$svc"; then
+        bad "overlay ainda tem a aba Sensi"
+    else
+        ok "overlay sem a aba Sensi"
+    fi
+    grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
+    # o botão de escolher o MOTOR de renderização está no painel flutuante
+    grep -q 'RENDERERS' "$svc" && ok "overlay tem o seletor de motor de renderização" \
+        || bad "overlay sem o seletor de motor"
+    grep -q 'listOf("renderer", e.first)' "$svc" && ok "overlay chama adb-tweaks.sh renderer" \
+        || bad "overlay não chama o renderer do pack"
+    for r in auto skiagl skiavk; do
+        grep -q "\"$r\" to" "$svc" || bad "overlay sem o motor $r"
+    done
+    ok "overlay tem os motores de renderização principais"
+    # fundo arredondado (visual mais organizado)
+    grep -q 'rounded(' "$svc" && ok "overlay usa fundo arredondado" || bad "overlay sem estilo arredondado"
+    # visual melhor: botões de vidro + blur do sistema
+    grep -q 'FLAG_BLUR_BEHIND' "$svc" && grep -q 'blurBehindRadius' "$svc" \
+        && ok "overlay pede blur do fundo (Android 12+)" || bad "overlay sem blur"
+    grep -q 'private fun pill(' "$svc" && grep -q 'C_GLASS' "$svc" \
+        && ok "overlay usa botões de vidro (pílula translúcida)" || bad "overlay sem botões de vidro"
+    # o flutuante usa o tema do app (cor de destaque e fonte escolhidas no painel)
+    grep -q 'OtmUi.accent' "$svc" && grep -q 'OtmUi.font' "$svc" \
+        && ok "overlay usa a cor/fonte escolhidas no painel" || bad "overlay com tema fixo"
+    grep -q 'OtmUi.onChanged' "$svc" && grep -q 'private fun rebuild()' "$svc" \
+        && ok "overlay se redesenha quando o tema muda" || bad "overlay não acompanha o tema"
     # minimizar vira só o ÍCONE do app; tocar no ícone volta ao painel completo
     grep -q 'R.mipmap.ic_launcher' "$svc" && ok "overlay minimizado usa o ícone do app" \
         || bad "overlay minimizado não usa o ícone do app"
@@ -2736,6 +3859,31 @@ t_overlay() {
         || bad "overlay sem ImageView para o ícone"
     grep -q 'setMinimized(false)' "$svc" && ok "tocar no ícone devolve o painel" \
         || bad "ícone não devolve o painel ao ser tocado"
+    # a bolha minimizada tem de ARRASTAR: o toque é tratado pelo container, que
+    # também tem o dragger. Se o ImageView de dentro tivesse listener de clique,
+    # ele viraria "clickable" e engoliria o toque antes do container — a bolha
+    # ficava presa no lugar. (Era o bug relatado no aparelho.)
+    awk '/private fun bubbleView/,/^    }/' "$svc" > "$TMP/bubble"
+    python3 - "$TMP/bubble" <<'PY' > "$TMP/bubbleres" 2>&1
+import re, sys
+s = open(sys.argv[1], encoding='utf-8').read()
+i = s.index('ImageView(')
+j = s.index('apply {', i)
+depth, fim = 0, len(s)
+for m in re.finditer(r'[{}]', s[j + len('apply {') - 1:]):
+    depth += 1 if m.group(0) == '{' else -1
+    if depth == 0:
+        fim = j + len('apply {') - 1 + m.end()
+        break
+blk = s[j:fim]
+if 'setOnClickListener' in blk:
+    print('ImageView com clique engole o arrasto da bolha')
+elif 'setOnClickListener' not in s:
+    print('bolha sem clique para voltar ao painel')
+else:
+    print('OK')
+PY
+    assert_contains "$TMP/bubbleres" "OK" "app: bolha minimizada arrasta (clique no container)"
     # o acesso ao shell vem de fora (o Service não pede permissão sozinho)
     grep -q 'OtmRunner.current' "$src/PanelActivity.kt" \
         && ok "Activity publica o runner para o overlay" || bad "Activity não publica o runner"
@@ -2747,6 +3895,31 @@ t_overlay() {
         && ok "ponte trata o tipo overlay" || bad "ponte sem o tipo overlay"
     grep -q 'OTM.call("overlay"' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "painel do app chama o overlay" || bad "painel do app não chama o overlay"
+    # o Service se recupera sozinho se o processo for reiniciado (o estático
+    # OtmRunner volta nulo e TODA ação do flutuante dava erro no meio da partida)
+    grep -q 'private fun shellRunner()' "$svc" \
+        && ok "overlay tem um único ponto para o transporte de shell" \
+        || bad "overlay sem shellRunner()"
+    grep -q 'OtmRunner.current ?: runner' "$svc" \
+        && ok "o transporte cai no recuperado quando o estático some" \
+        || bad "overlay não usa o transporte recuperado"
+    grep -q 'private fun registerShizukuRecovery()' "$svc" \
+        && ok "overlay reconecta o Shizuku sozinho (processo reiniciado)" \
+        || bad "overlay não se recupera sem abrir o app"
+    grep -q 'addBinderReceivedListenerSticky' "$svc" \
+        && ok "recuperação espera o binder do Shizuku chegar" \
+        || bad "recuperação sem listener sticky"
+    # nenhuma ação pode voltar a ler o estático direto (era a causa dos erros)
+    grep -q 'OtmExec.run(this@OverlayService, OtmRunner.current' "$svc" \
+        && bad "alguma ação ainda lê OtmRunner.current direto" \
+        || ok "nenhuma ação lê o estático direto (só shellRunner())"
+    # o veredito respeita o "ok=" dos scripts de leitura (sensi/ver tuning):
+    # sem isso o flutuante dizia "sem mudança" no que é só leitura
+    grep -q 'v\["ok"\]' "$svc" \
+        && ok "overlay usa o veredito ok= dos scripts" || bad "overlay ignora ok="
+    grep -q 'sem permissão de shell' "$svc" \
+        && ok "overlay diz o que fazer quando falta o acesso" \
+        || bad "overlay só diz 'falhou' sem orientar"
     # no site (PC) o overlay avisa que é só no celular
     grep -q 'Painel flutuante: use o app no celular' "$ROOT/web/index.php" \
         && ok "site avisa que o overlay é só no app" || bad "site sem aviso do overlay"
@@ -2755,6 +3928,108 @@ t_overlay() {
         && ok "lib.php registra a ação do painel flutuante" || bad "lib.php sem overlay.sensi"
     grep -q 'overlay.sensi' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "catálogo do app tem a ação do painel flutuante" || bad "actions.json sem overlay.sensi"
+}
+
+
+# --- toque do painel: só o dedo parado e curto dispara ------------------------
+# O bug relatado no aparelho: arrastar a lista disparava o botão onde o dedo
+# soltou (o "click" sintético do fim do scroll). A correção tem de estar no HTML
+# dos DOIS painéis: o do app (index.html) e o do site (index.php).
+t_tap_only() {
+    printf '\n  # toque: arrastar não dispara botão (só toque parado e curto)\n'
+    local app="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+
+    for f in "$app" "$web"; do
+        grep -q 'function tapOnly(el, fn)' "$f" \
+            && ok "$(basename "$f"): tem o guarda de toque (tapOnly)" \
+            || bad "$(basename "$f"): sem tapOnly (clique sintético dispara botão)"
+        grep -q 'pointercancel' "$f" \
+            && ok "$(basename "$f"): o guarda cancela no começo do arrasto" \
+            || bad "$(basename "$f"): tapOnly sem pointercancel"
+        # O cancelamento só pelo pointercancel não bastava: quando o dedo começa
+        # no botão e arrasta, o navegador nem sempre emite o cancelamento e o
+        # clique sintético do fim do scroll abria o botão. O arrasto é pego pela
+        # variação do dedo (pointermove), pela posição no fim do toque (pointerup)
+        # e pela rolagem da página.
+        grep -q 'pointerup' "$f" \
+            && ok "$(basename "$f"): confere a posição no fim do toque (pointerup)" \
+            || bad "$(basename "$f"): tapOnly não confere a posição no pointerup"
+        # pointerleave NÃO pode voltar: no toque ele dispara em TODO toque válido
+        # (o dedo sai do elemento ao levantar), vinha antes do click e cancelava
+        # tudo. Isso deixava os botões mortos, sem erro nenhum. A checagem ignora
+        # comentários para não dar falso positivo pela citação do aviso.
+        if grep -qE "addEventListener\(['\"]pointerleave" "$f"; then
+            bad "$(basename "$f"): registra pointerleave no toque (mata todo clique válido)"
+        else
+            ok "$(basename "$f"): sem pointerleave no caminho do toque"
+        fi
+        grep -qE 'addEventListener\("scroll", cancel' "$f" \
+            && ok "$(basename "$f"): cancela se a página rolar durante o toque" \
+            || bad "$(basename "$f"): tapOnly não cancela na rolagem"
+        # o toque tem de ser CURTO: um dedo parado por muito tempo não é clique
+        grep -qE 'TAP_MS' "$f" \
+            && ok "$(basename "$f"): o guarda limita a duração do toque" \
+            || bad "$(basename "$f"): tapOnly sem limite de duração"
+        # nenhum onclick cru pode sobrar: ele fura o guarda e dispara no scroll
+        if grep -q 'onclick=' "$f"; then
+            bad "$(basename "$f"): ainda há onclick cru (fura o guarda de toque)"
+        else
+            ok "$(basename "$f"): nenhum onclick cru (tudo passa pelo guarda)"
+        fi
+        # o disparo não pode ser um onclick puro: é isso que o scroll aciona
+        grep -qE '\[data-run\]"\)\.forEach\(b => b\.onclick' "$f" \
+            && bad "$(basename "$f"): [data-run] ainda usa onclick puro" \
+            || ok "$(basename "$f"): [data-run] passa pelo guarda"
+        grep -qE '\[data-vital-go\]"\)\.forEach\(b => b\.onclick' "$f" \
+            && bad "$(basename "$f"): botão de vitalidade ainda usa onclick puro" \
+            || ok "$(basename "$f"): botão de vitalidade passa pelo guarda"
+    done
+    # o gatilho nativo do app (o botão do cabeçalho) usa o mesmo critério
+    local pa="$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt"
+    grep -q 'function tapOnly(el, fn)' "$pa" \
+        && ok "app: o botão do cabeçalho (flutuante) usa o mesmo guarda" \
+        || bad "app: cabeçalho sem guarda de toque"
+    grep -q 'pointercancel' "$pa" \
+        && ok "app: o guarda do cabeçalho cancela no arrasto" \
+        || bad "app: guarda do cabeçalho sem pointercancel"
+    grep -q 'pointerup' "$pa" \
+        && ok "app: o guarda do cabeçalho confere a posição no fim do toque" \
+        || bad "app: guarda do cabeçalho não confere o pointerup"
+    if grep -qE "addEventListener\(['\"]pointerleave" "$pa"; then
+        bad "app: guarda do cabeçalho registra pointerleave (mata todo clique válido)"
+    else
+        ok "app: guarda do cabeçalho sem pointerleave no caminho do toque"
+    fi
+    grep -qE "addEventListener\(['\"]scroll['\"], cancel" "$pa" \
+        && ok "app: o guarda do cabeçalho cancela na rolagem" \
+        || bad "app: guarda do cabeçalho não cancela na rolagem"
+}
+
+t_shizuku_reconnect() {
+    printf '\n  # Shizuku: não pedir permissão de novo a cada abertura\n'
+    local pa="$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt"
+
+    # A causa do bug: o binder do Shizuku chega DEPOIS do onCreate. Checar a
+    # permissão só lá dentro concluía "não autorizado" com a permissão já dada.
+    grep -q 'addBinderReceivedListenerSticky' "$pa" \
+        && ok "espera o binder chegar (listener sticky)" || bad "não espera o binder (bug do pedido repetido)"
+    grep -q 'OnBinderReceivedListener' "$pa" \
+        && ok "reconecta quando o binder chega" || bad "sem OnBinderReceivedListener"
+    grep -q 'addBinderDeadListener' "$pa" \
+        && ok "limpa o runner quando o Shizuku morre" || bad "sem OnBinderDeadListener"
+    # reconectar é silencioso: nada de requestPermission no caminho automático
+    grep -q 'fun tryAutoConnectShizuku' "$pa" \
+        && ok "conexão automática num ponto único" || bad "sem tryAutoConnectShizuku"
+    awk '/fun tryAutoConnectShizuku/,/^    }/' "$pa" | grep -q 'requestPermission' \
+        && bad "auto-conexão pede permissão (volta o bug)" \
+        || ok "auto-conexão não pede permissão"
+    # e volta do app do Shizuku reconecta sem perguntar
+    grep -q 'override fun onResume' "$pa" \
+        && ok "onResume tenta reconectar" || bad "sem onResume (permissão dada por fora não conecta)"
+    # os listeners são removidos para não vazar a Activity
+    grep -q 'removeBinderReceivedListener' "$pa" && grep -q 'removeBinderDeadListener' "$pa" \
+        && ok "listeners removidos no onDestroy" || bad "listeners não removidos (vaza Activity)"
 }
 
 t_vitality() {
@@ -2908,8 +4183,8 @@ t_vitality() {
             echo ($a["vital.care_off"]["risk"] ?? "") === "safe" ? "OK":"NAO";' | grep -q OK \
         && ok "desligar a longevidade é risk=safe" || bad "care_off não é safe"
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            echo ($a["vital.diag"]["group"] ?? "") === "Vitalidade" ? "OK":"NAO";' | grep -q OK \
-        && ok "grupo Vitalidade existe" || bad "grupo Vitalidade ausente"
+            echo ($a["vital.diag"]["group"] ?? "") === "Geral" ? "OK":"NAO";' | grep -q OK \
+        && ok "Vitalidade dissolvida: ações em Geral" || bad "vital.diag fora de Geral"
     # GUARDA DE REGRESSÃO: o que já existia NÃO pode sumir (o usuário foi claro:
     # "não é pra remover nada"). Se alguém tirar, o teste acusa.
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
@@ -2962,7 +4237,7 @@ def blk(p, pat):
     m = re.search(pat, s)
     return re.sub(r'\s+', ' ', m.group(0)).strip() if m else None
 C = r'<div class="panelbox[^"]*config-gpu-card[\s\S]*?\n      </div>'
-J = r'/\* ---- vitalidade: cockpit de longevidade -+\n[\s\S]*?\n\}\);\n'
+J = r'/\* ---- vitalidade: cockpit de longevidade -+\n[\s\S]*?\n\}\)+;\n'
 print("IGUAIS" if blk(sys.argv[1], C) and blk(sys.argv[1], C) == blk(sys.argv[2], C)
       and blk(sys.argv[1], J) == blk(sys.argv[2], J) else "DIFERENTES")
 PY
@@ -2996,14 +4271,118 @@ PY
         && ok "vitality.sh espelhado no app" || bad "espelho do vitality.sh divergiu"
 }
 
+# --- perfil personalizado: escolhas (seg) e liga/desliga (toggle) -------------
+t_custom_profile() {
+    printf '\n  # perfil personalizado: escolhas e toggles liga/desliga\n'
+    local panel="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+
+    # 1) a fonte única das opções tem as duas formas: escolha e liga/desliga
+    php -r 'require "'"$ROOT"'/web/lib.php"; $o=otm_custom_profile_opts();
+             $seg=0; $tgl=0; foreach ($o as $c){ ($c["kind"] ?? "seg")==="toggle" ? $tgl++ : $seg++; }
+             echo "seg=$seg toggle=$tgl total=" . count($o) . "\n";' > "$TMP/cp_kinds" 2>&1
+    assert_contains "$TMP/cp_kinds" "toggle=" "perfil: há opções liga/desliga"
+    assert_contains "$TMP/cp_kinds" "seg=" "perfil: há opções de escolha"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $o=otm_custom_profile_opts();
+             $bad=0; foreach ($o as $c){
+               if (($c["kind"] ?? "seg") !== "toggle") continue;
+               $t=$c["tgl"] ?? null;
+               if (!is_array($t) || ($t["off"] ?? "")==="" || ($t["on"] ?? "")==="") $bad++;
+               if (($t["off"] ?? null) === ($t["on"] ?? null)) $bad++;
+             }
+             echo $bad===0 ? "OK\n" : "RUIM:$bad\n";' > "$TMP/cp_tgl" 2>&1
+    assert_contains "$TMP/cp_tgl" "OK" "perfil: todo toggle tem off e on distintos"
+
+    # 2) o argv da ação cobre TODAS as chaves, na MESMA ordem do script
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             $a=otm_actions()["profile.custom.apply"];
+             $args=array_values(array_filter($a["argv"], fn($v)=>$v!=="profile-custom.sh"&&$v!=="apply"));
+             $names=array_map(fn($p)=>"{".$p["name"]."}", $a["params"]);
+             echo implode(" ",$args) === implode(" ",$names) ? "OK\n" : "DIVERGE\n";
+             echo count($args), "\n";' > "$TMP/cp_argv" 2>&1
+    assert_contains "$TMP/cp_argv" "OK" "perfil: argv casa com params (mesma ordem)"
+    # a MESMA ordem também no script: os argumentos são posicionais, então um
+    # PC_ORDER fora de sincronia aplica a opção errada em silêncio.
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions()["profile.custom.apply"];
+             echo implode(" ", array_map(fn($p)=>$p["name"], $a["params"])), "\n";' > "$TMP/cp_php" 2>&1
+    awk '/^PC_ORDER="/{f=1} f{printf "%s ", $0} f&&/"[ \t]*$/{exit}' "$ROOT/scripts/profile-custom.sh" \
+        | tr -d '\\"' | sed 's/PC_ORDER=//' | tr -s ' ' | sed 's/^ //; s/ $//' > "$TMP/cp_sh"
+    [ "$(cat "$TMP/cp_php")" = "$(cat "$TMP/cp_sh")" ] \
+        && ok "perfil: PC_ORDER igual ao argv do painel (mesma ordem)" \
+        || bad "perfil: PC_ORDER fora de sincronia com o painel"
+
+    # 3) o toggle tem marcação, CSS e clique nos DOIS painéis
+    for f in "$panel" "$web"; do
+        grep -q 'data-kind="toggle"' "$f" \
+            && ok "$(basename "$f"): linhas de toggle marcadas" || bad "$(basename "$f"): sem data-kind"
+        # o switch do perfil é .cpsw (o .sw é o swatch de cor da aparência;
+        # os dois colidiam no mesmo nome e o switch virava pílula cinza).
+        grep -q 'class="cpsw"' "$f" \
+            && ok "$(basename "$f"): o switch existe no HTML" || bad "$(basename "$f"): sem switch"
+        grep -q 'aria-checked' "$f" \
+            && ok "$(basename "$f"): o switch tem estado acessível" || bad "$(basename "$f"): switch sem aria-checked"
+        grep -qE '^\.cpsw\[aria-checked="true"\]' "$f" \
+            && ok "$(basename "$f"): o CSS pinta o switch ligado" || bad "$(basename "$f"): CSS do switch ausente"
+        grep -q 'data-off=' "$f" \
+            && ok "$(basename "$f"): o switch carrega o valor desligado" || bad "$(basename "$f"): switch sem valor off"
+        grep -q 'data-on=' "$f" \
+            && ok "$(basename "$f"): o switch carrega o valor ligado" || bad "$(basename "$f"): switch sem valor on"
+        grep -q 'const CPROF_DEFAULT' "$f" \
+            && ok "$(basename "$f"): o padrão vem da fonte única" || bad "$(basename "$f"): sem CPROF_DEFAULT"
+    done
+
+    # 4) o padrão do toggle é DESLIGADO (nunca liga nada sozinho)
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions()["profile.custom.apply"];
+             $o=otm_custom_profile_opts(); $bad=[];
+             foreach ($o as $c){ if (($c["kind"] ?? "seg") !== "toggle") continue;
+               foreach ($a["params"] as $p) if ($p["name"]===$c["k"] && $p["default"]!==$c["tgl"]["off"]) $bad[]=$c["k"]; }
+             echo $bad ? "RUIM:".implode(",",$bad)."\n" : "OK\n";' > "$TMP/cp_def" 2>&1
+    assert_contains "$TMP/cp_def" "OK" "perfil: toggle começa desligado no painel"
+
+    # 5) o script aceita os valores do toggle e não quebra com valor inválido
+    local home="$TMP/cp_home" cfg="$TMP/cp_home/.packotm/profile-custom/config"
+    rm -rf "$home"; mkdir -p "$home"
+    pc() { HOME="$home" OTM_MODE=local sh "$ROOT/scripts/profile-custom.sh" "$@"; }
+    pc set telemetry=off gpu=on 2>&1 | grep -qi 'inválid\|erro' \
+        && bad "perfil: recusou um toggle válido" || ok "perfil: aceita os valores do toggle"
+    grep -q '^telemetry=off$' "$cfg" 2>/dev/null && grep -q '^gpu=on$' "$cfg" 2>/dev/null \
+        && ok "perfil: guarda a escolha do toggle" || bad "perfil: não guardou o toggle"
+    pc set telemetry=banana >/dev/null 2>&1
+    grep -q '^telemetry=off$' "$cfg" 2>/dev/null \
+        && ok "perfil: valor inválido não sobrescreve o válido" || bad "perfil: aceitou valor inválido"
+    # toda chave do PC_ORDER aceita um valor NÃO padrão (o de ligar): prova que o
+    # script reconhece a chave e grava o valor, e não só ecoa o default no `show`.
+    local key val missing="" rc
+    for key in $(awk '/^PC_ORDER="/{f=1} f{printf "%s ", $0} f&&/"[ \t]*$/{exit}' \
+                     "$ROOT/scripts/profile-custom.sh" | tr -d '\\"' | sed 's/PC_ORDER=//'); do
+        val="$(pc_opts_of "$key")"
+        pc set "$key" "$val" >/dev/null 2>&1; rc=$?
+        [ "$rc" = "0" ] || missing="$missing $key=$val(rc=$rc)"
+        grep -q "^$key=$val\$" "$home/.packotm/profile-custom/config" 2>/dev/null \
+            || missing="$missing $key=não-gravou"
+    done
+    [ -z "$missing" ] && ok "perfil: todas as chaves do script aceitam um valor de ligar" \
+        || bad "perfil: chaves recusadas:$missing"
+    rm -rf "$home"
+}
+
+# valor de "ligar" de uma chave (o último da lista), lido do próprio script: garante
+# que o teste não invente um valor que o script recusa.
+pc_opts_of() {
+    sed -n "s/^[[:space:]]*$1)[[:space:]]*echo \"\([^\"]*\)\".*/\1/p" \
+        "$ROOT/scripts/profile-custom.sh" | awk '{print $NF}'
+}
+
 t_thermal_gate
 t_secret_scanner
 t_site_html
+t_marca_trix
 t_build_plugins
 t_build_modules
 t_build_pack
 t_debloat
 t_dns
+t_game_per_app
 t_new_scripts
 t_modules
 t_web
@@ -3011,19 +4390,104 @@ t_panel_v219
 t_keepalive
 t_gameclean
 t_ramboost
+t_resolution
 t_smart_opt
+t_smart_bigdump
+t_smart_learning
+t_backup_crypto
+t_smart_card_single
 t_clean
+t_smart_clean_protect
 t_privilege_detect
+# --- interruptores (liga/desliga) e o painel de saude dentro de Geral ---------
+t_toggles_registry() {
+    printf '\n  # interruptores: registro, estado real e paridade web/app\n'
+    local panel="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local st="$ROOT/scripts/panel-state.sh"
+
+    # 1) o registro tem interruptores e todo um tem par on/off distinto
+    php -r 'require "'"$ROOT"'/web/lib.php"; $t=otm_toggles();
+             echo count($t), "\n";' > "$TMP/tg_n" 2>&1
+    [ "$(cat "$TMP/tg_n")" -ge 10 ] && ok "registro: ha interruptores ($(cat "$TMP/tg_n"))" \
+        || bad "registro: poucos interruptores ($(cat "$TMP/tg_n"))"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions(); $t=otm_toggles(); $bad=[];
+             foreach ($t as $id=>$g){
+               foreach (["on","off"] as $k){
+                 $aid=$g[$k] ?? "";
+                 if ($aid==="" || !isset($a[$aid])) { $bad[]="$id.$k->$aid"; continue; }
+               }
+               if (($g["on"] ?? "") === ($g["off"] ?? "")) $bad[]="$id: on==off";
+             }
+             echo $bad ? implode(", ", $bad) : "OK";' > "$TMP/tg_ids" 2>&1
+    assert_contains "$TMP/tg_ids" "OK" "registro: todo interruptor aponta para acoes que existem"
+
+    # 2) o estado de cada interruptor e REAL: a chave vem de panel-state.sh
+    #    (nao pode ser inventada no painel)
+    php -r 'require "'"$ROOT"'/web/lib.php"; foreach (otm_toggles() as $g){
+               if (($g["state"] ?? "") !== "") echo $g["state"], "\n"; }' > "$TMP/tg_keys" 2>&1
+    : > "$TMP/tg_missing"
+    while read -r k; do
+        [ -n "$k" ] || continue
+        grep -q "\"$k\"" "$st" || echo "$k" >> "$TMP/tg_missing"
+    done < "$TMP/tg_keys"
+    [ ! -s "$TMP/tg_missing" ] \
+        && ok "estado real: toda chave de interruptor vem de panel-state.sh" \
+        || bad "estado inventado no painel: $(tr '\n' ' ' < "$TMP/tg_missing")"
+
+    # 3) os interruptores aparecem nos DOIS paineis com o mesmo conjunto de acoes.
+    #    O web e um template PHP: o que importa e o HTML RENDERIZADO, nao a fonte.
+    php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_start(); $_SESSION["otm_user"]="x";
+             $_SERVER["REQUEST_METHOD"]="GET"; ob_start();
+             require "'"$ROOT"'/web/index.php"; echo ob_get_clean();' > "$TMP/tg_web.html" 2>/dev/null
+    for f in "$panel" "$TMP/tg_web.html"; do
+        n=$(grep -o 'data-toggle="[^"]*"' "$f" | sort -u | wc -l)
+        [ "$n" -ge 10 ] && ok "$(basename "$f"): interruptores renderizados ($n)" \
+            || bad "$(basename "$f"): faltam interruptores ($n)"
+        grep -q 'data-on-state' "$f" && ok "$(basename "$f"): estado do interruptor ligado ao DOM" \
+            || bad "$(basename "$f"): sem data-on-state"
+    done
+    a=$(grep -o 'data-toggle="[^"]*"' "$panel" | sort -u)
+    b=$(grep -o 'data-toggle="[^"]*"' "$TMP/tg_web.html" | sort -u)
+    [ "$a" = "$b" ] && ok "interruptores: web e app tem o mesmo conjunto" \
+        || bad "interruptores: web e app divergem"
+
+    # 4) o par de valores que acende o interruptor casa com o estado real lido
+    php -r 'require "'"$ROOT"'/web/lib.php"; $bad=[];
+             foreach (otm_toggles() as $id=>$g){
+               $v=$g["on_values"] ?? null;
+               if (!is_array($v) || count($v)===0) $bad[]=$id;
+             }
+             echo $bad ? implode(", ", $bad) : "OK";' > "$TMP/tg_vals" 2>&1
+    assert_contains "$TMP/tg_vals" "OK" "interruptores: todo um declara o valor que o acende"
+
+    # 5) saude do telefone: um unico card (na Home), sem categoria propria
+    n=$(grep -c 'data-vital-card' "$web")
+    [ "$n" -ge 1 ] && ok "saude do telefone: card existe no painel web" \
+        || bad "saude do telefone: card sumiu"
+    grep -q 'class="vpick"' "$web" && ok "saude do telefone: card virou seletor (vpick)" \
+        || bad "saude do telefone: sem seletor"
+    if grep -q 'id="g-Vitalidade"' "$web" || grep -q 'id="g-Vitalidade"' "$panel"; then
+        bad "saude do telefone: ainda existe categoria Vitalidade separada"
+    else
+        ok "saude do telefone: dissolvida nas abas (sem categoria propria)"
+    fi
+}
+
+t_toggles_registry
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts
 t_vitality
+t_custom_profile
 t_pack
 t_proc_limit
 t_latency
 t_sensi
 t_effects
 t_overlay
+t_tap_only
+t_shizuku_reconnect
 
 printf '\n  --------------------------------------------------\n'
 printf '  %d passaram, %d falharam\n' "$PASS" "$FAIL"

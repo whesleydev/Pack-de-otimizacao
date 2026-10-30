@@ -91,7 +91,7 @@ switch ($cmd) {
 
     default:
         echo <<<TXT
-        Painel 00deUdia — administradores
+        Painel Trix — administradores
 
           php panel/bin/admin.php list
           php panel/bin/admin.php add <usuario> [--role owner|admin|viewer] [--name "Nome"] [--email e@x]

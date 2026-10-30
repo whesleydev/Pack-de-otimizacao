@@ -14,6 +14,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/backup.php';   // backup cifrado (arquivo + AES-GCM)
+
 function otm_root(): string {
     return dirname(__DIR__);                       // web/ -> raiz do pack
 }
@@ -67,11 +69,11 @@ function otm_script(string $name, array $args = [], int $timeout = 60): array {
 function otm_allowed_scripts(): array {
     return [
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
-        'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
+        'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh', 'backup.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
-        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh',
+        'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'fps.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
-        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh',
+        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh', 'resolution.sh',
     ];
 }
 
@@ -169,8 +171,198 @@ function otm_choices(): array {
     ];
 }
 
+// --- INTERRUPTORES (liga/desliga) ---------------------------------------------
+// O que o painel mostra como chave de ativar/desativar. Cada entrada junta o par
+// de ações (on/off) que já existe no registro e a chave de estado REAL lida por
+// panel-state.sh, para a chave nunca mentir: se o aparelho diz "ligado", ela
+// aparece ligada mesmo que o usuário tenha mexido por fora.
+//   on/off     -> ids de ação em otm_actions()
+//   state      -> chave de otm_state_read() ('' = o aparelho não expõe)
+//   on_values  -> valores da chave que significam LIGADO (case-insensitive)
+//   neutral    -> true quando não há como saber o estado (chave mostra "?")
+function otm_toggles(): array {
+    return [
+        // ----- Desempenho -----
+        't.anim' => ['group' => 'Desempenho', 'title' => 'Animações rápidas',
+            'desc' => 'Animações pela metade: a interface parece mais ágil.',
+            'help' => 'Reduz a duração das animações do sistema para 0.5x. Não muda o desempenho real — só a sensação de velocidade.',
+            'on' => 'perf', 'off' => 'perf_off', 'state' => 'anim_scale', 'on_values' => ['0.5']],
+        't.anim_max' => ['group' => 'Desempenho', 'title' => 'Animações desligadas (extremo)',
+            'desc' => 'Transições instantâneas, sem animação nenhuma.',
+            'help' => 'Remove as animações de vez: tudo abre na hora. Bom em aparelho lento; o visual fica mais "seco".',
+            'on' => 'perf_max', 'off' => 'perf_off', 'state' => 'anim_scale', 'on_values' => ['0', '0.0']],
+        't.fluidez' => ['group' => 'Desempenho', 'title' => 'Fluidez geral',
+            'desc' => 'Pacote de fluidez: toque, taxa de tela e animações.',
+            'help' => 'Combina resposta de toque melhor, taxa de atualização no máximo e animações mais rápidas. É o "tudo para fluidez".',
+            'on' => 'fluidez', 'off' => 'fluidez_off', 'state' => 'fluidez', 'on_values' => ['on']],
+        't.battery' => ['group' => 'Desempenho', 'title' => 'Economia de bateria',
+            'desc' => 'Liga a economia de energia e o repouso profundo.',
+            'help' => 'Liga a economia de energia e força o aparelho a dormir mais fundo quando parado. Não use enquanto joga.',
+            'on' => 'battery', 'off' => 'battery_off', 'state' => 'low_power', 'on_values' => ['1']],
+        't.doze' => ['group' => 'Desempenho', 'title' => 'Sono profundo rápido',
+            'desc' => 'Dorme de verdade ~2 min após apagar a tela.',
+            'help' => 'Encurta o tempo até o Doze entrar: a tela apagou, o aparelho dorme e a bateria dura muito mais.',
+            'on' => 'doze.on', 'off' => 'doze.off', 'state' => 'doze_custom', 'on_values' => ['on']],
+        't.refresh' => ['group' => 'Desempenho', 'title' => 'Taxa de tela no máximo',
+            'desc' => 'Trava a tela na maior taxa de atualização.',
+            'help' => 'Trava a taxa de atualização no máximo do aparelho. Rolagem e jogo mais lisos; gasta um pouco mais de bateria.',
+            'on' => 'turbo.refresh_max', 'off' => 'turbo.refresh_auto', 'state' => 'refresh_fixed', 'on_values' => ['on']],
+        't.freeze' => ['group' => 'Desempenho', 'title' => 'Congelar apps em cache',
+            'desc' => 'Pausa apps que você não está usando.',
+            'help' => 'Liga o congelador do sistema: apps em cache ficam pausados em vez de gastar RAM e bateria.',
+            'on' => 'freeze', 'off' => 'unfreeze', 'state' => 'freezer', 'on_values' => ['enabled']],
+        't.telemetry' => ['group' => 'Desempenho', 'title' => 'Cortar telemetria e logs',
+            'desc' => 'Desliga logs persistentes e varreduras "sempre disponível".',
+            'help' => 'Desliga o log persistente, o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth em segundo plano. Menos trabalho e mais privacidade.',
+            'on' => 'turbo.telemetry_off', 'off' => 'turbo.telemetry_on', 'state' => 'logpersist', 'on_values' => ['off', '']],
+        't.phantom' => ['group' => 'Desempenho', 'title' => 'Liberar processos em 2º plano',
+            'desc' => 'Desliga o Phantom Killer (bom p/ Termux e serviços).',
+            'help' => 'Desliga o Phantom Process Killer: apps como Termux, emuladores e servidores deixam de ter processos mortos pelo sistema.',
+            'on' => 'turbo.phantom_off', 'off' => 'turbo.phantom_on', 'state' => 'phantom', 'on_values' => ['false']],
+        't.perfmode' => ['group' => 'Desempenho', 'title' => 'Modo desempenho fixo',
+            'desc' => 'Trava o aparelho em desempenho máximo.',
+            'help' => 'Trava o aparelho em modo de desempenho (não reduz clocks por bateria). Mais FPS sustentado, mais calor e mais consumo.',
+            'on' => 'turbo.perfmode_on', 'off' => 'turbo.perfmode_off', 'state' => 'fixed_perf', 'on_values' => ['on']],
+
+        // ----- Sistema -----
+        't.notif' => ['group' => 'Sistema', 'title' => 'Silenciar notificações pop-up',
+            'desc' => 'Desliga os balões (heads-up) e as bolhas.',
+            'help' => 'Desliga os balões (heads-up) e as bolhas de notificação. O sistema trabalha menos e sobra fluidez — bom para jogar.',
+            'on' => 'adv.notif', 'off' => 'adv.notif_on', 'state' => 'heads_up', 'on_values' => ['0']],
+        't.dnd' => ['group' => 'Sistema', 'title' => 'Não perturbe (DND)',
+            'desc' => 'Silencia notificações sem bloquear alarmes.',
+            'help' => 'Ativa o modo Não Perturbe: nada de notificação atrapalhando. Alarmes e contatos de emergência continuam passando.',
+            'on' => 'dnd', 'off' => 'dnd_off', 'state' => 'dnd_zen', 'on_values' => ['1', '2', '3']],
+        't.perm_pack' => ['group' => 'Sistema', 'title' => 'Permitir o app do pack em 2º plano',
+            'desc' => 'O pack não é morto e continua aplicando sozinho.',
+            'help' => 'Libera o app do pack do Doze, do congelamento e da economia de bateria: sem isso o Android mata o pack e ele "para de aplicar sozinho".',
+            'on' => 'perm.app', 'off' => 'perm.app_off', 'state' => 'perm_pack', 'on_values' => ['1']],
+        't.perm_ff' => ['group' => 'Sistema', 'title' => 'Permitir os Free Fire em 2º plano',
+            'desc' => 'O jogo não é morto nem congelado no meio da partida.',
+            'help' => 'Libera os Free Fire do Doze e da economia de bateria, evitando que o jogo feche ou "reloge" no meio da partida.',
+            'on' => 'perm.ff', 'off' => 'perm.ff_off', 'state' => 'perm_ff', 'on_values' => ['1']],
+        't.perm_battery' => ['group' => 'Sistema', 'title' => 'Bateria sem economia agressiva',
+            'desc' => 'Desliga a economia e o App Standby.',
+            'help' => 'Desliga a economia de bateria adaptativa e o App Standby, que costumam derrubar apps em segundo plano.',
+            'on' => 'perm.battery', 'off' => 'perm.battery_off', 'state' => 'adaptive_batt', 'on_values' => ['0']],
+    ];
+}
+
 // --- registro de ações --------------------------------------------------------
 // risco: safe | careful | root    confirm: pede confirmação no painel
+/**
+ * Opções do PERFIL PERSONALIZADO. É a fonte única das três pontas que precisam
+ * casar: os parâmetros de `profile.custom.apply` (abaixo), a const CPROF do HTML
+ * (web/index.php e o painel do app) e a ordem de PC_ORDER em
+ * scripts/profile-custom.sh. Mexer na ordem aqui exige mexer lá.
+ */
+function otm_custom_profile_opts(): array {
+    // kind: 'seg' (escolha entre opções) ou 'toggle' (chave liga/desliga).
+    // No toggle só 'tgl' importa: o switch manda o valor de ligado/desligado, e
+    // 'opts' (os rótulos) nunca aparece na tela.
+    return [
+        // --- escolha entre opções ---
+        ['k' => 'anim',      't' => 'Animações',         's' => 'Transições e efeitos da interface.',
+         'opts' => [['normal', 'Padrão'], ['half', '0.5x'], ['off', 'Desligadas']]],
+        ['k' => 'ram',       't' => 'Apps em 2º plano',  's' => 'Quantos apps podem ficar abertos na memória.',
+         'opts' => [['padrao', 'Padrão'], ['gaming', 'Gaming'], ['batata', 'Batata']]],
+        ['k' => 'hz',        't' => 'Taxa da tela',      's' => 'Trava a tela numa taxa fixa para não oscilar.',
+         'opts' => [['off', 'Automática'], ['60', '60 Hz'], ['90', '90 Hz'], ['120', '120 Hz'], ['144', '144 Hz']]],
+        ['k' => 'touch',     't' => 'Perfil de toque',   's' => 'Ajuste de resposta do toque (bom no Free Fire).',
+         'opts' => [['none', 'Nenhum'], ['balanced', 'Equilibrado'], ['headshot', 'Headshot'], ['spray', 'Spray'], ['sniper', 'Sniper'], ['speed', 'Velocidade']]],
+        ['k' => 'clean',     't' => 'Limpeza',           's' => 'Limpa cache e libera RAM na hora.',
+         'opts' => [['off', 'Nenhuma'], ['fundo', 'Fundo'], ['suave', 'Suave'], ['normal', 'Completa']]],
+        ['k' => 'renderer',  't' => 'Motor gráfico',     's' => 'SkiaGL ou Skia Vulkan (o sistema ignora valores inválidos).',
+         'opts' => [['nao', 'Não mexer'], ['skiagl', 'SkiaGL'], ['skiavk', 'Skia Vulkan']]],
+        ['k' => 'dns',       't' => 'DNS privado',       's' => 'Servidor de DNS criptografado (DoT).',
+         'opts' => [['nao', 'Não mexer'], ['cloudflare', 'Cloudflare'], ['adguard', 'AdGuard'], ['quad9', 'Quad9'], ['google', 'Google']]],
+        ['k' => 'proc',      't' => 'Limite de processos', 's' => 'Máximo de apps em 2º plano (mais RAM ao jogo).',
+         'opts' => [['nao', 'Não mexer'], ['4', '4 apps'], ['8', '8 apps'], ['16', '16 apps']]],
+        ['k' => 'efeitos',   't' => 'Efeitos visuais',   's' => 'Desfoque e transparência da interface.',
+         'opts' => [['nao', 'Não mexer'], ['ligados', 'Ligados'], ['leves', 'Desligados (leve)']]],
+        ['k' => 'barras',    't' => 'Barras do sistema', 's' => 'Modo imersivo: esconde a barra de cima, a de baixo ou as duas.',
+         'opts' => [['nao', 'Não mexer'], ['visiveis', 'Visíveis'], ['status', 'Só a de baixo'], ['nav', 'Só a de cima'], ['full', 'Imersivo']]],
+        ['k' => 'res',       't' => 'Resolução',         's' => 'Resolução lógica: menos pixels, mais FPS.',
+         'opts' => [['nao', 'Não mexer'], ['auto', 'Recomendada'], ['720x1600', '720p'], ['1080x1920', '1080p'], ['1080x2340', '1080p+']]],
+        ['k' => 'touchlat',  't' => 'Latência de toque', 's' => 'Responsividade e janelas de toque (só o que o aparelho aceita).',
+         'opts' => [['nao', 'Não mexer'], ['leve', 'Leve'], ['forte', 'Forte']]],
+
+        // --- barra de status: ajuste fino (reusa o grupo `sysbars`) ---
+        ['k' => 'barras_bat', 't' => 'Bateria em %',     's' => 'Mostra o número da bateria na barra de cima.',
+         'opts' => [['nao', 'Não mexer'], ['on', 'Mostrar'], ['off', 'Esconder']]],
+        ['k' => 'barras_relogio', 't' => 'Segundos no relógio', 's' => 'Relógio da barra de cima com segundos.',
+         'opts' => [['nao', 'Não mexer'], ['on', 'Mostrar'], ['off', 'Esconder']]],
+        ['k' => 'barras_icones', 't' => 'Ícones da barra', 's' => 'Esconde os ícones secundários (rotação, fone, volume, alarme).',
+         'opts' => [['nao', 'Não mexer'], ['limpa', 'Esconder secundários']]],
+
+        // --- toque: janela do multitouch (touch_multi) ---
+        ['k' => 'touchmulti', 't' => 'Janela multitouch', 's' => 'Tempo que o aparelho espera entre toques simultâneos (ms).',
+         'opts' => [['nao', 'Não mexer'], ['120', '120 ms'], ['200', '200 ms'], ['300', '300 ms']]],
+
+        // --- compilação dos apps (ART / AOT) ---
+        ['k' => 'art',       't' => 'Compilar apps (ART)', 's' => 'Recompila os apps de antemão: abre mais rápido, engasga menos. Demora.',
+         'opts' => [['nao', 'Não mexer'], ['speed-profile', 'Equilibrada'], ['speed', 'Máxima (demora mais)']]],
+
+        // --- chaves liga/desliga ---
+        ['k' => 'telemetry', 't' => 'Desligar telemetria e logs', 's' => 'Corta logs e scans "sempre disponível" em 2º plano.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'off']],
+        ['k' => 'hibernate', 't' => 'Hibernar apps',     's' => 'Suspende os apps de fundo para ganhar RAM.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'off', 'on' => 'on']],
+        ['k' => 'gpu',       't' => 'Renderização por GPU', 's' => 'Força a GPU na interface e libera o driver do jogo.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'net',       't' => 'Rede / buffers TCP', 's' => 'DNS Cloudflare e buffers TCP maiores.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'latency',   't' => 'Latência / ping',   's' => 'BBR, low latency, ECN e fila curta: menos ping.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'wifi',      't' => 'Wi-Fi sem economia', 's' => 'Sem scan em 2º plano nem economia de energia.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'battery',   't' => 'Economia de bateria', 's' => 'Liga a economia de energia e o Doze.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'doze',      't' => 'Sono profundo rápido', 's' => 'Dorme ~2 min após a tela apagar (era ~30 min).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'freezer',   't' => 'Congelar apps em cache', 's' => 'Congela o que está em cache para liberar CPU.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'dnd',       't' => 'Não perturbe',      's' => 'Silencia notificações sem bloquear alarmes.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'gamefocus', 't' => 'Foco de jogo',      's' => 'DND extremo: nada aparece por cima do jogo.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'notif',     't' => 'Menos notificações', 's' => 'Desliga heads-up e bolhas de notificação.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'perfmode',  't' => 'Modo desempenho fixo', 's' => 'Trava o aparelho em desempenho máximo (esquenta mais).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'vitality',  't' => 'Longevidade da bateria', 's' => 'Cuida da bateria (limite de carga em 80%).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'mobile',    't' => 'Rede móvel',        's' => 'Sem economia de dados e sem largar o Wi-Fi ruim.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'janelas',   't' => 'Transições 0.5x',   's' => 'Metade do tempo nas animações de janela.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+
+        // --- limpeza profunda e segundo plano (turbo/deep-tune) ---
+        ['k' => 'trim',      't' => 'Podar caches',      's' => 'Libera espaço podando caches sem apagar dados dos apps.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'killbg',    't' => 'Encerrar 2º plano', 's' => 'Fecha os apps de fundo agora (poupa o jogo).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'phantom',   't' => 'Sem limite de processos fantasma', 's' => 'Desliga o Phantom Process Killer (bom p/ Termux e serviços).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'debloat_bg', 't' => 'Restringir apps de fundo', 's' => 'Põe os apps de fundo em appops restrito + balde standby restrito.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+
+        // --- gráficos e tela (deep-tune) ---
+        ['k' => 'display',   't' => 'Display afinado (HWUI)', 's' => 'Ajusta o HWUI/SurfaceFlinger: rolagem mais lisa.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'dexopt',    't' => 'Recompilar apps (agendado)', 's' => 'Agenda a recompilação dos apps: o Android roda quando o aparelho estiver parado.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'gaming',    't' => 'Modo jogo profundo', 's' => 'Debloat profundo + ANGLE de uma vez.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+
+        // --- tela e toque (extra) ---
+        ['k' => 'obscure',   't' => 'Ajustes obscuros',  's' => 'Menos kills em 2º plano e o jogo fora do Doze.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'tela',      't' => 'Tela 10 min + 120 Hz', 's' => 'Tempo de tela maior e taxa fixa em 120 Hz.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+    ];
+}
+
 function otm_actions(): array {
     $A = [];
 
@@ -182,18 +374,69 @@ function otm_actions(): array {
     // ----- Rápido -----
     $add(['id' => 'apply', 'group' => 'Geral', 'label' => 'Aplicar o pack recomendado',
           'desc' => 'O "faz tudo" para novato: performance, RAM, GPU, rede, latência, jogo, bateria e touch.',
-          'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Sensi e mira" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
+          'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Display & Touch" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 420]);
     $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
-          'desc' => 'Analisa o seu aparelho e aplica as melhores configurações para ele.',
-          'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência, RAM, taxa de tela, armazenamento, térmico, bateria, zram, Android e kernel) e calcula uma nota e a classe do aparelho. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, limpeza e doze. (O debloat ficou de fora de propósito: remover app de fábrica é decisão sua e mora na aba Debloat.) Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim, confere se os ajustes pegaram de verdade. É tudo reversível em "Reverter TUDO".',
+          'desc' => 'Um botão só: analisa, decide, aplica e testa o que é melhor para ESTE aparelho.',
+          'help' => 'Um botão só — o resto acontece por dentro, sem você escolher nada. Ele LÊ o aparelho inteiro (modelo, processador, GPU, núcleos e frequências, RAM, taxa de tela, armazenamento, térmico, bateria, zram, MGLRU, rede, governador e pressão de memória), calcula a nota e a classe, salva um snapshot de segurança, decide item por item o que faz sentido para AQUELE modelo e aplica. Depois MEDE antes x depois e ainda TESTA as combinações plausíveis (ex.: Vulkan x GL, a maior taxa x 90Hz) para ficar com a que der o melhor resultado. Cada teste fica guardado numa memória por aparelho: da próxima vez ele já começa pela combinação que venceu aqui e vai melhorando a cada execução. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Pode demorar alguns minutos — é o tempo de medir e comparar no seu aparelho. Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog. No fim mostra UM resultado. É tudo reversível em "Reverter TUDO".',
           'argv' => ['smart-opt.sh', 'auto'], 'risk' => 'careful', 'confirm' => true,
-          'timeout' => 420]);
-    $add(['id' => 'restore_all', 'group' => 'Geral', 'label' => 'Reverter TUDO',
+          'timeout' => 1800]);
+    $add(['id' => 'smart.report', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: analisar o aparelho',
+          'desc' => 'Relatório completo do aparelho, sem alterar nada.',
+          'help' => 'Lê o aparelho de ponta a ponta e mostra tudo: SoC, GPU, clusters de CPU com as frequências, RAM (total e livre), pressão de memória do kernel, taxa de tela, resolução lógica, armazenamento, térmico, bateria, zram em uso, governador, entropia, I/O e renderizador atual. Termina com a nota (0-100), a classe e a lista do que está segurando a nota. Não altera NADA — é só leitura.',
+          'argv' => ['smart-opt.sh', 'analyze']]);
+    $add(['id' => 'smart.decide', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: ver o plano',
+          'desc' => 'Mostra o que seria aplicado, item por item, e o motivo de cada escolha.',
+          'help' => 'Mostra as decisões do otimizador para o seu aparelho, com o motivo de cada uma (por que Vulkan e não GL, por que 120Hz e não 144Hz, quantos apps em cache...). Nada é aplicado aqui — serve para você conferir antes. Você pode pedir um perfil específico.',
+          'argv' => ['smart-opt.sh', 'plan', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                         'default' => 'auto']]]);
+    $add(['id' => 'smart.bench', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: medir antes x depois',
+          'desc' => 'Mede o desempenho, aplica o perfil e mede de novo, comparando os dois.',
+          'help' => 'O teste que prova o resultado. Ele mede a nota de desempenho do aparelho (RAM livre, pressão de memória, carga de CPU, frequência e temperatura — 3 amostras de cada), aplica o perfil e mede de novo. No fim diz se MELHOROU, PIOROU ou ficou ESTÁVEL. Se piorar, avisa para reverter. É o "olha o número" em vez de "confie em mim".',
+          'argv' => ['smart-opt.sh', 'bench', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                         'default' => 'auto']],
+          'risk' => 'careful', 'confirm' => true, 'timeout' => 900]);
+    $add(['id' => 'smart.compare', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: comparar combinações',
+          'desc' => 'Testa caminhos diferentes (Vulkan x GL, 120Hz x 90Hz) e fica com o melhor.',
+          'help' => 'Quando dois ajustes são plausíveis, este comando testa os dois no SEU aparelho e fica com o de melhor nota de desempenho. Ele alterna o renderizador (Vulkan/GL) e a taxa de tela (a maior x 90Hz, que esquenta menos) medindo cada combinação, e no fim deixa aplicada a vencedora. O que funciona melhor depende do aparelho — então, em vez de adivinhar, ele mede.',
+          'argv' => ['smart-opt.sh', 'compare', '{perfil}'],
+          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
+                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
+                         'default' => 'auto']],
+          'risk' => 'careful', 'confirm' => true, 'timeout' => 900]);
+    $add(['id' => 'smart.state', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: ver o que está ativo',
+          'desc' => 'Mostra o perfil aplicado e o estado real dos ajustes agora.',
+          'help' => 'Mostra o perfil que foi aplicado por último, a RAM em cache, o renderizador, a taxa de tela (mín/máx), a RAM livre e os apps no anti-relog. Só leitura.',
+          'argv' => ['smart-opt.sh', 'status']]);
+    $add(['id' => 'restore_all', 'group' => 'Geral', 'card' => false, 'label' => 'Reverter TUDO',
           'desc' => 'Desfaz níveis 2, otimizações profundas e debloat de uma vez.',
           'help' => 'Volta o aparelho ao estado de fábrica de configuração: desfaz as otimizações, as profundas (root) e o debloat. Use quando quiser "limpar" tudo o que o pack aplicou.',
           'argv' => ['pack.sh', 'restore'], 'confirm' => true, 'timeout' => 300]);
-    $add(['id' => 'snapshot_save', 'group' => 'Geral', 'label' => 'Salvar snapshot',
+    // ----- backup seguro (arquivo criptografado no aparelho) -----
+    // Fica DENTRO do card do otimizador (card => false): é a rede de segurança
+    // dele. O arquivo vai para a pasta pública do app, criptografado, e pode ser
+    // lido de volta para devolver TODAS as configurações de uma vez.
+    $add(['id' => 'backup.export', 'group' => 'Geral', 'card' => false,
+          'label' => 'Salvar configurações',
+          'desc' => 'Salva um arquivo criptografado com as suas configurações.',
+          'help' => 'Tira uma foto COMPLETA das configurações que o pack mexe (animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o que mais estiver ativo), junta num arquivo .txt criptografado e guarda numa pasta do app no seu aparelho. É o ponto de retorno: com esse arquivo você volta exatamente como estava, mesmo depois de mexer em muita coisa. O arquivo é seu e fica no seu aparelho — a chave é gerada aqui e não sai dele.',
+          'argv' => ['backup.sh', 'export'], 'timeout' => 180]);
+    $add(['id' => 'backup.import', 'group' => 'Geral', 'card' => false,
+          'label' => 'Restaurar configurações',
+          'desc' => 'Lê o arquivo criptografado e devolve as configurações salvas.',
+          'help' => 'Lê o arquivo criptografado que você salvou e devolve TODAS as configurações de uma vez — animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o resto. Serve para voltar ao estado da foto depois de qualquer mexida. Se você tem mais de um arquivo, ele restaura o mais recente; o painel mostra qual foi usado.',
+          'argv' => ['backup.sh', 'import'], 'confirm' => true, 'timeout' => 180]);
+    $add(['id' => 'backup.list', 'group' => 'Geral', 'card' => false,
+          'label' => 'Ver backups salvos',
+          'desc' => 'Lista os arquivos de configuração guardados no aparelho.',
+          'help' => 'Mostra os arquivos de configuração já salvos, com a data e o aparelho de onde vieram. Só leitura.',
+          'argv' => ['backup.sh', 'list']]);
+
+    $add(['id' => 'snapshot_save', 'group' => 'Geral', 'card' => false, 'label' => 'Salvar snapshot',
           'desc' => 'Tira uma foto das configurações atuais para poder voltar depois.',
           'help' => 'Guarda o estado atual das configurações num "snapshot". Se algo der errado, você restaura essa foto e volta exatamente como estava. Faça isso ANTES de mexer em qualquer coisa.',
           'argv' => ['snapshot.sh', 'save']]);
@@ -318,35 +561,35 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'proc_limit', 'padrao']]);
 
     // ----- Gerador de sensi (só leitura: calcula para o SEU aparelho) -----
-    $add(['id' => 'overlay.sensi', 'group' => 'Sensi e mira', 'label' => 'Painel flutuante sobre o jogo',
+    $add(['id' => 'overlay.sensi', 'group' => 'Flutuante', 'label' => 'Painel flutuante sobre o jogo',
           'desc' => 'Mostra a sensi e os perfis de toque por cima do jogo, sem sair da partida.',
           'help' => 'Abre o painel flutuante: uma janela arrastável que fica por cima do jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Assim você confere e troca o ajuste sem fechar o jogo. Na primeira vez o Android pede a permissão "aparecer por cima de outros apps". Toque de novo no botão para desligar.',
           'argv' => [], 'ui' => 'overlay']);
-    $add(['id' => 'sensi.calc', 'group' => 'Sensi e mira', 'label' => 'Gerar sensi do meu aparelho',
+    $add(['id' => 'sensi.calc', 'group' => 'Display & Touch', 'label' => 'Gerar sensi do meu aparelho',
           'desc' => 'Calcula a sensi ideal para o seu aparelho, sem alterar nada.',
           'help' => 'Lê o seu aparelho (resolução, densidade/DPI, tamanho da tela, taxa de toque, taxa de atualização, SoC, RAM e o ajuste de toque já aplicado) e calcula uma sensi sob medida: Geral, Ponto vermelho, mira 2x, 4x, AWM, além do tamanho do botão de atirar (com teto de 50%, que é o que não deixa o botão feio/grande). NÃO altera nada no aparelho: só mostra os números para você digitar no jogo. Rode de novo se mudar a resolução.',
           'argv' => ['sensi.sh', 'calc'], 'timeout' => 90]);
-    $add(['id' => 'sensi.analyze', 'group' => 'Sensi e mira', 'label' => 'Sensi: ver o que foi lido',
+    $add(['id' => 'sensi.analyze', 'group' => 'Display & Touch', 'label' => 'Sensi: ver o que foi lido',
           'desc' => 'Mostra as leituras e os fatores usados no cálculo da sensi.',
           'help' => 'Transparência total: mostra exatamente o que o gerador leu do seu aparelho (tela, DPI, polegadas, toque, Hz, SoC, RAM) e quais fatores aplicou em cada item. Assim você entende por que a sensi saiu daquele valor. Só leitura.',
           'argv' => ['sensi.sh', 'analyze'], 'timeout' => 90]);
-    $add(['id' => 'sensi.headshot', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil headshot',
+    $add(['id' => 'sensi.headshot', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil headshot',
           'desc' => 'Recalcula a sensi com foco em mira rápida na cabeça.',
           'help' => 'Mesma conta do gerador, com o perfil headshot: mira mais ágil para pegar a cabeça. Mostra os valores para digitar no jogo. Só leitura, nada é alterado no aparelho.',
           'argv' => ['sensi.sh', 'calc', 'headshot'], 'timeout' => 90]);
-    $add(['id' => 'sensi.spray', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil spray',
+    $add(['id' => 'sensi.spray', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil spray',
           'desc' => 'Recalcula a sensi com foco em controle de recuo.',
           'help' => 'Mesma conta do gerador, com o perfil spray: controle melhor no tiro contínuo (segurar o dedo atirando). Mostra os valores para digitar no jogo. Só leitura.',
           'argv' => ['sensi.sh', 'calc', 'spray'], 'timeout' => 90]);
-    $add(['id' => 'sensi.sniper', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil sniper',
+    $add(['id' => 'sensi.sniper', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil sniper',
           'desc' => 'Recalcula a sensi com foco em mira precisa de longe.',
           'help' => 'Mesma conta do gerador, com o perfil sniper: mira mais lenta e precisa para longa distância (AWM, mira 4x). Mostra os valores para digitar no jogo. Só leitura.',
           'argv' => ['sensi.sh', 'calc', 'sniper'], 'timeout' => 90]);
-    $add(['id' => 'sensi.speed', 'group' => 'Sensi e mira', 'label' => 'Sensi: perfil speed',
+    $add(['id' => 'sensi.speed', 'group' => 'Display & Touch', 'label' => 'Sensi: perfil speed',
           'desc' => 'Recalcula a sensi com foco em reação máxima.',
           'help' => 'Mesma conta do gerador, com o perfil speed: resposta o mais rápida possível, para quem joga agressivo e vira rápido. Mostra os valores para digitar no jogo. Só leitura.',
           'argv' => ['sensi.sh', 'calc', 'speed'], 'timeout' => 90]);
-    $add(['id' => 'sensi.ff', 'group' => 'Sensi e mira', 'label' => 'Sensi: valores na ordem do FF',
+    $add(['id' => 'sensi.ff', 'group' => 'Display & Touch', 'label' => 'Sensi: valores na ordem do FF',
           'desc' => 'Imprime só os números, na ordem da tela do Free Fire.',
           'help' => 'Imprime os cinco valores separados por espaço (Geral, Ponto vermelho, 2x, 4x, AWM) na mesma ordem em que o Free Fire pede, para você digitar rápido sem procurar. Só leitura.',
           'argv' => ['sensi.sh', 'ff'], 'timeout' => 90]);
@@ -612,23 +855,35 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'game']]);
 
     // ----- Performance / Tela / Bateria -----
-    $add(['id' => 'perf', 'group' => 'Desempenho', 'label' => 'Performance (animações 0.5x)',
+    $add(['id' => 'gpu_off', 'group' => 'Display & Touch', 'card' => false, 'label' => 'Conjunto GPU: desligar',
+          'desc' => 'Devolve a renderização por GPU e o driver de jogo ao sistema.',
+          'help' => 'Desfaz o conjunto GPU: desliga a renderização forçada por GPU e o driver de jogo, devolvendo a decisão ao Android.',
+          'argv' => ['adb-tweaks.sh', 'gpu_off']]);
+    $add(['id' => 'perf', 'group' => 'Desempenho', 'card' => false, 'label' => 'Performance (animações 0.5x)',
           'desc' => 'Deixa as animações mais rápidas: interface parece mais ágil.',
           'help' => 'Reduz a duração das animações do sistema pela metade. O celular parece mais rápido sem mudar nada de verdade — só a sensação de velocidade melhora.',
           'argv' => ['adb-tweaks.sh', 'perf']]);
-    $add(['id' => 'perf_max', 'group' => 'Desempenho', 'label' => 'Performance extrema (animações 0)',
+    $add(['id' => 'perf_max', 'group' => 'Desempenho', 'card' => false, 'label' => 'Performance extrema (animações 0)',
           'desc' => 'Remove as animações: transições instantâneas.',
           'help' => 'Desliga as animações de vez. Tudo abre instantaneamente. Ótimo para aparelhos lentos, mas o visual fica mais "seco".',
           'argv' => ['adb-tweaks.sh', 'perf_max']]);
-    $add(['id' => 'fluidez', 'group' => 'Desempenho', 'label' => 'Fluidez (toque + Hz + animações)',
+    $add(['id' => 'perf_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Performance: voltar ao padrão',
+          'desc' => 'Devolve as animações ao tempo normal (1x).',
+          'help' => 'Devolve as animações do sistema ao tempo de fábrica. Use quando quiser a interface "normal" de volta depois de acelerar.',
+          'argv' => ['adb-tweaks.sh', 'perf_off']]);
+    $add(['id' => 'fluidez', 'group' => 'Desempenho', 'card' => false, 'label' => 'Fluidez (toque + Hz + animações)',
           'desc' => 'Pacote geral de fluidez: toque, taxa de atualização e animações.',
           'help' => 'Combina vários ajustes que, juntos, deixam o uso mais fluido: resposta de toque melhor, taxa de atualização no máximo e animações mais rápidas. É o "tudo para fluidez".',
           'argv' => ['adb-tweaks.sh', 'fluidez']]);
-    $add(['id' => 'dnd', 'group' => 'Desempenho', 'label' => 'Não perturbe (DND)',
+    $add(['id' => 'fluidez_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Fluidez: desligar',
+          'desc' => 'Devolve animações, toque e taxa de tela ao padrão.',
+          'help' => 'Desfaz o pacote de fluidez e devolve animações, janelas de toque e taxa de atualização ao padrão do aparelho.',
+          'argv' => ['adb-tweaks.sh', 'fluidez_off']]);
+    $add(['id' => 'dnd', 'group' => 'Desempenho', 'card' => false, 'label' => 'Não perturbe (DND)',
           'desc' => 'Silencia notificações durante o jogo.',
           'help' => 'Ativa o modo Não Perturbe: nada de notificações atrapalhando no meio da partida. Desligue com "Desligar DND" quando terminar.',
           'argv' => ['adb-tweaks.sh', 'dnd']]);
-    $add(['id' => 'dnd_off', 'group' => 'Desempenho', 'label' => 'Desligar DND',
+    $add(['id' => 'dnd_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Desligar DND',
           'desc' => 'Volta a receber notificações normalmente.',
           'help' => 'Desliga o modo Não Perturbe e traz as notificações de volta.',
           'argv' => ['adb-tweaks.sh', 'dnd_off']]);
@@ -644,21 +899,25 @@ function otm_actions(): array {
           'desc' => 'Fixa a taxa de atualização no máximo do aparelho.',
           'help' => 'Trava a tela na maior taxa de atualização (Hz) que o aparelho suporta. Rolagem e jogo ficam mais suaves. Gasta um pouco mais de bateria.',
           'argv' => ['adb-tweaks.sh', 'screen']]);
-    $add(['id' => 'battery', 'group' => 'Desempenho', 'label' => 'Economia de bateria',
+    $add(['id' => 'screen_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Tela: devolver taxa ao sistema',
+          'desc' => 'Remove a trava de refresh e deixa o sistema decidir.',
+          'help' => 'Apaga a trava de taxa de atualização e devolve o controle ao Android.',
+          'argv' => ['adb-tweaks.sh', 'screen_off']]);
+    $add(['id' => 'battery', 'group' => 'Desempenho', 'card' => false, 'label' => 'Economia de bateria',
           'desc' => 'Ativa o modo de economia e o repouso profundo (Doze).',
           'help' => 'Liga a economia de energia e força o aparelho a "dormir" mais fundo quando parado. Dura mais a bateria. NÃO use enquanto joga — pode derrubar o desempenho.',
           'argv' => ['adb-tweaks.sh', 'battery']]);
-    $add(['id' => 'battery_off', 'group' => 'Desempenho', 'label' => 'Desligar economia',
+    $add(['id' => 'battery_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Desligar economia',
           'desc' => 'Volta ao consumo normal (recomendado para jogar).',
           'help' => 'Desliga a economia de bateria e o repouso profundo. Use antes de jogar para o desempenho não ser limitado.',
           'argv' => ['adb-tweaks.sh', 'battery_off']]);
 
     // ----- Sono profundo (doze / idle) -----
-    $add(['id' => 'doze.on', 'group' => 'Desempenho', 'label' => 'Sono profundo: ligar',
+    $add(['id' => 'doze.on', 'group' => 'Desempenho', 'card' => false, 'label' => 'Sono profundo: ligar',
           'desc' => 'Faz o aparelho dormir de verdade logo após a tela apagar.',
           'help' => 'O Android só "dorme fundo" (Doze) depois de uns 30 minutos parado. Aqui esse tempo é encurtado para cerca de 2 minutos: a tela apagou, o aparelho dorme e a bateria dura muito mais. Reverta em "Sono profundo: desligar" antes de precisar de notificações em tempo real.',
           'argv' => ['adb-tweaks.sh', 'doze', 'on'], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'doze.off', 'group' => 'Desempenho', 'label' => 'Sono profundo: desligar',
+    $add(['id' => 'doze.off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Sono profundo: desligar',
           'desc' => 'Volta os tempos de repouso ao padrão de fábrica.',
           'help' => 'Restaura os tempos normais do Doze. Use se estiver perdendo notificações de apps em segundo plano.',
           'argv' => ['adb-tweaks.sh', 'doze', 'off']]);
@@ -678,6 +937,38 @@ function otm_actions(): array {
           'help' => 'Detalha o app escolhido: quantos processos tem, quanto de RAM está usando, a prioridade (nice) e o oom_score. Tudo lido do aparelho. Só leitura.',
           'argv' => ['proc-mgr.sh', 'info', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.list', 'group' => 'Processos', 'label' => 'Apps rodando agora',
+          'desc' => 'Lista os apps de usuário rodando neste momento, com a RAM de cada um.',
+          'help' => 'Mostra os apps de usuário que estão rodando agora, com quanta RAM cada um ocupa, e marca os que estão protegidos. É a mesma lista que o painel flutuante mostra no meio da partida. Só leitura.',
+          'argv' => ['proc-mgr.sh', 'list']]);
+    $add(['id' => 'proc.kill', 'group' => 'Processos', 'label' => 'Encerrar todos em 2º plano',
+          'desc' => 'Fecha os apps de fundo de uma vez, poupando as suas exceções.',
+          'help' => 'Encerra de uma vez os apps que estão rodando em segundo plano e libera a RAM. Ficam de fora: o app em primeiro plano, o jogo do Modo Competitivo, o próprio pack e as suas exceções (procure "Exceção: não encerrar" abaixo). É o botão "encerrar todos" do painel flutuante.',
+          'argv' => ['proc-mgr.sh', 'kill'],
+          'risk' => 'careful']);
+    $add(['id' => 'proc.keep', 'group' => 'Processos', 'label' => 'Exceção: app não encerrar',
+          'desc' => 'Marca um app que NUNCA deve ser encerrado (ex.: uma live).',
+          'help' => 'Cria uma exceção: o app escolhido nunca é encerrado pelo "Encerrar todos", pelo Clean, pelo RAM Boost nem pelo Game Clean. Serve para coisas que você não quer que fechem — por exemplo, uma live do TikTok rodando em segundo plano. Remova em "Exceção: remover".',
+          'argv' => ['proc-mgr.sh', 'keep', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.keep_fg', 'group' => 'Processos', 'label' => 'Exceção: app em 1º plano',
+          'desc' => 'Cria a exceção para o app que está na tela agora.',
+          'help' => 'Descobre qual app está em primeiro plano neste momento e cria a exceção para ele, sem você precisar procurar o pacote. Útil quando a live já está aberta.',
+          'argv' => ['proc-mgr.sh', 'keep-fg']]);
+    $add(['id' => 'proc.keep_list', 'group' => 'Processos', 'label' => 'Exceções (não encerrar)',
+          'desc' => 'Lista os apps marcados como "não encerrar".',
+          'help' => 'Lista as exceções: os apps que o pack nunca encerra, nem no "Encerrar todos" nem nas limpezas. Só leitura.',
+          'argv' => ['proc-mgr.sh', 'keep-list']]);
+    $add(['id' => 'proc.unkeep', 'group' => 'Processos', 'label' => 'Exceção: remover',
+          'desc' => 'Tira o app da lista de "não encerrar".',
+          'help' => 'Remove a exceção do app escolhido: ele volta a poder ser encerrado em segundo plano como os outros.',
+          'argv' => ['proc-mgr.sh', 'unkeep', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
+    $add(['id' => 'proc.keep_clear', 'group' => 'Processos', 'label' => 'Exceções: apagar todas',
+          'desc' => 'Limpa de uma vez a lista de "não encerrar".',
+          'help' => 'Apaga todas as exceções de uma vez, devolvendo o comportamento normal: nenhum app fica poupado além do jogo e do que está em primeiro plano.',
+          'argv' => ['proc-mgr.sh', 'keep-clear'],
+          'risk' => 'careful']);
                             
     // ----- Manter vivo (anti-relog) -----
     $add(['id' => 'keep.on', 'group' => 'Processos', 'label' => 'Manter app vivo (não relogar)',
@@ -713,11 +1004,11 @@ function otm_actions(): array {
           'argv' => ['keep-alive.sh', 'restore'], 'risk' => 'careful', 'confirm' => true]);
 
     // ----- Congelar apps -----
-    $add(['id' => 'freeze', 'group' => 'Desempenho', 'label' => 'Congelar apps (cache freezer)',
+    $add(['id' => 'freeze', 'group' => 'Desempenho', 'card' => false, 'label' => 'Congelar apps (cache freezer)',
           'desc' => 'Ativa o congelador do sistema e aplica a lista.',
           'help' => 'Liga o congelador de apps em cache do sistema: apps que você não está usando ficam pausados em vez de gastar RAM/bateria. Ótimo para liberar memória. Reverta em "Descongelar todos os apps".',
           'argv' => ['adb-tweaks.sh', 'freezer'], 'confirm' => true]);
-    $add(['id' => 'unfreeze', 'group' => 'Desempenho', 'label' => 'Descongelar todos os apps',
+    $add(['id' => 'unfreeze', 'group' => 'Desempenho', 'card' => false, 'label' => 'Descongelar todos os apps',
           'desc' => 'Garante que nenhum app fique preso em segundo plano.',
           'help' => 'Acorda todos os apps e desliga o congelador. Use se algum app parou de notificar ou não abre direito.',
           'argv' => ['adb-tweaks.sh', 'unfreeze_apps']]);
@@ -770,7 +1061,15 @@ function otm_actions(): array {
           'desc' => 'Desliga a economia de dados que estrangula a velocidade.',
           'help' => 'Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.',
           'argv' => ['adb-tweaks.sh', 'mobile_net']]);
-    $add(['id' => 'adv.notif', 'group' => 'Sistema', 'label' => 'Menos notificações (heads-up)',
+    $add(['id' => 'adv.mobile_net_off', 'group' => 'DNS e rede', 'card' => false, 'label' => 'Rede móvel: voltar ao padrão',
+          'desc' => 'Religa a economia de dados e o comportamento padrão.',
+          'help' => 'Devolve a economia de dados e as preferências de rede móvel ao padrão do Android.',
+          'argv' => ['adb-tweaks.sh', 'mobile_net_off']]);
+    $add(['id' => 'adv.notif_on', 'group' => 'Sistema', 'card' => false, 'label' => 'Notificações: voltar ao normal',
+          'desc' => 'Religa os balões (heads-up) e as bolhas.',
+          'help' => 'Religa os balões (heads-up) e as bolhas de notificação, voltando ao comportamento padrão do Android.',
+          'argv' => ['adb-tweaks.sh', 'notif_on']]);
+    $add(['id' => 'adv.notif', 'group' => 'Sistema', 'card' => false, 'label' => 'Menos notificações (heads-up)',
           'desc' => 'Reduz o trabalho do sistema com notificações pop-up.',
           'help' => 'Desliga os balões (heads-up) e as bolhas de notificação. O sistema trabalha menos e sobra fluidez — bom para jogar.',
           'argv' => ['adb-tweaks.sh', 'notif']]);
@@ -892,11 +1191,11 @@ function otm_actions(): array {
           'desc' => 'Encerra apps em segundo plano, poupando o jogo.',
           'help' => 'Fecha os apps que estão rodando escondidos para liberar RAM na hora, sem mexer no Free Fire. É um "matar tudo" mais seguro que o do sistema.',
           'argv' => ['turbo.sh', 'killbg'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.phantom_on', 'group' => 'Desempenho', 'label' => 'Phantom Killer: ligar',
+    $add(['id' => 'turbo.phantom_on', 'group' => 'Desempenho', 'card' => false, 'label' => 'Phantom Killer: ligar',
           'desc' => 'Volta o limite de processos-fantasma ao padrão do Android.',
           'help' => 'O Phantom Process Killer mata processos "fantasma" (filhos de apps como Termux/emuladores). Aqui ele volta ao padrão do sistema. Use se você não precisa de serviços em segundo plano.',
           'argv' => ['turbo.sh', 'phantom', 'on']]);
-    $add(['id' => 'turbo.phantom_off', 'group' => 'Desempenho', 'label' => 'Phantom Killer: desligar',
+    $add(['id' => 'turbo.phantom_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Phantom Killer: desligar',
           'desc' => 'Desliga o limite (bom p/ Termux, emuladores e serviços).',
           'help' => 'Desliga o Phantom Process Killer: apps como Termux, emuladores e servidores deixam de ter processos mortos pelo sistema. Pode aumentar um pouco o uso de bateria.',
           'argv' => ['turbo.sh', 'phantom', 'off'], 'risk' => 'careful']);
@@ -904,11 +1203,11 @@ function otm_actions(): array {
           'desc' => 'Libera espaço dos caches sem apagar dados de apps.',
           'help' => 'Usa o trim-caches oficial do Android: apaga só arquivos de cache temporários, nunca seus dados, contas ou conversas. Mostra o espaço livre antes e depois.',
           'argv' => ['turbo.sh', 'trim']]);
-    $add(['id' => 'turbo.refresh_max', 'group' => 'Desempenho', 'label' => 'Refresh no máximo',
+    $add(['id' => 'turbo.refresh_max', 'group' => 'Desempenho', 'card' => false, 'label' => 'Refresh no máximo',
           'desc' => 'Trava a tela na maior taxa de atualização (ex.: 120Hz).',
           'help' => 'Trava a taxa de atualização no valor mais alto suportado pela tela. Rolagem e jogo ficam mais lisos. Gasta um pouco mais de bateria. Reverte em "Refresh automático".',
           'argv' => ['turbo.sh', 'refresh', 'max'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.refresh_auto', 'group' => 'Desempenho', 'label' => 'Refresh automático',
+    $add(['id' => 'turbo.refresh_auto', 'group' => 'Desempenho', 'card' => false, 'label' => 'Refresh automático',
           'desc' => 'Devolve o controle da taxa de atualização ao sistema.',
           'help' => 'Remove a trava de refresh e deixa o Android escolher a taxa conforme a tela e a bateria.',
           'argv' => ['turbo.sh', 'refresh', 'auto']]);
@@ -919,11 +1218,11 @@ function otm_actions(): array {
           'params' => [['name' => 'hz', 'type' => 'enum', 'label' => 'Taxa (Hz)',
                         'options' => ['60', '90', '120', '144'], 'default' => '120']],
           'risk' => 'careful']);
-                            $add(['id' => 'turbo.perfmode_on', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: ligar',
+                            $add(['id' => 'turbo.perfmode_on', 'group' => 'Desempenho', 'card' => false, 'label' => 'Modo desempenho fixo: ligar',
           'desc' => 'Força o aparelho a priorizar desempenho.',
           'help' => 'Trava o aparelho em modo de desempenho (não reduz clocks por bateria). Mais FPS sustentado, mais calor e mais consumo. Reverte em "desligar".',
           'argv' => ['turbo.sh', 'perfmode', 'on'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.perfmode_off', 'group' => 'Desempenho', 'label' => 'Modo desempenho fixo: desligar',
+    $add(['id' => 'turbo.perfmode_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Modo desempenho fixo: desligar',
           'desc' => 'Volta o controle de energia ao sistema.',
           'help' => 'Desliga o modo de desempenho fixo e devolve o gerenciamento de energia ao Android.',
           'argv' => ['turbo.sh', 'perfmode', 'off']]);
@@ -932,39 +1231,39 @@ function otm_actions(): array {
     // O resto do pack "tira o freio". Estas ações fazem o oposto: medem a saúde
     // real da bateria, reduzem desgaste e avisam hábitos de carga que encurtam a
     // vida do aparelho. Nada aqui força o celular.
-    $add(['id' => 'vital.optimize', 'group' => 'Vitalidade', 'label' => 'Otimizar saúde do telefone',
+    $add(['id' => 'vital.optimize', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizar saúde do telefone',
           'desc' => 'Um toque: liga o cuidado e mostra a saúde real da bateria.',
           'help' => 'O botão único do cuidado. Liga o modo longevidade (sono profundo afinado, tela em 60 Hz, menos varredura em segundo plano e a economia de energia do sistema de volta) e, na mesma tela, mostra a saúde REAL da bateria: capacidade atual contra a de fábrica, ciclos, temperatura e uma nota de 0 a 100. É para durar mais, não para forçar. Reversível em "Modo longevidade: desligar".',
           'argv' => ['vitality.sh', 'optimize'], 'risk' => 'careful', 'confirm' => true, 'timeout' => 180]);
-    $add(['id' => 'vital.diag', 'group' => 'Vitalidade', 'label' => 'Saúde da bateria: ver diagnóstico',
+    $add(['id' => 'vital.diag', 'group' => 'Geral', 'card' => false, 'label' => 'Saúde da bateria: ver diagnóstico',
           'desc' => 'Capacidade real, ciclos e desgaste da bateria.',
           'help' => 'Mostra a saúde REAL da bateria: compara a capacidade atual com a de fábrica (é o número que o Android esconde), a contagem de ciclos de carga, o nível, a temperatura e uma nota de vitalidade de 0 a 100. É a diferença entre "acho que está boa" e saber. Só leitura: não muda nada no aparelho.',
           'argv' => ['vitality.sh', 'diag'], 'timeout' => 60]);
-    $add(['id' => 'vital.care_on', 'group' => 'Vitalidade', 'label' => 'Modo longevidade: ligar',
+    $add(['id' => 'vital.care_on', 'group' => 'Geral', 'card' => false, 'label' => 'Modo longevidade: ligar',
           'desc' => 'Reduz o desgaste: doze ativo, tela 60Hz, menos scans.',
           'help' => 'Liga o cuidado com a durabilidade: sono profundo afinado (dorme logo após a tela apagar), tela em 60Hz (taxa alta é um dos maiores consumos contínuos) e menos varredura de Wi-Fi/Bluetooth em segundo plano. Reduz agressão em vez de forçar desempenho, então o aparelho esquenta menos e dura mais. Totalmente reversível em "Modo longevidade: desligar".',
           'argv' => ['vitality.sh', 'care', 'on'], 'risk' => 'careful', 'timeout' => 120]);
-    $add(['id' => 'vital.care_off', 'group' => 'Vitalidade', 'label' => 'Modo longevidade: desligar',
+    $add(['id' => 'vital.care_off', 'group' => 'Geral', 'card' => false, 'label' => 'Modo longevidade: desligar',
           'desc' => 'Volta doze, taxa da tela e scans ao padrão.',
           'help' => 'Desliga o modo longevidade e devolve o sono profundo, a taxa de atualização e as varreduras ao padrão de fábrica. Reversível.',
           'argv' => ['vitality.sh', 'care', 'off'], 'risk' => 'safe', 'timeout' => 60]);
-    $add(['id' => 'vital.care_status', 'group' => 'Vitalidade', 'label' => 'Modo longevidade: ver estado',
+    $add(['id' => 'vital.care_status', 'group' => 'Geral', 'card' => false, 'label' => 'Modo longevidade: ver estado',
           'desc' => 'Mostra se o modo longevidade está ligado.',
           'help' => 'Diz se o modo longevidade está ligado ou desligado, e resume a nota de vitalidade, a saúde da bateria e a temperatura agora. Só leitura.',
           'argv' => ['vitality.sh', 'care', 'status'], 'timeout' => 60]);
-    $add(['id' => 'vital.guard', 'group' => 'Vitalidade', 'label' => 'Guardião de carga: ver hábitos',
+    $add(['id' => 'vital.guard', 'group' => 'Geral', 'card' => false, 'label' => 'Guardião de carga: ver hábitos',
           'desc' => 'Conta cargas acima de 80% e cargas com calor.',
           'help' => 'O guardião observa seus hábitos de carga e conta o que desgasta a bateria: quantas vezes você carregou acima de 80% e quantas carregou com o aparelho quente (calor + carga é o que mais encurta a vida da célula). Ele não muda nada: só mede e avisa. Sem root não é possível limitar a carga em 80%, mas dá para saber quando você passou.',
           'argv' => ['vitality.sh', 'guard'], 'timeout' => 60]);
-    $add(['id' => 'vital.status', 'group' => 'Vitalidade', 'label' => 'Vitalidade: resumo',
+    $add(['id' => 'vital.status', 'group' => 'Geral', 'card' => false, 'label' => 'Vitalidade: resumo',
           'desc' => 'Nota de vitalidade e situação geral do aparelho.',
           'help' => 'Resume tudo em uma tela: nota de vitalidade, saúde da bateria, ciclos, temperatura, se o modo longevidade está ligado e o alerta atual do guardião de carga. Só leitura.',
           'argv' => ['vitality.sh', 'status'], 'timeout' => 60]);
-    $add(['id' => 'turbo.telemetry_off', 'group' => 'Desempenho', 'label' => 'Telemetria e logs: desligar',
+    $add(['id' => 'turbo.telemetry_off', 'group' => 'Desempenho', 'card' => false, 'label' => 'Telemetria e logs: desligar',
           'desc' => 'Desliga logs persistentes e scans "sempre disponível".',
           'help' => 'Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth "sempre disponível". Menos trabalho em segundo plano e mais privacidade. Reversível em "religar".',
           'argv' => ['turbo.sh', 'telemetry', 'off'], 'risk' => 'careful']);
-    $add(['id' => 'turbo.telemetry_on', 'group' => 'Desempenho', 'label' => 'Telemetria e logs: religar',
+    $add(['id' => 'turbo.telemetry_on', 'group' => 'Desempenho', 'card' => false, 'label' => 'Telemetria e logs: religar',
           'desc' => 'Volta os logs e scans ao padrão.',
           'help' => 'Religa os logs e as varreduras que o modo privacidade desligou, voltando ao comportamento padrão do Android.',
           'argv' => ['turbo.sh', 'telemetry', 'on']]);
@@ -1012,6 +1311,18 @@ function otm_actions(): array {
                         'default' => 'samsung']],
           'risk' => 'careful', 'confirm' => true, 'timeout' => 300]);
 
+    $add(['id' => 'wifi_off', 'group' => 'DNS e rede', 'card' => false, 'label' => 'Wi-Fi: voltar ao padrão',
+          'desc' => 'Religa a varredura e a economia de Wi-Fi.',
+          'help' => 'Devolve a varredura de Wi-Fi em segundo plano e a economia de energia ao padrão do Android.',
+          'argv' => ['adb-tweaks.sh', 'wifi_off']]);
+    $add(['id' => 'net_tune', 'group' => 'DNS e rede', 'label' => 'Ajustes finos de conexão',
+          'desc' => 'DNS DoT, servidor de hora e sem varredura de fundo.',
+          'help' => 'Ajustes que deixam a conexão mais estável sem risco: DNS privado em modo hostname (DoT), servidor de hora fixo (relógio errado quebra TLS e derruba conexão), não largar o Wi-Fi bom pelo móvel e varredura de fundo desligada. Desligue a qualquer momento.',
+          'argv' => ['adb-tweaks.sh', 'net_tune', 'on']]);
+    $add(['id' => 'net_tune_off', 'group' => 'DNS e rede', 'card' => false, 'label' => 'Ajustes finos: desligar',
+          'desc' => 'Devolve servidor de hora e preferências de rede ao padrão.',
+          'help' => 'Desfaz os ajustes finos de conexão e devolve as preferências de rede ao padrão.',
+          'argv' => ['adb-tweaks.sh', 'net_tune', 'off']]);
     // ----- Wi-Fi e rede -----
     $add(['id' => 'wifi', 'group' => 'DNS e rede', 'label' => 'Ajustes de Wi-Fi',
           'desc' => 'Desliga o scan de Wi-Fi em segundo plano e a economia agressiva.',
@@ -1073,15 +1384,15 @@ function otm_actions(): array {
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App']]]);
 
     // ----- Snapshots (extras) -----
-    $add(['id' => 'snapshot_list', 'group' => 'Geral', 'label' => 'Ver snapshots salvos',
+    $add(['id' => 'snapshot_list', 'group' => 'Geral', 'card' => false, 'label' => 'Ver snapshots salvos',
           'desc' => 'Lista os snapshots que você já tirou.',
           'help' => 'Mostra todas as fotos de configuração que você salvou, com data e id. Serve para escolher qual restaurar.',
           'argv' => ['snapshot.sh', 'list']]);
-    $add(['id' => 'snapshot_diff', 'group' => 'Geral', 'label' => 'Comparar com o último snapshot',
+    $add(['id' => 'snapshot_diff', 'group' => 'Geral', 'card' => false, 'label' => 'Comparar com o último snapshot',
           'desc' => 'Mostra o que mudou desde o snapshot mais recente.',
           'help' => 'Compara as configurações atuais com o último snapshot e lista só o que mudou. Bom para conferir o que o pack alterou.',
           'argv' => ['snapshot.sh', 'diff', 'latest']]);
-    $add(['id' => 'snapshot_restore', 'group' => 'Geral', 'label' => 'Restaurar último snapshot',
+    $add(['id' => 'snapshot_restore', 'group' => 'Geral', 'card' => false, 'label' => 'Restaurar último snapshot',
           'desc' => 'Volta as configurações para o último snapshot salvo.',
           'help' => 'Devolve o aparelho ao estado do último snapshot: desfaz as mudanças feitas depois dele. É o "botão de voltar" mais seguro.',
           'argv' => ['snapshot.sh', 'restore', 'latest'], 'risk' => 'careful', 'confirm' => true]);
@@ -1114,10 +1425,34 @@ function otm_actions(): array {
           'argv' => ['bench.sh', 'run', '{label}'],
           'params' => [['name' => 'label', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'depois']]]);
 
+    // ----- Dispositivos: resolução de tela (mesma de vários aparelhos) -----
+    $add(['id' => 'res.list', 'group' => 'Dispositivos', 'label' => 'Ver resoluções disponíveis',
+          'desc' => 'Lista as resoluções de vários aparelhos e qual está valendo agora.',
+          'help' => 'Mostra os degraus de resolução que existem no mercado (de 480x800 até 1440x3200) e a resolução de fábrica do seu aparelho. A resolução lógica é o ajuste que MAIS rende FPS em jogo pesado: com menos pixels para desenhar, a mesma GPU entrega mais quadros. Escolha o quanto aceita perder de nitidez em troca de FPS.',
+          'argv' => ['resolution.sh', 'list']]);
+    $add(['id' => 'res.current', 'group' => 'Dispositivos', 'label' => 'Ver a resolução atual',
+          'desc' => 'Mostra a resolução de fábrica, a que está em uso e a densidade.',
+          'help' => 'Compara a resolução de fábrica do aparelho com a que está valendo agora (override). Se houver override ativo, "Voltar à resolução de fábrica" desfaz. Só leitura.',
+          'argv' => ['resolution.sh', 'current']]);
+    $add(['id' => 'res.auto', 'group' => 'Dispositivos', 'label' => 'Resolução recomendada (automático)',
+          'desc' => 'Escolhe um degrau de resolução conforme o tamanho da tela do seu aparelho.',
+          'help' => 'Em tela muito grande (QHD/1440p), desce para 1080p — é um ganho grande de FPS com perda pequena de nitidez. Em tela pequena, não mexe (já renderiza pouco). Reversível em "Voltar à resolução de fábrica".',
+          'argv' => ['resolution.sh', 'auto'], 'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'res.apply', 'group' => 'Dispositivos', 'label' => 'Aplicar uma resolução',
+          'desc' => 'Escolha um perfil pronto (720p, 1080p, 1440p...) ou digite "largura x altura".',
+          'help' => 'Aplica a resolução lógica. Ex.: 720x1600 (mais FPS, imagem mais leve), 1080x2340 (equilíbrio), 1440x3200 (nitidez máxima). Você também pode digitar um valor próprio, como 900x1800. Reinicie o jogo depois para ele pegar. A resolução de fábrica fica guardada e volta em "Voltar à resolução de fábrica".',
+          'argv' => ['resolution.sh', 'apply', '{res}'],
+          'params' => [['name' => 'res', 'type' => 'name', 'label' => 'Resolução (ex.: 720x1600)', 'default' => '720x1600']],
+          'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'res.reset', 'group' => 'Dispositivos', 'label' => 'Voltar à resolução de fábrica',
+          'desc' => 'Devolve a tela à resolução original do aparelho.',
+          'help' => 'Remove o override de resolução e volta exatamente à resolução de fábrica. Use se a imagem ficar estranha ou se quiser a nitidez máxima de volta.',
+          'argv' => ['resolution.sh', 'reset'], 'risk' => 'careful']);
+
     // ----- Módulos (plugins do pack) -----
-    $add(['id' => 'module.run', 'group' => 'Geral', 'label' => 'Executar um módulo',
+    $add(['id' => 'module.run', 'group' => 'Sistema', 'label' => 'Executar um módulo',
           'desc' => 'Roda um dos módulos/plugins incluídos no pack.',
-          'help' => 'Os módulos são os complementos (tweaks, touch, GPU, bateria). Digite o nome exato do módulo — veja a lista na aba Geral. Ação reversível conforme o módulo.',
+          'help' => 'Os módulos são os complementos (tweaks, touch, GPU, bateria). Digite o nome exato do módulo — veja a lista na aba Sistema. Ação reversível conforme o módulo.',
           'argv' => ['modules.sh', 'run', '{name}'],
           'params' => [['name' => 'name', 'type' => 'name', 'label' => 'Nome do módulo']],
           'risk' => 'careful', 'confirm' => true, 'timeout' => 180]);
@@ -1162,11 +1497,11 @@ function otm_actions(): array {
           'argv' => ['config.sh', 'reset']]);
 
     // ----- Configs: permissões e segundo plano (feitas pelo shell) -----
-    $add(['id' => 'perm.app', 'group' => 'Sistema', 'label' => 'Permitir o app do pack',
+    $add(['id' => 'perm.app', 'group' => 'Sistema', 'card' => false, 'label' => 'Permitir o app do pack',
           'desc' => 'Libera o app do pack para rodar em segundo plano, sem restrição de bateria e fora do Doze.',
           'help' => 'Sem isso o Android adormece o app do pack: as otimizações param sozinhas, o som não toca e o acesso cai. Aqui o app entra na lista de isenção do Doze, ganha permissão de rodar em segundo plano e de manter a CPU acordada. Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_app'], 'timeout' => 120]);
-    $add(['id' => 'perm.ff', 'group' => 'Sistema', 'label' => 'Permitir os Free Fire',
+    $add(['id' => 'perm.ff', 'group' => 'Sistema', 'card' => false, 'label' => 'Permitir os Free Fire',
           'desc' => 'Libera o Free Fire e o Free Fire MAX para rodar em segundo plano sem serem congelados.',
           'help' => 'Impede o sistema de congelar o Free Fire e o Free Fire MAX quando você troca de app ou a tela apaga — evita o jogo fechar no meio da partida. Também tira a restrição de bateria. Se o seu jogo é outro (CODM, Minecraft...), use "Permitir o meu jogo". Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_ff'], 'timeout' => 120]);
@@ -1176,10 +1511,27 @@ function otm_actions(): array {
           'argv' => ['adb-tweaks.sh', 'perm_game', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'Jogo', 'optional' => true]],
           'timeout' => 120]);
-    $add(['id' => 'perm.battery', 'group' => 'Sistema', 'label' => 'Bateria sem economia agressiva',
+    $add(['id' => 'perm.battery', 'group' => 'Sistema', 'card' => false, 'label' => 'Bateria sem economia agressiva',
           'desc' => 'Desliga a economia de energia e o App Standby (global, não só para um app).',
           'help' => 'Isto é global do aparelho, não é permissão de um app: desliga o modo de economia de energia (low_power), a gestão adaptativa de bateria e o App Standby (que suspende apps em segundo plano). É o que deixa o pack e o jogo "acordados" sem o sistema cortar o desempenho. NÃO use no dia a dia se você prioriza duração de bateria. Reversível em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'perm_battery'], 'timeout' => 120]);
+    $add(['id' => 'perm.app_off', 'group' => 'Sistema', 'card' => false, 'label' => 'App do pack: remover isenções',
+          'desc' => 'Devolve o app do pack ao controle normal de bateria.',
+          'help' => 'Remove as isenções de segundo plano e de bateria do app do pack, devolvendo o controle ao Android.',
+          'argv' => ['adb-tweaks.sh', 'perm_revoke', 'com.otm.pack']]);
+    $add(['id' => 'perm.ff_off', 'group' => 'Sistema', 'card' => false, 'label' => 'Free Fire: remover isenções',
+          'desc' => 'Devolve os Free Fire ao controle normal de bateria.',
+          'help' => 'Remove as isenções de segundo plano e de bateria dos Free Fire, devolvendo o controle ao Android.',
+          'argv' => ['adb-tweaks.sh', 'perm_revoke_ff']]);
+    $add(['id' => 'perm.game_off', 'group' => 'Sistema', 'card' => false, 'label' => 'Meu jogo: remover isenções',
+          'desc' => 'Devolve o jogo escolhido ao controle normal de bateria.',
+          'help' => 'Remove as isenções de segundo plano e de bateria do jogo escolhido, devolvendo o controle ao Android.',
+          'argv' => ['adb-tweaks.sh', 'perm_revoke_game', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+    $add(['id' => 'perm.battery_off', 'group' => 'Sistema', 'card' => false, 'label' => 'Bateria: voltar ao padrão',
+          'desc' => 'Religa a economia de bateria e o App Standby.',
+          'help' => 'Religa a economia de bateria adaptativa e o App Standby, devolvendo o gerenciamento de energia ao Android.',
+          'argv' => ['adb-tweaks.sh', 'perm_battery_off']]);
     $add(['id' => 'perm.all', 'group' => 'Sistema', 'label' => 'Aplicar todas as permissões',
           'desc' => 'App do pack + Free Fire + bateria, de uma vez.',
           'help' => 'Faz tudo o que o pack precisa para funcionar em segundo plano: libera o app do pack, libera o Free Fire e desliga a economia agressiva de bateria. É o "recomendado" para quem não quer mexer um por um.',
@@ -1193,25 +1545,30 @@ function otm_actions(): array {
 
     // ----- Perfil personalizado: o painel monta as opções e manda ligadas -----
     $add(['id' => 'profile.custom', 'group' => 'Geral', 'label' => 'Perfil personalizado',
-          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza.',
-          'help' => 'Abre um menu onde você liga só o que quiser. Cada recurso é independente: animações (0x/0.5x), limite de apps em 2º plano (RAM), taxa de atualização da tela, perfil de toque, telemetria, limpeza de cache/RAM e hibernar apps de fundo. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
+          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza e muito mais.',
+          'help' => 'Abre um menu onde você liga só o que quiser. São mais de 40 recursos independentes, agrupados por tema: desempenho (animações, ART/AOT, modo desempenho, telemetria), memória (limite de apps em 2º plano, hibernar, congelar, podar caches, encerrar 2º plano, processos fantasma), gráficos (GPU, motor gráfico, display/HWUI, modo jogo profundo), tela (taxa, resolução, barras do sistema, bateria em %, segundos no relógio), toque (perfil, latência, janela multitouch), rede (DNS, buffers TCP, latência/ping, Wi-Fi, rede móvel), bateria (economia, Doze, longevidade) e notificações (não perturbe, foco de jogo, menos notificações). Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
           'argv' => [], 'ui' => 'customprofile']);
-    $add(['id' => 'profile.custom.apply', 'group' => 'Geral', 'label' => 'Aplicar perfil personalizado',
+    $add(['id' => 'profile.custom.apply', 'group' => 'Geral', 'card' => false, 'label' => 'Aplicar perfil personalizado',
           'desc' => 'Liga os recursos escolhidos no menu do perfil personalizado.',
-          'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso.',
-          'argv' => ['profile-custom.sh', 'apply', '{anim}', '{ram}', '{hz}', '{touch}',
-                     '{telemetry}', '{clean}', '{hibernate}'],
-          'params' => [
-              ['name' => 'anim', 'type' => 'enum', 'label' => 'Animações', 'options' => ['normal', 'half', 'off'], 'default' => 'normal'],
-              ['name' => 'ram', 'type' => 'enum', 'label' => 'RAM', 'options' => ['padrao', 'gaming', 'batata'], 'default' => 'padrao'],
-              ['name' => 'hz', 'type' => 'enum', 'label' => 'Taxa da tela', 'options' => ['off', '60', '90', '120', '144'], 'default' => 'off'],
-              ['name' => 'touch', 'type' => 'enum', 'label' => 'Toque', 'options' => ['none', 'balanced', 'headshot', 'spray', 'sniper', 'speed'], 'default' => 'none'],
-              ['name' => 'telemetry', 'type' => 'enum', 'label' => 'Telemetria', 'options' => ['on', 'off'], 'default' => 'on'],
-              ['name' => 'clean', 'type' => 'enum', 'label' => 'Limpeza', 'options' => ['off', 'fundo', 'suave', 'normal'], 'default' => 'off'],
-              ['name' => 'hibernate', 'type' => 'enum', 'label' => 'Hibernar apps', 'options' => ['off', 'on'], 'default' => 'off'],
-          ],
-          'confirm' => true, 'risk' => 'careful', 'timeout' => 300]);
-    $add(['id' => 'profile.custom.off', 'group' => 'Geral', 'label' => 'Perfil personalizado: desligar',
+          'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso. São dezenas de ajustes independentes: desempenho, memória, gráficos, tela, toque, rede, bateria, notificações e limpeza.',
+          // O argv sai da MESMA lista das opções: assim uma opção nova entra no
+          // painel e no script sem ninguém precisar lembrar de mexer em dois
+          // lugares (era assim que os dois ficavam fora de sincronia).
+          'argv' => array_merge(
+              ['profile-custom.sh', 'apply'],
+              array_map(static fn(array $c): string => '{' . $c['k'] . '}', otm_custom_profile_opts()),
+          ),
+          'params' => array_map(static function (array $c): array {
+              // No toggle o switch manda 'off' ou 'on'; nos dois casos o valor
+              // enviado é o da chave 'tgl'. Por isso o default é sempre o
+              // "desligado": ligar é escolha do usuário, nunca o de fábrica.
+              $tgl = ($c['kind'] ?? 'seg') === 'toggle';
+              $opts = $tgl ? [$c['tgl']['off'], $c['tgl']['on']] : array_column($c['opts'], 0);
+              return ['name' => $c['k'], 'type' => 'enum', 'label' => $c['t'],
+                      'options' => $opts, 'default' => $opts[0]];
+          }, otm_custom_profile_opts()),
+          'confirm' => true, 'risk' => 'careful', 'timeout' => 900]);
+    $add(['id' => 'profile.custom.off', 'group' => 'Geral', 'card' => false, 'label' => 'Perfil personalizado: desligar',
           'desc' => 'Desfaz o perfil personalizado e volta o aparelho ao padrão.',
           'help' => 'Reverte tudo o que o perfil personalizado aplicou e devolve o aparelho ao estado de fábrica de configuração. A sua escolha de recursos fica salva para aplicar de novo depois.',
           'argv' => ['profile-custom.sh', 'off'], 'confirm' => true, 'risk' => 'safe', 'timeout' => 300]);
@@ -1285,6 +1642,12 @@ function otm_run(string $id, array $params, bool $confirmed): array {
             $argv[] = $piece;
         }
     }
+    // backup cifrado: não roda script direto — o PHP cifra/decifra em volta
+    // (mesmo desenho do app, onde quem cifra é o Keystore).
+    if ($id === 'backup.export') { $r = otm_backup_export(); otm_log($id, $a['label'], ['backup.sh', 'export'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
+    if ($id === 'backup.import') { $r = otm_backup_import(); otm_log($id, $a['label'], ['backup.sh', 'import'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
+    if ($id === 'backup.list')   { $r = otm_backup_list();   return $r + ['id' => $id, 'label' => $a['label']]; }
+
     $script = $argv[0];
     $args = array_slice($argv, 1);
 
@@ -1433,7 +1796,33 @@ function otm_mode(): array {
 }
 
 // --- log ----------------------------------------------------------------------
+/**
+ * Extrai da saída as linhas que explicam POR QUE algo falhou.
+ *
+ * Os scripts marcam a falha com "✕"/"X" e dizem o valor lido de volta (ex.:
+ * "X tcp_congestion_control nao mudou (lido: cubic)"). Sem isso o log só dizia
+ * "erro", sem dizer o que não pegou nem com que valor o aparelho ficou.
+ */
+function otm_fail_reasons(string $out): array {
+    if ($out === '') return [];
+    $out = preg_replace('/\x1b\[[0-9;]*m/', '', $out);   // tira cor ANSI
+    $reasons = [];
+    foreach (preg_split('/\r?\n/', $out) as $line) {
+        $l = trim($line);
+        if ($l === '') continue;
+        $isFail = (bool)preg_match('/^[✕X]/u', $l)
+            || (bool)preg_match('/(n[ãa]o (mudou|pegou|consegui|aceitou|encontrei|dispon[íi]vel|existe|permitido)'
+                . '|falhou|falha\(s\)|sem acesso|denied|denial|not found)/iu', $l);
+        if ($isFail) {
+            $l = preg_replace('/^[✕X]\s*/u', '', $l);
+            $reasons[] = $l;
+        }
+    }
+    return array_slice(array_values(array_unique($reasons)), 0, 12);
+}
+
 function otm_log(string $id, string $label, array $argv, array $res): void {
+    $out = (string)($res['out'] ?? '');
     $rec = [
         'ts' => date('c'),
         'id' => $id,
@@ -1441,9 +1830,39 @@ function otm_log(string $id, string $label, array $argv, array $res): void {
         'cmd' => implode(' ', array_map(fn($x) => (strpos($x, ' ') !== false ? '"' . $x . '"' : $x), $argv)),
         'ok' => $res['ok'] ?? false,
         'code' => $res['code'] ?? null,
+        // detalhe: o que o script tentou (applies/changed/failed) e a saída crua
+        'applies' => $res['applies'] ?? null,
+        'changed' => $res['changed'] ?? null,
+        'failed' => $res['failed'] ?? null,
+        'reasons' => otm_fail_reasons($out),
+        'out' => otm_clip($out, 6000),
     ];
-    @file_put_contents(otm_state() . '/log.jsonl', json_encode($rec, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+    $f = otm_state() . '/log.jsonl';
+    @file_put_contents($f, json_encode($rec, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+    otm_log_trim($f);
 }
+
+/** Corta o texto sem depender do mbstring (que pode faltar no PHP do aparelho). */
+function otm_clip(string $s, int $max): string {
+    if (strlen($s) <= $max) return $s;
+    $cut = substr($s, 0, $max);
+    // não deixa um caractere UTF-8 cortado no meio
+    return (string)preg_replace('/[\x80-\xBF]+$/', '', $cut) . "\n…(cortado)";
+}
+
+/**
+ * O log agora guarda a saída crua de cada ação, então cresce rápido. Mantém as
+ * últimas [otm_log_max] linhas: o histórico continua completo para o usuário e
+ * o arquivo não vira um peso morto no aparelho.
+ */
+function otm_log_trim(string $file): void {
+    if (!is_file($file) || filesize($file) < 1500000) return;
+    $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    $keep = array_slice($lines, -otm_log_max());
+    @file_put_contents($file, implode("\n", $keep) . "\n");
+}
+
+function otm_log_max(): int { return 800; }
 
 function otm_log_read(int $n = 40, bool $full = false): array {
     $f = otm_state() . '/log.jsonl';
