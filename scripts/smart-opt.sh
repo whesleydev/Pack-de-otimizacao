@@ -412,12 +412,13 @@ cmd_analyze() {
 #  3b) AUTO - o comando único: lê, decide, aplica e COMPROVA
 # =============================================================================
 cmd_auto() {
+    local prof="${1:-auto}"
     SO_SILENT_NEXT=1
     cmd_analyze
     echo
     printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
     # aplica e, na mesma tacada, mede antes x depois (é o que prova o resultado)
-    cmd_bench auto || return 1
+    cmd_bench "$prof" || return 1
 }
 
 tier_label() {
@@ -943,7 +944,7 @@ cmd_restore() {
 #  RUNNER
 # =============================================================================
 case "${1:-}" in
-    auto)    cmd_auto ;;
+    auto)    shift; cmd_auto "$1" ;;
     analyze) cmd_analyze ;;
     plan)    shift; cmd_plan "$1" ;;
     apply)   shift; cmd_apply "$1" ;;

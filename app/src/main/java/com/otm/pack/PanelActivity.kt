@@ -178,7 +178,6 @@ class PanelActivity : AppCompatActivity() {
                   if (Math.abs(e.clientX-sx) > 8 || Math.abs(e.clientY-sy) > 8) ok=false;
                 }, {passive:true});
                 el.addEventListener('pointercancel', function(){ ok=false; }, {passive:true});
-                el.addEventListener('pointerleave', function(){ ok=false; }, {passive:true});
                 el.addEventListener('click', function(e){
                   if(!ok || Date.now()-st > 700){ e.preventDefault(); e.stopPropagation(); return; }
                   ok=false; fn(e);

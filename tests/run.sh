@@ -3994,11 +3994,13 @@ t_custom_profile() {
     for f in "$panel" "$web"; do
         grep -q 'data-kind="toggle"' "$f" \
             && ok "$(basename "$f"): linhas de toggle marcadas" || bad "$(basename "$f"): sem data-kind"
-        grep -q 'class="sw"' "$f" \
+        # o switch do perfil é .cpsw (o .sw é o swatch de cor da aparência;
+        # os dois colidiam no mesmo nome e o switch virava pílula cinza).
+        grep -q 'class="cpsw"' "$f" \
             && ok "$(basename "$f"): o switch existe no HTML" || bad "$(basename "$f"): sem switch"
         grep -q 'aria-checked' "$f" \
             && ok "$(basename "$f"): o switch tem estado acessível" || bad "$(basename "$f"): switch sem aria-checked"
-        grep -qE '^\.sw\[aria-checked="true"\]' "$f" \
+        grep -qE '^\.cpsw\[aria-checked="true"\]' "$f" \
             && ok "$(basename "$f"): o CSS pinta o switch ligado" || bad "$(basename "$f"): CSS do switch ausente"
         grep -q 'data-off=' "$f" \
             && ok "$(basename "$f"): o switch carrega o valor desligado" || bad "$(basename "$f"): switch sem valor off"

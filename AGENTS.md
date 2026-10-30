@@ -564,8 +564,18 @@ nativa além do necessário para conectar e rodar os comandos.
   de volta** alguns ajustes (`so_verify`) para o painel não achar que "nada mudou"
   (`#OTM-RESULT`). Perfil aplicado em `$ST/smart/last`. Categoria **Geral**: uma
   **ação única**, `smart.auto` ("Otimizador inteligente"), mais um botão de mesmo
-  nome na Home dos dois painéis. `pack.sh smart [<acao>]` delega (sem argumento
-  roda `auto`). **Debloat não faz parte do `auto`**: remover app de fábrica é decisão
+  nome na Home dos dois painéis. O card do `smart.auto` virou um **hub**: traz um
+  seletor de perfil e botões para as leituras (`smart.report`, `smart.decide`,
+  `smart.state`), os testes (`smart.bench`, `smart.compare`) e o bloco de
+  snapshot/reversão (`snapshot_save/list/diff/restore`, `restore_all`). Essas
+  sub-ações levam `'card' => false` no `lib.php`, então **não** viram cards
+  próprios no `.grid` (ficam no `ACTIONS`, que é o que o JS usa) — antes a Geral
+  tinha 16 cards, agora tem 3 (`apply`, `smart.auto`, `profile.custom`).
+  `profile.custom.apply`/`.off` também são `card => false`: quem os dispara é o
+  modal do perfil personalizado. `module.run` saiu da Geral e mora em **Sistema**.
+  `pack.sh smart [<acao>]` delega (sem argumento roda `auto`); `smart.auto` e
+  `pack.sh smart auto <perfil>` aceitam o perfil escolhido no hub. **Debloat não
+  faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
 
   **Medir para provar (`bench`/`compare`).** O `auto` não termina mais em "confie

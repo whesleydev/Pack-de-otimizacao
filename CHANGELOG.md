@@ -17,6 +17,21 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `profile.custom.apply` (`web/lib.php`), a const `CPROF` do HTML e o `PC_ORDER`
   do `scripts/profile-custom.sh`.
 
+### Alterado
+- **A aba Geral ficou enxuta: o otimizador virou um hub.** Antes ela misturava
+  16 cards soltos (o `auto`, cinco comandos de leitura/teste do otimizador, quatro
+  de snapshot, o `restore_all`, os módulos e dois cards enormes do perfil
+  personalizado). Agora são 3: **Aplicar o pack recomendado**, **Otimizador
+  inteligente** e **Perfil personalizado**. O card do otimizador concentra, num
+  só lugar, o seletor de perfil e os botões de leitura (`Analisar aparelho`, `Ver
+  plano`, `O que está ativo`), de teste (`Medir antes x depois`, `Comparar
+  combinações`) e de snapshot/reversão (`Salvar snapshot`, `Ver snapshots`,
+  `Comparar com o último`, `Restaurar último`, `Reverter TUDO`). O perfil
+  escolhido no hub é repassado às ações que o aceitam (`smart.bench` etc.).
+  As sub-ações levam `'card' => false` no `lib.php` e continuam no `ACTIONS` —
+  só não desenham mais um card próprio. `module.run` passou para a aba
+  **Sistema**.
+
 ### Corrigido
 - **A telemetria nunca era desligada pelo perfil personalizado.** A chave
   `telemetry` estava declarada no menu, mas o `pc_apply` não a aplicava — marcar

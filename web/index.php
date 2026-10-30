@@ -390,6 +390,20 @@ section[data-g] .head{animation:otmFade .3s both}
 .opt[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--glass-2))}
 .opt[aria-pressed="true"] .opt-t{color:var(--accent)}
 .opt[aria-pressed="true"] .opt-s{color:var(--accent)}
+/* ---- hub do otimizador inteligente (cards fundidos num só) ---------------- */
+.hub-sub-t{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:14px 0 7px}
+.hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px}
+.hub-grid .hbtn{display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:12px 8px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--glass-2);cursor:pointer;color:var(--ink);text-align:center;
+  transition:transform .12s ease,border-color .15s ease,background .15s ease}
+.hub-grid .hbtn:hover{border-color:var(--accent)}
+.hub-grid .hbtn:active{transform:scale(.97)}
+.hub-grid .hbtn .opt-t{font-size:13px;font-weight:700;line-height:1.2}
+.hub-grid .hbtn .opt-s{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.hub-grid .hbtn{flex:none;min-width:0}
+.hub-grid .hbtn .opt-s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .now{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
 .now b{color:var(--ink)}
 
@@ -511,10 +525,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .cp-seg .seg-btn{flex:1 1 auto;min-width:72px;font-size:12.5px;padding:8px 10px}
 .cp-row[data-kind="toggle"]{display:flex;align-items:center;gap:12px}
 .cp-row[data-kind="toggle"] .cp-info{margin:0;flex:1}
-.sw{flex:0 0 auto;width:46px;height:26px;border:0;border-radius:999px;background:var(--line);position:relative;cursor:pointer;padding:0;transition:background .18s}
-.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s}
-.sw[aria-checked="true"]{background:var(--accent)}
-.sw[aria-checked="true"] i{transform:translateX(20px)}
+.cpsw{flex:0 0 auto;width:46px;height:26px;border:0;border-radius:999px;background:var(--line);position:relative;cursor:pointer;padding:0;transition:background .18s}
+.cpsw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s}
+.cpsw[aria-checked="true"]{background:var(--accent)}
+.cpsw[aria-checked="true"] i{transform:translateX(20px)}
 .set-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .set-actions .btn{flex:1;min-width:120px}
 .perms{display:flex;flex-direction:column;gap:8px}
@@ -1025,6 +1039,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <?php
           $renderedChoice = [];
           foreach ($items as $ci => $a):
+            // Ações fundidas dentro do "Otimizador inteligente" não viram card
+            // próprio (card => false em lib.php): elas aparecem como botões no
+            // hub do otimizador. O id continua no ACTIONS, que é o que o JS usa.
+            if (($a['card'] ?? true) === false) continue;
             // opções de um grupo de escolha viram um único cartão, na 1ª posição
             if (!empty($a['choice'])):
               $ck = $a['choice'];
@@ -1094,6 +1112,24 @@ body.drawer .scrim{opacity:1;visibility:visible}
                         aria-label="O que faz: <?= htmlspecialchars($a['label'], ENT_QUOTES) ?>" title="O que isso faz?">?</button>
               </div>
               <?php if (!empty($a['desc'])): ?><p><?= htmlspecialchars($a['desc']) ?></p><?php endif; ?>
+              <?php if ($a['id'] === 'smart.auto'): ?>
+                <div class="hub-sub-t">Otimizador completo</div>
+                <div class="hub-grid" role="group" aria-label="Otimizador: leituras e testes">
+                  <button class="hbtn" type="button" data-hub="smart.report"><span class="opt-t">Analisar aparelho</span><span class="opt-s">só leitura</span></button>
+                  <button class="hbtn" type="button" data-hub="smart.decide"><span class="opt-t">Ver plano</span><span class="opt-s">antes de aplicar</span></button>
+                  <button class="hbtn" type="button" data-hub="smart.bench"><span class="opt-t">Medir antes x depois</span><span class="opt-s">prova o ganho</span></button>
+                  <button class="hbtn" type="button" data-hub="smart.compare"><span class="opt-t">Comparar combinações</span><span class="opt-s">fica com a melhor</span></button>
+                  <button class="hbtn" type="button" data-hub="smart.state"><span class="opt-t">O que está ativo</span><span class="opt-s">só leitura</span></button>
+                </div>
+                <div class="hub-sub-t">Snapshot e reversão</div>
+                <div class="hub-grid" role="group" aria-label="Snapshot e reversão">
+                  <button class="hbtn" type="button" data-hub="snapshot_save"><span class="opt-t">Salvar snapshot</span><span class="opt-s">ponto de retorno</span></button>
+                  <button class="hbtn" type="button" data-hub="snapshot_list"><span class="opt-t">Ver snapshots</span><span class="opt-s">só leitura</span></button>
+                  <button class="hbtn" type="button" data-hub="snapshot_diff"><span class="opt-t">Comparar com o último</span><span class="opt-s">só leitura</span></button>
+                  <button class="hbtn" type="button" data-hub="snapshot_restore"><span class="opt-t">Restaurar último</span><span class="opt-s">volta à foto</span></button>
+                  <button class="hbtn" type="button" data-hub="restore_all"><span class="opt-t">Reverter TUDO</span><span class="opt-s">estado de fábrica</span></button>
+                </div>
+              <?php endif; ?>
               <?php if (!empty($a['params'])): ?>
                 <div class="fields">
                   <?php foreach ($a['params'] as $p):
@@ -1225,7 +1261,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
       <div class="cp-row" data-key="<?= htmlspecialchars($c['k'], ENT_QUOTES) ?>"<?= ($c['kind'] ?? 'seg') === 'toggle' ? ' data-kind="toggle"' : '' ?>>
         <div class="cp-info"><b><?= htmlspecialchars($c['t'], ENT_QUOTES) ?></b><span><?= htmlspecialchars($c['s'], ENT_QUOTES) ?></span></div>
 <?php if (($c['kind'] ?? 'seg') === 'toggle'): ?>
-        <button class="sw" type="button" role="switch" aria-checked="false" aria-label="<?= htmlspecialchars($c['t'], ENT_QUOTES) ?>"
+        <button class="cpsw" type="button" role="switch" aria-checked="false" aria-label="<?= htmlspecialchars($c['t'], ENT_QUOTES) ?>"
                 data-on="<?= htmlspecialchars($c['tgl']['on'], ENT_QUOTES) ?>" data-off="<?= htmlspecialchars($c['tgl']['off'], ENT_QUOTES) ?>"><i></i></button>
 <?php else: ?>
         <div class="seg cp-seg">
@@ -1366,7 +1402,6 @@ function tapOnly(el, fn){
   el.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; st = Date.now(); ok = true; }, {passive:true});
   el.addEventListener("pointermove", e => { if (ok && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) ok = false; }, {passive:true});
   el.addEventListener("pointercancel", () => { ok = false; }, {passive:true});
-  el.addEventListener("pointerleave", () => { ok = false; }, {passive:true});
   el.addEventListener("click", e => {
     if (!ok || Date.now() - st > 700){ e.preventDefault(); e.stopPropagation(); return; }
     ok = false; fn(e);
@@ -1643,6 +1678,7 @@ function selectOption(btn, confirmed){
 function runPending(){
   const p = pending; if (!p) return;
   if (p.dataset.vitalGo) doRun(ACTIONS[p.dataset.vitalId], {}, true, p);
+  else if (p._subId) doRun(ACTIONS[p._subId], p._subParams || {}, true, p);
   else if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
   else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
 }
@@ -2216,6 +2252,19 @@ function runGameHome(btn){
   doRun(a, { pkg }, false, btn);
 }
 document.querySelectorAll("[data-qa]").forEach(b => tapOnly(b, () => runActionById(b.dataset.qa)));
+/* botões do hub do otimizador: rodam a sub-ação pelo id, como os atalhos da Home.
+   O perfil escolhido no card é repassado às sub-ações que o aceitam. */
+document.querySelectorAll("[data-hub]").forEach(b => tapOnly(b, () => {
+  const a = ACTIONS[b.dataset.hub];
+  if (!a) return;
+  const card = b.closest(".card");
+  const sel = card && card.querySelector('[data-p="perfil"]');
+  // guarda a sub-ação e o perfil no próprio botão: o askConfirm põe o botão em
+  // `pending`, e o runPending precisa saber o que reexecutar depois do "ok".
+  b._subId = a.id; b._subParams = sel ? { perfil: sel.value } : {};
+  if (a.confirm) askConfirm(b, a);
+  else doRun(a, b._subParams, false, b);
+}));
 
 /* status do botão principal (Clean Phone) enquanto a limpeza roda */
 const heroBtn = document.getElementById("rocketBtn");
@@ -2244,7 +2293,7 @@ function profPaint(){
   CPROF.forEach(c => {
     const row = document.querySelector('.cp-row[data-key="' + c.k + '"]'); if (!row) return;
     row.querySelectorAll(".seg-btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.val === cur[c.k] ? "true" : "false"));
-    const sw = row.querySelector(".sw");
+    const sw = row.querySelector(".cpsw");
     if (sw) sw.setAttribute("aria-checked", cur[c.k] === sw.dataset.on ? "true" : "false");
   });
 }
@@ -2295,7 +2344,7 @@ async function applyCustomProfile(a, btn){
 }
 document.querySelectorAll("#profList .cp-row").forEach(row => {
   row.querySelectorAll(".seg-btn").forEach(b => tapOnly(b, () => profSet(row.dataset.key, b.dataset.val)));
-  const sw = row.querySelector(".sw");
+  const sw = row.querySelector(".cpsw");
   if (sw) tapOnly(sw, () => profSet(row.dataset.key, profToggle(sw) ? sw.dataset.off : sw.dataset.on));
 });
 tapOnly(document.getElementById("profApply"), () => applyCustomProfile(ACTIONS["profile.custom.apply"], document.getElementById("profApply")));
