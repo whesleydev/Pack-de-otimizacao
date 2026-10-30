@@ -239,6 +239,37 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 - Benchmark real em aparelhos e preencher `docs/COMPATIBILIDADE.md`.
 - Infra de venda/suporte (`docs/PRODUTO.md`, `docs/ROADMAP.md`).
 
+## Backup cifrado das configurações
+
+- `scripts/backup.sh` faz `collect` (estado → texto `#TRIX-BACKUP-V1`), `restore <arq>`
+  e `list`. O `restore` **recusa** arquivo que não começa com o cabeçalho — não aplica lixo.
+- A cifra vive em dois lugares que precisam ficar **compatíveis byte a byte**:
+  `app/src/main/java/com/otm/pack/OtmBackupCore.kt` (app) e `web/backup.php` (web).
+  Formato: `-----BEGIN TRIX BACKUP-----` / `AES-256-GCM` / base64(IV‖cifra‖tag) / rodapé.
+  Ao mexer num, teste a **ida-e-volta cruzada** (o PHP abre o que o Kotlin gravou e vice-versa);
+  já houve caso de bytes idênticos no GCM mas quebra por chave/IV de tamanho errado no teste.
+- **Chave**: no app é gerada no `AndroidKeyStore` (alias `trix-backup-key`) e **não sai do
+  aparelho**; no web é um arquivo de 32 bytes, modo `0600`, em `~/.packotm/web/backup.key`
+  (fora do repo). O IV é aleatório por arquivo — nunca reaproveite (GCM quebra com IV repetido).
+- O texto claro **não** fica em pasta compartilhada: vai pelo stdout do script; na volta é
+  escrito em `/data/local/tmp/trix-restore.txt` (que o shell do Shizuku/ADB lê) e apagado depois.
+- A chave do app é presa ao aparelho de propósito: o backup feito aqui só abre aqui.
+
+## Otimizador inteligente: memória por aparelho
+
+- `scripts/smart-opt.sh` guarda o que venceu em `~/.packotm/smart/memory`, com chave pela
+  **assinatura de hardware** (modelo|SoC|RAM|…). `decide()` consulta essa memória; `compare`
+  grava o vencedor; `auto` faz o ciclo completo e termina com UM resultado. `mem` mostra o
+  que ele aprendeu. Trocar o formato da chave invalida a memória de todos os aparelhos.
+
+## Ação `card => false` precisa de botão
+
+Uma ação declarada com `'card' => false` em `web/lib.php` **não** ganha card próprio: ela só
+existe se algum botão (`data-qa`/`data-hub`) ou mapa de JS a chamar. Ao remover o hub do
+otimizador, `restore_all` ("Reverter TUDO") e `snapshot_save` ficaram **inalcançáveis** — o
+usuário perdeu como desfazer. O teste `t_smart_card_single` reprova ação de recuperação sem
+botão nos dois painéis. Antes de tirar um botão, confira quem mais ele era o único a chamar.
+
 ## App Android (`app/`)
 
 App companion (Kotlin, `com.otm.pack`) que roda o pack pelo Shizuku (root/ADB)
