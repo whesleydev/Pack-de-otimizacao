@@ -2211,8 +2211,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 14 ] && ok "index.php renderiza a home + 12 categorias + Terminal" || bad "seções: $n_sec (esperado 14)"
-        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "Dispositivos" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema" "Vitalidade"; do
+        [ "$n_sec" -eq 13 ] && ok "index.php renderiza a home + 11 categorias + Terminal" || bad "seções: $n_sec (esperado 13)"
+        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "Dispositivos" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # "Sensi e mira" virou "Flutuante" e ficou só com o botão do painel flutuante
@@ -3037,6 +3037,21 @@ t_no_silent_conflicts() {
         global policy_control
         system clock_seconds
         system status_bar_show_battery_percent
+        # Wi-Fi e rede: os pares liga/desliga (wifi_off, mobile_net_off,
+        # net_tune off) devolvem o valor oposto ao da ação de ligar.
+        global wifi_wakeup_enabled
+        global wifi_power_save
+        global mobile_data_always_on
+        global network_avoid_bad_wifi
+        global wifi_scan_throttle_enabled
+        # DND: dnd() entra em alarmes-apenas (3) e dnd_off() volta a 0.
+        secure zen_mode
+        # renderização por GPU: gpu() liga e gpu_off() devolve ao sistema.
+        global force_gpu_rendering
+        global game_driver_all_apps
+        # economia de dados: mobile_net() desliga e mobile_net_off() devolve.
+        # É o par liga/desliga (mesma chave, valores opostos), intencional.
+        global data_saver_mode
     "
     python3 - "$ROOT" "$allow" <<'PYEOF' > "$TMP/conf"
 import re,sys,glob,collections,os
@@ -3862,8 +3877,8 @@ t_vitality() {
             echo ($a["vital.care_off"]["risk"] ?? "") === "safe" ? "OK":"NAO";' | grep -q OK \
         && ok "desligar a longevidade é risk=safe" || bad "care_off não é safe"
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
-            echo ($a["vital.diag"]["group"] ?? "") === "Vitalidade" ? "OK":"NAO";' | grep -q OK \
-        && ok "grupo Vitalidade existe" || bad "grupo Vitalidade ausente"
+            echo ($a["vital.diag"]["group"] ?? "") === "Geral" ? "OK":"NAO";' | grep -q OK \
+        && ok "Vitalidade dissolvida: ações em Geral" || bad "vital.diag fora de Geral"
     # GUARDA DE REGRESSÃO: o que já existia NÃO pode sumir (o usuário foi claro:
     # "não é pra remover nada"). Se alguém tirar, o teste acusa.
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
@@ -4074,6 +4089,82 @@ t_smart_opt
 t_clean
 t_smart_clean_protect
 t_privilege_detect
+# --- interruptores (liga/desliga) e o painel de saude dentro de Geral ---------
+t_toggles_registry() {
+    printf '\n  # interruptores: registro, estado real e paridade web/app\n'
+    local panel="$ROOT/app/src/main/assets/panel/index.html"
+    local web="$ROOT/web/index.php"
+    local st="$ROOT/scripts/panel-state.sh"
+
+    # 1) o registro tem interruptores e todo um tem par on/off distinto
+    php -r 'require "'"$ROOT"'/web/lib.php"; $t=otm_toggles();
+             echo count($t), "\n";' > "$TMP/tg_n" 2>&1
+    [ "$(cat "$TMP/tg_n")" -ge 10 ] && ok "registro: ha interruptores ($(cat "$TMP/tg_n"))" \
+        || bad "registro: poucos interruptores ($(cat "$TMP/tg_n"))"
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions(); $t=otm_toggles(); $bad=[];
+             foreach ($t as $id=>$g){
+               foreach (["on","off"] as $k){
+                 $aid=$g[$k] ?? "";
+                 if ($aid==="" || !isset($a[$aid])) { $bad[]="$id.$k->$aid"; continue; }
+               }
+               if (($g["on"] ?? "") === ($g["off"] ?? "")) $bad[]="$id: on==off";
+             }
+             echo $bad ? implode(", ", $bad) : "OK";' > "$TMP/tg_ids" 2>&1
+    assert_contains "$TMP/tg_ids" "OK" "registro: todo interruptor aponta para acoes que existem"
+
+    # 2) o estado de cada interruptor e REAL: a chave vem de panel-state.sh
+    #    (nao pode ser inventada no painel)
+    php -r 'require "'"$ROOT"'/web/lib.php"; foreach (otm_toggles() as $g){
+               if (($g["state"] ?? "") !== "") echo $g["state"], "\n"; }' > "$TMP/tg_keys" 2>&1
+    : > "$TMP/tg_missing"
+    while read -r k; do
+        [ -n "$k" ] || continue
+        grep -q "\"$k\"" "$st" || echo "$k" >> "$TMP/tg_missing"
+    done < "$TMP/tg_keys"
+    [ ! -s "$TMP/tg_missing" ] \
+        && ok "estado real: toda chave de interruptor vem de panel-state.sh" \
+        || bad "estado inventado no painel: $(tr '\n' ' ' < "$TMP/tg_missing")"
+
+    # 3) os interruptores aparecem nos DOIS paineis com o mesmo conjunto de acoes.
+    #    O web e um template PHP: o que importa e o HTML RENDERIZADO, nao a fonte.
+    php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_start(); $_SESSION["otm_user"]="x";
+             $_SERVER["REQUEST_METHOD"]="GET"; ob_start();
+             require "'"$ROOT"'/web/index.php"; echo ob_get_clean();' > "$TMP/tg_web.html" 2>/dev/null
+    for f in "$panel" "$TMP/tg_web.html"; do
+        n=$(grep -o 'data-toggle="[^"]*"' "$f" | sort -u | wc -l)
+        [ "$n" -ge 10 ] && ok "$(basename "$f"): interruptores renderizados ($n)" \
+            || bad "$(basename "$f"): faltam interruptores ($n)"
+        grep -q 'data-on-state' "$f" && ok "$(basename "$f"): estado do interruptor ligado ao DOM" \
+            || bad "$(basename "$f"): sem data-on-state"
+    done
+    a=$(grep -o 'data-toggle="[^"]*"' "$panel" | sort -u)
+    b=$(grep -o 'data-toggle="[^"]*"' "$TMP/tg_web.html" | sort -u)
+    [ "$a" = "$b" ] && ok "interruptores: web e app tem o mesmo conjunto" \
+        || bad "interruptores: web e app divergem"
+
+    # 4) o par de valores que acende o interruptor casa com o estado real lido
+    php -r 'require "'"$ROOT"'/web/lib.php"; $bad=[];
+             foreach (otm_toggles() as $id=>$g){
+               $v=$g["on_values"] ?? null;
+               if (!is_array($v) || count($v)===0) $bad[]=$id;
+             }
+             echo $bad ? implode(", ", $bad) : "OK";' > "$TMP/tg_vals" 2>&1
+    assert_contains "$TMP/tg_vals" "OK" "interruptores: todo um declara o valor que o acende"
+
+    # 5) saude do telefone: um unico card (na Home), sem categoria propria
+    n=$(grep -c 'data-vital-card' "$web")
+    [ "$n" -ge 1 ] && ok "saude do telefone: card existe no painel web" \
+        || bad "saude do telefone: card sumiu"
+    grep -q 'class="vpick"' "$web" && ok "saude do telefone: card virou seletor (vpick)" \
+        || bad "saude do telefone: sem seletor"
+    if grep -q 'id="g-Vitalidade"' "$web" || grep -q 'id="g-Vitalidade"' "$panel"; then
+        bad "saude do telefone: ainda existe categoria Vitalidade separada"
+    else
+        ok "saude do telefone: dissolvida nas abas (sem categoria propria)"
+    fi
+}
+
+t_toggles_registry
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts

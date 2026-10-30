@@ -48,6 +48,11 @@ $groups = [];
 foreach ($GROUP_ORDER as $g) { if (!empty($byGroup[$g])) $groups[$g] = $byGroup[$g]; }
 foreach ($byGroup as $g => $items) { if (!isset($groups[$g])) $groups[$g] = $items; }  // fallback
 
+$togglesByGroup = [];
+foreach (otm_toggles() as $tid => $tg) {
+    $togglesByGroup[$GROUP_ALIAS[$tg['group']] ?? $tg['group']][$tid] = $tg;
+}
+
 $meta = [
     'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
     'Flutuante'       => ['t' => 'Flutuante',        's' => 'Ative o painel flutuante (overlay) para usar a sensi e os perfis por cima do jogo.'],
@@ -77,29 +82,35 @@ foreach ($CPROF as $c) {
 // O Terminal é renderizado no servidor como uma seção a mais do menu. Ele não é
 // um "card de ação" (o comando é livre), por isso fica fora do registro.
 $TERMINAL_HTML = <<<'HTML'
-    <section id="g-Terminal" data-g="Terminal" hidden>
+    <section id="g-Terminal" data-g="Terminal" class="term-sec" hidden>
       <div class="head">
         <h2>Terminal</h2>
-        <p>Rode comandos no aparelho pelo mesmo acesso do pack (Shizuku, ADB por Wi-Fi ou root).</p>
+        <p>Rode comandos no aparelho pelo mesmo acesso do pack (Shizuku, ADB por Wi-Fi ou root). Tela ampla, com atalhos, diretório atual e histórico.</p>
       </div>
       <div class="note">
         <span aria-hidden="true">ⓘ</span>
         <div><b>Cuidado:</b> aqui o comando vai direto para o shell do Android. Use com calma — um comando errado pode desconfigurar o aparelho. O histórico fica salvo e aparece em <b>Logs</b>.</div>
       </div>
-      <article class="card" style="gap:0">
-        <div class="row"><h3>Executar comando</h3></div>
-        <p class="sub">Exemplos: <code>getprop ro.product.model</code> · <code>settings get system peak_refresh_rate</code> · <code>pm list packages -3</code></p>
-        <div class="termwrap">
-          <pre class="termout" id="termOut" aria-live="polite"></pre>
-          <div class="termrow">
-            <span class="pfx">$</span>
-            <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
-                   placeholder="digite um comando e toque em Executar" aria-label="Comando">
-            <button class="btn primary" id="termRun" type="button" style="width:auto">Executar</button>
-          </div>
-          <p class="termhint">Histórico: use as setas ↑/↓ no campo. <button class="jump" id="termClear" type="button" style="border-radius:999px;padding:4px 10px">limpar tela</button></p>
+      <div class="term-shell">
+        <div class="term-bar">
+          <span class="term-dot" aria-hidden="true"></span><span class="term-dot" aria-hidden="true"></span><span class="term-dot" aria-hidden="true"></span>
+          <span class="term-title" id="termCwd" title="Diretório atual">~</span>
+          <span class="grow"></span>
+          <button class="term-tool" type="button" id="termCopy" title="Copiar toda a saída">copiar</button>
+          <button class="term-tool" type="button" id="termSave" title="Baixar a saída como arquivo">salvar</button>
+          <button class="term-tool" type="button" id="termClear" title="Limpar a tela">limpar</button>
         </div>
-      </article>
+        <pre class="termout" id="termOut" aria-live="polite" tabindex="0"></pre>
+        <div class="termrow">
+          <span class="pfx" id="termPfx">$</span>
+          <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 enterkeyhint="send" placeholder="digite um comando e toque em Executar" aria-label="Comando">
+          <button class="btn primary" id="termRun" type="button" style="width:auto">Executar</button>
+        </div>
+        <div class="term-quick" id="termQuick" role="group" aria-label="Comandos rápidos"></div>
+        <p class="termhint">Histórico: <code>↑</code>/<code>↓</code> no campo. <code>Ctrl</code>+<code>L</code> limpa.
+        Toque num atalho para preencher o campo.</p>
+      </div>
     </section>
 HTML;
 
@@ -634,6 +645,42 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .termhint{color:var(--muted);font-size:12px;margin:6px 0 0}
 .termhint code{background:var(--glass-2);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
 
+/* ---- terminal amplo ------------------------------------------------------- */
+.term-sec .head{max-width:72ch}
+.term-shell{border:1px solid var(--line);border-radius:var(--r);background:var(--glass-card);
+  box-shadow:var(--shadow);overflow:hidden;margin-top:14px}
+@media (min-width:1181px){ .term-shell{width:min(94vw,1560px);margin-left:calc((100% - min(94vw,1560px)) / 2)} }
+.term-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--glass-2)}
+.term-dot{width:11px;height:11px;border-radius:50%;background:var(--line-strong);flex:none}
+.term-dot:first-child{background:#ff5f57}.term-dot:nth-child(2){background:#febc2e}.term-dot:nth-child(3){background:#28c840}
+.term-title{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:6px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
+.term-tool{font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;
+  border:1px solid var(--line);background:var(--glass-2);border-radius:999px;padding:4px 11px}
+.term-tool:hover{color:var(--accent);border-color:var(--accent)}
+.term-quick{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 12px;border-top:1px solid var(--line)}
+.term-chip{font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--ink);
+  border:1px solid var(--line-strong);background:var(--glass-2);border-radius:999px;padding:5px 11px}
+.term-chip:hover{border-color:var(--accent);color:var(--accent)}
+.termout:focus{outline:2px solid var(--ring);outline-offset:-2px}
+/* ---- interruptores (ativar/desativar) ------------------------------------- */
+.card-toggle{display:flex;flex-direction:column;gap:8px}
+.tg-row{display:flex;align-items:center;gap:11px;margin-top:2px}
+.tg-label{font-size:12.5px;font-weight:700;color:var(--muted)}
+.card-toggle[data-on-state="1"] .tg-label{color:var(--accent)}
+.tg-state{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--glass-2)}
+.card-toggle[data-on-state="1"] .tg-state{border-color:var(--accent);color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 14%,var(--glass-2))}
+/* ---- saude do telefone (card seletor, veio da Vitalidade) ------------------ */
+.vital-card{margin-top:14px}
+.vital-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.vpick{display:flex;flex-direction:column;gap:2px;text-align:left;cursor:pointer;font:inherit;
+  border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);padding:10px 12px;color:var(--ink)}
+.vpick:hover{border-color:var(--accent)}
+.vpick:active{transform:scale(.98)}
+.vpick .vp-t{font-size:13.5px;font-weight:800;letter-spacing:-.01em}
+.vpick .vp-s{font-size:11px;color:var(--muted);font-weight:600}
 /* ---- seletor de apps (nome + ícone) --------------------------------------- */
 .apppick{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
   border:1px solid var(--line-strong);background:var(--glass-2);border-radius:var(--r-sm);
@@ -849,11 +896,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <div><b data-vital="temp">—</b><s>temperatura</s></div>
           <div><b data-vital="w80">0</b><s>cargas acima de 80%</s></div>
         </div>
-        <div class="vital-actions">
-          <button class="btn primary" type="button" data-vital-go="optimize">Otimizar saúde do telefone</button>
-          <button class="btn" type="button" data-vital-go="care_off">Desligar</button>
-          <button class="btn" type="button" data-vital-go="diag">Diagnóstico</button>
-          <button class="btn" type="button" data-vital-go="guard">Guardião</button>
+        <div class="vital-pick" role="group" aria-label="O que fazer com a saúde do telefone">
+          <button class="vpick" type="button" data-vital-go="optimize">
+            <span class="vp-t">Otimizar saúde do telefone</span><span class="vp-s">liga o cuidado e mede a bateria</span></button>
+          <button class="vpick" type="button" data-vital-go="diag">
+            <span class="vp-t">Diagnóstico</span><span class="vp-s">capacidade, ciclos e desgaste</span></button>
+          <button class="vpick" type="button" data-vital-go="guard">
+            <span class="vp-t">Guardião de carga</span><span class="vp-s">conta cargas acima de 80%</span></button>
+          <button class="vpick" type="button" data-vital-go="care_off">
+            <span class="vp-t">Desligar cuidado</span><span class="vp-s">volta doze, Hz e scans ao padrão</span></button>
         </div>
         <div class="now" data-vital="now" hidden></div>
       </div>
@@ -1183,6 +1234,27 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <?php endif; ?>
               <div class="go">
                 <button class="btn <?= $risk === 'safe' ? 'primary' : '' ?>" data-run>Executar</button>
+              </div>
+            </article>
+          <?php endforeach; ?>
+          <?php foreach (($togglesByGroup[$g] ?? []) as $tid => $tg): ?>
+            <article class="card card-toggle" data-toggle="<?= htmlspecialchars($tid, ENT_QUOTES) ?>"
+                     data-on="<?= htmlspecialchars($tg['on'], ENT_QUOTES) ?>"
+                     data-off="<?= htmlspecialchars($tg['off'], ENT_QUOTES) ?>"
+                     data-state="<?= htmlspecialchars((string)$tg['state'], ENT_QUOTES) ?>"
+                     data-on-values="<?= htmlspecialchars(strtolower(implode(',', $tg['on_values'])), ENT_QUOTES) ?>"
+                     data-on-state="0" style="--i:<?= (int)(count($items) % 12) ?>">
+              <div class="row">
+                <h3><?= htmlspecialchars($tg['title']) ?></h3>
+                <span class="tg-state" data-tg-state>verificando…</span>
+              </div>
+              <p><?= htmlspecialchars($tg['desc']) ?></p>
+              <div class="tg-row">
+                <button class="cpsw" type="button" role="switch" aria-checked="false"
+                        aria-label="<?= htmlspecialchars($tg['title'], ENT_QUOTES) ?>"><i></i></button>
+                <span class="tg-label" data-tg-label>Desligado</span>
+                <button class="help-btn" data-help="<?= htmlspecialchars($tg['on'], ENT_QUOTES) ?>"
+                        aria-label="O que faz: <?= htmlspecialchars($tg['title'], ENT_QUOTES) ?>" title="O que isso faz?">?</button>
               </div>
             </article>
           <?php endforeach; ?>
@@ -1678,6 +1750,7 @@ function selectOption(btn, confirmed){
 function runPending(){
   const p = pending; if (!p) return;
   if (p.dataset.vitalGo) doRun(ACTIONS[p.dataset.vitalId], {}, true, p);
+  else if (p.classList.contains("card-toggle")) doRun(ACTIONS[p._subId], {}, true, p.querySelector(".cpsw"));
   else if (p._subId) doRun(ACTIONS[p._subId], p._subParams || {}, true, p);
   else if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
   else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
@@ -1797,6 +1870,37 @@ document.querySelectorAll("[data-vital-go]").forEach(b => tapOnly(b, async () =>
   loadStats();
 }));
 
+
+/* ---- interruptores: ligar/desligar com estado real -------------------------- */
+function applyToggles(){
+  document.querySelectorAll(".card-toggle").forEach(card => {
+    const key = card.dataset.state || "";
+    const vals = String(card.dataset.onValues || "").split(",").map(v => v.trim()).filter(v => v !== "");
+    const raw = key && STATE[key] !== undefined ? String(STATE[key]).trim().toLowerCase() : null;
+    const known = raw !== null && raw !== "";
+    const on = known && vals.includes(raw);
+    card.dataset.onState = on ? "1" : "0";
+    const sw = card.querySelector(".cpsw");
+    if (sw) sw.setAttribute("aria-checked", on ? "true" : "false");
+    const lb = card.querySelector("[data-tg-label]"); if (lb) lb.textContent = on ? "Ligado" : "Desligado";
+    const st = card.querySelector("[data-tg-state]");
+    if (st) st.textContent = !key ? "sempre ativo" : (!known ? "estado desconhecido" : (on ? "ativo" : "inativo"));
+  });
+}
+async function toggleRun(card){
+  const onNow = card.dataset.onState === "1";
+  const id = onNow ? card.dataset.off : card.dataset.on;
+  const a = ACTIONS[id]; if (!a){ toast("Ação indisponível", "bad"); return; }
+  const sw = card.querySelector(".cpsw");
+  if (a.confirm){ card._subId = id; askConfirm(card, a); return; }
+  await doRun(a, {}, false, sw || card);
+  await loadState();
+}
+document.querySelectorAll(".card-toggle").forEach(card => {
+  const sw = card.querySelector(".cpsw");
+  if (sw) tapOnly(sw, () => toggleRun(card));
+});
+
 /* ---- estado real do aparelho (renderizador em uso, toque, refresh) ---------- */
 let STATE = {};
 const TOUCH_KEYS = ["touch_responsiveness","long_press_timeout","pointer_speed","touch_slop"];
@@ -1905,6 +2009,7 @@ async function loadState(){
   try{ const j = await apiGet("state"); STATE = (j && j.state) || {}; }catch(e){ STATE = {}; }
   applyState();
   applyPerfmode();
+  applyToggles();
 }
 const setBusy = (b, btn) => {
   document.querySelectorAll("[data-run]").forEach(x => x.disabled = b);
@@ -1977,14 +2082,30 @@ const btnLogs = document.getElementById("btnLogs"); if (btnLogs) btnLogs.onclick
 const logsClose = document.getElementById("logsClose"); if (logsClose) logsClose.onclick = () => document.getElementById("logspanel").classList.remove("open");
 const logsRefresh = document.getElementById("logsRefresh"); if (logsRefresh) logsRefresh.onclick = openLogs;
 
-/* ---- TERMINAL: executa comandos de verdade --------------------------------- */
-let termHist = [], termIdx = -1, termText = "";
+/* ---- TERMINAL amplo: cwd, atalhos, copiar/salvar, histórico ----------------- */
+let termHist = [], termIdx = -1, termText = "", termCwd = "~";
+const TERM_QUICK = [
+  ["getprop ro.product.model", "modelo"],
+  ["getprop ro.build.version.sdk", "Android"],
+  ["settings get system peak_refresh_rate", "taxa de tela"],
+  ["settings get global private_dns_specifier", "DNS atual"],
+  ["pm list packages -3", "apps instalados"],
+  ["dumpsys battery | grep -E 'level|temperature'", "bateria"],
+  ["free -m", "RAM"],
+  ["df -h /data", "armazenamento"],
+  ["top -n 1 -b | head -15", "top (CPU)"],
+  ["dumpsys deviceidle | grep -m1 mState=", "estado do Doze"],
+  ["logcat -d -t 40", "últimas linhas do log"],
+];
 function termPaint(t){ const o = document.getElementById("termOut"); if (o) o.textContent = t; }
+function termCwdPaint(){ const e = document.getElementById("termCwd"); if (e) e.textContent = termCwd; }
+function termOutText(){ const o = document.getElementById("termOut"); return o ? o.textContent : ""; }
+function termScroll(){ const o = document.getElementById("termOut"); if (o) o.scrollTop = o.scrollHeight; }
 async function termRunCmd(cmd){
   cmd = (cmd || "").trim(); if (!cmd) return;
   termHist.push(cmd); termIdx = termHist.length;
   const o = document.getElementById("termOut");
-  if (o){ o.textContent += (o.textContent ? "\n" : "") + "$ " + cmd + "\n"; o.scrollTop = o.scrollHeight; }
+  if (o){ o.textContent += (o.textContent ? "\n" : "") + termCwd + " $ " + cmd + "\n"; termScroll(); }
   const inp = document.getElementById("termInput"); if (inp) inp.disabled = true;
   try{
     const r = await fetch("api.php?do=term", {
@@ -1992,17 +2113,23 @@ async function termRunCmd(cmd){
       body: JSON.stringify({cmd})
     });
     const j = await r.json();
-    if (o){ o.textContent += (j.out || "(sem saída)") + "\n"; o.scrollTop = o.scrollHeight; }
+    if (o){ o.textContent += (j.out || "(sem saída)") + "\n"; termScroll(); }
   }catch(e){ if (o){ o.textContent += "erro: " + e + "\n"; } }
   if (inp){ inp.disabled = false; inp.focus(); }
+  loadState();
 }
-(function initTerm(){
+function termFill(cmd){
+  const inp = document.getElementById("termInput"); if (!inp) return;
+  inp.value = cmd; inp.focus();
+}
+function initTerm(){
   const inp = document.getElementById("termInput");
   const run = document.getElementById("termRun");
   if (!inp || !run) return;
-  run.onclick = () => { const c = inp.value; inp.value = ""; termRunCmd(c); };
+  const submit = () => { const c = inp.value; inp.value = ""; termRunCmd(c); };
+  run.onclick = submit;
   inp.addEventListener("keydown", e => {
-    if (e.key === "Enter"){ e.preventDefault(); const c = inp.value; inp.value = ""; termRunCmd(c); return; }
+    if (e.key === "Enter"){ e.preventDefault(); submit(); return; }
     if (e.key === "ArrowUp"){
       if (!termHist.length) return; e.preventDefault();
       if (termIdx === termHist.length) termText = inp.value;
@@ -2014,10 +2141,35 @@ async function termRunCmd(cmd){
       inp.value = termIdx === termHist.length ? termText : termHist[termIdx];
     }
   });
-  const clr = document.getElementById("termClear"); if (clr) clr.onclick = () => termPaint("");
-  // histórico salvo no aparelho (app) — no site fica vazio
+  const clr = document.getElementById("termClear");
+  if (clr) clr.onclick = () => termPaint("");
+  const cp = document.getElementById("termCopy");
+  if (cp) cp.onclick = async () => {
+    try{ await navigator.clipboard.writeText(termOutText()); toast("Saída copiada", "ok"); }
+    catch(e){ toast("Não consegui copiar", "bad"); }
+  };
+  const sv = document.getElementById("termSave");
+  if (sv) sv.onclick = () => {
+    const blob = new Blob([termOutText()], {type:"text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "terminal-" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".txt";
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+  const q = document.getElementById("termQuick");
+  if (q) q.innerHTML = TERM_QUICK.map(([c,l]) =>
+    '<button class="term-chip" type="button" data-cmd="' + esc(c) + '">' + esc(l) + "</button>").join("");
+  if (q) q.querySelectorAll(".term-chip").forEach(b => tapOnly(b, () => termFill(b.dataset.cmd)));
+  document.addEventListener("keydown", e => {
+    const sec = document.getElementById("g-Terminal");
+    if (e.ctrlKey && (e.key === "l" || e.key === "L") && sec && !sec.hidden){
+      e.preventDefault(); termPaint("");
+    }
+  });
+  termCwdPaint();
   apiGet("term_hist").then(j => { (j.history || []).forEach(h => { if (h.cmd) termHist.push(h.cmd); }); termIdx = termHist.length; }).catch(()=>{});
-})();
+}
+initTerm();
 const btnTerm = document.getElementById("btnTerm");
 if (btnTerm) btnTerm.onclick = () => { go("Terminal"); const i = document.getElementById("termInput"); if (i) i.focus(); };
 
