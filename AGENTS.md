@@ -876,6 +876,19 @@ aceita instalar a nova por cima da anterior. Não troque essa keystore sem avisa
 trocar a chave quebra a atualização e obriga a desinstalar. O `zipalign`/`apksigner`
 manuais não são mais necessários (o Gradle assina no `assembleRelease`).
 
+**Toque nos botões do painel: nunca use `pointerleave`.** No toque, o navegador
+emite `pointerleave` em TODO toque válido (o dedo sai do elemento ao levantar),
+e ele chega ANTES do `click`. Um guarda que cancele no `pointerleave` mata todo
+clique: o botão fica morto, sem erro nenhum na tela — parece que o toque não foi
+registrado. O `tapOnly` existe em três lugares que precisam ficar iguais:
+`web/index.php`, `app/src/main/assets/panel/index.html` e o JS injetado em
+`PanelActivity.kt` (`injectHeaderButtons`). O arrasto é pego por três vias:
+variação do dedo (`pointermove`), posição no fim do toque (`pointerup`) e
+rolagem da página (`scroll`). O teste `t_tap_only` reprova `pointerleave`
+registrado de verdade (ignora o aviso nos comentários). Para conferir sem
+aparelho, dispare toques reais via CDP (`Input.dispatchTouchEvent`) com
+`chromium --headless`: o mouse não reproduz a ordem dos eventos de toque.
+
 A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
 `app/build.gradle.kts`). Nome de exibição: "Trix". O APK é
 publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git; os

@@ -1467,8 +1467,12 @@ let pending = null;
 /* Toque de verdade: dedo parado e curto. Arrastar NUNCA dispara.
    Só o pointercancel não bastava: quando o dedo comeca no botao e arrasta a
    pagina, o navegador nem sempre emite o cancelamento e o clique sintetico do
-   fim do scroll acionava o botao. Agora o arrasto e pego por tres vias: a
-   variacao do dedo, a rolagem da pagina e o pointerleave. */
+   fim do scroll acionava o botao. O arrasto e pego por tres vias: a variacao
+   do dedo (pointermove), a posicao no fim do toque (pointerup) e a rolagem da
+   pagina.
+   NÃO use pointerleave aqui: no toque ele dispara em TODO toque valido, porque
+   o dedo sai do elemento ao levantar. Ele vinha antes do click e cancelava tudo,
+   deixando os botoes mortos (clique ignorado, sem erro nenhum). */
 const TAP_PX = 14, TAP_MS = 600;
 function tapOnly(el, fn){
   if (!el) return;
@@ -1482,8 +1486,11 @@ function tapOnly(el, fn){
     if (!ok || (pid !== null && e.pointerId !== pid)) return;
     if (Math.abs(e.clientX - sx) > TAP_PX || Math.abs(e.clientY - sy) > TAP_PX) cancel();
   }, {passive:true});
+  el.addEventListener("pointerup", e => {
+    if (!ok || (pid !== null && e.pointerId !== pid)) return;
+    if (Math.abs(e.clientX - sx) > TAP_PX || Math.abs(e.clientY - sy) > TAP_PX) cancel();
+  }, {passive:true});
   el.addEventListener("pointercancel", cancel, {passive:true});
-  el.addEventListener("pointerleave", cancel, {passive:true});
   // se a pagina rolou durante o toque, o dedo estava arrastando
   window.addEventListener("scroll", cancel, {passive:true, capture:true});
   el.addEventListener("click", e => {

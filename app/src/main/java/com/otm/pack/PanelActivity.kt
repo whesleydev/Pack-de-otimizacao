@@ -187,8 +187,12 @@ class PanelActivity : AppCompatActivity() {
               // Só o pointercancel não bastava: quando o dedo COMEÇA no botão e
               // arrasta a página, o WebView nem sempre emite o cancelamento, e o
               // clique sintético do fim do scroll abria o flutuante "sem querer".
-              // Agora o arrasto é detectado por três vias: a variação do dedo, a
-              // rolagem da página e o pointerleave.
+              // Agora o arrasto é detectado por três vias: a variação do dedo
+              // (pointermove), a posição no fim do toque (pointerup) e a rolagem
+              // da página.
+              // NÃO use pointerleave: no toque ele dispara em TODO toque válido,
+              // porque o dedo sai do elemento ao levantar. Ele vinha antes do
+              // click e cancelava tudo, deixando o botão morto.
               var OTM_TAP_PX = 14, OTM_TAP_MS = 600;
               function tapOnly(el, fn){
                 var sx=0, sy=0, st=0, ok=false, pid=null;
@@ -201,8 +205,11 @@ class PanelActivity : AppCompatActivity() {
                   if(!ok || (pid !== null && e.pointerId !== pid)) return;
                   if (Math.abs(e.clientX-sx) > OTM_TAP_PX || Math.abs(e.clientY-sy) > OTM_TAP_PX) cancel();
                 }, {passive:true});
+                el.addEventListener('pointerup', function(e){
+                  if(!ok || (pid !== null && e.pointerId !== pid)) return;
+                  if (Math.abs(e.clientX-sx) > OTM_TAP_PX || Math.abs(e.clientY-sy) > OTM_TAP_PX) cancel();
+                }, {passive:true});
                 el.addEventListener('pointercancel', cancel, {passive:true});
-                el.addEventListener('pointerleave', cancel, {passive:true});
                 // se a página rolou durante o toque, o dedo estava arrastando
                 window.addEventListener('scroll', cancel, {passive:true, capture:true});
                 el.addEventListener('click', function(e){

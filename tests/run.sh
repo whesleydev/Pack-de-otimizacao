@@ -3700,13 +3700,23 @@ t_tap_only() {
         grep -q 'pointercancel' "$f" \
             && ok "$(basename "$f"): o guarda cancela no começo do arrasto" \
             || bad "$(basename "$f"): tapOnly sem pointercancel"
-        # o cancelamento só pelo pointercancel não bastava: quando o dedo começa
+        # O cancelamento só pelo pointercancel não bastava: quando o dedo começa
         # no botão e arrasta, o navegador nem sempre emite o cancelamento e o
-        # clique sintético do fim do scroll abria o botão. O guarda agora também
-        # cancela na rolagem e na saída do dedo do elemento.
-        grep -q 'pointerleave' "$f" \
-            && ok "$(basename "$f"): cancela quando o dedo sai do botão" \
-            || bad "$(basename "$f"): tapOnly sem pointerleave"
+        # clique sintético do fim do scroll abria o botão. O arrasto é pego pela
+        # variação do dedo (pointermove), pela posição no fim do toque (pointerup)
+        # e pela rolagem da página.
+        grep -q 'pointerup' "$f" \
+            && ok "$(basename "$f"): confere a posição no fim do toque (pointerup)" \
+            || bad "$(basename "$f"): tapOnly não confere a posição no pointerup"
+        # pointerleave NÃO pode voltar: no toque ele dispara em TODO toque válido
+        # (o dedo sai do elemento ao levantar), vinha antes do click e cancelava
+        # tudo. Isso deixava os botões mortos, sem erro nenhum. A checagem ignora
+        # comentários para não dar falso positivo pela citação do aviso.
+        if grep -qE "addEventListener\(['\"]pointerleave" "$f"; then
+            bad "$(basename "$f"): registra pointerleave no toque (mata todo clique válido)"
+        else
+            ok "$(basename "$f"): sem pointerleave no caminho do toque"
+        fi
         grep -qE 'addEventListener\("scroll", cancel' "$f" \
             && ok "$(basename "$f"): cancela se a página rolar durante o toque" \
             || bad "$(basename "$f"): tapOnly não cancela na rolagem"
@@ -3736,9 +3746,14 @@ t_tap_only() {
     grep -q 'pointercancel' "$pa" \
         && ok "app: o guarda do cabeçalho cancela no arrasto" \
         || bad "app: guarda do cabeçalho sem pointercancel"
-    grep -q 'pointerleave' "$pa" \
-        && ok "app: o guarda do cabeçalho cancela quando o dedo sai" \
-        || bad "app: guarda do cabeçalho sem pointerleave"
+    grep -q 'pointerup' "$pa" \
+        && ok "app: o guarda do cabeçalho confere a posição no fim do toque" \
+        || bad "app: guarda do cabeçalho não confere o pointerup"
+    if grep -qE "addEventListener\(['\"]pointerleave" "$pa"; then
+        bad "app: guarda do cabeçalho registra pointerleave (mata todo clique válido)"
+    else
+        ok "app: guarda do cabeçalho sem pointerleave no caminho do toque"
+    fi
     grep -qE "addEventListener\(['\"]scroll['\"], cancel" "$pa" \
         && ok "app: o guarda do cabeçalho cancela na rolagem" \
         || bad "app: guarda do cabeçalho não cancela na rolagem"
