@@ -68,6 +68,11 @@ class PackBridge(
             val json = try {
                 when (kind) {
                     "run" -> runImpl(payload)
+                    // backup criptografado: feito no app (Keystore + AES-GCM), não
+                    // por script — a chave não pode sair do aparelho.
+                    "backup_export" -> OtmBackup.export(context, runnerProvider())
+                    "backup_import" -> OtmBackup.import(context, runnerProvider())
+                    "backup_list" -> OtmBackup.list(context)
                     "status" -> textResult(scriptCommand("pack.sh", listOf("status")))
                     "dns" -> textResult(scriptCommand("dns.sh", listOf("status")))
                     "state" -> stateImpl()
@@ -114,6 +119,13 @@ class PackBridge(
         val confirm = body.optBoolean("confirm", false)
 
         val a = actions[id] ?: return err("ação desconhecida: $id")
+        // O backup é do app (Keystore + AES-GCM), não de script: o JS chama o
+        // kind próprio em vez de "run" para estes ids.
+        when (id) {
+            "backup.export" -> return OtmBackup.export(context, runnerProvider())
+            "backup.import" -> return OtmBackup.import(context, runnerProvider())
+            "backup.list" -> return OtmBackup.list(context)
+        }
         if (a.argv.isEmpty()) return err("esta ação é feita pelo próprio painel")
         if (a.confirm && !confirm) {
             return JSONObject().put("ok", false).put("need_confirm", true)

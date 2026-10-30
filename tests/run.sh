@@ -2746,6 +2746,176 @@ t_smart_opt() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_smart_learning() {
+    printf '\n  # otimizador que APRENDE: memória por aparelho e ciclo completo\n'
+    local f="$ROOT/scripts/smart-opt.sh"
+    # a memória existe e é por assinatura de hardware (não global)
+    grep -q 'SO_MEM=' "$f" && ok "v3: existe memória do aparelho (SO_MEM)" || bad "v3: sem memória"
+    grep -q 'so_mem_key()' "$f" && ok "v3: memória tem chave por hardware" || bad "v3: sem chave de memória"
+    grep -q 'so_mem_get()' "$f" && grep -q 'so_mem_set()' "$f" \
+        && ok "v3: memória tem leitura e escrita" || bad "v3: memória incompleta"
+    # decide() consulta a memória (é o que faz ele aprender de verdade)
+    grep -q 'D_MEM_RENDER="$(so_mem_get renderer)"' "$f" \
+        && ok "v3: decide usa o renderizador que venceu aqui" || bad "v3: decide ignora a memória (renderer)"
+    grep -q 'D_MEM_HZ="$(so_mem_get hz)"' "$f" \
+        && ok "v3: decide usa a taxa de tela que venceu aqui" || bad "v3: decide ignora a memória (hz)"
+    # compare grava na memória (fecha o ciclo do aprendizado)
+    grep -q 'so_mem_set renderer' "$f" && grep -q 'so_mem_set hz' "$f" \
+        && ok "v3: compare grava o vencedor na memória" || bad "v3: compare não grava na memória"
+    # auto = ciclo completo, com snapshot de segurança e resumo único
+    grep -q 'snapshot.sh" save' "$f" \
+        && ok "v3: auto tira snapshot de segurança antes" || bad "v3: auto sem snapshot de segurança"
+    grep -q 'RESULTADO FINAL' "$f" && ok "v3: auto mostra UM resultado no fim" || bad "v3: auto sem resumo final"
+    grep -q 'cmd_compare "$prof"' "$f" && ok "v3: auto testa as combinações" || bad "v3: auto não compara"
+
+    # comportamento REAL: o auto grava a memória e o `mem` mostra o que aprendeu
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_auto_mem" 2>&1
+    [ -f "$HOME/.packotm/smart/memory" ] && ok "v3: auto grava a memória do aparelho" \
+        || bad "v3: auto não gravou a memória"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" mem > "$TMP/so_mem" 2>&1
+    assert_contains "$TMP/so_mem" "APRENDEU" "v3: 'mem' mostra o que ele aprendeu"
+    assert_contains "$TMP/so_mem" "melhor renderizador" "v3: 'mem' mostra o renderizador vencedor"
+    assert_contains "$TMP/so_mem" "vezes que rodou aqui" "v3: 'mem' conta as execuções"
+
+    # a chave da assinatura sai do próprio arquivo (sem adivinhar o formato)
+    k="$(sed -n 's/^\([^ ]*\) runs=.*/\1/p' "$HOME/.packotm/smart/memory" | head -1)"
+    if [ -n "$k" ]; then
+        # a memória MUDA a decisão. O valor tem de ser DIFERENTE do padrão, senão
+        # o teste passaria mesmo sem a memória (no harness a GPU não é lida e o
+        # padrão já é skiagl — por isso aqui o vencedor é skiavk).
+        printf '%s renderer=skiavk\n%s hz=90\n' "$k" "$k" > "$HOME/.packotm/smart/memory"
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan > "$TMP/so_memplan" 2>&1
+        assert_contains "$TMP/so_memplan" "skiavk" "v3: o plano começa pelo renderizador que venceu aqui"
+        assert_contains "$TMP/so_memplan" "90 Hz" "v3: o plano começa pela taxa que venceu aqui"
+        # 'mem' mostra a taxa que venceu (só aparece depois de haver uma medida)
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" mem > "$TMP/so_mem2" 2>&1
+        assert_contains "$TMP/so_mem2" "melhor taxa de tela" "v3: 'mem' mostra a taxa vencedora"
+        # a memória de OUTRO aparelho não é herdada (chave diferente)
+        printf 'OUTRO|APARELHO|99999|0|0 renderer=skiavk\nOUTRO|APARELHO|99999|0|0 hz=90\n' \
+            > "$HOME/.packotm/smart/memory"
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan > "$TMP/so_other" 2>&1
+        grep -q 'skiavk' "$TMP/so_other" && bad "v3: herdou memória de outro aparelho" \
+            || ok "v3: memória de outro aparelho não é herdada"
+        OTM_NO_COLOR=1 OTM_MODE=su sh "$f" mem > "$TMP/so_mem3" 2>&1
+        assert_contains "$TMP/so_mem3" "ainda não testei" "v3: 'mem' avisa quando não há nada aprendido aqui"
+    else
+        bad "v3: não consegui ler a chave de memória do arquivo"
+    fi
+    # o resumo final sai com o vencedor
+    rm -rf "$HOME/.packotm"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" auto > "$TMP/so_full" 2>&1
+    assert_contains "$TMP/so_full" "RESULTADO FINAL" "v3: auto termina com o resultado final"
+    assert_contains "$TMP/so_full" "config aplicada" "v3: o resultado diz o que ficou aplicado"
+    [ -f "$HOME/.packotm/smart/memory" ] && ok "v3: auto grava a memória do aparelho" \
+        || bad "v3: auto não gravou a memória"
+    rm -rf "$HOME/.packotm"
+}
+
+t_backup_crypto() {
+    printf '\n  # backup: arquivo cifrado que devolve as configurações\n'
+    local f="$ROOT/scripts/backup.sh"
+    [ -f "$f" ] && ok "scripts/backup.sh existe" || { bad "backup.sh ausente"; return; }
+    sh -n "$f" 2>/dev/null && ok "backup.sh tem sintaxe válida" || bad "backup.sh com erro de sintaxe"
+
+    # ida e volta REAL: coleta, mexe no aparelho e restaura
+    rm -rf "$HOME/.packotm"
+    settings put global window_animation_scale 0.5
+    settings put global force_gpu_rendering 1
+    settings put system peak_refresh_rate 120.0
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" collect > "$TMP/bk_pack" 2>&1
+    assert_contains "$TMP/bk_pack" "#TRIX-BACKUP-V1" "collect assina o pacote"
+    assert_contains "$TMP/bk_pack" "global window_animation_scale 0.5" "collect guarda a animação atual"
+    assert_contains "$TMP/bk_pack" "system peak_refresh_rate 120.0" "collect guarda a taxa de tela"
+
+    # o otimizador mexe em tudo
+    settings put global window_animation_scale 0
+    settings put global force_gpu_rendering 0
+    settings put system peak_refresh_rate 60.0
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore "$TMP/bk_pack" > "$TMP/bk_res" 2>&1
+    assert_eq "0.5" "$(settings get global window_animation_scale)" "restore devolve a animação"
+    assert_eq "1" "$(settings get global force_gpu_rendering)" "restore devolve o force gpu"
+    assert_eq "120.0" "$(settings get system peak_refresh_rate)" "restore devolve a taxa de tela"
+
+    # arquivo que não é backup é recusado (não aplica lixo)
+    echo "isto nao e um backup" > "$TMP/bk_fake"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore "$TMP/bk_fake" > "$TMP/bk_bad" 2>&1
+    assert_contains "$TMP/bk_bad" "não é um backup" "restore recusa arquivo alheio"
+    # arquivo inexistente também é recusado com recado claro
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore "$TMP/nao_existe" > "$TMP/bk_miss" 2>&1
+    assert_contains "$TMP/bk_miss" "não encontrado" "restore avisa quando o arquivo não existe"
+
+    # o núcleo de criptografia do app: envelope, IV novo, adulteração detectada
+    local core="$ROOT/app/src/main/java/com/otm/pack/OtmBackupCore.kt"
+    [ -f "$core" ] && ok "app: OtmBackupCore.kt existe" || bad "app: sem núcleo de criptografia"
+    grep -q 'AES/GCM/NoPadding' "$core" && ok "app: usa AES-GCM (cifra + autentica)" \
+        || bad "app: cifra não é GCM"
+    grep -q 'SecureRandom' "$core" && ok "app: IV aleatório (não reaproveita)" || bad "app: IV fixo"
+    grep -q 'AndroidKeyStore' "$ROOT/app/src/main/java/com/otm/pack/OtmBackup.kt" \
+        && ok "app: a chave vive no Keystore (não sai do aparelho)" || bad "app: chave fora do Keystore"
+    # e o mesmo formato existe no lado web
+    grep -q 'aes-256-gcm' "$ROOT/web/backup.php" && ok "web: cifra com aes-256-gcm" || bad "web: sem GCM"
+    grep -q 'OTM_BKP_HEADER' "$ROOT/web/backup.php" && grep -q 'TRIX BACKUP' "$core" \
+        && ok "web e app usam o mesmo envelope" || bad "envelopes divergem"
+
+    # as ações de backup existem nos dois painéis e na whitelist
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions();
+             foreach (["backup.export","backup.import","backup.list"] as $id)
+               echo isset($a[$id]) ? "" : "FALTA:$id ";' > "$TMP/bk_reg" 2>&1
+    test ! -s "$TMP/bk_reg" && ok "ações de backup no registro do painel" || bad "registro: $(cat "$TMP/bk_reg")"
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             echo in_array("backup.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' > "$TMP/bk_lib" 2>&1
+    assert_contains "$TMP/bk_lib" "ok" "backup.sh na whitelist"
+    grep -q '"backup.export"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "app: actions.json tem o backup" || bad "app: actions.json sem backup"
+    grep -q 'data-hub="backup.export"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && grep -q 'data-hub="backup.export"' "$ROOT/web/index.php" \
+        && ok "botões de backup nos dois painéis" || bad "botões de backup divergem"
+    [ -f "$ROOT/app/src/main/assets/pack/scripts/backup.sh" ] \
+        && ok "espelho: backup.sh presente" || bad "espelho: backup.sh ausente"
+    # a ponte do app liga os botões ao código nativo (não a script)
+    grep -q '"backup_export"' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "app: a ponte atende o backup" || bad "app: ponte sem backup"
+    rm -rf "$HOME/.packotm"
+}
+
+t_smart_card_single() {
+    printf '\n  # card do otimizador: UM botão (sem hub de sub-ações)\n'
+    local web="$ROOT/web/index.php" panel="$ROOT/app/src/main/assets/panel/index.html"
+    # o hub com os 11 botões internos saiu
+    for f in "$web" "$panel"; do
+        n=$(grep -c 'data-hub="smart\.' "$f")
+        [ "$n" = "0" ] && ok "$(basename "$f"): sem sub-ações do otimizador" \
+            || bad "$(basename "$f"): ainda tem $n sub-ações do otimizador"
+        # o select de perfil do card saiu (o app decide sozinho)
+        grep -q 'data-p="perfil"' "$f" \
+            && bad "$(basename "$f"): ainda tem select de perfil" \
+            || ok "$(basename "$f"): sem select de perfil (decide sozinho)"
+        # os botões de segurança ficaram
+        grep -q 'data-hub="backup.export"' "$f" && grep -q 'data-hub="backup.import"' "$f" \
+            && ok "$(basename "$f"): salvar/restaurar presentes" || bad "$(basename "$f"): sem backup"
+        # e o aviso de que pode demorar
+        grep -q 'demorar' "$f" && ok "$(basename "$f"): avisa que pode demorar" \
+            || bad "$(basename "$f"): sem aviso de demora"
+    done
+    # a ação virou comando único, com confirmação e 'cuidado'
+    php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.auto");
+             echo count($a["params"])===0 ? "semparams" : "temparams";' > "$TMP/sc_p" 2>&1
+    assert_contains "$TMP/sc_p" "semparams" "a ação não pede mais parâmetro (um botão só)"
+
+    # rede de segurança: as ações de recuperação precisam de botão nos DOIS
+    # painéis. Ao remover o hub do otimizador, "Reverter TUDO" e o snapshot
+    # ficaram sem nenhum botão — o usuário perdeu como desfazer.
+    for id in restore_all snapshot_save backup.export backup.import; do
+        if grep -q "data-hub=\"$id\"\|data-qa=\"$id\"" "$web" \
+           && grep -q "data-hub=\"$id\"\|data-qa=\"$id\"" "$panel"; then
+            ok "recuperação alcançável nos dois painéis: $id"
+        else
+            bad "ação de recuperação sem botão: $id"
+        fi
+    done
+}
+
 t_ramboost() {
     printf '\n  # liberar RAM: encerra o fundo, poda cache e reporta o ganho\n'
     local f="$ROOT/scripts/ram-boost.sh"
@@ -4145,6 +4315,9 @@ t_gameclean
 t_ramboost
 t_resolution
 t_smart_opt
+t_smart_learning
+t_backup_crypto
+t_smart_card_single
 t_clean
 t_smart_clean_protect
 t_privilege_detect

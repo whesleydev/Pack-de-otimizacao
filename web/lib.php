@@ -14,6 +14,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/backup.php';   // backup cifrado (arquivo + AES-GCM)
+
 function otm_root(): string {
     return dirname(__DIR__);                       // web/ -> raiz do pack
 }
@@ -67,7 +69,7 @@ function otm_script(string $name, array $args = [], int $timeout = 60): array {
 function otm_allowed_scripts(): array {
     return [
         'pack.sh', 'adb-tweaks.sh', 'deep-tune.sh', 'debloat.sh', 'dns.sh',
-        'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh',
+        'modules.sh', 'ff-touch.sh', 'game-per-app.sh', 'snapshot.sh', 'backup.sh',
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'fps.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
@@ -375,13 +377,10 @@ function otm_actions(): array {
           'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Display & Touch" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 420]);
     $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
-          'desc' => 'Analisa o seu aparelho, aplica as melhores configurações E mede o resultado.',
-          'help' => 'O "faz tudo" inteligente em um botão só. Ele primeiro LÊ o seu aparelho inteiro (modelo, processador, GPU, núcleos e frequência por cluster, RAM, taxa de tela, armazenamento, térmico, bateria, zram, MGLRU, rede, governador e pressão de memória) e calcula uma nota e a classe do aparelho — mostrando também o que está SEGURANDO a nota. Depois decide item por item o que faz sentido para AQUELE modelo — não aplica o mesmo pacote para todo mundo — e aplica: animações, RAM sob medida, renderizador escolhido pela GPU, taxa de tela, limpeza, doze e a memória do kernel (swappiness) conforme a RAM. (O debloat ficou de fora de propósito: remover app de fábrica é decisão sua e mora na aba Debloat.) Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog (o jogo não fecha nem volta ao login). No fim ele MEDE antes x depois e diz se melhorou, piorou ou ficou estável — se piorar, avisa para reverter. É tudo reversível em "Reverter TUDO".',
-          'argv' => ['smart-opt.sh', 'auto', '{perfil}'], 'risk' => 'careful', 'confirm' => true,
-          'timeout' => 900,
-          'params' => [['name' => 'perfil', 'type' => 'enum', 'label' => 'Perfil',
-                         'options' => ['auto', 'equilibrado', 'desempenho', 'jogo', 'bateria'],
-                         'default' => 'auto']]]);
+          'desc' => 'Um botão só: analisa, decide, aplica e testa o que é melhor para ESTE aparelho.',
+          'help' => 'Um botão só — o resto acontece por dentro, sem você escolher nada. Ele LÊ o aparelho inteiro (modelo, processador, GPU, núcleos e frequências, RAM, taxa de tela, armazenamento, térmico, bateria, zram, MGLRU, rede, governador e pressão de memória), calcula a nota e a classe, salva um snapshot de segurança, decide item por item o que faz sentido para AQUELE modelo e aplica. Depois MEDE antes x depois e ainda TESTA as combinações plausíveis (ex.: Vulkan x GL, a maior taxa x 90Hz) para ficar com a que der o melhor resultado. Cada teste fica guardado numa memória por aparelho: da próxima vez ele já começa pela combinação que venceu aqui e vai melhorando a cada execução. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Pode demorar alguns minutos — é o tempo de medir e comparar no seu aparelho. Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog. No fim mostra UM resultado. É tudo reversível em "Reverter TUDO".',
+          'argv' => ['smart-opt.sh', 'auto'], 'risk' => 'careful', 'confirm' => true,
+          'timeout' => 1800]);
     $add(['id' => 'smart.report', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: analisar o aparelho',
           'desc' => 'Relatório completo do aparelho, sem alterar nada.',
           'help' => 'Lê o aparelho de ponta a ponta e mostra tudo: SoC, GPU, clusters de CPU com as frequências, RAM (total e livre), pressão de memória do kernel, taxa de tela, resolução lógica, armazenamento, térmico, bateria, zram em uso, governador, entropia, I/O e renderizador atual. Termina com a nota (0-100), a classe e a lista do que está segurando a nota. Não altera NADA — é só leitura.',
@@ -417,6 +416,26 @@ function otm_actions(): array {
           'desc' => 'Desfaz níveis 2, otimizações profundas e debloat de uma vez.',
           'help' => 'Volta o aparelho ao estado de fábrica de configuração: desfaz as otimizações, as profundas (root) e o debloat. Use quando quiser "limpar" tudo o que o pack aplicou.',
           'argv' => ['pack.sh', 'restore'], 'confirm' => true, 'timeout' => 300]);
+    // ----- backup seguro (arquivo criptografado no aparelho) -----
+    // Fica DENTRO do card do otimizador (card => false): é a rede de segurança
+    // dele. O arquivo vai para a pasta pública do app, criptografado, e pode ser
+    // lido de volta para devolver TODAS as configurações de uma vez.
+    $add(['id' => 'backup.export', 'group' => 'Geral', 'card' => false,
+          'label' => 'Salvar configurações',
+          'desc' => 'Salva um arquivo criptografado com as suas configurações.',
+          'help' => 'Tira uma foto COMPLETA das configurações que o pack mexe (animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o que mais estiver ativo), junta num arquivo .txt criptografado e guarda numa pasta do app no seu aparelho. É o ponto de retorno: com esse arquivo você volta exatamente como estava, mesmo depois de mexer em muita coisa. O arquivo é seu e fica no seu aparelho — a chave é gerada aqui e não sai dele.',
+          'argv' => ['backup.sh', 'export'], 'timeout' => 180]);
+    $add(['id' => 'backup.import', 'group' => 'Geral', 'card' => false,
+          'label' => 'Restaurar configurações',
+          'desc' => 'Lê o arquivo criptografado e devolve as configurações salvas.',
+          'help' => 'Lê o arquivo criptografado que você salvou e devolve TODAS as configurações de uma vez — animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o resto. Serve para voltar ao estado da foto depois de qualquer mexida. Se você tem mais de um arquivo, ele restaura o mais recente; o painel mostra qual foi usado.',
+          'argv' => ['backup.sh', 'import'], 'confirm' => true, 'timeout' => 180]);
+    $add(['id' => 'backup.list', 'group' => 'Geral', 'card' => false,
+          'label' => 'Ver backups salvos',
+          'desc' => 'Lista os arquivos de configuração guardados no aparelho.',
+          'help' => 'Mostra os arquivos de configuração já salvos, com a data e o aparelho de onde vieram. Só leitura.',
+          'argv' => ['backup.sh', 'list']]);
+
     $add(['id' => 'snapshot_save', 'group' => 'Geral', 'card' => false, 'label' => 'Salvar snapshot',
           'desc' => 'Tira uma foto das configurações atuais para poder voltar depois.',
           'help' => 'Guarda o estado atual das configurações num "snapshot". Se algo der errado, você restaura essa foto e volta exatamente como estava. Faça isso ANTES de mexer em qualquer coisa.',
@@ -1623,6 +1642,12 @@ function otm_run(string $id, array $params, bool $confirmed): array {
             $argv[] = $piece;
         }
     }
+    // backup cifrado: não roda script direto — o PHP cifra/decifra em volta
+    // (mesmo desenho do app, onde quem cifra é o Keystore).
+    if ($id === 'backup.export') { $r = otm_backup_export(); otm_log($id, $a['label'], ['backup.sh', 'export'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
+    if ($id === 'backup.import') { $r = otm_backup_import(); otm_log($id, $a['label'], ['backup.sh', 'import'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
+    if ($id === 'backup.list')   { $r = otm_backup_list();   return $r + ['id' => $id, 'label' => $a['label']]; }
+
     $script = $argv[0];
     $args = array_slice($argv, 1);
 

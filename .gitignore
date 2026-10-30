@@ -49,3 +49,6 @@ panel/config/*.local.php
 panel/database/*.sqlite
 panel/database/*.sqlite-wal
 panel/database/*.sqlite-shm
+
+# toolchain local (JDK/PHP usados só no ambiente de dev)
+.toolchain/

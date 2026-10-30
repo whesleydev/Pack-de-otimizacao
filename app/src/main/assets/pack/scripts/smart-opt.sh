@@ -48,6 +48,43 @@ SO_ST="$ST/smart"
 mkdir -p "$SO_ST" 2>/dev/null
 SO_LAST="$SO_ST/last"      # perfil aplicado por último
 SO_BENCH="$SO_ST/bench"    # última medição (antes x depois)
+SO_MEM="$SO_ST/memory"     # o que já APRENDEU neste aparelho (combinação vencedora)
+
+# --- memória do aparelho ------------------------------------------------------
+# O otimizador testa combinações no SEU aparelho e guarda qual venceu. Na próxima
+# execução ele já começa pela vencedora em vez de repetir a regra técnica — é
+# assim que ele fica melhor a cada uso, sem o usuário ver nada disso.
+# A chave é a assinatura do hardware: outro aparelho (mesmo modelo, outra RAM ou
+# outra tela) não herda o que este aprendeu.
+so_mem_key() {
+    printf '%s|%s|%s|%s|%s' "${SOC:-?}" "${GPU:-?}" "${RAM_MB:-0}" "${HZ_MAX:-0}" "${API:-0}" \
+        | tr -c 'A-Za-z0-9|' '_'
+}
+
+so_mem_get() {   # so_mem_get <chave>
+    [ -f "$SO_MEM" ] || return 0
+    key="$(so_mem_key)"
+    sed -n "s/^\($key\) \($1\)=\(.*\)$/\3/p" "$SO_MEM" 2>/dev/null | tail -1
+}
+
+so_mem_set() {   # so_mem_set <chave> <valor>
+    key="$(so_mem_key)"
+    tmp="$SO_MEM.tmp"
+    if [ -f "$SO_MEM" ]; then
+        grep -v "^\($key\) $1=" "$SO_MEM" > "$tmp" 2>/dev/null || : > "$tmp"
+    else
+        : > "$tmp"
+    fi
+    printf '%s %s=%s\n' "$key" "$1" "$2" >> "$tmp"
+    mv "$tmp" "$SO_MEM" 2>/dev/null
+    # não deixa a memória crescer sem fim num aparelho usado por anos
+    n=$(wc -l < "$SO_MEM" 2>/dev/null || echo 0)
+    [ "$n" -gt 200 ] 2>/dev/null && tail -100 "$SO_MEM" > "$tmp" 2>/dev/null && mv "$tmp" "$SO_MEM"
+    return 0
+}
+
+# quantas vezes o otimizador já rodou por aqui (ele melhora com o uso)
+so_mem_runs() { so_mem_get runs; }
 
 _num() { printf '%s' "$1" | tr -cd '0-9'; }
 
@@ -411,14 +448,58 @@ cmd_analyze() {
 # =============================================================================
 #  3b) AUTO - o comando único: lê, decide, aplica e COMPROVA
 # =============================================================================
+# mostra o que o otimizador já aprendeu neste aparelho (transparência)
+cmd_mem() {
+    collect >/dev/null 2>&1
+    printf '  %s◆%s  %sO QUE ELE APRENDEU NESTE APARELHO%s\n' "$C_A" "$C_R" "$C_A" "$C_R"
+    printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
+    printf '  %saparelho:%s %s · %s MB RAM · %s/100\n' "$C_A" "$C_R" "${MODEL:-?}" "${RAM_MB:-0}" "${SCORE:-?}"
+    r="$(so_mem_get renderer)"; h="$(so_mem_get hz)"; n="$(so_mem_get nota)"; k="$(so_mem_runs)"
+    if [ -z "$r" ] && [ -z "$h" ]; then
+        warn "ainda não testei nada aqui — rode o otimizador uma vez."
+        return 0
+    fi
+    [ -n "$r" ] && printf '  %smelhor renderizador:%s %s\n' "$C_A" "$C_R" "$r"
+    [ -n "$h" ] && printf '  %smelhor taxa de tela:%s %sHz\n' "$C_A" "$C_R" "$h"
+    [ -n "$n" ] && printf '  %smelhor nota medida:%s %s/100\n' "$C_A" "$C_R" "$n"
+    [ -n "$k" ] && printf '  %svezes que rodou aqui:%s %s\n' "$C_A" "$C_R" "$k"
+    printf '  %so arquivo fica em %s%s\n' "$C_D" "$SO_MEM" "$C_R"
+}
+
 cmd_auto() {
     local prof="${1:-auto}"
     SO_SILENT_NEXT=1
+    # snapshot de segurança antes de qualquer coisa: se algo der errado, o
+    # usuário tem um ponto de retorno (não precisa lembrar de salvar antes).
+    sh "$DIR/snapshot.sh" save "antes-do-otimizador" >/dev/null 2>&1
     cmd_analyze
     echo
     printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
     # aplica e, na mesma tacada, mede antes x depois (é o que prova o resultado)
     cmd_bench "$prof" || return 1
+    # e ainda testa as combinações: é aqui que ele descobre o melhor PARA ESTE
+    # aparelho e guarda na memória para as próximas vezes.
+    runs="$(so_mem_runs)"; case "$runs" in ''|*[!0-9]*) runs=0 ;; esac
+    if [ "$runs" -ge 1 ] 2>/dev/null; then
+        printf '\n  %smemória:%s este aparelho já foi testado %s vez(es); começando pela combinação que venceu\n' \
+            "$C_A" "$C_R" "$runs"
+    fi
+    echo
+    cmd_compare "$prof" || return 1
+    so_mem_set runs "$((runs + 1))"
+    # resumo final: UM resultado, sem o usuário precisar ler nada do meio
+    echo
+    printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
+    printf '  %s◆%s  %sRESULTADO FINAL%s\n' "$C_A" "$C_R" "$C_A" "$C_R"
+    v_render="$(so_mem_get renderer)"; v_hz="$(so_mem_get hz)"; v_nota="$(so_mem_get nota)"
+    printf '  %saparelho:%s %s · %s MB RAM · %s/100\n' "$C_A" "$C_R" \
+        "$MODEL" "$RAM_MB" "$SCORE"
+    printf '  %sconfig aplicada:%s %s%s\n' "$C_A" "$C_R" \
+        "${v_render:-$D_RENDERER}" \
+        "$([ -n "$v_hz" ] && printf ' + %sHz' "$v_hz" || printf ' + taxa padrão')"
+    [ -n "$v_nota" ] && printf '  %snota medida:%s %s/100\n' "$C_A" "$C_R" "$v_nota"
+    printf '  %so que ficou no seu aparelho é o melhor que deu para medir aqui.\n' "$C_D" "$C_R"
+    printf '  %srodando de novo, ele parte desta combinação e tenta melhorar.\n' "$C_D" "$C_R"
 }
 
 tier_label() {
@@ -487,6 +568,14 @@ decide() {
         D_RENDERER=skiagl
     fi
 
+    # memória: se já testamos aqui e um caminho venceu, começamos por ele. Isto
+    # vem DEPOIS da regra técnica, então a memória só substitui quando há algo
+    # medido neste aparelho (nunca um palpite).
+    D_MEM_RENDER="$(so_mem_get renderer)"
+    case "$D_MEM_RENDER" in
+        skiavk|skiagl) D_RENDERER="$D_MEM_RENDER" ;;
+    esac
+
     # taxa de tela: a maior que o aparelho suporta; bateria trava em 60Hz.
     # Se o aparelho não informa a taxa, NÃO chutamos: deixamos no automático.
     hz="${HZ_MAX:-0}"
@@ -496,6 +585,14 @@ decide() {
         D_HZ="$(snap_hz "$hz")"
     else
         D_HZ=""
+    fi
+    # memória: taxa de tela que venceu neste aparelho (menos no perfil bateria,
+    # que por definição trava em 60Hz).
+    if [ "$prof" != "bateria" ]; then
+        D_MEM_HZ="$(so_mem_get hz)"
+        case "$D_MEM_HZ" in
+            60|90|120|144) D_HZ="$D_MEM_HZ" ;;
+        esac
     fi
 
     # limpeza: jogo/desempenho só liberam RAM; o resto suaviza também.
@@ -813,6 +910,10 @@ cmd_compare() {
             "$C_A" "$C_R" "$melhor_render" "$melhor_rot" "$melhor_nota"
         printf '%s\n' "$melhor_render" > "$SO_ST/winner_renderer" 2>/dev/null
         printf '%s\n' "$melhor_hz" > "$SO_ST/winner_hz" 2>/dev/null
+        # grava na memória do aparelho: da próxima vez decide() já começa por aqui
+        so_mem_set renderer "$melhor_render"
+        [ "$melhor_hz" = "-" ] || so_mem_set hz "$melhor_hz"
+        so_mem_set nota "$melhor_nota"
         printf '  %seste é o ajuste que ficou no aparelho%s\n' "$C_D" "$C_R"
     else
         warn "não deu para comparar neste aparelho (sem leitura suficiente)"
@@ -951,6 +1052,7 @@ case "${1:-}" in
     bench)   shift; cmd_bench "$1" ;;
     compare) shift; cmd_compare "$1" ;;
     status)  cmd_status ;;
+    mem)     cmd_mem ;;
     restore) cmd_restore ;;
     *)
         sed -n '3,32p' "$0" | sed 's/^# \{0,1\}//' ;;

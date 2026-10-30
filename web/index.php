@@ -1164,20 +1164,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
               </div>
               <?php if (!empty($a['desc'])): ?><p><?= htmlspecialchars($a['desc']) ?></p><?php endif; ?>
               <?php if ($a['id'] === 'smart.auto'): ?>
-                <div class="hub-sub-t">Otimizador completo</div>
-                <div class="hub-grid" role="group" aria-label="Otimizador: leituras e testes">
-                  <button class="hbtn" type="button" data-hub="smart.report"><span class="opt-t">Analisar aparelho</span><span class="opt-s">só leitura</span></button>
-                  <button class="hbtn" type="button" data-hub="smart.decide"><span class="opt-t">Ver plano</span><span class="opt-s">antes de aplicar</span></button>
-                  <button class="hbtn" type="button" data-hub="smart.bench"><span class="opt-t">Medir antes x depois</span><span class="opt-s">prova o ganho</span></button>
-                  <button class="hbtn" type="button" data-hub="smart.compare"><span class="opt-t">Comparar combinações</span><span class="opt-s">fica com a melhor</span></button>
-                  <button class="hbtn" type="button" data-hub="smart.state"><span class="opt-t">O que está ativo</span><span class="opt-s">só leitura</span></button>
-                </div>
-                <div class="hub-sub-t">Snapshot e reversão</div>
-                <div class="hub-grid" role="group" aria-label="Snapshot e reversão">
+                <p class="sub" style="margin:12px 0 6px">Pode demorar alguns minutos: ele mede e compara as opções no seu aparelho para achar o melhor.</p>
+                <div class="hub-sub-t">Segurança</div>
+                <div class="hub-grid" role="group" aria-label="Salvar e restaurar configurações">
+                  <button class="hbtn" type="button" data-hub="backup.export"><span class="opt-t">Salvar configurações</span><span class="opt-s">arquivo seguro no aparelho</span></button>
+                  <button class="hbtn" type="button" data-hub="backup.import"><span class="opt-t">Restaurar configurações</span><span class="opt-s">volta ao que foi salvo</span></button>
                   <button class="hbtn" type="button" data-hub="snapshot_save"><span class="opt-t">Salvar snapshot</span><span class="opt-s">ponto de retorno</span></button>
-                  <button class="hbtn" type="button" data-hub="snapshot_list"><span class="opt-t">Ver snapshots</span><span class="opt-s">só leitura</span></button>
-                  <button class="hbtn" type="button" data-hub="snapshot_diff"><span class="opt-t">Comparar com o último</span><span class="opt-s">só leitura</span></button>
-                  <button class="hbtn" type="button" data-hub="snapshot_restore"><span class="opt-t">Restaurar último</span><span class="opt-s">volta à foto</span></button>
                   <button class="hbtn" type="button" data-hub="restore_all"><span class="opt-t">Reverter TUDO</span><span class="opt-s">estado de fábrica</span></button>
                 </div>
               <?php endif; ?>
@@ -2429,11 +2421,9 @@ document.querySelectorAll("[data-game-home]").forEach(b => tapOnly(b, () => runG
 document.querySelectorAll("[data-hub]").forEach(b => tapOnly(b, () => {
   const a = ACTIONS[b.dataset.hub];
   if (!a) return;
-  const card = b.closest(".card");
-  const sel = card && card.querySelector('[data-p="perfil"]');
-  // guarda a sub-ação e o perfil no próprio botão: o askConfirm põe o botão em
-  // `pending`, e o runPending precisa saber o que reexecutar depois do "ok".
-  b._subId = a.id; b._subParams = sel ? { perfil: sel.value } : {};
+  // guarda a sub-ação no próprio botão: o askConfirm põe o botão em `pending`,
+  // e o runPending precisa saber o que reexecutar depois do "ok".
+  b._subId = a.id; b._subParams = {};
   if (a.confirm) askConfirm(b, a);
   else doRun(a, b._subParams, false, b);
 }));
