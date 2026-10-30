@@ -7,7 +7,9 @@ import io.github.muntashirakon.adb.AdbStream
 import io.github.muntashirakon.adb.LocalServices
 import io.github.muntashirakon.adb.android.AdbMdns
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.DatagramPacket
@@ -100,6 +102,39 @@ class AdbRunner(private val context: Context) : ShellRunner {
             }
         }
         return connectLocal()
+    }
+
+    /**
+     * Confirma que a conexão é REAL: `connect()` devolver `true` só diz que o
+     * socket abriu, não que o shell responde. Sem esta checagem o painel dizia
+     * "conectado" e toda ação falhava depois. Se o comando de teste não voltar,
+     * a conexão é descartada em vez de ficar pela metade.
+     */
+    suspend fun verify(timeoutMs: Long = 8000): ExecResult {
+        if (!isConnected) return ExecResult(1, "", "ADB não conectado.")
+        return try {
+            val r = withTimeoutOrNull(timeoutMs) { exec("echo otm-ok") }
+                ?: return ExecResult(1, "", "O aparelho não respondeu ao teste (pareamento incompleto).")
+            if (r.ok && r.stdout.contains("otm-ok")) ExecResult(0, "Shell respondendo.", "")
+            else ExecResult(1, "", "O shell não respondeu ao teste.")
+        } catch (t: Throwable) {
+            ExecResult(1, "", "Falha no teste da conexão: ${describe(t)}")
+        }
+    }
+
+    /** Igual a [verify], mas reconecta antes: o adbd demora a publicar o serviço após parear. */
+    suspend fun connectAndVerify(attempts: Int = 3, waitMs: Long = 1500): ExecResult {
+        var last = ExecResult(1, "", "não tentou conectar")
+        for (i in 0 until attempts) {
+            if (i > 0) delay(waitMs)
+            val c = connectWireless()
+            if (!c.ok) { last = c; continue }
+            val v = verify()
+            if (v.ok) return c
+            last = v
+            close()
+        }
+        return last
     }
 
     /** Descobre um serviço mDNS e devolve host:porta (null se não achar). */

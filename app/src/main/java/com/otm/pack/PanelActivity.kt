@@ -104,6 +104,23 @@ class PanelActivity : AppCompatActivity() {
     }
 
     /**
+     * Sem este retorno a permissão de descoberta era pedida e esquecida: o
+     * diálogo de pareamento abria antes de o usuário responder, o mDNS falhava
+     * em silêncio e a conexão nunca completava.
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != Permissions.REQ_MDNS) return
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        Permissions.onMdnsResult(granted)
+    }
+
+    /**
      * Conecta sem perguntar nada SE o Shizuku já está rodando e a permissão já
      * foi concedida antes. Só nesse caso a capa some e o painel abre direto;
      * se falta a permissão, nada acontece aqui (o pedido é explícito, no botão).
@@ -165,22 +182,32 @@ class PanelActivity : AppCompatActivity() {
               if (!t) return;
               if (document.getElementById('otmFloat')) return;
 
-              // toque de verdade: dedo parado (pouca variação) e curto. O
-              // pointercancel acontece assim que a página começa a rolar, então
-              // arrastar nunca conta como clique.
+              // Toque de verdade: dedo parado (pouca variação) e curto.
+              //
+              // Só o pointercancel não bastava: quando o dedo COMEÇA no botão e
+              // arrasta a página, o WebView nem sempre emite o cancelamento, e o
+              // clique sintético do fim do scroll abria o flutuante "sem querer".
+              // Agora o arrasto é detectado por três vias: a variação do dedo, a
+              // rolagem da página e o pointerleave.
+              var OTM_TAP_PX = 14, OTM_TAP_MS = 600;
               function tapOnly(el, fn){
-                var sx=0, sy=0, st=0, ok=false;
+                var sx=0, sy=0, st=0, ok=false, pid=null;
+                function cancel(){ ok=false; pid=null; }
                 el.addEventListener('pointerdown', function(e){
-                  sx=e.clientX; sy=e.clientY; st=Date.now(); ok=true;
+                  if (e.pointerType === 'mouse' && e.button !== 0) { cancel(); return; }
+                  sx=e.clientX; sy=e.clientY; st=Date.now(); ok=true; pid=e.pointerId;
                 }, {passive:true});
                 el.addEventListener('pointermove', function(e){
-                  if(!ok) return;
-                  if (Math.abs(e.clientX-sx) > 8 || Math.abs(e.clientY-sy) > 8) ok=false;
+                  if(!ok || (pid !== null && e.pointerId !== pid)) return;
+                  if (Math.abs(e.clientX-sx) > OTM_TAP_PX || Math.abs(e.clientY-sy) > OTM_TAP_PX) cancel();
                 }, {passive:true});
-                el.addEventListener('pointercancel', function(){ ok=false; }, {passive:true});
+                el.addEventListener('pointercancel', cancel, {passive:true});
+                el.addEventListener('pointerleave', cancel, {passive:true});
+                // se a página rolou durante o toque, o dedo estava arrastando
+                window.addEventListener('scroll', cancel, {passive:true, capture:true});
                 el.addEventListener('click', function(e){
-                  if(!ok || Date.now()-st > 700){ e.preventDefault(); e.stopPropagation(); return; }
-                  ok=false; fn(e);
+                  if(!ok || Date.now()-st > OTM_TAP_MS){ e.preventDefault(); e.stopPropagation(); return; }
+                  cancel(); fn(e);
                 });
               }
 
@@ -292,14 +319,22 @@ class PanelActivity : AppCompatActivity() {
                 when (which) {
                     0 -> useShizuku()
                     1 -> {
-                        Permissions.askMdns(this)
-                        WifiDialog.show(this, applicationContext) { r, msg ->
-                            runner = r
-                            OtmRunner.current = r
-                            toast(msg)
-                            sound.play("pareamento_feito_com_sucesso.mp3")
-                            pendingAfterConnect?.invoke(); pendingAfterConnect = null
-                            web.reload()
+                        // A permissão de descoberta PRECISA estar concedida antes
+                        // do diálogo: sem ela a busca do serviço de pareamento é
+                        // negada em silêncio e a conexão falha sempre.
+                        Permissions.askMdnsThen(this) { granted ->
+                            if (!granted) {
+                                toast("Sem a permissão de \"Dispositivos próximos\" o app não acha o pareamento. Autorize e tente de novo.")
+                                return@askMdnsThen
+                            }
+                            WifiDialog.show(this, applicationContext) { r, msg ->
+                                runner = r
+                                OtmRunner.current = r
+                                toast(msg)
+                                sound.play("pareamento_feito_com_sucesso.mp3")
+                                pendingAfterConnect?.invoke(); pendingAfterConnect = null
+                                web.reload()
+                            }
                         }
                     }
                     2 -> useAdbLocal()
@@ -318,7 +353,10 @@ class PanelActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val adb = AdbRunner(applicationContext)
             val r = adb.connectLocal()
-            if (r.ok) {
+            // o socket abrir não garante que o shell responde: testa antes de
+            // anunciar "conectado" e deixar o usuário com ações falhando.
+            val ok = r.ok && adb.verify().ok
+            if (ok) {
                 runner = adb
                 OtmRunner.current = adb
                 toast(r.stdout.ifBlank { "Conectado." })
@@ -326,7 +364,8 @@ class PanelActivity : AppCompatActivity() {
                 pendingAfterConnect?.invoke(); pendingAfterConnect = null
                 web.reload()
             } else {
-                toast(r.stderr.ifBlank { "Não conectou." })
+                adb.close()
+                toast(r.stderr.ifBlank { "Não conectou. Ligue a depuração USB e aceite o aviso no celular." })
             }
         }
     }

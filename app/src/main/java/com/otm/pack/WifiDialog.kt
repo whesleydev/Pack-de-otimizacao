@@ -68,7 +68,11 @@ object WifiDialog {
                     return@launch
                 }
                 toast("Pareado. Conectando…")
-                val cr = adb.connectWireless()
+                // `connectWireless` sozinho mentia: dizia "conectado" só porque o
+                // socket abriu. Agora a conexão é testada de verdade e repetida,
+                // porque o adbd leva um instante para publicar o serviço depois
+                // do pareamento.
+                val cr = adb.connectAndVerify()
                 if (cr.ok) onConnected(adb, cr.stdout.ifBlank { "Conectado." })
                 else toast("Pareou, mas não conectou: " + (cr.stderr.ifBlank { cr.stdout }).trim())
             }

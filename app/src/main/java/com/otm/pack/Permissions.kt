@@ -74,6 +74,31 @@ object Permissions {
         ActivityCompat.requestPermissions(activity, arrayOf(mdnsPermission()), REQ_MDNS)
     }
 
+    /**
+     * Pede a permissão da descoberta e SÓ chama [onResult] quando o usuário
+     * responde. O diálogo do pareamento abria junto com o pedido de permissão:
+     * o usuário digitava o código antes de a permissão existir e a busca mDNS
+     * falhava em silêncio — era o "não conecta" mais comum.
+     */
+    fun askMdnsThen(activity: AppCompatActivity, onResult: (Boolean) -> Unit) {
+        if (hasMdns(activity)) {
+            onResult(true)
+            return
+        }
+        pendingMdns = onResult
+        ActivityCompat.requestPermissions(activity, arrayOf(mdnsPermission()), REQ_MDNS)
+    }
+
+    /** Guarda o que fazer quando a resposta da permissão de descoberta chegar. */
+    private var pendingMdns: ((Boolean) -> Unit)? = null
+
+    /** Chamado pelo [PanelActivity.onRequestPermissionsResult]. */
+    fun onMdnsResult(granted: Boolean) {
+        val cb = pendingMdns
+        pendingMdns = null
+        cb?.invoke(granted)
+    }
+
     fun ignoringBattery(context: Context): Boolean {
         val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return true
         return pm.isIgnoringBatteryOptimizations(context.packageName)

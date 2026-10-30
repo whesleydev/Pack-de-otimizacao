@@ -853,7 +853,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <span class="hero-chip" data-stat="ramf">—</span>
             <span class="hero-chip" id="heroStatus">Pronto para otimizar</span>
           </div>
-          <button class="hero-btn" id="rocketBtn" type="button" onclick="runActionById('clean')">
+          <button class="hero-btn" id="rocketBtn" type="button" data-qa="clean">
             <svg class="hb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13l0-8Z"/>
             </svg>
@@ -923,7 +923,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Compilação Dexopt recomendada</li>
               <li>Resolução/DPI reduzida</li>
             </ul>
-            <button class="btn" onclick="runActionById('clean')" style="width:100%;">Ativar Modo Batata</button>
+            <button class="btn" type="button" data-qa="clean" style="width:100%;">Ativar Modo Batata</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm); border: 1.5px solid var(--accent);">
             <h4 style="margin:0 0 8px; color:var(--accent);">2. Modo Competitivo (Free Fire / CODM / FF MAX) — Recomendado</h4>
@@ -942,7 +942,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <?= otm_pkg_picker('home-game-pkg', 'pkg') ?>
               </div>
             </div>
-            <button class="btn primary" onclick="runGameHome(this)" style="width:100%;">Ativar Competitivo</button>
+            <button class="btn primary" type="button" data-game-home style="width:100%;">Ativar Competitivo</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">3. Modo 90Hz / 120Hz Ultra Fluido</h4>
@@ -953,7 +953,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Buffer de log reduzido para mínimo atraso</li>
               <li>Controle térmico preventivo</li>
             </ul>
-            <button class="btn" onclick="runActionById('turbo.refresh_max')" style="width:100%;">Ativar 90Hz/120Hz</button>
+            <button class="btn" type="button" data-qa="turbo.refresh_max" style="width:100%;">Ativar 90Hz/120Hz</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">4. Modo Econômico</h4>
@@ -964,12 +964,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Desativação de serviços desnecessários</li>
               <li>Menos atividade em segundo plano</li>
             </ul>
-            <button class="btn" onclick="runActionById('refresh.60')" style="width:100%;">Ativar Modo Econômico</button>
+            <button class="btn" type="button" data-qa="refresh.60" style="width:100%;">Ativar Modo Econômico</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">5. Personalizado</h4>
             <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Monte o seu perfil: ligue só o que quiser e aplique quando estiver pronto.</p>
-            <button class="btn primary" onclick="runActionById('profile.custom')" style="width:100%;">Configurar Personalizado</button>
+            <button class="btn primary" type="button" data-qa="profile.custom" style="width:100%;">Configurar Personalizado</button>
           </div>
         </div>
       </div>
@@ -1464,19 +1464,31 @@ const RISKTXT = {careful:"AÇÃO DE CUIDADO", root:"AÇÃO COM ROOT"};
 const $ = s => document.querySelector(s);
 let pending = null;
 
-/* toque de verdade: só vale o dedo PARADO e CURTO. No fim de um arrasto (scroll)
-   o navegador emite um "click" sintético na posição onde o dedo soltou — era isso
-   que disparava botões sem querer. O pointercancel chega assim que a página começa
-   a rolar, então arrastar nunca conta como toque. */
+/* Toque de verdade: dedo parado e curto. Arrastar NUNCA dispara.
+   Só o pointercancel não bastava: quando o dedo comeca no botao e arrasta a
+   pagina, o navegador nem sempre emite o cancelamento e o clique sintetico do
+   fim do scroll acionava o botao. Agora o arrasto e pego por tres vias: a
+   variacao do dedo, a rolagem da pagina e o pointerleave. */
+const TAP_PX = 14, TAP_MS = 600;
 function tapOnly(el, fn){
   if (!el) return;
-  let sx = 0, sy = 0, st = 0, ok = false;
-  el.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; st = Date.now(); ok = true; }, {passive:true});
-  el.addEventListener("pointermove", e => { if (ok && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) ok = false; }, {passive:true});
-  el.addEventListener("pointercancel", () => { ok = false; }, {passive:true});
+  let sx = 0, sy = 0, st = 0, ok = false, pid = null;
+  const cancel = () => { ok = false; pid = null; };
+  el.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button !== 0){ cancel(); return; }
+    sx = e.clientX; sy = e.clientY; st = Date.now(); ok = true; pid = e.pointerId;
+  }, {passive:true});
+  el.addEventListener("pointermove", e => {
+    if (!ok || (pid !== null && e.pointerId !== pid)) return;
+    if (Math.abs(e.clientX - sx) > TAP_PX || Math.abs(e.clientY - sy) > TAP_PX) cancel();
+  }, {passive:true});
+  el.addEventListener("pointercancel", cancel, {passive:true});
+  el.addEventListener("pointerleave", cancel, {passive:true});
+  // se a pagina rolou durante o toque, o dedo estava arrastando
+  window.addEventListener("scroll", cancel, {passive:true, capture:true});
   el.addEventListener("click", e => {
-    if (!ok || Date.now() - st > 700){ e.preventDefault(); e.stopPropagation(); return; }
-    ok = false; fn(e);
+    if (!ok || Date.now() - st > TAP_MS){ e.preventDefault(); e.stopPropagation(); return; }
+    cancel(); fn(e);
   });
 }
 
@@ -2404,6 +2416,7 @@ function runGameHome(btn){
   doRun(a, { pkg }, false, btn);
 }
 document.querySelectorAll("[data-qa]").forEach(b => tapOnly(b, () => runActionById(b.dataset.qa)));
+document.querySelectorAll("[data-game-home]").forEach(b => tapOnly(b, () => runGameHome(b)));
 /* botões do hub do otimizador: rodam a sub-ação pelo id, como os atalhos da Home.
    O perfil escolhido no card é repassado às sub-ações que o aceitam. */
 document.querySelectorAll("[data-hub]").forEach(b => tapOnly(b, () => {

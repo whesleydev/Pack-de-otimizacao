@@ -40,6 +40,20 @@
 #     mobile=nao|on               rede móvel sem economia de dados
 #     janelas=nao|on              transições 0.5x
 #     touchlat=nao|leve|forte     latência de toque (responsividade/slop)
+#     touchmulti=nao|120|200|300  janela do multitouch (ms)
+#     barras_bat=nao|on|off       bateria em % na barra de cima
+#     barras_relogio=nao|on|off   segundos no relógio da barra de cima
+#     barras_icones=nao|limpa     esconde ícones secundários da barra
+#     art=nao|speed-profile|speed recompila TODOS os apps (ART/AOT; demora)
+#     trim=nao|on                 poda caches (sem apagar dados)
+#     killbg=nao|on               encerra os apps em 2º plano agora
+#     phantom=nao|on              desliga o Phantom Process Killer
+#     debloat_bg=nao|on           restringe apps de fundo (appops + standby)
+#     display=nao|on              HWUI/SurfaceFlinger afinados
+#     dexopt=nao|on               recompila os apps em 2º plano (demora)
+#     gaming=nao|on               modo jogo profundo (debloat + ANGLE)
+#     obscure=nao|on              menos kills em 2º plano, jogo fora do Doze
+#     tela=nao|on                 tela 10 min + 120 Hz fixos
 #
 #  Uso:
 #     profile-custom.sh show                    # mostra a configuração salva
@@ -69,9 +83,12 @@ PC_A=0; PC_C=0; PC_F=0
 # const CPROF do painel: os três têm de estar na MESMA ordem.
 PC_ORDER="anim ram hz touch clean renderer \
 dns proc efeitos barras res touchlat \
+barras_bat barras_relogio barras_icones touchmulti art \
 telemetry hibernate gpu net latency wifi \
 battery doze freezer dnd gamefocus notif \
-perfmode vitality mobile janelas"
+perfmode vitality mobile janelas \
+trim killbg phantom debloat_bg \
+display dexopt gaming obscure tela"
 
 # --- valores aceitos por chave (o primeiro é o padrão "não mexer") ------------
 pc_opts() {
@@ -104,6 +121,20 @@ pc_opts() {
         mobile)    echo "nao on" ;;
         janelas)   echo "nao on" ;;
         touchlat)  echo "nao leve forte" ;;
+        barras_bat)     echo "nao on off" ;;
+        barras_relogio) echo "nao on off" ;;
+        barras_icones)  echo "nao limpa" ;;
+        touchmulti)     echo "nao 120 200 300" ;;
+        art)            echo "nao speed-profile speed" ;;
+        trim)           echo "nao on" ;;
+        killbg)         echo "nao on" ;;
+        phantom)        echo "nao on" ;;
+        debloat_bg)     echo "nao on" ;;
+        display)        echo "nao on" ;;
+        dexopt)         echo "nao on" ;;
+        gaming)         echo "nao on" ;;
+        obscure)        echo "nao on" ;;
+        tela)           echo "nao on" ;;
         *)         echo "" ;;
     esac
 }
@@ -259,10 +290,35 @@ pc_apply() {
     case "$PC_PERFMODE" in
         on) pc_run turbo.sh perfmode on; _n=$((_n+1)) ;;
     esac
+    case "$PC_PHANTOM" in
+        on) pc_run turbo.sh phantom off; _n=$((_n+1)) ;;
+    esac
+    case "$PC_DEBLOAT_BG" in
+        on) pc_run deep-tune.sh debloat on; _n=$((_n+1)) ;;
+    esac
+    case "$PC_OBSCURE" in
+        on) pc_run adb-tweaks.sh obscure; _n=$((_n+1)) ;;
+    esac
+    case "$PC_ART" in
+        nao|'') ;;
+        *) pc_run turbo.sh art-all "$PC_ART"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_DEXOPT" in
+        # bg-dexopt-job só AGENDA a compilação: o Android a roda quando o
+        # aparelho está parado. `dexopt run` compilaria tudo na hora e travaria
+        # a aplicação do perfil por vários minutos.
+        on) pc_run turbo.sh dexopt-bg; _n=$((_n+1)) ;;
+    esac
 
     # --- gráficos / tela ---
     case "$PC_GPU" in
         on) pc_run adb-tweaks.sh gpu; _n=$((_n+1)) ;;
+    esac
+    case "$PC_DISPLAY" in
+        on) pc_run deep-tune.sh display on; _n=$((_n+1)) ;;
+    esac
+    case "$PC_GAMING" in
+        on) pc_run deep-tune.sh gaming on; _n=$((_n+1)) ;;
     esac
     case "$PC_RENDERER" in
         skiagl|skiavk) pc_run adb-tweaks.sh renderer "$PC_RENDERER"; _n=$((_n+1)) ;;
@@ -270,6 +326,9 @@ pc_apply() {
     case "$PC_HZ" in
         off|'') ;;
         *) pc_run turbo.sh refresh_fixed "$PC_HZ"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_TELA" in
+        on) pc_run adb-tweaks.sh screen; _n=$((_n+1)) ;;
     esac
     case "$PC_RES" in
         auto) pc_run resolution.sh auto; _n=$((_n+1)) ;;
@@ -295,6 +354,21 @@ pc_apply() {
     case "$PC_TOUCHLAT" in
         leve)  pc_run adb-tweaks.sh touch_latency 110 300 0 2; _n=$((_n+1)) ;;
         forte) pc_run adb-tweaks.sh touch_latency 100 200 0 0; _n=$((_n+1)) ;;
+    esac
+    case "$PC_TOUCHMULTI" in
+        nao|'') ;;
+        *) pc_run adb-tweaks.sh touch_multi "$PC_TOUCHMULTI"; _n=$((_n+1)) ;;
+    esac
+
+    # --- barra de status (ajuste fino) ---
+    case "$PC_BARRAS_BAT" in
+        on|off) pc_run adb-tweaks.sh sysbars battery "$PC_BARRAS_BAT"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_BARRAS_RELOGIO" in
+        on|off) pc_run adb-tweaks.sh sysbars clock "$PC_BARRAS_RELOGIO"; _n=$((_n+1)) ;;
+    esac
+    case "$PC_BARRAS_ICONES" in
+        limpa) pc_run adb-tweaks.sh sysbars clean; _n=$((_n+1)) ;;
     esac
 
     # --- rede ---
@@ -337,6 +411,12 @@ pc_apply() {
     esac
 
     # --- limpeza (por último: libera o que sobrou) ---
+    case "$PC_TRIM" in
+        on) pc_run turbo.sh trim; _n=$((_n+1)) ;;
+    esac
+    case "$PC_KILLBG" in
+        on) pc_run turbo.sh killbg; _n=$((_n+1)) ;;
+    esac
     case "$PC_CLEAN" in
         off|'') ;;
         *) pc_run clean.sh now "$PC_CLEAN"; _n=$((_n+1)) ;;

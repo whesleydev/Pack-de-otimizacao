@@ -285,6 +285,22 @@ function otm_custom_profile_opts(): array {
         ['k' => 'touchlat',  't' => 'Latência de toque', 's' => 'Responsividade e janelas de toque (só o que o aparelho aceita).',
          'opts' => [['nao', 'Não mexer'], ['leve', 'Leve'], ['forte', 'Forte']]],
 
+        // --- barra de status: ajuste fino (reusa o grupo `sysbars`) ---
+        ['k' => 'barras_bat', 't' => 'Bateria em %',     's' => 'Mostra o número da bateria na barra de cima.',
+         'opts' => [['nao', 'Não mexer'], ['on', 'Mostrar'], ['off', 'Esconder']]],
+        ['k' => 'barras_relogio', 't' => 'Segundos no relógio', 's' => 'Relógio da barra de cima com segundos.',
+         'opts' => [['nao', 'Não mexer'], ['on', 'Mostrar'], ['off', 'Esconder']]],
+        ['k' => 'barras_icones', 't' => 'Ícones da barra', 's' => 'Esconde os ícones secundários (rotação, fone, volume, alarme).',
+         'opts' => [['nao', 'Não mexer'], ['limpa', 'Esconder secundários']]],
+
+        // --- toque: janela do multitouch (touch_multi) ---
+        ['k' => 'touchmulti', 't' => 'Janela multitouch', 's' => 'Tempo que o aparelho espera entre toques simultâneos (ms).',
+         'opts' => [['nao', 'Não mexer'], ['120', '120 ms'], ['200', '200 ms'], ['300', '300 ms']]],
+
+        // --- compilação dos apps (ART / AOT) ---
+        ['k' => 'art',       't' => 'Compilar apps (ART)', 's' => 'Recompila os apps de antemão: abre mais rápido, engasga menos. Demora.',
+         'opts' => [['nao', 'Não mexer'], ['speed-profile', 'Equilibrada'], ['speed', 'Máxima (demora mais)']]],
+
         // --- chaves liga/desliga ---
         ['k' => 'telemetry', 't' => 'Desligar telemetria e logs', 's' => 'Corta logs e scans "sempre disponível" em 2º plano.',
          'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'off']],
@@ -317,6 +333,30 @@ function otm_custom_profile_opts(): array {
         ['k' => 'mobile',    't' => 'Rede móvel',        's' => 'Sem economia de dados e sem largar o Wi-Fi ruim.',
          'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
         ['k' => 'janelas',   't' => 'Transições 0.5x',   's' => 'Metade do tempo nas animações de janela.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+
+        // --- limpeza profunda e segundo plano (turbo/deep-tune) ---
+        ['k' => 'trim',      't' => 'Podar caches',      's' => 'Libera espaço podando caches sem apagar dados dos apps.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'killbg',    't' => 'Encerrar 2º plano', 's' => 'Fecha os apps de fundo agora (poupa o jogo).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'phantom',   't' => 'Sem limite de processos fantasma', 's' => 'Desliga o Phantom Process Killer (bom p/ Termux e serviços).',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'debloat_bg', 't' => 'Restringir apps de fundo', 's' => 'Põe os apps de fundo em appops restrito + balde standby restrito.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+
+        // --- gráficos e tela (deep-tune) ---
+        ['k' => 'display',   't' => 'Display afinado (HWUI)', 's' => 'Ajusta o HWUI/SurfaceFlinger: rolagem mais lisa.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'dexopt',    't' => 'Recompilar apps (agendado)', 's' => 'Agenda a recompilação dos apps: o Android roda quando o aparelho estiver parado.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'gaming',    't' => 'Modo jogo profundo', 's' => 'Debloat profundo + ANGLE de uma vez.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+
+        // --- tela e toque (extra) ---
+        ['k' => 'obscure',   't' => 'Ajustes obscuros',  's' => 'Menos kills em 2º plano e o jogo fora do Doze.',
+         'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
+        ['k' => 'tela',      't' => 'Tela 10 min + 120 Hz', 's' => 'Tempo de tela maior e taxa fixa em 120 Hz.',
          'kind' => 'toggle', 'tgl' => ['off' => 'nao', 'on' => 'on']],
     ];
 }
@@ -1486,18 +1526,19 @@ function otm_actions(): array {
 
     // ----- Perfil personalizado: o painel monta as opções e manda ligadas -----
     $add(['id' => 'profile.custom', 'group' => 'Geral', 'label' => 'Perfil personalizado',
-          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza.',
-          'help' => 'Abre um menu onde você liga só o que quiser. Cada recurso é independente: animações (0x/0.5x), limite de apps em 2º plano (RAM), taxa de atualização da tela, perfil de toque, telemetria, limpeza de cache/RAM e hibernar apps de fundo. Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
+          'desc' => 'Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza e muito mais.',
+          'help' => 'Abre um menu onde você liga só o que quiser. São mais de 40 recursos independentes, agrupados por tema: desempenho (animações, ART/AOT, modo desempenho, telemetria), memória (limite de apps em 2º plano, hibernar, congelar, podar caches, encerrar 2º plano, processos fantasma), gráficos (GPU, motor gráfico, display/HWUI, modo jogo profundo), tela (taxa, resolução, barras do sistema, bateria em %, segundos no relógio), toque (perfil, latência, janela multitouch), rede (DNS, buffers TCP, latência/ping, Wi-Fi, rede móvel), bateria (economia, Doze, longevidade) e notificações (não perturbe, foco de jogo, menos notificações). Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em "Perfil personalizado: desligar".',
           'argv' => [], 'ui' => 'customprofile']);
     $add(['id' => 'profile.custom.apply', 'group' => 'Geral', 'card' => false, 'label' => 'Aplicar perfil personalizado',
           'desc' => 'Liga os recursos escolhidos no menu do perfil personalizado.',
           'help' => 'Aplica o conjunto que você montou no menu do perfil personalizado. O pack reverte o estado antes e liga só o que você marcou — nada além disso. São dezenas de ajustes independentes: desempenho, memória, gráficos, tela, toque, rede, bateria, notificações e limpeza.',
-          'argv' => ['profile-custom.sh', 'apply',
-                     '{anim}', '{ram}', '{hz}', '{touch}', '{clean}', '{renderer}',
-                     '{dns}', '{proc}', '{efeitos}', '{barras}', '{res}', '{touchlat}',
-                     '{telemetry}', '{hibernate}', '{gpu}', '{net}', '{latency}', '{wifi}',
-                     '{battery}', '{doze}', '{freezer}', '{dnd}', '{gamefocus}', '{notif}',
-                     '{perfmode}', '{vitality}', '{mobile}', '{janelas}'],
+          // O argv sai da MESMA lista das opções: assim uma opção nova entra no
+          // painel e no script sem ninguém precisar lembrar de mexer em dois
+          // lugares (era assim que os dois ficavam fora de sincronia).
+          'argv' => array_merge(
+              ['profile-custom.sh', 'apply'],
+              array_map(static fn(array $c): string => '{' . $c['k'] . '}', otm_custom_profile_opts()),
+          ),
           'params' => array_map(static function (array $c): array {
               // No toggle o switch manda 'off' ou 'on'; nos dois casos o valor
               // enviado é o da chave 'tgl'. Por isso o default é sempre o
@@ -1507,7 +1548,7 @@ function otm_actions(): array {
               return ['name' => $c['k'], 'type' => 'enum', 'label' => $c['t'],
                       'options' => $opts, 'default' => $opts[0]];
           }, otm_custom_profile_opts()),
-          'confirm' => true, 'risk' => 'careful', 'timeout' => 300]);
+          'confirm' => true, 'risk' => 'careful', 'timeout' => 900]);
     $add(['id' => 'profile.custom.off', 'group' => 'Geral', 'card' => false, 'label' => 'Perfil personalizado: desligar',
           'desc' => 'Desfaz o perfil personalizado e volta o aparelho ao padrão.',
           'help' => 'Reverte tudo o que o perfil personalizado aplicou e devolve o aparelho ao estado de fábrica de configuração. A sua escolha de recursos fica salva para aplicar de novo depois.',

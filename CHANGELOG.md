@@ -3,6 +3,36 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.43.1] - 2026-10-22
+
+### Corrigido
+- **Botão do painel flutuante abria ao arrastar.** O guarda de toque (`tapOnly`)
+  cancelava só no `pointercancel`, que o navegador nem sempre emite quando o dedo
+  **começa** no botão e arrasta a página: o clique sintético do fim do scroll
+  abria o flutuante sem querer. Agora o arrasto é detectado por três vias — a
+  variação do dedo, a rolagem da página (`scroll`) e o `pointerleave` —, a
+  tolerância subiu de 8px para 14px e o toque tem de ser curto (600 ms). Os seis
+  `onclick` crus que furam o guarda viraram `data-qa`/`data-game-home`, que passam
+  por ele.
+- **Conexão ADB por Wi-Fi nunca completava.** `Permissions.askMdns()` pedia a
+  permissão de descoberta e o diálogo de pareamento abria **na mesma hora**, antes
+  de o usuário responder: o mDNS falhava em silêncio. O novo `askMdnsThen()` só
+  abre o diálogo depois da resposta, e o `onRequestPermissionsResult` (que não
+  tratava `REQ_MDNS`) agora resolve a permissão. O diálogo continua pedindo **só
+  o código de 6 dígitos**.
+- **"Conectado" era mentira.** `connect()` devolver `true` só diz que o socket
+  abriu, não que o shell responde. `AdbRunner.verify()` testa de verdade e
+  `connectAndVerify()` reconecta (o adbd demora a publicar o serviço após parear).
+  A depuração USB também passou a verificar antes de anunciar sucesso.
+
+### Adicionado
+- **Perfil personalizado com 42 recursos** (era 28): barra de status (bateria em %,
+  segundos no relógio, ícones secundários), janela multitouch, compilação ART,
+  poda de caches, encerrar 2º plano, processos fantasma, restrição de apps de
+  fundo, display/HWUI, recompilação agendada, modo jogo profundo, ajustes obscuros
+  e tela 10 min + 120 Hz. O `argv` de `profile.custom.apply` agora é **derivado**
+  da mesma lista das opções, então painel e script não têm como dessincronizar.
+
 ## [2.43.0] - 2026-10-22
 
 ### Adicionado

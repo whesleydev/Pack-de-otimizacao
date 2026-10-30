@@ -865,8 +865,26 @@ t_app_fixes() {
         && ok "wifi: permissões da descoberta no manifesto" || bad "wifi: manifesto sem permissão de descoberta"
     grep -q 'CHANGE_WIFI_MULTICAST_STATE' "$ROOT/app/src/main/AndroidManifest.xml" \
         && ok "wifi: permissão do multicast declarada" || bad "wifi: sem permissão de multicast"
-    grep -q 'fun askMdns(' "$src/Permissions.kt" && grep -q 'Permissions.askMdns(this)' "$src/PanelActivity.kt" \
+    grep -q 'fun askMdns(' "$src/Permissions.kt" && grep -q 'Permissions.askMdnsThen(this)' "$src/PanelActivity.kt" \
         && ok "wifi: pede a permissão antes de parear" || bad "wifi: não pede a permissão de descoberta"
+    # 9e) o diálogo de pareamento só abre DEPOIS de o usuário responder a
+    #     permissão. Pedir e abrir na mesma hora fazia o código ser digitado
+    #     antes de a permissão existir: o mDNS falhava em silêncio e a conexão
+    #     nunca completava. O retorno precisa chegar ao callback.
+    grep -q 'fun askMdnsThen(' "$src/Permissions.kt" \
+        && ok "wifi: pedido de permissão com callback" || bad "wifi: sem askMdnsThen"
+    grep -q 'fun onRequestPermissionsResult(' "$src/PanelActivity.kt" \
+        && grep -q 'Permissions.REQ_MDNS' "$src/PanelActivity.kt" \
+        && grep -q 'Permissions.onMdnsResult(' "$src/PanelActivity.kt" \
+        && ok "wifi: o resultado da permissão é tratado (REQ_MDNS)" || bad "wifi: REQ_MDNS não tratado"
+    # a conexão é TESTADA de verdade: connect() devolver true só diz que o socket
+    # abriu; sem o teste o painel dizia "conectado" e as ações falhavam depois.
+    grep -q 'suspend fun verify(' "$src/AdbRunner.kt" \
+        && ok "wifi: a conexão é verificada (não só o socket)" || bad "wifi: conexão não é verificada"
+    grep -q 'adb.connectAndVerify()' "$src/WifiDialog.kt" \
+        && ok "wifi: o diálogo conecta e confere" || bad "wifi: diálogo não confere a conexão"
+    grep -q 'adb.verify()' "$src/PanelActivity.kt" \
+        && ok "wifi: a depuração USB também é verificada" || bad "wifi: USB não verifica a conexão"
     #     (c) a chave e o certificado do ADB têm de ser SEMPRE do mesmo par
     if grep -q 'fun loadOrCreateCert' "$src/AdbRunner.kt"; then
         bad "wifi: certificado ainda pode sair de um par diferente da chave"
@@ -3682,6 +3700,26 @@ t_tap_only() {
         grep -q 'pointercancel' "$f" \
             && ok "$(basename "$f"): o guarda cancela no começo do arrasto" \
             || bad "$(basename "$f"): tapOnly sem pointercancel"
+        # o cancelamento só pelo pointercancel não bastava: quando o dedo começa
+        # no botão e arrasta, o navegador nem sempre emite o cancelamento e o
+        # clique sintético do fim do scroll abria o botão. O guarda agora também
+        # cancela na rolagem e na saída do dedo do elemento.
+        grep -q 'pointerleave' "$f" \
+            && ok "$(basename "$f"): cancela quando o dedo sai do botão" \
+            || bad "$(basename "$f"): tapOnly sem pointerleave"
+        grep -qE 'addEventListener\("scroll", cancel' "$f" \
+            && ok "$(basename "$f"): cancela se a página rolar durante o toque" \
+            || bad "$(basename "$f"): tapOnly não cancela na rolagem"
+        # o toque tem de ser CURTO: um dedo parado por muito tempo não é clique
+        grep -qE 'TAP_MS' "$f" \
+            && ok "$(basename "$f"): o guarda limita a duração do toque" \
+            || bad "$(basename "$f"): tapOnly sem limite de duração"
+        # nenhum onclick cru pode sobrar: ele fura o guarda e dispara no scroll
+        if grep -q 'onclick=' "$f"; then
+            bad "$(basename "$f"): ainda há onclick cru (fura o guarda de toque)"
+        else
+            ok "$(basename "$f"): nenhum onclick cru (tudo passa pelo guarda)"
+        fi
         # o disparo não pode ser um onclick puro: é isso que o scroll aciona
         grep -qE '\[data-run\]"\)\.forEach\(b => b\.onclick' "$f" \
             && bad "$(basename "$f"): [data-run] ainda usa onclick puro" \
@@ -3698,6 +3736,12 @@ t_tap_only() {
     grep -q 'pointercancel' "$pa" \
         && ok "app: o guarda do cabeçalho cancela no arrasto" \
         || bad "app: guarda do cabeçalho sem pointercancel"
+    grep -q 'pointerleave' "$pa" \
+        && ok "app: o guarda do cabeçalho cancela quando o dedo sai" \
+        || bad "app: guarda do cabeçalho sem pointerleave"
+    grep -qE "addEventListener\(['\"]scroll['\"], cancel" "$pa" \
+        && ok "app: o guarda do cabeçalho cancela na rolagem" \
+        || bad "app: guarda do cabeçalho não cancela na rolagem"
 }
 
 t_shizuku_reconnect() {
