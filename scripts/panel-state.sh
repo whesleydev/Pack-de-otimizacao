@@ -121,6 +121,36 @@ _tp="$(sh_get 'settings get global accessibility_reduce_transparency' 2>/dev/nul
 case "$_tp" in 1) _fx_tp=off ;; *) _fx_tp=on ;; esac
 printf ',"reduce_transparency":"%s"' "$(_clean "$_fx_tp")"
 
+# composicao enxuta: o interruptor so acende quando TODAS as flags que o toggle
+# escreve estao no valor esperado. Se o sistema recusou alguma, fica apagado —
+# o painel nunca marca "ligado" no que nao pegou.
+_dd="$(sh_get 'settings get global debug.hwui.disable_draw_defer' 2>/dev/null)"
+_ds="$(sh_get 'settings get global debug.hwui.disable_scissor_opt' 2>/dev/null)"
+_ba="$(sh_get 'settings get global debug.hwui.use_buffer_age' 2>/dev/null)"
+if [ "$_dd" = 1 ] && [ "$_ds" = 1 ] && [ "$_ba" = 1 ]; then _gcomp=on; else _gcomp=off; fi
+printf ',"gfx_comp":"%s"' "$(_clean "$_gcomp")"
+
+# resposta ao toque: acende quando as 4 janelas estao nos valores do toggle
+_tr="$(sh_get 'settings get system touch_responsiveness' 2>/dev/null)"
+_ts="$(sh_get 'settings get system touch_slop' 2>/dev/null)"
+_mp="$(sh_get 'settings get system multi_press_timeout' 2>/dev/null)"
+_lp="$(sh_get 'settings get system long_press_timeout' 2>/dev/null)"
+if [ "$_tr" = 110 ] && [ "$_ts" = 4 ] && [ "$_mp" = 0 ] && [ "$_lp" = 300 ]; then
+    _tresp=on
+else
+    _tresp=off
+fi
+printf ',"touch_resp":"%s"' "$(_clean "$_tresp")"
+
+# trava termica (sem root): o interruptor mostra se a temperatura lida AGORA
+# passou do teto padrao. Nao ha "ligado" persistente — e uma checagem pontual.
+_tg="$(otm_temp 2>/dev/null)"
+case "$_tg" in '' | *[!0-9-]*) _tguard="" ;; *)
+    if [ "$_tg" -ge "${THERMAL_GUARD_C:-43}" ]; then _tguard=hot; else _tguard=ok; fi ;;
+esac
+printf ',"thermal_guard":"%s"' "$(_clean "$_tguard")"
+printf ',"temp_now":"%s"' "$(_clean "$_tg")"
+
 # vitalidade: um único 'tick' mede a bateria e roda o guardião. Roda antes de
 # ler o estado para o painel nunca mostrar número velho.
 _vout="$(sh "$DIR/vitality.sh" tick 2>/dev/null | grep '^#OTM-VITAL' | head -1)"

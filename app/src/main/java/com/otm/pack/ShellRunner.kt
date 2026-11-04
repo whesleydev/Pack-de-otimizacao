@@ -18,6 +18,29 @@ interface ShellRunner {
     /** Roda [command] (interpretado por `sh -c`). [stdin] é opcional. */
     suspend fun exec(command: String, stdin: String? = null): ExecResult
 
+    /**
+     * Como [exec], mas entrega a saída em pedaços assim que ela chega — é o que
+     * deixa o Terminal mostrar o comando rodando em tempo real, em vez de só o
+     * resultado no fim. Devolve o código de saída e a saída completa (para o
+     * log). O [onChunk] recebe stdout e stderr já intercalados na ordem de
+     * chegada; o transporte que não separar os dois manda tudo junto.
+     *
+     * A implementação padrão cai para [exec] e entrega o resultado de uma vez:
+     * o Shizuku e o ADB sobrescrevem para o modo ao vivo.
+     */
+    suspend fun execStream(command: String, onChunk: (String) -> Unit): ExecResult {
+        val r = exec(command)
+        val all = joinOutput(r.stdout, r.stderr)
+        if (all.isNotEmpty()) onChunk(all)
+        return r
+    }
+
+    /**
+     * Encerra um comando iniciado por [execStream]. O Terminal precisa disso
+     * para o botão "parar" de um comando longo (ex.: um `top` que não volta).
+     */
+    fun cancel() {}
+
     /** Escreve [content] em [path] no aparelho (cria a pasta se preciso). */
     suspend fun writeFile(path: String, content: String): ExecResult {
         val dir = path.substringBeforeLast('/', "/data/local/tmp")

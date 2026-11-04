@@ -1174,6 +1174,148 @@ perm_battery_off() {
     say "economia de bateria e App Standby devolvidos ao padrão"
 }
 
+# --- composição gráfica: menos camadas, menos trabalho por frame (sem root) ---
+# Cada camada a menos é uma composição a menos por frame. São flags de debug do
+# sistema (settings `global`), então valem sem root e continuam valendo depois
+# do reboot — não é `setprop`, que some quando o aparelho reinicia.
+gfx_comp() {
+    bkp_begin
+    say "Composição gráfica: menos camadas por frame"
+    bkp_set global debug.hwui.disable_draw_defer 1
+    bkp_set global debug.hwui.disable_scissor_opt 1
+    bkp_set global debug.hwui.render_dirty_regions 0
+    bkp_set global debug.hwui.use_buffer_age 1
+    bkp_set global disable_window_blurs 1
+    bkp_set global accessibility_reduce_transparency 1
+    say "composição enxuta (menos buffer intermediário, sem blur)"
+}
+
+gfx_comp_off() {
+    bkp_begin
+    say "Composição gráfica: voltar ao padrão"
+    bkp_set global debug.hwui.disable_draw_defer 0
+    bkp_set global debug.hwui.disable_scissor_opt 0
+    bkp_set global debug.hwui.render_dirty_regions 1
+    bkp_set global debug.hwui.use_buffer_age 0
+    bkp_set global disable_window_blurs 0
+    bkp_set global accessibility_reduce_transparency 0
+    say "composição devolvida ao padrão"
+}
+
+# --- daemon de FPS: travar a taxa da tela no teto real (sem root) -------------
+# Em vez de deixar o sistema oscilar a taxa (60 -> 90 -> 120) conforme a carga,
+# fixa min=peak no maior valor que a tela suporta. O jogo não "cai" de FPS e a
+# composição para de reconfigurar o modo de vídeo no meio do jogo. Usa o maior
+# valor da lista do próprio aparelho (não inventa Hz que a tela não tem).
+fps_daemon() {
+    acao="${1:-on}"
+    cur="$(sh_get 'settings get system peak_refresh_rate')"
+    case "$acao" in
+        on|travar|lock)
+            hz="$(sh_get 'settings get system peak_refresh_rate')"
+            # 0.0/null = modo automático: escolhe o maior Hz suportado pela tela
+            case "$hz" in '' | null | 0 | 0.0 | *[!0-9.]*)
+                hz="$(sh_get 'dumpsys display' | grep -oE 'mode [0-9]+: [0-9]+x[0-9]+@[0-9.]+' \
+                        | sed -E 's/.*@([0-9.]+)/\1/' | sort -g | tail -1)"
+                hz="${hz:-120.0}"
+                ;;
+            esac
+            bkp_begin
+            say "Daemon de FPS: travar a tela em ${hz}Hz"
+            bkp_set system min_refresh_rate "$hz"
+            bkp_set system peak_refresh_rate "$hz"
+            say "taxa fixa: sem oscilação de Hz no meio do jogo"
+            ;;
+        off|auto|automatico)
+            bkp_begin
+            say "Daemon de FPS: devolver ao automático"
+            bkp_del system min_refresh_rate
+            bkp_del system peak_refresh_rate
+            say "o sistema volta a escolher a taxa sozinho"
+            ;;
+        status)
+            say "Taxa de tela agora"
+            printf '   min:  %s\n' "$(sh_get 'settings get system min_refresh_rate')"
+            printf '   peak: %s\n' "$cur"
+            ;;
+        *) err "uso: fps_daemon on|off|status"; return 1 ;;
+    esac
+}
+
+# --- resposta ao toque: janelas curtas + prioridade de input (sem root) -------
+# Responsividade global, janela multitouch curta e long-press curto. Não troca o
+# perfil de mira (isso fica na aba Display & Touch); aqui é só o "atraso" entre o
+# dedo e o sistema reagir.
+touch_resp() {
+    acao="${1:-on}"
+    case "$acao" in
+        on|rapido|fast)
+            bkp_begin
+            say "Resposta ao toque: janelas curtas"
+            bkp_set system touch_responsiveness 110
+            bkp_set system touch_slop 4
+            bkp_set system multi_press_timeout 0
+            bkp_set system long_press_timeout 300
+            sh_run "setprop persist.sys.input.touch.boost 1" >/dev/null 2>&1
+            say "toque mais direto (menos espera entre toques)"
+            ;;
+        off|padrao|default)
+            bkp_begin
+            say "Resposta ao toque: voltar ao padrão"
+            bkp_del system touch_responsiveness
+            bkp_del system touch_slop
+            bkp_del system multi_press_timeout
+            bkp_del system long_press_timeout
+            say "toque devolvido ao padrão"
+            ;;
+        status)
+            say "Resposta ao toque agora"
+            printf '   responsiveness: %s\n' "$(sh_get 'settings get system touch_responsiveness')"
+            printf '   slop:           %s\n' "$(sh_get 'settings get system touch_slop')"
+            printf '   multi_press:    %s\n' "$(sh_get 'settings get system multi_press_timeout')"
+            ;;
+        *) err "uso: touch_resp on|off|status"; return 1 ;;
+    esac
+}
+
+# --- trava térmica (SEM root): seguro, reage à temperatura lida pelo sistema --
+# Não mexe em /sys (isso exige root). Em vez disso, lê a temperatura real (sysfs
+# ou a bateria, via otm_temp) e desliga o que esquenta — taxa de tela no máximo
+# vira padrão e o blur volta. É a versão sem root da "trava térmica": em vez de
+# reescrever limites de kernel, alivia a carga quando o aparelho passa do teto.
+THERMAL_GUARD_C="${THERMAL_GUARD_C:-43}"
+
+thermal_guard() {
+    acao="${1:-status}"
+    # teto opcional no 2º argumento (ex.: thermal_guard on 45)
+    case "${2:-}" in '' | *[!0-9]*) ;; *) THERMAL_GUARD_C="$2" ;; esac
+    case "$acao" in
+        on|liga|status)
+            t="$(otm_temp)"
+            say "Trava térmica (sem root) — teto ${THERMAL_GUARD_C}°C"
+            if [ -z "$t" ]; then
+                warn "não consegui ler a temperatura neste aparelho"
+                return 1
+            fi
+            printf '   temperatura agora: %s°C\n' "$t"
+            if [ "$t" -ge "$THERMAL_GUARD_C" ]; then
+                warn "acima do teto: aliviando a carga (tela no padrão, blur de volta)"
+                bkp_begin
+                bkp_del system min_refresh_rate
+                bkp_del system peak_refresh_rate
+                bkp_set global disable_window_blurs 0
+                say "aliviado — espere esfriar antes de jogar de novo"
+            else
+                say "dentro do limite — nada a fazer"
+            fi
+            ;;
+        off|desliga)
+            say "Trava térmica: desligada"
+            ;;
+        *) err "uso: thermal_guard on|off|status"; return 1 ;;
+    esac
+}
+
 restore_all() {
     say "Restaurando configurações originais"
     # percorre TODOS os escopos de reversão (adb-tweaks, clean, dns, debloat, ...)
@@ -1189,7 +1331,7 @@ restore_all() {
 # -----------------------------------------------------------------------------
 #  RUNNER
 # -----------------------------------------------------------------------------
-GRUPOS="perf perf_max perf_off perm_revoke perm_revoke_ff perm_revoke_game perm_battery_off notif notif_on mobile_net mobile_net_off net_tune gpu gpu_off wifi wifi_on wifi_off screen screen_off fluidez fluidez_off freezer freezer_off freeze_apps freeze_apps_off renderer renderer_backend net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects restore_all"
+GRUPOS="perf perf_max perf_off perm_revoke perm_revoke_ff perm_revoke_game perm_battery_off notif notif_on mobile_net mobile_net_off net_tune gpu gpu_off wifi wifi_on wifi_off screen screen_off fluidez fluidez_off freezer freezer_off freeze_apps freeze_apps_off renderer renderer_backend net net_reset latency latency_reset wifi battery battery_off doze game ff ff_open game_open freezer freezer_off freeze_apps freeze_whitelist_add freeze_whitelist_list unfreeze_apps mem proc_limit dnd dnd_off game_focus game_focus_off notif screen touch touch_multi touch_latency fluidez game_tune clean clean_scan obscure mobile_net window_tweaks sysbars perm_app perm_ff perm_game perm_battery perm_all game_keepalive effects gfx_comp gfx_comp_off fps_daemon touch_resp thermal_guard restore_all"
 
 list() {
     printf '  Grupos disponíveis:\n\n'

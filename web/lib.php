@@ -286,6 +286,16 @@ function otm_toggles(): array {
             'desc' => 'O sistema para de gravar uso de dados.',
             'help' => 'O Android coleta o uso de dados de cada app o tempo todo e grava em disco. Parar isso reduz leitura/escrita no armazenamento e um pouco de CPU; só deixa de existir o gráfico de "uso de dados por app" nas configurações.',
             'on' => 'hidden.netstats_on', 'off' => 'hidden.netstats_off', 'state' => 'netstats', 'on_values' => ['0']],
+
+        // ----- Gráficos e toque -----
+        't.gfx_comp' => ['group' => 'Display & Touch', 'title' => 'Composição gráfica enxuta',
+            'desc' => 'Menos camadas por frame: menos buffer intermediário.',
+            'help' => 'Enxuga a composição (draw defer, scissor, buffer age) e desliga o blur. Cada camada a menos é uma composição a menos por frame. Vale sem root e sobrevive ao reboot.',
+            'on' => 'gfx.comp_on', 'off' => 'gfx.comp_off', 'state' => 'gfx_comp', 'on_values' => ['on']],
+        't.touch_resp' => ['group' => 'Display & Touch', 'title' => 'Resposta ao toque rápida',
+            'desc' => 'Janelas curtas: o sistema reage na hora.',
+            'help' => 'Encurta as janelas do toque (responsividade, slop, multitouch e long-press). É o "atraso" entre o dedo e o sistema reagir — não troca o perfil de mira.',
+            'on' => 'touch.resp_on', 'off' => 'touch.resp_off', 'state' => 'touch_resp', 'on_values' => ['on']],
     ];
 }
 
@@ -756,6 +766,42 @@ function otm_actions(): array {
           'desc' => 'Mostra o driver gráfico que está realmente em uso.',
           'help' => 'Mostra, lido do aparelho: se o ANGLE está ligado em todos os apps, se o driver de jogos está ligado, qual driver atualizável está escolhido e qual driver gráfico está instalado. Só leitura — nada fictício.',
           'argv' => ['deep-tune.sh', 'gfxdriver', 'status']]);
+
+    // ----- Gráficos e toque (novos toggles, SEM root) -----
+    $add(['id' => 'gfx.comp_on', 'group' => 'Display & Touch', 'label' => 'Composição gráfica enxuta',
+          'desc' => 'Menos camadas por frame: menos buffer intermediário e sem blur.',
+          'help' => 'Enxuga a composição: cada camada a menos é uma composição a menos por frame. São flags do sistema que valem sem root e continuam valendo depois de reiniciar (não é prop, que some no reboot). Combine com "Motor gráfico" para o resultado máximo. Reversível em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'gfx_comp']]);
+    $add(['id' => 'gfx.comp_off', 'group' => 'Display & Touch', 'label' => 'Composição gráfica: padrão',
+          'desc' => 'Devolve a composição ao padrão de fábrica.',
+          'help' => 'Devolve as flags de composição (draw defer, scissor, buffer age, blur) ao padrão de fábrica.',
+          'argv' => ['adb-tweaks.sh', 'gfx_comp_off']]);
+    $add(['id' => 'gfx.fpsdaemon_on', 'group' => 'Display & Touch', 'label' => 'Travar a taxa da tela (sem daemon de FPS)',
+          'desc' => 'Fixa a taxa no maior Hz da tela: o jogo não oscila de FPS.',
+          'help' => 'Em vez de deixar o sistema oscilar a taxa (60 -> 90 -> 120) conforme a carga, fixa mín = máx no maior Hz que a SUA tela suporta. O jogo para de "cair" de FPS e a composição não reconfigura o modo de vídeo no meio da partida. Usa a lista do próprio aparelho, não inventa Hz. Reversível em "Daemon de FPS: automático".',
+          'argv' => ['adb-tweaks.sh', 'fps_daemon', 'on']]);
+    $add(['id' => 'gfx.fpsdaemon_off', 'group' => 'Display & Touch', 'label' => 'Daemon de FPS: automático',
+          'desc' => 'Devolve a taxa da tela ao controle do sistema.',
+          'help' => 'Apaga a taxa fixa e o sistema volta a escolher a taxa sozinho (modo automático).',
+          'argv' => ['adb-tweaks.sh', 'fps_daemon', 'off']]);
+    $add(['id' => 'gfx.fpsdaemon_status', 'group' => 'Display & Touch', 'card' => false, 'label' => 'Daemon de FPS: ver a taxa',
+          'desc' => 'Mostra a taxa mínima e máxima em uso agora.',
+          'help' => 'Mostra a taxa mínima e a máxima da tela neste momento. Só leitura.',
+          'argv' => ['adb-tweaks.sh', 'fps_daemon', 'status']]);
+    $add(['id' => 'touch.resp_on', 'group' => 'Display & Touch', 'label' => 'Resposta ao toque: rápida',
+          'desc' => 'Janelas curtas de toque: o sistema reage na hora.',
+          'help' => 'Encurta as janelas do toque (responsividade, slop, multitouch e long-press). É o "atraso" entre o dedo e o sistema reagir — não troca o perfil de mira (isso fica nos perfis de sensibilidade). Reversível em "Resposta ao toque: padrão".',
+          'argv' => ['adb-tweaks.sh', 'touch_resp', 'on']]);
+    $add(['id' => 'touch.resp_off', 'group' => 'Display & Touch', 'label' => 'Resposta ao toque: padrão',
+          'desc' => 'Devolve as janelas de toque ao padrão.',
+          'help' => 'Apaga os ajustes de janela de toque e devolve o aparelho ao padrão.',
+          'argv' => ['adb-tweaks.sh', 'touch_resp', 'off']]);
+    $add(['id' => 'thermal.guard', 'group' => 'Desempenho', 'label' => 'Trava térmica (sem root)',
+          'desc' => 'Lê a temperatura e alivia a carga se passar do teto.',
+          'help' => 'A versão sem root da trava térmica: não reescreve limites do kernel (isso exige root). Ele LÊ a temperatura real do aparelho (sensor do sistema ou bateria) e, se passar do teto, alivia a carga — devolve a taxa de tela ao padrão e religa o blur. Use antes de uma sessão longa de jogo. O teto é configurável (padrão 43 °C).',
+          'argv' => ['adb-tweaks.sh', 'thermal_guard', 'on', '{celsius}'],
+          'params' => [['name' => 'celsius', 'type' => 'int', 'label' => 'Teto (°C)',
+                         'min' => 35, 'max' => 60, 'default' => 43]]]);
 
     // ----- Taxa de atualização (Hz) — escolha rápida -----
     $add(['id' => 'refresh.60', 'group' => 'Display & Touch', 'label' => '60Hz (economia)',
@@ -1803,7 +1849,9 @@ function otm_run(string $id, array $params, bool $confirmed): array {
     $args = array_slice($argv, 1);
 
     $t = (int)($a['timeout'] ?? 60);
+    $t0 = microtime(true);
     $r = otm_script($script, $args, $t);
+    $durMs = (int)round((microtime(true) - $t0) * 1000);
 
     // verificação REAL: se o script informou quantas mudanças confirmou e nenhuma
     // pegou, isso é erro (não dá para dizer "feito" sem alterar o sistema).
@@ -1822,7 +1870,7 @@ function otm_run(string $id, array $params, bool $confirmed): array {
         $r['code'] = $r['code'] ?? -1;
     }
 
-    otm_log($id, $a['label'], $argv, $r + ['applies' => $applies, 'changed' => $changed, 'failed' => $failed]);
+    otm_log($id, $a['label'], $argv, $r + ['applies' => $applies, 'changed' => $changed, 'failed' => $failed, 'dur_ms' => $durMs]);
     return $r + ['id' => $id, 'label' => $a['label'], 'applies' => $applies,
                  'changed' => $changed, 'failed' => $failed, 'applied' => $applied, 'real' => $real];
 }
@@ -1985,6 +2033,7 @@ function otm_log(string $id, string $label, array $argv, array $res): void {
         'applies' => $res['applies'] ?? null,
         'changed' => $res['changed'] ?? null,
         'failed' => $res['failed'] ?? null,
+        'dur_ms' => $res['dur_ms'] ?? null,
         'reasons' => otm_fail_reasons($out),
         'out' => otm_clip($out, 6000),
     ];
@@ -2040,7 +2089,9 @@ function otm_run_command(string $cmd): array {
     $cmd = trim($cmd);
     if ($cmd === '') return ['ok' => false, 'code' => -1, 'out' => 'comando vazio'];
     if (strlen($cmd) > 2000) return ['ok' => false, 'code' => -1, 'out' => 'comando muito longo (máx. 2000)'];
+    $t0 = microtime(true);
     $r = otm_exec(['sh', '-c', $cmd], 120);
+    $r['dur_ms'] = (int)round((microtime(true) - $t0) * 1000);
     otm_log('terminal', 'Terminal: ' . substr($cmd, 0, 80), ['sh', '-c', $cmd], $r);
     return $r + ['cmd' => $cmd];
 }

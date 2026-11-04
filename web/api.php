@@ -71,6 +71,18 @@ if ($method === 'POST' && ($_GET['do'] ?? '') === 'term') {
     exit;
 }
 
+// Terminal ao vivo: no app a saída chega em pedaços pela ponte nativa. No painel
+// web o PHP responde de uma vez (o servidor não faz streaming por requisição),
+// então devolvemos o resultado completo com streamed=false e o JS imprime.
+if ($method === 'POST' && ($_GET['do'] ?? '') === 'term_stream') {
+    $raw = file_get_contents('php://input') ?: '';
+    $body = json_decode($raw, true);
+    $cmd = is_array($body) ? (string)($body['cmd'] ?? '') : '';
+    $res = otm_run_command($cmd);
+    otm_json($res + ['streamed' => false]);
+    exit;
+}
+
 switch ($action) {
     case 'status':     otm_json(otm_status()); break;
     case 'dns_status': otm_json(otm_dns_status()); break;
