@@ -3,6 +3,26 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.47.0] - 2026-10-31
+
+### Adicionado
+- **Otimizações escondidas do Android**: 9 interruptores na aba Geral
+  (`scripts/hidden-tune.sh`) para constantes do ActivityManager, verificador de
+  pacotes, App Standby, compilação AOT, compactação de memória (zRAM), coleta de
+  lixo concorrente, congelador de apps em cache, driver gráfico para todos os
+  apps e estatísticas de rede. Cada um tem par liga/desliga e é reversível em
+  "Reverter TUDO".
+- **Aplicar/desligar tudo de uma vez** (`hidden-tune.sh all on|off`) e o TRIM do
+  armazenamento sob demanda.
+- **Painel do app**: os interruptores aparecem na aba Geral e leem o estado real
+  do aparelho (`panel-state.sh`), sem inventar.
+
+### Corrigido
+- **`backup.sh` no fluxo sem root**: `web/lib.php` chamava `backup.sh export/import`,
+  mas o script só aceita `collect/restore`; o painel agora usa os comandos certos.
+- **Restaurar backup sem terminal**: o `pack.sh` define `OTM_ASSUME_YES=1` para o
+  `restore` não travar esperando confirmação num fluxo não interativo.
+
 ## [2.44.1] - 2026-10-30
 
 ### Corrigido

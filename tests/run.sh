@@ -3286,6 +3286,14 @@ t_no_silent_conflicts() {
         global accessibility_reduce_transparency
         global app_standby_enabled
         global adaptive_battery_management_enabled
+        # otimizações escondidas (hidden-tune.sh): cada módulo tem o par
+        # liga/desliga dele (proc, verify, bg, freezer, gpu, netstats), então a
+        # mesma chave aparece com dois valores de propósito.
+        global app_auto_restriction_enabled
+        global cached_apps_freezer
+        global package_verifier_enable
+        global verifier_verify_adb_installs
+        global netstats_enabled
         global private_dns_mode
         global private_dns_specifier
         global settings_enable_monitor_phantom_procs
