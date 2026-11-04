@@ -1,8 +1,26 @@
 
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Credenciais do Turso (libSQL). Ficam em local.properties (fora do git) e são
+// injetadas como BuildConfig — o app fala direto com o banco, sem painel.
+// Sobrescrever no build: -PotmTursoUrl=... -PotmTursoToken=...
+val localProps = Properties()
+run {
+    val f = rootProject.file("local.properties")
+    if (f.isFile) f.inputStream().use { stream -> localProps.load(stream) }
+}
+fun buildSecret(key: String, prop: String): String =
+    localProps.getProperty(key)?.trim()
+        ?: (project.findProperty(prop) as String?)?.trim()
+        ?: ""
+
+val tursoUrl = buildSecret("turso.url", "otmTursoUrl")
+val tursoToken = buildSecret("turso.token", "otmTursoToken")
 
 android {
     namespace = "com.otm.pack"
@@ -12,8 +30,13 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 86
-        versionName = "2.47.0"
+        versionCode = 87
+        versionName = "2.48.0"
+
+        // Endereço e token do banco de chaves (Turso). Vazio = o app só entra
+        // com a chave em cache (modo offline) e não gerencia nada.
+        buildConfigField("String", "TURSO_URL", "\"$tursoUrl\"")
+        buildConfigField("String", "TURSO_TOKEN", "\"$tursoToken\"")
     }
 
     signingConfigs {

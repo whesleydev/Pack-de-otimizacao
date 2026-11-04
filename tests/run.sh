@@ -620,21 +620,33 @@ t_panel_db() {
 
 # --- login do app Android (painel estático) ----------------------------------
 t_app_login() {
-    printf '\n  # login do app (usuário e senha)\n'
+    printf '\n  # login do app (chave de acesso)\n'
     local p="$ROOT/app/src/main/assets/panel"
     [ -f "$p/index.html" ] && ok "painel do app existe" || bad "index.html do app ausente"
     [ -f "$p/login.html" ] && ok "tela de login do app existe" || bad "login.html do app ausente"
     grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessão" \
         || bad "painel do app sem guarda de sessão"
-    grep -q 'sha256' "$p/login.html" && ok "login valida usuário e senha (sha256)" \
-        || bad "login sem validação de usuário/senha"
+    # entrada por chave: a tela pede a chave e valida no nativo, não com senha local
+    grep -q 'key_login' "$p/login.html" && ok "login valida a chave no nativo (key_login)" \
+        || bad "login sem validação de chave"
+    grep -q '00-XXXX-XXXX-XXXX' "$p/login.html" && ok "login mostra o formato da chave" \
+        || bad "login sem o formato da chave"
     grep -q 'panel/login.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
         && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre login"
-    # o app não deve mais ter o sistema de chaves
-    [ ! -f "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" ] \
-        && ok "KeyGate removido do app" || bad "KeyGate ainda existe no app"
-    [ ! -f "$ROOT/app/src/main/java/com/otm/pack/License.kt" ] \
-        && ok "License removido do app" || bad "License ainda existe no app"
+    # o sistema de chaves voltou: KeyGate fala com o Turso e a categoria Admin
+    # é exclusiva do dono (papel 'owner').
+    [ -f "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" ] \
+        && ok "KeyGate presente (validação por chave)" || bad "KeyGate ausente"
+    [ -f "$ROOT/app/src/main/java/com/otm/pack/TursoClient.kt" ] \
+        && ok "TursoClient presente (banco de chaves)" || bad "TursoClient ausente"
+    grep -q 'admin_list' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "ponte expõe a categoria Admin (admin_list)" || bad "ponte sem admin_list"
+    grep -q 'id="navAdmin"' "$p/index.html" && ok "painel tem o link Admin (oculto por padrão)" \
+        || bad "painel sem o link Admin"
+    grep -q 'id="navAdmin" aria-current="false" hidden' "$p/index.html" \
+        && ok "link Admin começa oculto" || bad "link Admin não começa oculto"
+    grep -q 'key_status' "$p/index.html" && ok "painel confirma o papel no nativo (key_status)" \
+        || bad "painel não confirma o papel"
     # todo link do menu tem de ter a seção correspondente: o painel é gerado por
     # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
     # deixando um link que não abre nada.
@@ -775,7 +787,7 @@ t_app_fixes() {
     grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
     # 6) "login feito com sucesso" só toca quando o login dá certo
     local login="$ROOT/app/src/main/assets/panel/login.html"
-    grep -q 'OTM.call("login"' "$login" && ok "login: avisa o app só no acerto" || bad "login: sem aviso de sucesso"
+    grep -q 'key_login' "$login" && ok "login: a chave é validada no nativo" || bad "login: sem validação de chave"
     grep -q 'onLogin = { sound.play("login_feito_com_sucesso.mp3") }' "$src/PanelActivity.kt" \
         && ok "som: sucesso ligado ao onLogin" || bad "som: sucesso não está no onLogin"
     if grep -n 'login_feito_com_sucesso' "$src/PanelActivity.kt" | grep -qv 'onLogin'; then
@@ -785,9 +797,11 @@ t_app_fixes() {
     fi
     grep -q 'if (on) sound.play("ativando.mp3")' "$src/PanelActivity.kt" \
         && ok "som: ligar som usa 'ativando'" || bad "som: ligar som com áudio errado"
-    # o app não pode mais ter o sistema de chaves
-    [ ! -f "$src/KeyGate.kt" ] && ok "chave: KeyGate removido do app" || bad "chave: KeyGate ainda existe"
-    [ ! -f "$src/License.kt" ] && ok "chave: License removido do app" || bad "chave: License ainda existe"
+    # o sistema de chaves (KeyGate) voltou, agora falando direto com o Turso
+    [ -f "$src/KeyGate.kt" ] && ok "chave: KeyGate presente" || bad "chave: KeyGate ausente"
+    [ -f "$src/TursoClient.kt" ] && ok "chave: TursoClient presente" || bad "chave: TursoClient ausente"
+    grep -q 'object KeyGate' "$src/KeyGate.kt" && ok "chave: KeyGate é o guardião da sessão" \
+        || bad "chave: KeyGate sem estrutura esperada"
     # 7) áudio de pareamento (conectar) continua valendo
     test -f "$ROOT/app/src/main/assets/audio/pareamento_feito_com_sucesso.mp3" \
         && ok "áudio: pareamento presente" || bad "áudio: falta pareamento"

@@ -42,14 +42,14 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper
 label{display:block; font-size:12px; font-weight:700; color:var(--muted); margin:0 0 5px 3px}
 .field{margin-bottom:14px}
 input{ width:100%; padding:12px 14px; border-radius:var(--r-sm); border:1px solid var(--line-strong);
-  background:var(--glass-2); color:var(--ink); font-size:15px; transition:border-color .15s, box-shadow .15s; }
+  background:var(--glass-2); color:var(--ink); font-size:16px; letter-spacing:.14em; font-weight:700;
+  text-transform:uppercase; text-align:center; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  transition:border-color .15s, box-shadow .15s; }
 input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
-.pw{position:relative}
-.pw button{position:absolute; right:6px; top:50%; transform:translateY(-50%); border:0; background:transparent;
-  color:var(--muted); cursor:pointer; padding:8px; border-radius:8px; font-size:13px}
 .btn{ width:100%; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
   border-radius:var(--r-sm); padding:12px 16px; font-size:15px; font-weight:800; cursor:pointer; transition:transform .12s, filter .15s; }
 .btn:hover{filter:brightness(1.06)} .btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.55; pointer-events:none}
 .erro{ display:flex; gap:9px; align-items:flex-start; margin:0 0 14px; padding:11px 13px; font-size:13px;
   border:1px solid var(--danger); border-left-width:4px; border-radius:var(--r-sm); color:var(--ink);
   background:var(--glass-2); animation:otmShake .4s both; }
@@ -64,82 +64,89 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   <div class="brand">
     <div class="mark" aria-hidden="true">TX</div>
     <h1>Trix</h1>
-    <p>Entre para acessar o painel</p>
+    <p>Entre com a sua chave de acesso</p>
   </div>
-  <form class="card" id="form" autocomplete="on">
+  <form class="card" id="form" autocomplete="off">
     <div class="erro" id="erro" hidden role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
       <div><b>Não deu para entrar.</b><br><span id="erroTxt"></span></div></div>
     <div class="field">
-      <label for="user">Usuário</label>
-      <input id="user" name="user" type="text" inputmode="text" autocomplete="username" required autofocus>
-    </div>
-    <div class="field">
-      <label for="pass">Senha</label>
-      <div class="pw">
-        <input id="pass" name="pass" type="password" autocomplete="current-password" required>
-        <button type="button" id="toggle" aria-label="Mostrar senha">ver</button>
-      </div>
+      <label for="key">Chave de acesso</label>
+      <input id="key" name="key" type="text" inputmode="text" spellcheck="false"
+             autocomplete="off" autocapitalize="characters" placeholder="00-XXXX-XXXX-XXXX"
+             maxlength="14" required autofocus>
     </div>
     <button class="btn" id="entrar" type="submit">Entrar</button>
+    <p class="hint">A chave é única. Guarde-a: quem tem a chave entra.</p>
   </form>
   <div class="foot">Painel local — sem root, via Shizuku ou ADB por Wi-Fi.</div>
 </div>
 <script>
-/* hash SHA-256 de "usuario:senha" — a senha não fica em texto no arquivo. */
-const OTM_AUTH = "b6cddaaf9333c33071ae824248927b5349955fbb87167a5c1ddef5afa23d1a4d";
-/* SHA-256 puro em JS: file:// nem sempre expõe crypto.subtle em WebViews antigas. */
-function sha256(ascii){
-  function rr(v,a){return (v>>>a)|(v<<(32-a));}
-  var mp=Math.pow, mw=mp(2,32), i, j, result="", words=[], bits=ascii.length*8;
-  var hash=sha256.h=sha256.h||[], k=sha256.k=sha256.k||[], pc=k.length, comp={};
-  for(var cand=2; pc<64; cand++){
-    if(!comp[cand]){
-      for(i=0;i<313;i+=cand) comp[i]=cand;
-      hash[pc]=(mp(cand,.5)*mw)|0; k[pc++]=(mp(cand,1/3)*mw)|0;
-    }
-  }
-  ascii+="\x80";
-  while(ascii.length%64-56) ascii+="\x00";
-  for(i=0;i<ascii.length;i++){ j=ascii.charCodeAt(i); if(j>>8) return; words[i>>2]|=j<<((3-i)%4)*8; }
-  words[words.length]=((bits/mw)|0); words[words.length]=bits;
-  for(j=0;j<words.length;){
-    var w=words.slice(j,j+=16), old=hash; hash=hash.slice(0,8);
-    for(i=0;i<64;i++){
-      var w15=w[i-15], w2=w[i-2], a=hash[0], e=hash[4];
-      var t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]
-        +(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
-      var t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
-      hash=[(t1+t2)|0].concat(hash); hash[4]=(hash[4]+t1)|0;
-    }
-    for(i=0;i<8;i++) hash[i]=(hash[i]+old[i])|0;
-  }
-  for(i=0;i<8;i++) for(j=3;j+1;j--){ var b=(hash[i]>>(j*8))&255; result+=((b<16)?0:"")+b.toString(16); }
-  return result;
+/* Entrada por CHAVE. A validação é feita no nativo (contra o banco), não aqui:
+   o JS só mostra a resposta. Não há senha nem hash embutido no arquivo. */
+const SESSION_FLAG = "otm_session";
+
+const el = id => document.getElementById(id);
+const input = el("key");
+
+/* Máscara: mantém só o que é chave e formata como 00-XXXX-XXXX-XXXX. */
+function mask(raw){
+  let s = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (s.startsWith("00") && s.length > 12) s = s.slice(2);
+  s = s.slice(0, 12);
+  const g = [s.slice(0,4), s.slice(4,8), s.slice(8,12)].filter(Boolean);
+  return "00" + (g.length ? "-" + g.join("-") : "");
 }
-document.getElementById("toggle").onclick = (e) => {
-  const p = document.getElementById("pass"), on = p.type === "password";
-  p.type = on ? "text" : "password";
-  e.currentTarget.textContent = on ? "ocultar" : "ver";
-  e.currentTarget.setAttribute("aria-label", on ? "Ocultar senha" : "Mostrar senha");
-};
-document.getElementById("form").addEventListener("submit", (e) => {
+input.addEventListener("input", () => {
+  const atEnd = input.selectionStart === input.value.length;
+  input.value = mask(input.value);
+  if (atEnd) input.setSelectionRange(input.value.length, input.value.length);
+});
+
+function showErro(msg){
+  el("erroTxt").textContent = msg;
+  el("erro").hidden = false;
+  el("erro").style.animation = "none";
+  void el("erro").offsetWidth;
+  el("erro").style.animation = "";
+}
+
+/* Chama a ponte nativa e espera a resposta (mesmo protocolo do painel). */
+function otmCall(kind, payload){
+  return new Promise(resolve => {
+    if (!window.OTM || !window.OTM.call) { resolve({ ok:false, message:"Este recurso só funciona no app." }); return; }
+    const cbId = "k" + Date.now() + Math.random().toString(16).slice(2);
+    window.__otmResolve = function(id, jsonStr){
+      if (id !== cbId) return;
+      let j = {}; try { j = JSON.parse(jsonStr); } catch(e){}
+      resolve(j);
+    };
+    try { window.OTM.call(kind, payload || "", cbId); }
+    catch(e){ resolve({ ok:false, message:String(e) }); }
+  });
+}
+
+el("form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const u = document.getElementById("user").value.trim();
-  const p = document.getElementById("pass").value;
-  if (sha256(u + ":" + p) === OTM_AUTH) {
-    localStorage.setItem("otm_session", OTM_AUTH);
-    /* login certo: avisa o app para tocar "login feito com sucesso" */
-    try { window.OTM && window.OTM.call("login", "", "login"); } catch(e){}
+  const key = mask(input.value);
+  if (key.length !== 14) { showErro("A chave tem o formato 00-XXXX-XXXX-XXXX."); return; }
+  el("erro").hidden = true;
+  const btn = el("entrar"); btn.disabled = true; btn.textContent = "Verificando…";
+  const r = await otmCall("key_login", JSON.stringify({ key }));
+  btn.disabled = false; btn.textContent = "Entrar";
+  if (r && r.ok) {
+    try {
+      localStorage.setItem(SESSION_FLAG, "1");
+      localStorage.setItem("otm_role", r.role || "user");
+      localStorage.setItem("otm_label", r.label || "");
+    } catch(e){}
     location.replace("index.html");
   } else {
-    /* login errado: avisa o app para tocar "credenciais incorretas" */
-    try { window.OTM && window.OTM.call("login_fail", "", "lf"); } catch(e){}
-    document.getElementById("erroTxt").textContent = "Usuário ou senha incorretos.";
-    document.getElementById("erro").hidden = false;
+    showErro((r && r.message) || "Chave não reconhecida.");
   }
 });
-/* se já entrou, vai direto */
-if (localStorage.getItem("otm_session") === OTM_AUTH) location.replace("index.html");
+
+/* Já entrou antes: vai direto (o painel confirma o papel com o nativo). */
+try { if (localStorage.getItem(SESSION_FLAG)) location.replace("index.html"); } catch(e){}
 </script>
 </body>
 </html>

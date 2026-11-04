@@ -102,6 +102,15 @@ class PackBridge(
                     "overlay" -> { withContext(Dispatchers.Main) { onOverlay() }; okJson() }
                     "login" -> { withContext(Dispatchers.Main) { onLogin() }; okJson() }
                     "login_fail" -> { withContext(Dispatchers.Main) { onLoginFail() }; okJson() }
+                    // Chaves (licenças): o app fala direto com o Turso.
+                    "key_login" -> keyLoginImpl(payload)
+                    "key_logout" -> { KeyGate.logout(context); okJson() }
+                    "key_status" -> keyStatusImpl()
+                    "admin_list" -> AdminService.list(context).toString()
+                    "admin_create" -> adminCreateImpl(payload)
+                    "admin_toggle" -> adminToggleImpl(payload)
+                    "admin_delete" -> adminDeleteImpl(payload)
+                    "admin_audit" -> AdminService.audit(context).toString()
                     "sound" -> {
                         val want = payload.trim().lowercase() != "off"
                         val muted = withContext(Dispatchers.Main) { onSoundSet(want) }
@@ -607,6 +616,59 @@ class PackBridge(
             // sem catálogo o painel ainda mostra os cards; só não executa
         }
         return map
+    }
+
+    // ---- chaves e admin ------------------------------------------------------
+
+    /** Login por chave: valida no banco (ou no cache offline) e abre a sessão. */
+    private fun keyLoginImpl(payload: String): String {
+        val body = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        val key = body.optString("key").trim()
+        if (key.isEmpty()) {
+            return JSONObject().put("ok", false).put("result", "unknown")
+                .put("message", "Digite a sua chave.").toString()
+        }
+        val r = KeyGate.check(context, key)
+        if (r.ok) onLogin() else onLoginFail()
+        return JSONObject()
+            .put("ok", r.ok).put("result", r.status).put("message", r.message)
+            .put("label", r.label).put("role", r.role)
+            .put("expires_at", r.expiresAt ?: JSONObject.NULL)
+            .put("offline", r.offline).toString()
+    }
+
+    /** Estado da sessão atual (papel, rótulo, se o banco está configurado). */
+    private fun keyStatusImpl(): String = JSONObject()
+        .put("ok", true)
+        .put("logged", KeyGate.isLogged(context))
+        .put("owner", KeyGate.isOwner(context))
+        .put("role", KeyGate.sessionRole(context))
+        .put("label", KeyGate.sessionLabel(context))
+        .put("db", KeyGate.dbConfigured())
+        .toString()
+
+    private fun adminCreateImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        return AdminService.create(
+            context,
+            label = b.optString("label"),
+            days = b.optLong("days", 30L),
+            maxDevices = b.optLong("devices", 1L),
+            role = b.optString("role", "user"),
+        ).toString()
+    }
+
+    private fun adminToggleImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        return AdminService.setActive(
+            context, id = b.optLong("id"), active = b.optBoolean("active", true),
+            reason = b.optString("reason"),
+        ).toString()
+    }
+
+    private fun adminDeleteImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        return AdminService.delete(context, b.optLong("id")).toString()
     }
 
     private companion object {
