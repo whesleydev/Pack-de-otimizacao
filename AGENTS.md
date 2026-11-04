@@ -164,6 +164,13 @@ Regras:
   por engano, `Audit` e os backups em `/tmp/otm-backup/` ajudam a reconstruir.
 - **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
   nunca o vê.
+- **Sistema de chaves/licença foi revertido** (v2.45): o acesso voltou a ser usuário e
+  senha no app e no painel. O banco de produção ainda tem tabelas órfãs do domínio de
+  chaves (`otm_keys`, `otm_key_devices`, `otm_key_events`, `otm_plans`, `otm_rate`) e as
+  `sys_*` de outro projeto — nenhuma é usada pelo código atual. O app não tem
+  `KeyGate`/`License` e `panel/` ficou com administradores, auditoria e ajustes. Se for
+  retomar o sistema de chaves, parta do histórico (commits `a49936a`, `9482e58`,
+  `d0dd9af`) e apague as tabelas mortas antes de migrar de novo.
 - Páginas do painel exigem **login de administrador** (`otm_admins`, senha com
   `password_hash`) + **CSRF**. Crie o primeiro com
   `php panel/bin/admin.php add SEU_USUARIO --role owner`.
@@ -314,8 +321,11 @@ nativa além do necessário para conectar e rodar os comandos.
   serve só para o app ler os `.txt` do nível 1. `PackAssets.EXEC_DIR` guarda o
   caminho.
 - O catálogo do painel vem de `assets/panel/actions.json`, gerado de
-  `web/lib.php` por `scratch/gen_actions.php` (regera após mexer nas ações).
-  O mesmo script também reescreve o objeto `ACTIONS` embutido no painel, então
+  `web/lib.php`. O gerador **versionado** é `scripts/panel-actions.sh` (só precisa
+  de `php` no PATH): ele reescreve `actions.json` e o objeto `ACTIONS` embutido no
+  painel do app, de forma idempotente — rode-o após mexer em `otm_actions()`. O
+  pipeline completo de render (nav/seções + `patch_app_panel.py`) usa os scripts
+  de `scratch/` (locais, no `.gitignore`):
   `php scratch/gen_actions.php app/src/main/assets/panel/actions.json
   app/src/main/assets/panel/index.html` mantém catálogo e HTML do app em sincronia.
   O painel do app é o HTML do PHP já renderizado. O pipeline é:

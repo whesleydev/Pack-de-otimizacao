@@ -4,7 +4,7 @@
         "group": "Geral",
         "label": "Aplicar o pack recomendado",
         "desc": "O \"faz tudo\" para novato: performance, RAM, GPU, rede, latência, jogo, bateria e touch.",
-        "help": "É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba \"Display & Touch\" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o \"Clean phone\" no dia a dia. Dá para desfazer em \"Reverter TUDO\".",
+        "help": "É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência\/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache\/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba \"Display & Touch\" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o \"Clean phone\" no dia a dia. Dá para desfazer em \"Reverter TUDO\".",
         "argv": [
             "adb-tweaks.sh",
             "all"
@@ -35,7 +35,7 @@
         "card": false,
         "label": "Otimizador: analisar o aparelho",
         "desc": "Relatório completo do aparelho, sem alterar nada.",
-        "help": "Lê o aparelho de ponta a ponta e mostra tudo: SoC, GPU, clusters de CPU com as frequências, RAM (total e livre), pressão de memória do kernel, taxa de tela, resolução lógica, armazenamento, térmico, bateria, zram em uso, governador, entropia, I/O e renderizador atual. Termina com a nota (0-100), a classe e a lista do que está segurando a nota. Não altera NADA — é só leitura.",
+        "help": "Lê o aparelho de ponta a ponta e mostra tudo: SoC, GPU, clusters de CPU com as frequências, RAM (total e livre), pressão de memória do kernel, taxa de tela, resolução lógica, armazenamento, térmico, bateria, zram em uso, governador, entropia, I\/O e renderizador atual. Termina com a nota (0-100), a classe e a lista do que está segurando a nota. Não altera NADA — é só leitura.",
         "argv": [
             "smart-opt.sh",
             "analyze"
@@ -111,7 +111,7 @@
         "card": false,
         "label": "Otimizador: comparar combinações",
         "desc": "Testa caminhos diferentes (Vulkan x GL, 120Hz x 90Hz) e fica com o melhor.",
-        "help": "Quando dois ajustes são plausíveis, este comando testa os dois no SEU aparelho e fica com o de melhor nota de desempenho. Ele alterna o renderizador (Vulkan/GL) e a taxa de tela (a maior x 90Hz, que esquenta menos) medindo cada combinação, e no fim deixa aplicada a vencedora. O que funciona melhor depende do aparelho — então, em vez de adivinhar, ele mede.",
+        "help": "Quando dois ajustes são plausíveis, este comando testa os dois no SEU aparelho e fica com o de melhor nota de desempenho. Ele alterna o renderizador (Vulkan\/GL) e a taxa de tela (a maior x 90Hz, que esquenta menos) medindo cada combinação, e no fim deixa aplicada a vencedora. O que funciona melhor depende do aparelho — então, em vez de adivinhar, ele mede.",
         "argv": [
             "smart-opt.sh",
             "compare",
@@ -142,7 +142,7 @@
         "card": false,
         "label": "Otimizador: ver o que está ativo",
         "desc": "Mostra o perfil aplicado e o estado real dos ajustes agora.",
-        "help": "Mostra o perfil que foi aplicado por último, a RAM em cache, o renderizador, a taxa de tela (mín/máx), a RAM livre e os apps no anti-relog. Só leitura.",
+        "help": "Mostra o perfil que foi aplicado por último, a RAM em cache, o renderizador, a taxa de tela (mín\/máx), a RAM livre e os apps no anti-relog. Só leitura.",
         "argv": [
             "smart-opt.sh",
             "status"
@@ -176,7 +176,7 @@
         "help": "Tira uma foto COMPLETA das configurações que o pack mexe (animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o que mais estiver ativo), junta num arquivo .txt criptografado e guarda numa pasta do app no seu aparelho. É o ponto de retorno: com esse arquivo você volta exatamente como estava, mesmo depois de mexer em muita coisa. O arquivo é seu e fica no seu aparelho — a chave é gerada aqui e não sai dele.",
         "argv": [
             "backup.sh",
-            "export"
+            "collect"
         ],
         "timeout": 180,
         "params": [],
@@ -192,7 +192,7 @@
         "help": "Lê o arquivo criptografado que você salvou e devolve TODAS as configurações de uma vez — animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o resto. Serve para voltar ao estado da foto depois de qualquer mexida. Se você tem mais de um arquivo, ele restaura o mais recente; o painel mostra qual foi usado.",
         "argv": [
             "backup.sh",
-            "import"
+            "restore"
         ],
         "confirm": true,
         "timeout": 180,
@@ -234,7 +234,7 @@
         "group": "DNS e rede",
         "label": "Cloudflare",
         "desc": "Privacidade e velocidade, sem registro.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cloudflare"
@@ -251,7 +251,7 @@
         "group": "DNS e rede",
         "label": "Quad9",
         "desc": "Privacidade e bloqueio de sites maliciosos.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "quad9"
@@ -268,7 +268,7 @@
         "group": "DNS e rede",
         "label": "AdGuard",
         "desc": "Bloqueia anúncios e rastreadores.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "adguard"
@@ -285,7 +285,7 @@
         "group": "DNS e rede",
         "label": "AdGuard Família",
         "desc": "Anúncios + bloqueio de conteúdo adulto.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "adguard-family"
@@ -299,7 +299,7 @@
         "group": "DNS e rede",
         "label": "AdGuard sem filtro",
         "desc": "Só privacidade, sem bloquear nada.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "adguard-unfiltered"
@@ -313,7 +313,7 @@
         "group": "DNS e rede",
         "label": "Cloudflare Família",
         "desc": "Bloqueia conteúdo adulto.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cloudflare-family"
@@ -327,7 +327,7 @@
         "group": "DNS e rede",
         "label": "Cloudflare Segurança",
         "desc": "Bloqueia malware e phishing.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cloudflare-security"
@@ -341,7 +341,7 @@
         "group": "DNS e rede",
         "label": "Mullvad",
         "desc": "Privacidade sem registro (anônimo).",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "mullvad"
@@ -355,7 +355,7 @@
         "group": "DNS e rede",
         "label": "Mullvad Base",
         "desc": "Ads + rastreadores + malware.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "mullvad-base"
@@ -369,7 +369,7 @@
         "group": "DNS e rede",
         "label": "Mullvad Ads",
         "desc": "Ads + rastreadores.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "mullvad-adblock"
@@ -383,7 +383,7 @@
         "group": "DNS e rede",
         "label": "Mullvad Família",
         "desc": "Adulto + apostas.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "mullvad-family"
@@ -397,7 +397,7 @@
         "group": "DNS e rede",
         "label": "Mullvad Estendido",
         "desc": "Ads + malware + redes sociais.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "mullvad-extended"
@@ -411,7 +411,7 @@
         "group": "DNS e rede",
         "label": "Mullvad Tudo",
         "desc": "Bloqueio máximo (tudo junto).",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "mullvad-all"
@@ -428,7 +428,7 @@
         "group": "DNS e rede",
         "label": "DNSForge",
         "desc": "Bloqueia anúncios, sem guardar logs.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dnsforge"
@@ -442,7 +442,7 @@
         "group": "DNS e rede",
         "label": "Google",
         "desc": "Compatibilidade máxima com qualquer rede.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "google"
@@ -459,7 +459,7 @@
         "group": "DNS e rede",
         "label": "NextDNS",
         "desc": "Filtragem e privacidade configuráveis.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "nextdns"
@@ -473,7 +473,7 @@
         "group": "DNS e rede",
         "label": "OpenDNS",
         "desc": "Cisco OpenDNS: estável e confiável.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "opendns"
@@ -487,7 +487,7 @@
         "group": "DNS e rede",
         "label": "OpenDNS Família",
         "desc": "FamilyShield: bloqueia conteúdo adulto.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "opendns-family"
@@ -504,7 +504,7 @@
         "group": "DNS e rede",
         "label": "CleanBrowsing Família",
         "desc": "Bloqueia conteúdo adulto e malware.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cleanbrowsing-family"
@@ -518,7 +518,7 @@
         "group": "DNS e rede",
         "label": "CleanBrowsing Segurança",
         "desc": "Bloqueia só phishing e malware.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cleanbrowsing-security"
@@ -532,7 +532,7 @@
         "group": "DNS e rede",
         "label": "CleanBrowsing Adulto",
         "desc": "Bloqueia somente conteúdo adulto.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cleanbrowsing-adult"
@@ -546,7 +546,7 @@
         "group": "DNS e rede",
         "label": "ControlD sem filtro",
         "desc": "ControlD sem bloquear nada.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "controld-unfiltered"
@@ -560,7 +560,7 @@
         "group": "DNS e rede",
         "label": "ControlD Malware",
         "desc": "Bloqueia só malware.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "controld-malware"
@@ -574,7 +574,7 @@
         "group": "DNS e rede",
         "label": "ControlD Ads",
         "desc": "Malware + anúncios.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "controld-ads"
@@ -588,7 +588,7 @@
         "group": "DNS e rede",
         "label": "ControlD + Redes",
         "desc": "Malware + anúncios + redes sociais.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "controld-social"
@@ -602,7 +602,7 @@
         "group": "DNS e rede",
         "label": "ControlD Família",
         "desc": "Adulto + drogas.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "controld-family"
@@ -616,7 +616,7 @@
         "group": "DNS e rede",
         "label": "ControlD + OISD",
         "desc": "Lista OISD (bloqueio forte de ads).",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "controld-oisd"
@@ -629,8 +629,8 @@
         "id": "dns.dns4eu-protective",
         "group": "DNS e rede",
         "label": "DNS4EU Protetor",
-        "desc": "Malware/phishing, infraestrutura da UE.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "desc": "Malware\/phishing, infraestrutura da UE.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dns4eu-protective"
@@ -643,8 +643,8 @@
         "id": "dns.dns4eu-child",
         "group": "DNS e rede",
         "label": "DNS4EU Infantil",
-        "desc": "Proteção + conteúdo impróprio p/ criança.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "desc": "Proteção + conteúdo impróprio p\/ criança.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dns4eu-child"
@@ -658,7 +658,7 @@
         "group": "DNS e rede",
         "label": "DNS4EU sem Ads",
         "desc": "Proteção + sem anúncios.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dns4eu-noads"
@@ -672,7 +672,7 @@
         "group": "DNS e rede",
         "label": "DNS4EU Infantil + Ads",
         "desc": "Criança + sem anúncios.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dns4eu-child-noads"
@@ -685,8 +685,8 @@
         "id": "dns.dns4eu-unfiltered",
         "group": "DNS e rede",
         "label": "DNS4EU sem filtro",
-        "desc": "Sem filtro, só privacidade/jurisdição.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "desc": "Sem filtro, só privacidade\/jurisdição.",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dns4eu-unfiltered"
@@ -700,7 +700,7 @@
         "group": "DNS e rede",
         "label": "DNS.SB",
         "desc": "Alemanha, sem logs, DNSSEC.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "dns-sb"
@@ -714,7 +714,7 @@
         "group": "DNS e rede",
         "label": "CZ.NIC ODVR",
         "desc": "Tchéquia, valida DNSSEC.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "cz-nic"
@@ -728,7 +728,7 @@
         "group": "DNS e rede",
         "label": "Digitale Gesellschaft",
         "desc": "Suíça, sem logs, DNSSEC, TLS 1.3.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "digitale-gesellschaft"
@@ -742,7 +742,7 @@
         "group": "DNS e rede",
         "label": "RESTENA",
         "desc": "Luxemburgo, sem logs.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "restena"
@@ -756,7 +756,7 @@
         "group": "DNS e rede",
         "label": "Applied Privacy",
         "desc": "Áustria, sem logs.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "applied-privacy"
@@ -770,7 +770,7 @@
         "group": "DNS e rede",
         "label": "UncensoredDNS",
         "desc": "Dinamarca, sem filtro nem censura.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "uncensored"
@@ -784,7 +784,7 @@
         "group": "DNS e rede",
         "label": "Gaming",
         "desc": "Baixa latência para jogos + rede otimizada.",
-        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
+        "help": "DNS é o serviço que \"traduz\" endereços de sites. Um DNS privado (DoT) deixa sua navegação mais rápida, privada e pode bloquear anúncios\/malware. Escolha um perfil e ele passa a valer para o aparelho todo. Volte ao normal em \"DNS automático\".",
         "argv": [
             "dns.sh",
             "gaming"
@@ -822,7 +822,7 @@
         "group": "DNS e rede",
         "label": "DNS automático (desligar)",
         "desc": "Volta o DNS para o padrão da operadora.",
-        "help": "Desliga o DNS privado e devolve o aparelho para o DNS automático da sua operadora/rede. Use se algum site parar de abrir.",
+        "help": "Desliga o DNS privado e devolve o aparelho para o DNS automático da sua operadora\/rede. Use se algum site parar de abrir.",
         "argv": [
             "dns.sh",
             "off"
@@ -849,7 +849,7 @@
     {
         "id": "latency.on",
         "group": "Latência e ping",
-        "label": "Reduzir latência / ping",
+        "label": "Reduzir latência \/ ping",
         "desc": "Ajusta congestion control, buffers e low latency para o ping cair.",
         "help": "Ataque direto no atraso da rede: liga o congestion control BBR (quando o kernel tem), encurta os buffers de envio, liga o modo low latency e o ECN para o aparelho não esperar encher o pacote nem retransmitir à toa. O resultado aparece no ping do jogo (menos \"trava\" e menos atraso no tiro). Tudo reversível em \"Latência: restaurar\".",
         "argv": [
@@ -979,7 +979,7 @@
         "group": "Display & Touch",
         "label": "Gerar sensi do meu aparelho",
         "desc": "Calcula a sensi ideal para o seu aparelho, sem alterar nada.",
-        "help": "Lê o seu aparelho (resolução, densidade/DPI, tamanho da tela, taxa de toque, taxa de atualização, SoC, RAM e o ajuste de toque já aplicado) e calcula uma sensi sob medida: Geral, Ponto vermelho, mira 2x, 4x, AWM, além do tamanho do botão de atirar (com teto de 50%, que é o que não deixa o botão feio/grande). NÃO altera nada no aparelho: só mostra os números para você digitar no jogo. Rode de novo se mudar a resolução.",
+        "help": "Lê o seu aparelho (resolução, densidade\/DPI, tamanho da tela, taxa de toque, taxa de atualização, SoC, RAM e o ajuste de toque já aplicado) e calcula uma sensi sob medida: Geral, Ponto vermelho, mira 2x, 4x, AWM, além do tamanho do botão de atirar (com teto de 50%, que é o que não deixa o botão feio\/grande). NÃO altera nada no aparelho: só mostra os números para você digitar no jogo. Rode de novo se mudar a resolução.",
         "argv": [
             "sensi.sh",
             "calc"
@@ -1177,7 +1177,7 @@
         "id": "ram.max",
         "group": "Desempenho",
         "label": "Liberar RAM: máximo",
-        "desc": "Igual ao normal e ainda encerra apps de mídia/chat conhecidos.",
+        "desc": "Igual ao normal e ainda encerra apps de mídia\/chat conhecidos.",
         "help": "A versão mais agressiva: além de tudo do normal, encerra também apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch). Sobra o máximo de RAM. Use só quando quiser o aparelho 100% livre.",
         "choice": "ramboost",
         "option": "Máximo",
@@ -1364,7 +1364,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             },
             {
                 "name": "driver",
@@ -1493,6 +1493,135 @@
         "risk": "safe"
     },
     {
+        "id": "gfx.comp_on",
+        "group": "Display & Touch",
+        "label": "Composição gráfica enxuta",
+        "desc": "Menos camadas por frame: menos buffer intermediário e sem blur.",
+        "help": "Enxuga a composição: cada camada a menos é uma composição a menos por frame. São flags do sistema que valem sem root e continuam valendo depois de reiniciar (não é prop, que some no reboot). Combine com \"Motor gráfico\" para o resultado máximo. Reversível em \"Reverter TUDO\".",
+        "argv": [
+            "adb-tweaks.sh",
+            "gfx_comp"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "gfx.comp_off",
+        "group": "Display & Touch",
+        "label": "Composição gráfica: padrão",
+        "desc": "Devolve a composição ao padrão de fábrica.",
+        "help": "Devolve as flags de composição (draw defer, scissor, buffer age, blur) ao padrão de fábrica.",
+        "argv": [
+            "adb-tweaks.sh",
+            "gfx_comp_off"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "gfx.fpsdaemon_on",
+        "group": "Display & Touch",
+        "label": "Travar a taxa da tela (sem daemon de FPS)",
+        "desc": "Fixa a taxa no maior Hz da tela: o jogo não oscila de FPS.",
+        "help": "Em vez de deixar o sistema oscilar a taxa (60 -> 90 -> 120) conforme a carga, fixa mín = máx no maior Hz que a SUA tela suporta. O jogo para de \"cair\" de FPS e a composição não reconfigura o modo de vídeo no meio da partida. Usa a lista do próprio aparelho, não inventa Hz. Reversível em \"Daemon de FPS: automático\".",
+        "argv": [
+            "adb-tweaks.sh",
+            "fps_daemon",
+            "on"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "gfx.fpsdaemon_off",
+        "group": "Display & Touch",
+        "label": "Daemon de FPS: automático",
+        "desc": "Devolve a taxa da tela ao controle do sistema.",
+        "help": "Apaga a taxa fixa e o sistema volta a escolher a taxa sozinho (modo automático).",
+        "argv": [
+            "adb-tweaks.sh",
+            "fps_daemon",
+            "off"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "gfx.fpsdaemon_status",
+        "group": "Display & Touch",
+        "card": false,
+        "label": "Daemon de FPS: ver a taxa",
+        "desc": "Mostra a taxa mínima e máxima em uso agora.",
+        "help": "Mostra a taxa mínima e a máxima da tela neste momento. Só leitura.",
+        "argv": [
+            "adb-tweaks.sh",
+            "fps_daemon",
+            "status"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "touch.resp_on",
+        "group": "Display & Touch",
+        "label": "Resposta ao toque: rápida",
+        "desc": "Janelas curtas de toque: o sistema reage na hora.",
+        "help": "Encurta as janelas do toque (responsividade, slop, multitouch e long-press). É o \"atraso\" entre o dedo e o sistema reagir — não troca o perfil de mira (isso fica nos perfis de sensibilidade). Reversível em \"Resposta ao toque: padrão\".",
+        "argv": [
+            "adb-tweaks.sh",
+            "touch_resp",
+            "on"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "touch.resp_off",
+        "group": "Display & Touch",
+        "label": "Resposta ao toque: padrão",
+        "desc": "Devolve as janelas de toque ao padrão.",
+        "help": "Apaga os ajustes de janela de toque e devolve o aparelho ao padrão.",
+        "argv": [
+            "adb-tweaks.sh",
+            "touch_resp",
+            "off"
+        ],
+        "params": [],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
+        "id": "thermal.guard",
+        "group": "Desempenho",
+        "label": "Trava térmica (sem root)",
+        "desc": "Lê a temperatura e alivia a carga se passar do teto.",
+        "help": "A versão sem root da trava térmica: não reescreve limites do kernel (isso exige root). Ele LÊ a temperatura real do aparelho (sensor do sistema ou bateria) e, se passar do teto, alivia a carga — devolve a taxa de tela ao padrão e religa o blur. Use antes de uma sessão longa de jogo. O teto é configurável (padrão 43 °C).",
+        "argv": [
+            "adb-tweaks.sh",
+            "thermal_guard",
+            "on",
+            "{celsius}"
+        ],
+        "params": [
+            {
+                "name": "celsius",
+                "type": "int",
+                "label": "Teto (°C)",
+                "min": 35,
+                "max": 60,
+                "default": 43
+            }
+        ],
+        "confirm": false,
+        "risk": "safe"
+    },
+    {
         "id": "refresh.60",
         "group": "Display & Touch",
         "label": "60Hz (economia)",
@@ -1567,7 +1696,7 @@
         "id": "app.angle",
         "group": "Apps e jogos",
         "label": "Usar ANGLE (OpenGL para Vulkan) no app",
-        "desc": "Faz o app usar Vulkan no lugar do OpenGL. Escolha o app/jogo.",
+        "desc": "Faz o app usar Vulkan no lugar do OpenGL. Escolha o app\/jogo.",
         "help": "ANGLE traduz os comandos de OpenGL para Vulkan. Em muitos jogos isso melhora o desempenho. Escolha o app na lista (ex.: com.dts.freefireth). Se piorar, use \"Tirar ANGLE do app\".",
         "argv": [
             "deep-tune.sh",
@@ -1579,7 +1708,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -1601,7 +1730,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -1626,8 +1755,8 @@
         "id": "app.perf",
         "group": "Apps e jogos",
         "label": "Modo performance no app",
-        "desc": "Prioriza o app/jogo escolhido (Game Mode).",
-        "help": "Pede ao sistema para tratar o app como jogo: mais prioridade de CPU/GPU e menos interrupções. Escolha o pacote do jogo (ex.: com.dts.freefireth).",
+        "desc": "Prioriza o app\/jogo escolhido (Game Mode).",
+        "help": "Pede ao sistema para tratar o app como jogo: mais prioridade de CPU\/GPU e menos interrupções. Escolha o pacote do jogo (ex.: com.dts.freefireth).",
         "argv": [
             "game-per-app.sh",
             "mode",
@@ -1638,7 +1767,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -1660,7 +1789,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             },
             {
                 "name": "scale",
@@ -1690,7 +1819,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -1700,7 +1829,7 @@
         "id": "clean.normal",
         "group": "Apps e jogos",
         "label": "Game Clean: limpeza normal",
-        "desc": "Fecha o fundo, limpa cache/RAM e otimiza o jogo escolhido.",
+        "desc": "Fecha o fundo, limpa cache\/RAM e otimiza o jogo escolhido.",
         "help": "Deixa o jogo \"clean\": encerra os apps que estavam rodando atrás (sem tocar no jogo nem nos que você protegeu no anti-relog), poda o cache e o dexopt, libera RAM, protege o jogo contra relog, liga o Game Mode em performance, silencia notificações e corta telemetria. É o \"entrar em modo partida\" completo. Reverta em \"Game Clean: desligar\".",
         "choice": "gameclean",
         "option": "Normal",
@@ -1716,7 +1845,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ]
     },
@@ -1724,7 +1853,7 @@
         "id": "clean.max",
         "group": "Apps e jogos",
         "label": "Game Clean: máximo",
-        "desc": "Igual ao normal, e ainda encerra apps de mídia/chat conhecidos.",
+        "desc": "Igual ao normal, e ainda encerra apps de mídia\/chat conhecidos.",
         "help": "A versão mais agressiva: além de tudo do modo normal, encerra também os apps de mídia e chat conhecidos (Spotify, Discord, YouTube, Netflix, Twitch) para sobrar o máximo de RAM e CPU. Use só quando quiser o aparelho 100% para o jogo.",
         "choice": "gameclean",
         "option": "Máximo",
@@ -1741,7 +1870,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ]
     },
@@ -1760,7 +1889,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -1781,7 +1910,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -1932,7 +2061,7 @@
         "group": "Display & Touch",
         "label": "Restaurar touch",
         "desc": "Apaga os ajustes de toque e volta ao padrão.",
-        "help": "Remove todos os ajustes de sensibilidade/toque, devolvendo o toque ao padrão do aparelho.",
+        "help": "Remove todos os ajustes de sensibilidade\/toque, devolvendo o toque ao padrão do aparelho.",
         "argv": [
             "ff-touch.sh",
             "restore"
@@ -2195,7 +2324,7 @@
     {
         "id": "screen",
         "group": "Desempenho",
-        "label": "Tela / refresh alto",
+        "label": "Tela \/ refresh alto",
         "desc": "Fixa a taxa de atualização no máximo do aparelho.",
         "help": "Trava a tela na maior taxa de atualização (Hz) que o aparelho suporta. Rolagem e jogo ficam mais suaves. Gasta um pouco mais de bateria.",
         "argv": [
@@ -2288,7 +2417,7 @@
         "group": "Sistema",
         "label": "Ver estado do sono profundo",
         "desc": "Mostra o estado atual do Doze e as constantes em uso.",
-        "help": "Mostra em que estado o repouso está agora (ativo/inativo) e quais tempos estão configurados. Só leitura.",
+        "help": "Mostra em que estado o repouso está agora (ativo\/inativo) e quais tempos estão configurados. Só leitura.",
         "argv": [
             "adb-tweaks.sh",
             "doze",
@@ -2325,7 +2454,7 @@
     {
         "id": "proc.info",
         "group": "Processos",
-        "label": "Ver um app (PID/RAM/nice)",
+        "label": "Ver um app (PID\/RAM\/nice)",
         "desc": "Mostra PID, RAM, prioridade e oom do app escolhido.",
         "help": "Detalha o app escolhido: quantos processos tem, quanto de RAM está usando, a prioridade (nice) e o oom_score. Tudo lido do aparelho. Só leitura.",
         "argv": [
@@ -2460,7 +2589,7 @@
         "group": "Processos",
         "label": "Manter app vivo (não relogar)",
         "desc": "Impede o app de fechar e pedir login de novo ao reabrir.",
-        "help": "Quando você sai de um app, o Android pode matá-lo para liberar memória — ao voltar, ele abre do zero e pede login outra vez. Aqui o app escolhido fica protegido: isento do modo espera (Doze), liberado em segundo plano e wake lock, no balde ativo de standby e fora do congelador. Requer Shizuku/ADB. Reverta em \"Deixar de manter o app\".",
+        "help": "Quando você sai de um app, o Android pode matá-lo para liberar memória — ao voltar, ele abre do zero e pede login outra vez. Aqui o app escolhido fica protegido: isento do modo espera (Doze), liberado em segundo plano e wake lock, no balde ativo de standby e fora do congelador. Requer Shizuku\/ADB. Reverta em \"Deixar de manter o app\".",
         "argv": [
             "keep-alive.sh",
             "on",
@@ -2470,7 +2599,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "risk": "careful",
@@ -2492,7 +2621,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "risk": "careful",
@@ -2513,7 +2642,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "risk": "careful",
@@ -2534,7 +2663,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -2574,7 +2703,7 @@
         "card": false,
         "label": "Congelar apps (cache freezer)",
         "desc": "Ativa o congelador do sistema e aplica a lista.",
-        "help": "Liga o congelador de apps em cache do sistema: apps que você não está usando ficam pausados em vez de gastar RAM/bateria. Ótimo para liberar memória. Reverta em \"Descongelar todos os apps\".",
+        "help": "Liga o congelador de apps em cache do sistema: apps que você não está usando ficam pausados em vez de gastar RAM\/bateria. Ótimo para liberar memória. Reverta em \"Descongelar todos os apps\".",
         "argv": [
             "adb-tweaks.sh",
             "freezer"
@@ -2678,8 +2807,8 @@
     {
         "id": "ext.display",
         "group": "Display & Touch",
-        "label": "Display / HWUI (props)",
-        "desc": "Props do SurfaceFlinger/HWUI que deixam a rolagem mais lisa. SEM root.",
+        "label": "Display \/ HWUI (props)",
+        "desc": "Props do SurfaceFlinger\/HWUI que deixam a rolagem mais lisa. SEM root.",
         "help": "Ajusta props \"debug.*\" do SurfaceFlinger e do HWUI (buffer age, latch, backpressure, offsets de fase). Deixa a rolagem mais lisa.",
         "argv": [
             "deep-tune.sh",
@@ -2693,9 +2822,9 @@
     {
         "id": "ext.display.off",
         "group": "Display & Touch",
-        "label": "Display / HWUI — desligar",
+        "label": "Display \/ HWUI — desligar",
         "desc": "Reverte as props de display.",
-        "help": "Restaura as props de display/HWUI ao valor anterior.",
+        "help": "Restaura as props de display\/HWUI ao valor anterior.",
         "argv": [
             "deep-tune.sh",
             "display",
@@ -2753,7 +2882,7 @@
     {
         "id": "adv.mobile_net",
         "group": "DNS e rede",
-        "label": "Rede móvel / economia de dados",
+        "label": "Rede móvel \/ economia de dados",
         "desc": "Desliga a economia de dados que estrangula a velocidade.",
         "help": "Desliga a economia de dados e evita trocar para um Wi-Fi ruim. Evita que o sistema limite a velocidade no meio do jogo.",
         "argv": [
@@ -2832,7 +2961,7 @@
         "group": "Display & Touch",
         "label": "Efeitos visuais: DESLIGAR (mais fluidez)",
         "desc": "Tira o desfoque e a transparência: interface mais leve.",
-        "help": "Desliga o desfoque (blur) e a transparência do sistema. A interface fica mais leve e sobra GPU/CPU para o jogo — é o que o pack recomendado já faz. Reverta em \"Efeitos visuais: LIGAR\".",
+        "help": "Desliga o desfoque (blur) e a transparência do sistema. A interface fica mais leve e sobra GPU\/CPU para o jogo — é o que o pack recomendado já faz. Reverta em \"Efeitos visuais: LIGAR\".",
         "choice": "effects",
         "option": "Desligado (mais fluidez)",
         "state_value": "off",
@@ -2864,7 +2993,7 @@
         "id": "sysbars.on",
         "group": "Display & Touch",
         "label": "Barras: VISÍVEIS (padrão)",
-        "desc": "Devolve a barra de cima e a de baixo (quadrado/bolinha).",
+        "desc": "Devolve a barra de cima e a de baixo (quadrado\/bolinha).",
         "help": "Desliga o modo imersivo e devolve as duas barras do sistema. Use se a barra de baixo (quadrado, bolinha, voltar) sumiu ou ficou estranha depois de aplicar o pack. O painel lê o estado real do aparelho e marca o que está em uso.",
         "choice": "sysbars",
         "option": "Visíveis (padrão)",
@@ -2900,7 +3029,7 @@
         "id": "sysbars.nav",
         "group": "Display & Touch",
         "label": "Barras: esconder só a de BAIXO",
-        "desc": "Esconde só a barra de navegação (quadrado/bolinha).",
+        "desc": "Esconde só a barra de navegação (quadrado\/bolinha).",
         "help": "Esconde apenas a barra de navegação, mantendo o relógio e a bateria à vista. Útil quando a barra de baixo atrapalha o jogo, mas você ainda quer ver as notificações.",
         "choice": "sysbars",
         "option": "Só a de baixo",
@@ -2918,7 +3047,7 @@
         "id": "sysbars.status",
         "group": "Display & Touch",
         "label": "Barras: esconder só a de CIMA",
-        "desc": "Esconde só a barra de status (relógio/bateria).",
+        "desc": "Esconde só a barra de status (relógio\/bateria).",
         "help": "Esconde apenas a barra de cima (relógio, bateria, ícones), mantendo a navegação. Deixa a tela mais limpa sem tirar os botões de voltar.",
         "choice": "sysbars",
         "option": "Só a de cima",
@@ -3025,7 +3154,7 @@
     {
         "id": "adv.window",
         "group": "Display & Touch",
-        "label": "Janelas / transições rápidas",
+        "label": "Janelas \/ transições rápidas",
         "desc": "Transições mais curtas: a interface responde na hora.",
         "help": "Reduz as animações de janela, transição e abertura para 0.5x: o aparelho parece mais rápido sem mudar nada de visual. NÃO esconde as barras — se você quer mais tela no jogo, use \"Barras: esconder as duas (imersivo)\" logo acima; se já escondeu e quer voltar, use \"Barras: VISÍVEIS (padrão)\".",
         "argv": [
@@ -3041,7 +3170,7 @@
         "group": "Desempenho",
         "label": "Estado do Turbo",
         "desc": "Mostra phantom killer, refresh, logs e scans em uma tela.",
-        "help": "Resume o estado dos recursos turbo: Phantom Process Killer, taxa de atualização travada, logs persistentes e scans de Wi-Fi/Bluetooth \"sempre disponível\". Bom para conferir antes e depois de aplicar.",
+        "help": "Resume o estado dos recursos turbo: Phantom Process Killer, taxa de atualização travada, logs persistentes e scans de Wi-Fi\/Bluetooth \"sempre disponível\". Bom para conferir antes e depois de aplicar.",
         "argv": [
             "turbo.sh",
             "status"
@@ -3055,7 +3184,7 @@
         "group": "Desempenho",
         "label": "Abrir apps mais rápido (compilar)",
         "desc": "Compila o app escolhido para ele abrir mais rápido.",
-        "help": "Força o Android a pré-compilar (ART/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. \"speed-profile\" é o equilíbrio (abre rápido sem inflar o armazenamento); \"speed\" compila tudo (mais rápido ainda, ocupa mais espaço). Para desfazer, use \"Recompilar todos os apps (ART)\".",
+        "help": "Força o Android a pré-compilar (ART\/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. \"speed-profile\" é o equilíbrio (abre rápido sem inflar o armazenamento); \"speed\" compila tudo (mais rápido ainda, ocupa mais espaço). Para desfazer, use \"Recompilar todos os apps (ART)\".",
         "argv": [
             "turbo.sh",
             "art",
@@ -3066,7 +3195,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             },
             {
                 "name": "mode",
@@ -3205,7 +3334,7 @@
         "card": false,
         "label": "Phantom Killer: ligar",
         "desc": "Volta o limite de processos-fantasma ao padrão do Android.",
-        "help": "O Phantom Process Killer mata processos \"fantasma\" (filhos de apps como Termux/emuladores). Aqui ele volta ao padrão do sistema. Use se você não precisa de serviços em segundo plano.",
+        "help": "O Phantom Process Killer mata processos \"fantasma\" (filhos de apps como Termux\/emuladores). Aqui ele volta ao padrão do sistema. Use se você não precisa de serviços em segundo plano.",
         "argv": [
             "turbo.sh",
             "phantom",
@@ -3220,7 +3349,7 @@
         "group": "Desempenho",
         "card": false,
         "label": "Phantom Killer: desligar",
-        "desc": "Desliga o limite (bom p/ Termux, emuladores e serviços).",
+        "desc": "Desliga o limite (bom p\/ Termux, emuladores e serviços).",
         "help": "Desliga o Phantom Process Killer: apps como Termux, emuladores e servidores deixam de ter processos mortos pelo sistema. Pode aumentar um pouco o uso de bateria.",
         "argv": [
             "turbo.sh",
@@ -3281,7 +3410,7 @@
         "id": "turbo.refresh_fixed",
         "group": "Desempenho",
         "label": "Refresh fixo (frametime)",
-        "desc": "Trava a tela numa taxa fixa (60/90/120/144Hz) para estabilizar o frametime.",
+        "desc": "Trava a tela numa taxa fixa (60\/90\/120\/144Hz) para estabilizar o frametime.",
         "help": "Trava a tela numa taxa fixa. Quando a taxa oscila (60↔120Hz) no meio da partida, o frametime \"pula\" e dá micro-travada mesmo com FPS alto. Travar em uma taxa deixa o frametime constante. Use \"Refresh automático\" para voltar ao dia a dia.",
         "argv": [
             "turbo.sh",
@@ -3375,7 +3504,7 @@
         "card": false,
         "label": "Modo longevidade: ligar",
         "desc": "Reduz o desgaste: doze ativo, tela 60Hz, menos scans.",
-        "help": "Liga o cuidado com a durabilidade: sono profundo afinado (dorme logo após a tela apagar), tela em 60Hz (taxa alta é um dos maiores consumos contínuos) e menos varredura de Wi-Fi/Bluetooth em segundo plano. Reduz agressão em vez de forçar desempenho, então o aparelho esquenta menos e dura mais. Totalmente reversível em \"Modo longevidade: desligar\".",
+        "help": "Liga o cuidado com a durabilidade: sono profundo afinado (dorme logo após a tela apagar), tela em 60Hz (taxa alta é um dos maiores consumos contínuos) e menos varredura de Wi-Fi\/Bluetooth em segundo plano. Reduz agressão em vez de forçar desempenho, então o aparelho esquenta menos e dura mais. Totalmente reversível em \"Modo longevidade: desligar\".",
         "argv": [
             "vitality.sh",
             "care",
@@ -3458,7 +3587,7 @@
         "card": false,
         "label": "Telemetria e logs: desligar",
         "desc": "Desliga logs persistentes e scans \"sempre disponível\".",
-        "help": "Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi/Bluetooth \"sempre disponível\". Menos trabalho em segundo plano e mais privacidade. Reversível em \"religar\".",
+        "help": "Desliga o log persistente (logpersist), o log de Bluetooth e as varreduras de Wi-Fi\/Bluetooth \"sempre disponível\". Menos trabalho em segundo plano e mais privacidade. Reversível em \"religar\".",
         "argv": [
             "turbo.sh",
             "telemetry",
@@ -3488,7 +3617,7 @@
         "id": "game.mode",
         "group": "Apps e jogos",
         "label": "Modo do jogo (genérico)",
-        "desc": "Define performance/battery/standard para qualquer jogo ou app.",
+        "desc": "Define performance\/battery\/standard para qualquer jogo ou app.",
         "help": "Usa o Game Mode do Android 12+: \"performance\" prioriza FPS, \"battery\" prioriza economia, \"standard\" deixa o sistema decidir. Funciona em qualquer app, não só no Free Fire.",
         "argv": [
             "game-per-app.sh",
@@ -3500,7 +3629,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             },
             {
                 "name": "mode",
@@ -3685,7 +3814,7 @@
     {
         "id": "net",
         "group": "DNS e rede",
-        "label": "Rede / TCP (DNS + buffers)",
+        "label": "Rede \/ TCP (DNS + buffers)",
         "desc": "DNS Cloudflare + buffers TCP maiores para menos travada em jogo.",
         "help": "Aumenta os buffers de rede (TCP) e troca o DNS para o Cloudflare. Resultado: menos picos de latência e carregamento mais estável. Não é o mesmo que o perfil de DNS gaming — aqui o foco é o buffer de rede.",
         "argv": [
@@ -3797,7 +3926,7 @@
     {
         "id": "debloat.app.uninstall",
         "group": "Debloat",
-        "label": "Desinstalar p/ o usuário",
+        "label": "Desinstalar p\/ o usuário",
         "desc": "Remove o app só para você (dá para reinstalar depois).",
         "help": "Desinstala o app apenas para o seu usuário — o sistema continua com a cópia e você pode reinstalar sem baixar de novo. Ótimo para tirar bloatware sem risco. Reversível em \"Reinstalar app\".",
         "argv": [
@@ -3820,7 +3949,7 @@
         "group": "Debloat",
         "label": "Reinstalar app",
         "desc": "Traz de volta um app que você desinstalou para o usuário.",
-        "help": "Reinstala o app removido com \"Desinstalar p/ o usuário\", sem precisar baixar nada.",
+        "help": "Reinstala o app removido com \"Desinstalar p\/ o usuário\", sem precisar baixar nada.",
         "argv": [
             "debloat.sh",
             "restore",
@@ -3928,7 +4057,7 @@
     {
         "id": "diag.profile",
         "group": "Sistema",
-        "label": "Perfil do aparelho (SoC/GPU)",
+        "label": "Perfil do aparelho (SoC\/GPU)",
         "desc": "Detecta o processador, a GPU e o que combina com o seu aparelho.",
         "help": "Lê as informações do seu aparelho (família do processador, GPU, kernel) e recomenda quais otimizações profundas tendem a funcionar melhor. Não muda nada — só informa.",
         "argv": [
@@ -4057,7 +4186,7 @@
         "group": "Dispositivos",
         "label": "Resolução recomendada (automático)",
         "desc": "Escolhe um degrau de resolução conforme o tamanho da tela do seu aparelho.",
-        "help": "Em tela muito grande (QHD/1440p), desce para 1080p — é um ganho grande de FPS com perda pequena de nitidez. Em tela pequena, não mexe (já renderiza pouco). Reversível em \"Voltar à resolução de fábrica\".",
+        "help": "Em tela muito grande (QHD\/1440p), desce para 1080p — é um ganho grande de FPS com perda pequena de nitidez. Em tela pequena, não mexe (já renderiza pouco). Reversível em \"Voltar à resolução de fábrica\".",
         "argv": [
             "resolution.sh",
             "auto"
@@ -4106,7 +4235,7 @@
         "id": "module.run",
         "group": "Sistema",
         "label": "Executar um módulo",
-        "desc": "Roda um dos módulos/plugins incluídos no pack.",
+        "desc": "Roda um dos módulos\/plugins incluídos no pack.",
         "help": "Os módulos são os complementos (tweaks, touch, GPU, bateria). Digite o nome exato do módulo — veja a lista na aba Sistema. Ação reversível conforme o módulo.",
         "argv": [
             "modules.sh",
@@ -4129,7 +4258,7 @@
         "group": "Display & Touch",
         "label": "Abrir o Free Fire",
         "desc": "Abre o jogo (útil depois de aplicar os ajustes).",
-        "help": "Manda o Free Fire abrir. Use depois de aplicar touch/modo de jogo para já entrar otimizado.",
+        "help": "Manda o Free Fire abrir. Use depois de aplicar touch\/modo de jogo para já entrar otimizado.",
         "argv": [
             "adb-tweaks.sh",
             "ff_open"
@@ -4204,7 +4333,7 @@
             {
                 "name": "target",
                 "type": "text",
-                "label": "Endereço (só p/ ADB Wi-Fi: host:porta)",
+                "label": "Endereço (só p\/ ADB Wi-Fi: host:porta)",
                 "optional": true
             }
         ],
@@ -4216,7 +4345,7 @@
         "group": "Sistema",
         "label": "Testar conexão",
         "desc": "Confere de verdade se o pack consegue mandar comandos ao aparelho.",
-        "help": "Faz um teste real: lê o modelo do aparelho, a versão do Android e tenta ler/gravar um ajuste. Se falhar, diz o que falta (Shizuku ativo ou depuração por Wi-Fi ligada).",
+        "help": "Faz um teste real: lê o modelo do aparelho, a versão do Android e tenta ler\/gravar um ajuste. Se falhar, diz o que falta (Shizuku ativo ou depuração por Wi-Fi ligada).",
         "argv": [
             "config.sh",
             "test"
@@ -4230,7 +4359,7 @@
         "group": "Sistema",
         "label": "Ver configuração",
         "desc": "Mostra o modo atual e o que foi detectado.",
-        "help": "Mostra o arquivo de configuração, o modo salvo e o que o pack detectou agora (Shizuku/ADB/root/local). Só leitura.",
+        "help": "Mostra o arquivo de configuração, o modo salvo e o que o pack detectou agora (Shizuku\/ADB\/root\/local). Só leitura.",
         "argv": [
             "config.sh",
             "show"
@@ -4371,7 +4500,7 @@
             {
                 "name": "pkg",
                 "type": "pkg",
-                "label": "App/jogo"
+                "label": "App\/jogo"
             }
         ],
         "confirm": false,
@@ -4412,7 +4541,7 @@
         "group": "Sistema",
         "label": "Aparência e som",
         "desc": "Permissões, tema, cor, fonte, DPI e som do app.",
-        "help": "Abre as configurações do painel: as permissões que o app precisa para funcionar (bateria, segundo plano, Doze), o tema (claro, escuro ou automático), a cor de destaque, a fonte, o DPI do app e ligar/desligar os sons. Fica salvo neste aparelho.",
+        "help": "Abre as configurações do painel: as permissões que o app precisa para funcionar (bateria, segundo plano, Doze), o tema (claro, escuro ou automático), a cor de destaque, a fonte, o DPI do app e ligar\/desligar os sons. Fica salvo neste aparelho.",
         "argv": [],
         "ui": "appearance",
         "params": [],
@@ -4424,7 +4553,7 @@
         "group": "Geral",
         "label": "Perfil personalizado",
         "desc": "Você escolhe o que aplicar: animações, RAM, Hz, toque, limpeza e muito mais.",
-        "help": "Abre um menu onde você liga só o que quiser. São mais de 40 recursos independentes, agrupados por tema: desempenho (animações, ART/AOT, modo desempenho, telemetria), memória (limite de apps em 2º plano, hibernar, congelar, podar caches, encerrar 2º plano, processos fantasma), gráficos (GPU, motor gráfico, display/HWUI, modo jogo profundo), tela (taxa, resolução, barras do sistema, bateria em %, segundos no relógio), toque (perfil, latência, janela multitouch), rede (DNS, buffers TCP, latência/ping, Wi-Fi, rede móvel), bateria (economia, Doze, longevidade) e notificações (não perturbe, foco de jogo, menos notificações). Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em \"Perfil personalizado: desligar\".",
+        "help": "Abre um menu onde você liga só o que quiser. São mais de 40 recursos independentes, agrupados por tema: desempenho (animações, ART\/AOT, modo desempenho, telemetria), memória (limite de apps em 2º plano, hibernar, congelar, podar caches, encerrar 2º plano, processos fantasma), gráficos (GPU, motor gráfico, display\/HWUI, modo jogo profundo), tela (taxa, resolução, barras do sistema, bateria em %, segundos no relógio), toque (perfil, latência, janela multitouch), rede (DNS, buffers TCP, latência\/ping, Wi-Fi, rede móvel), bateria (economia, Doze, longevidade) e notificações (não perturbe, foco de jogo, menos notificações). Ao aplicar, o pack parte de um estado limpo e liga apenas os recursos marcados. Tudo é reversível em \"Perfil personalizado: desligar\".",
         "argv": [],
         "ui": "customprofile",
         "params": [],
@@ -4718,7 +4847,7 @@
             {
                 "name": "net",
                 "type": "enum",
-                "label": "Rede / buffers TCP",
+                "label": "Rede \/ buffers TCP",
                 "options": [
                     "nao",
                     "on"
@@ -4728,7 +4857,7 @@
             {
                 "name": "latency",
                 "type": "enum",
-                "label": "Latência / ping",
+                "label": "Latência \/ ping",
                 "options": [
                     "nao",
                     "on"
@@ -4955,5 +5084,344 @@
         "risk": "safe",
         "timeout": 300,
         "params": []
+    },
+    {
+        "id": "hidden.proc_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Constantes do ActivityManager",
+        "desc": "Ajusta memória, jobs e serviços de 2º plano (escondido).",
+        "help": "Mexe nas constantes internas do ActivityManager: cache de processos, limites de memória por app, tempos de serviço em segundo plano e a verificação periódica de CPU. É o ajuste de maior impacto para o sistema parar de \"acordar à toa\" e o jogo não ser fechado por falta de RAM.",
+        "argv": [
+            "hidden-tune.sh",
+            "proc",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.proc_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Constantes do ActivityManager: padrão",
+        "desc": "Devolve as constantes ao padrão de fábrica.",
+        "help": "Apaga a chave de constantes do ActivityManager e o sistema volta ao padrão de fábrica.",
+        "argv": [
+            "hidden-tune.sh",
+            "proc",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.verify_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Menos checagem de assinatura",
+        "desc": "Corta a verificação de pacotes a cada instalação.",
+        "help": "O verificador de pacotes confere a assinatura dos apps a cada instalação e em cada boot. Em aparelho com muitos apps isso custa tempo e leitura de disco. Desligar não afeta apps da Play Store (a loja tem o próprio controle).",
+        "argv": [
+            "hidden-tune.sh",
+            "verify",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.verify_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Checagem de assinatura: padrão",
+        "desc": "Devolve a verificação de pacotes.",
+        "help": "Volta a verificar a assinatura dos apps a cada instalação.",
+        "argv": [
+            "hidden-tune.sh",
+            "verify",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.bg_on",
+        "group": "Geral",
+        "card": false,
+        "label": "App Standby agressivo",
+        "desc": "Restringe apps ociosos em segundo plano.",
+        "help": "Põe apps ociosos em standby e restringe o que eles podem fazer em segundo plano. Reduz o consumo de CPU e bateria \"à toa\" sem impedir o app que você está usando.",
+        "argv": [
+            "hidden-tune.sh",
+            "bg",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.bg_off",
+        "group": "Geral",
+        "card": false,
+        "label": "App Standby: padrão",
+        "desc": "Devolve a restrição de 2º plano ao padrão.",
+        "help": "Volta a restrição automática de apps em segundo plano ao padrão do sistema.",
+        "argv": [
+            "hidden-tune.sh",
+            "bg",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.aot_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Compilar apps (abre mais rápido)",
+        "desc": "Compila os apps em código nativo (AOT).",
+        "help": "Sem compilação, cada app é interpretado na primeira abertura e compila enquanto você usa — é a causa do \"abre devagar e engasga\". Aqui o sistema compila tudo em código nativo, com prioridade máxima para o jogo. Pode demorar alguns minutos e o ganho aparece nas próximas aberturas.",
+        "argv": [
+            "hidden-tune.sh",
+            "aot",
+            "on"
+        ],
+        "risk": "safe",
+        "timeout": 600,
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.aot_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Compilação: padrão",
+        "desc": "Volta a compilar só o perfil de uso.",
+        "help": "Devolve o modo de compilação ao padrão (compila só o perfil de uso, não o app inteiro).",
+        "argv": [
+            "hidden-tune.sh",
+            "aot",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.ram_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Compactação de memória",
+        "desc": "zRAM mais agressivo e menos pressão de cache.",
+        "help": "Ajusta a compactação de memória (zRAM) e os limites de água do kernel. O sistema compacta a RAM em vez de fechar o app, então sobra mais memória para o jogo. Custa um pouco de CPU.",
+        "argv": [
+            "hidden-tune.sh",
+            "ram",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.ram_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Compactação: padrão",
+        "desc": "Devolve a compactação ao padrão.",
+        "help": "Devolve a compactação de memória ao padrão do sistema.",
+        "argv": [
+            "hidden-tune.sh",
+            "ram",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.gc_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Coleta de lixo sem travar",
+        "desc": "Coleta de lixo em paralelo (menos engasgo).",
+        "help": "Liga a coleta de lixo concorrente: o Android coleta memória em paralelo em vez de pausar o app. É o que causa aquela travada de meio segundo no meio da partida.",
+        "argv": [
+            "hidden-tune.sh",
+            "gc",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.gc_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Coleta de lixo: padrão",
+        "desc": "Devolve a coleta de lixo ao padrão.",
+        "help": "Devolve a coleta de lixo ao comportamento padrão do sistema.",
+        "argv": [
+            "hidden-tune.sh",
+            "gc",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.freezer_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Congelar apps em cache",
+        "desc": "Congela o que está em cache em vez de matar.",
+        "help": "Congela os apps que estão em cache: eles param de consumir CPU, mas voltam na hora em que você abre de novo (sem recarregar). É o que o Hail\/Greenify fazem, aqui pelo mecanismo do próprio Android.",
+        "argv": [
+            "hidden-tune.sh",
+            "freezer",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.freezer_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Congelador: padrão",
+        "desc": "Devolve o congelador ao padrão.",
+        "help": "Devolve o congelamento de apps em cache ao padrão do sistema.",
+        "argv": [
+            "hidden-tune.sh",
+            "freezer",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.gpu_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Driver gráfico para os apps",
+        "desc": "Libera o driver de jogo para todos os apps.",
+        "help": "Libera o driver gráfico de jogo para todos os apps. O driver de jogo fala mais direto com a GPU, tirando uma camada de tradução no caminho dos frames.",
+        "argv": [
+            "hidden-tune.sh",
+            "gpu",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.gpu_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Driver gráfico: padrão",
+        "desc": "Devolve o driver gráfico ao padrão.",
+        "help": "Devolve a seleção de driver gráfico ao padrão do sistema.",
+        "argv": [
+            "hidden-tune.sh",
+            "gpu",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.netstats_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Parar estatísticas de rede",
+        "desc": "O sistema para de gravar o uso de dados por app.",
+        "help": "O Android coleta o uso de dados de cada app o tempo todo e grava em disco. Parar isso reduz leitura\/escrita no armazenamento e um pouco de CPU; só deixa de existir o gráfico de \"uso de dados por app\" nas configurações.",
+        "argv": [
+            "hidden-tune.sh",
+            "netstats",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.netstats_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Estatísticas de rede: padrão",
+        "desc": "Volta a coletar o uso de dados por app.",
+        "help": "Volta a coletar as estatísticas de rede por app.",
+        "argv": [
+            "hidden-tune.sh",
+            "netstats",
+            "off"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.trim",
+        "group": "Geral",
+        "card": false,
+        "label": "TRIM do armazenamento",
+        "desc": "Limpa os blocos livres do armazenamento (uma vez).",
+        "help": "Roda o TRIM sob demanda: o armazenamento avisa o chip quais blocos estão livres, o que mantém a velocidade de leitura com o tempo. É uma limpeza pontual e segura (não tem o que desfazer).",
+        "argv": [
+            "hidden-tune.sh",
+            "trim",
+            "on"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.all_on",
+        "group": "Geral",
+        "card": false,
+        "label": "Aplicar TODAS as otimizações escondidas",
+        "desc": "Liga de uma vez tudo que o Android esconde.",
+        "help": "Liga de uma vez todos os ajustes escondidos: constantes do ActivityManager, verificador de pacotes, App Standby, compilação AOT, compactação de memória, coleta de lixo, congelador, driver gráfico, estatísticas de rede e TRIM. Tudo é reversível em \"Reverter TUDO\".",
+        "argv": [
+            "hidden-tune.sh",
+            "all",
+            "on"
+        ],
+        "risk": "safe",
+        "timeout": 900,
+        "params": [],
+        "confirm": false
+    },
+    {
+        "id": "hidden.all_off",
+        "group": "Geral",
+        "card": false,
+        "label": "Desligar TODAS as otimizações escondidas",
+        "desc": "Devolve tudo ao padrão de fábrica.",
+        "help": "Devolve todos os ajustes escondidos ao padrão de fábrica de uma vez.",
+        "argv": [
+            "hidden-tune.sh",
+            "all",
+            "off"
+        ],
+        "risk": "safe",
+        "timeout": 900,
+        "params": [],
+        "confirm": false
     }
 ]

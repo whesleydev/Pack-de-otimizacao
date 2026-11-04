@@ -56,6 +56,8 @@ class PackBridge(
     private val onActionSound: (String) -> Unit,
     private val onRunDone: (String, Boolean) -> Unit,
     private val deliver: (cbId: String, json: String) -> Unit,
+    /** Empurra um evento para o WebView sem pedido (usado pelo Terminal ao vivo). */
+    private val push: (event: String, json: String) -> Unit = { _, _ -> },
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -84,6 +86,11 @@ class PackBridge(
                     "log" -> logImpl()
                     "log_all" -> logAllImpl()
                     "term" -> termImpl(payload)
+                    "term_stream" -> termStreamImpl(payload)
+                    "term_cancel" -> {
+                        runnerProvider()?.cancel()
+                        okJson()
+                    }
                     "term_hist" -> termHistImpl()
                     "actions" -> actionsImpl()
                     "info" -> infoImpl()
@@ -150,7 +157,9 @@ class PackBridge(
         }
 
         onActionSound(soundFor(a.group))
+        val t0 = System.currentTimeMillis()
         val res = shell(scriptCommand(argv[0], argv.drop(1)))
+        val durMs = System.currentTimeMillis() - t0
         val out = joinOutput(res.stdout, res.stderr)
         val v = parseResult(out)
         val applies = v["applies"]?.toIntOrNull() ?: 0
@@ -173,7 +182,7 @@ class PackBridge(
         onActionSound(if (ok) PackCatalog.SND_OK else PackCatalog.SND_ERR)
 
         onRunDone(a.group, ok)
-        logAppend(id, a.label, argv.joinToString(" "), ok, res.code, text, applies, changed, failed)
+        logAppend(id, a.label, argv.joinToString(" "), ok, res.code, text, applies, changed, failed, durMs)
 
         return JSONObject()
             .put("ok", ok).put("code", res.code).put("out", text)
@@ -347,11 +356,45 @@ class PackBridge(
         val body = try { JSONObject(bodyJson) } catch (e: Exception) { JSONObject() }
         val cmd = body.optString("cmd", "").trim()
         if (cmd.isEmpty()) return err("comando vazio")
+        val t0 = System.currentTimeMillis()
         val res = shell(cmd)
         val out = joinOutput(res.stdout, res.stderr)
         termAppend(cmd, out)
-        logAppend("terminal", "Terminal: " + cmd.take(80), "sh -c " + cmd, res.ok, res.code, out)
+        logAppend("terminal", "Terminal: " + cmd.take(80), "sh -c " + cmd, res.ok, res.code, out,
+            durMs = System.currentTimeMillis() - t0)
         return JSONObject().put("ok", res.ok).put("code", res.code).put("out", out).toString()
+    }
+
+    /**
+     * Terminal AO VIVO: roda o comando e empurra cada pedaço da saída para o
+     * WebView na hora (`push("term", ...)`), então o usuário vê o comando
+     * trabalhando em vez de esperar o fim. No fim devolve o resultado completo
+     * (que também vira uma linha no Log).
+     */
+    private suspend fun termStreamImpl(bodyJson: String): String {
+        val body = try { JSONObject(bodyJson) } catch (e: Exception) { JSONObject() }
+        val cmd = body.optString("cmd", "").trim()
+        if (cmd.isEmpty()) return err("comando vazio")
+        val r = runnerProvider() ?: return err("sem acesso (conecte o Shizuku ou o ADB)")
+        val t0 = System.currentTimeMillis()
+        val out = StringBuilder()
+        val res = try {
+            r.execStream(cmd) { chunk ->
+                synchronized(out) { out.append(chunk) }
+                push("term", JSONObject().put("out", chunk).toString())
+            }
+        } catch (t: Throwable) {
+            ExecResult(1, "", "erro: ${t.message}")
+        }
+        val full = out.toString().ifEmpty { joinOutput(res.stdout, res.stderr) }
+        termAppend(cmd, full)
+        logAppend("terminal", "Terminal: " + cmd.take(80), "sh -c " + cmd, res.ok, res.code, full,
+            durMs = System.currentTimeMillis() - t0)
+        push("term_done", JSONObject().put("code", res.code).put("ok", res.ok).toString())
+        // streamed=true diz ao painel que a saída já chegou ao vivo — assim ele
+        // NÃO imprime de novo o campo "out" (o web manda false e imprime).
+        return JSONObject().put("ok", res.ok).put("code", res.code).put("out", full)
+            .put("streamed", true).toString()
     }
 
     private fun termHistImpl(): String {
@@ -383,6 +426,7 @@ class PackBridge(
     private fun logAppend(
         id: String, label: String, cmd: String, ok: Boolean, code: Int,
         out: String = "", applies: Int = 0, changed: Int = 0, failed: Int = 0,
+        durMs: Long = 0,
     ) {
         try {
             val f = File(packDir(), "state/log.jsonl")
@@ -392,6 +436,7 @@ class PackBridge(
                 .put("id", id).put("label", label).put("cmd", cmd)
                 .put("ok", ok).put("code", code)
                 .put("applies", applies).put("changed", changed).put("failed", failed)
+                .put("dur_ms", durMs)
                 .put("reasons", JSONArray(failReasons(out)))
                 .put("out", out.take(6000))
                 .toString()

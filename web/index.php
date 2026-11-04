@@ -99,6 +99,7 @@ $TERMINAL_HTML = <<<'HTML'
           <button class="term-tool" type="button" id="termCopy" title="Copiar toda a saída">copiar</button>
           <button class="term-tool" type="button" id="termSave" title="Baixar a saída como arquivo">salvar</button>
           <button class="term-tool" type="button" id="termClear" title="Limpar a tela">limpar</button>
+          <button class="term-tool" type="button" id="termFull" title="Ocupar a tela toda">tela cheia</button>
         </div>
         <pre class="termout" id="termOut" aria-live="polite" tabindex="0"></pre>
         <div class="termrow">
@@ -106,6 +107,7 @@ $TERMINAL_HTML = <<<'HTML'
           <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
                  enterkeyhint="send" placeholder="digite um comando e toque em Executar" aria-label="Comando">
           <button class="btn primary" id="termRun" type="button" style="width:auto">Executar</button>
+          <button class="btn" id="termStop" type="button" style="width:auto" hidden>parar</button>
         </div>
         <div class="term-quick" id="termQuick" role="group" aria-label="Comandos rápidos"></div>
         <p class="termhint">Histórico: <code>↑</code>/<code>↓</code> no campo. <code>Ctrl</code>+<code>L</code> limpa.
@@ -632,6 +634,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
   font-size:11.5px;white-space:pre-wrap;word-break:break-word;color:var(--ink);opacity:.86}
 .logsrow .chev{flex:none;color:var(--muted);font-size:11px}
 .logs-empty{color:var(--muted);padding:8px 0}
+.logspanel .bar .logfilter{flex:1;min-width:0;max-width:340px;font-family:var(--mono);font-size:12px;
+  padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--glass-2);color:var(--ink)}
+.logsrow .dur{color:var(--muted);font-size:11px;flex:none}
+.logsrow .sum{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
 
 /* ---- terminal real -------------------------------------------------------- */
 .termwrap{display:flex;flex-direction:column;gap:10px;margin-top:14px}
@@ -639,6 +645,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
   padding:14px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word;
   min-height:220px;max-height:52dvh;overflow:auto;margin:0}
 .termout .c{color:#8fd3ff}
+.term-shell.fs{position:fixed;inset:0;z-index:80;margin:0;border-radius:0;max-height:100dvh;
+  display:flex;flex-direction:column}
+.term-shell.fs .termout{flex:1;max-height:none;min-height:0;font-size:13px}
+.term-shell.fs .term-quick{max-height:34dvh;overflow:auto}
 .termrow{display:flex;gap:8px;align-items:center}
 .termrow .pfx{font-family:var(--mono);color:var(--accent);font-weight:800}
 .termrow input{flex:1;font-family:var(--mono)}
@@ -1286,7 +1296,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
 </div>
 
 <div class="logspanel" id="logspanel" role="region" aria-label="Logs">
-  <div class="bar"><b>Logs</b><span class="grow"></span>
+  <div class="bar"><b>Logs</b>
+    <input class="logfilter" id="logsFilter" type="search" placeholder="filtrar por nome, comando ou erro…" autocomplete="off">
+    <span class="grow"></span>
+    <button class="jump" id="logsExport" type="button" style="border-radius:999px;padding:6px 12px">Exportar</button>
     <button class="jump" id="logsRefresh" type="button" style="border-radius:999px;padding:6px 12px">Atualizar</button>
     <button class="close-x" id="logsClose">fechar <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="body" id="logsBody"></div>
@@ -2046,18 +2059,39 @@ if (btnStatus) btnStatus.onclick = async () => { openConsole("Status do aparelho
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 /* Cada linha guarda o que o script tentou (applies/changed/failed), as razões
    da falha e a saída crua. O resumo fica à vista; o resto abre no toque. */
+let LOGS = [];
+function logDur(ms){ if (ms == null || ms === 0) return ""; return ms < 1000 ? (ms + " ms") : ((ms/1000).toFixed(1) + " s"); }
+function logSummary(x){
+  const parts = [];
+  if (x.applies) parts.push(x.changed + "/" + x.applies + " aplicada(s)");
+  else if (x.changed) parts.push(x.changed + " aplicada(s)");
+  if (x.failed) parts.push(x.failed + " não pegou");
+  if (x.ok === false && x.code != null && x.code !== 0) parts.push("código " + x.code);
+  return parts.join(" · ");
+}
+function logsMatch(x, q){
+  if (!q) return true;
+  q = q.toLowerCase();
+  const hay = [x.label, x.id, x.cmd, (x.reasons||[]).join(" "), x.out].join(" ").toLowerCase();
+  return hay.indexOf(q) !== -1;
+}
 function renderLogs(list){
   const body = document.getElementById("logsBody"); if (!body) return;
-  if (!list || !list.length){ body.innerHTML = '<div class="logs-empty">(nada registrado ainda)</div>'; return; }
-  body.innerHTML = list.map((x, i) => {
+  const q = (document.getElementById("logsFilter")||{}).value || "";
+  const rows = (list || []).filter(x => logsMatch(x, q.trim()));
+  if (!rows.length){ body.innerHTML = '<div class="logs-empty">' + (q ? "(nada bate com o filtro)" : "(nada registrado ainda)") + '</div>'; return; }
+  body.innerHTML = rows.map((x, i) => {
     const st = x.ok ? '<span class="st ok">[ok]</span>' : '<span class="st no">[erro]</span>';
     const ts = x.ts ? String(x.ts).replace("T"," ").replace(/\..*$/,"") : "";
+    const dur = logDur(x.dur_ms);
     const cmd = x.cmd ? '<span class="cmd">$ ' + esc(x.cmd) + '</span>' : '';
+    const sum = logSummary(x);
     const reasons = Array.isArray(x.reasons) ? x.reasons : [];
     const counts = [];
     if (x.applies != null) counts.push(x.applies + " tentativa(s)");
     if (x.changed != null) counts.push(x.changed + " aplicada(s)");
     if (x.failed != null && x.failed > 0) counts.push(x.failed + " falha(s)");
+    if (dur) counts.push("levou " + dur);
     if (x.code != null && x.code !== 0) counts.push("código " + x.code);
     const why = reasons.length
       ? '<ul class="why">' + reasons.map(r => '<li>' + esc(r) + '</li>').join("") + '</ul>' : '';
@@ -2070,7 +2104,8 @@ function renderLogs(list){
       : '';
     return '<div class="logsrow' + (hasDet ? ' has-det' : '') + '" data-i="' + i + '">'
       + st + '<span class="ts">' + esc(ts) + '</span>'
-      + '<span class="lb">' + esc(x.label || x.id || "?") + cmd + det + '</span>'
+      + '<span class="lb">' + esc(x.label || x.id || "?") + (sum ? '<span class="sum">' + esc(sum) + '</span>' : '') + cmd + det + '</span>'
+      + (dur ? '<span class="dur">' + esc(dur) + '</span>' : '')
       + (hasDet ? '<span class="chev">▾</span>' : '') + '</div>';
   }).join("");
   body.querySelectorAll(".logsrow.has-det").forEach(row => {
@@ -2086,12 +2121,26 @@ async function openLogs(){
   p.classList.add("open");
   const body = document.getElementById("logsBody");
   if (body) body.innerHTML = "lendo…";
-  try{ const j = await apiGet("log_all"); renderLogs(j.log || []); }
+  try{ const j = await apiGet("log_all"); LOGS = (j.log || []); renderLogs(LOGS); }
   catch(e){ if (body) body.innerHTML = '<div class="logs-empty">erro: ' + esc(e) + '</div>'; }
 }
 const btnLogs = document.getElementById("btnLogs"); if (btnLogs) btnLogs.onclick = openLogs;
 const logsClose = document.getElementById("logsClose"); if (logsClose) logsClose.onclick = () => document.getElementById("logspanel").classList.remove("open");
 const logsRefresh = document.getElementById("logsRefresh"); if (logsRefresh) logsRefresh.onclick = openLogs;
+const logsFilter = document.getElementById("logsFilter"); if (logsFilter) logsFilter.oninput = () => renderLogs(LOGS);
+const logsExport = document.getElementById("logsExport"); if (logsExport) logsExport.onclick = () => {
+  const lines = LOGS.map(x => {
+    const st = x.ok ? "ok" : "erro"; const sum = logSummary(x);
+    return "[" + (x.ts||"") + "] [" + st + "] " + (x.label || x.id || "?") + (sum ? " (" + sum + ")" : "")
+      + "\n  $ " + (x.cmd || "") + ((x.reasons||[]).length ? "\n  ! " + x.reasons.join("\n  ! ") : "")
+      + (x.out ? "\n" + x.out.split("\n").map(l => "  " + l).join("\n") : "");
+  });
+  const blob = new Blob([lines.join("\n\n")], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "logs-" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".txt";
+  a.click(); URL.revokeObjectURL(a.href);
+};
 
 /* ---- TERMINAL amplo: cwd, atalhos, copiar/salvar, histórico ----------------- */
 let termHist = [], termIdx = -1, termText = "", termCwd = "~";
@@ -2112,21 +2161,33 @@ function termPaint(t){ const o = document.getElementById("termOut"); if (o) o.te
 function termCwdPaint(){ const e = document.getElementById("termCwd"); if (e) e.textContent = termCwd; }
 function termOutText(){ const o = document.getElementById("termOut"); return o ? o.textContent : ""; }
 function termScroll(){ const o = document.getElementById("termOut"); if (o) o.scrollTop = o.scrollHeight; }
+/* Terminal ao vivo: saída em tempo real, tela cheia, parar, buffer persistente */
+let termBusy = false;
+function termBufSave(){ try{ const o=document.getElementById("termOut"); localStorage.setItem("otm-term-buf", o ? o.textContent : ""); }catch(e){} }
+function termBufLoad(){ try{ const b=localStorage.getItem("otm-term-buf"); const o=document.getElementById("termOut"); if (b && o) o.textContent = b; }catch(e){} }
+function termAppend(t){ const o = document.getElementById("termOut"); if (!o || !t) return; o.textContent += t; termScroll(); termBufSave(); }
+function termBusySet(on){
+  termBusy = on;
+  const inp = document.getElementById("termInput"); if (inp) inp.disabled = on;
+  const run = document.getElementById("termRun"); if (run) run.disabled = on;
+  const stop = document.getElementById("termStop"); if (stop) stop.hidden = !on;
+  if (!on && inp) inp.focus();
+}
 async function termRunCmd(cmd){
-  cmd = (cmd || "").trim(); if (!cmd) return;
+  cmd = (cmd || "").trim(); if (!cmd || termBusy) return;
   termHist.push(cmd); termIdx = termHist.length;
-  const o = document.getElementById("termOut");
-  if (o){ o.textContent += (o.textContent ? "\n" : "") + termCwd + " $ " + cmd + "\n"; termScroll(); }
-  const inp = document.getElementById("termInput"); if (inp) inp.disabled = true;
+  termAppend(termCwd + " $ " + cmd + "\n");
+  termBusySet(true);
   try{
-    const r = await fetch("api.php?do=term", {
+    const r = await fetch("api.php?do=term_stream", {
       method:"POST", headers:{"Content-Type":"application/json","X-OTM-Token":TOKEN},
       body: JSON.stringify({cmd})
     });
     const j = await r.json();
-    if (o){ o.textContent += (j.out || "(sem saída)") + "\n"; termScroll(); }
-  }catch(e){ if (o){ o.textContent += "erro: " + e + "\n"; } }
-  if (inp){ inp.disabled = false; inp.focus(); }
+    if (j && !j.streamed) termAppend((j.out || "(sem saída)") + "\n");
+    if (j && j.code) termAppend("[código " + j.code + "]\n");
+  }catch(e){ termAppend("erro: " + e + "\n"); }
+  termBusySet(false);
   loadState();
 }
 function termFill(cmd){
@@ -2153,7 +2214,17 @@ function initTerm(){
     }
   });
   const clr = document.getElementById("termClear");
-  if (clr) clr.onclick = () => termPaint("");
+  if (clr) clr.onclick = () => { termPaint(""); termBufSave(); };
+  const fsc = document.getElementById("termFull");
+  if (fsc) fsc.onclick = () => {
+    const shell = document.querySelector(".term-shell"); if (!shell) return;
+    const on = shell.classList.toggle("fs");
+    fsc.textContent = on ? "sair da tela cheia" : "tela cheia";
+    termScroll();
+  };
+  const stp = document.getElementById("termStop");
+  if (stp) stp.onclick = () => { try { if (window.OTM) window.OTM.call("term_cancel", "", "stop"); } catch(e){} };
+  termBufLoad();
   const cp = document.getElementById("termCopy");
   if (cp) cp.onclick = async () => {
     try{ await navigator.clipboard.writeText(termOutText()); toast("Saída copiada", "ok"); }

@@ -265,6 +265,12 @@ class PanelActivity : AppCompatActivity() {
                 web.evaluateJavascript(js, null)
             }
         },
+        push = { event, json ->
+            runOnUiThread {
+                val js = "window.__otmPush(" + jsString(event) + "," + jsString(json) + ");"
+                web.evaluateJavascript(js, null)
+            }
+        },
     )
 
     // ---- painel flutuante (overlay) ------------------------------------------

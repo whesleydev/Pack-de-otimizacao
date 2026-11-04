@@ -40,6 +40,15 @@ soc_nome() {
 }
 
 confirm() {
+    # Sem terminal (app via Shizuku, painel web por pipe, `sh pack.sh restore <
+    # /dev/null`) o `read` recebe EOF na hora e a resposta seria "não" — foi
+    # assim que o "Reverter TUDO" saía dizendo que reverteu sem reverter nada.
+    # O painel JÁ pergunta antes de mandar a ação; aqui a segunda pergunta só
+    # faz sentido com um humano do outro lado (tty). OTM_ASSUME_YES=1 força o
+    # sim explicitamente para quem chama por script.
+    if [ "${OTM_ASSUME_YES:-0}" = "1" ] || [ ! -t 0 ]; then
+        return 0
+    fi
     printf '  %s [s/N]: ' "$1"
     read -r r
     case "$r" in s|S|y|Y|sim|SIM) return 0 ;; *) return 1 ;; esac

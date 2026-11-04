@@ -49,6 +49,9 @@ class AdbRunner(private val context: Context) : ShellRunner {
     private var connection: io.github.muntashirakon.adb.AdbConnection? = null
     private var multicastLock: WifiManager.MulticastLock? = null
 
+    /** Fluxo do comando em execução agora (para o "parar" do Terminal). */
+    @Volatile private var currentStream: AdbStream? = null
+
     val isConnected: Boolean get() = connection?.isConnectionEstablished == true
 
     /** Faz o pareamento por código (a porta é a que aparece em "Parear por código"). */
@@ -306,6 +309,43 @@ class AdbRunner(private val context: Context) : ShellRunner {
         } catch (t: Throwable) {
             ExecResult(1, "", "Erro no ADB: ${describe(t)}")
         }
+    }
+
+    /**
+     * Modo ao vivo do Terminal pelo ADB: o shell do ADB já junta stdout e stderr
+     * num fluxo só, então basta ler em pedaços e repassar. O `close()` do stream
+     * mata o comando — é o "parar".
+     */
+    override suspend fun execStream(command: String, onChunk: (String) -> Unit): ExecResult {
+        val conn = connection ?: return ExecResult(1, "", "ADB não conectado.")
+        var stream: AdbStream? = null
+        return try {
+            val s: AdbStream = conn.open(LocalServices.SHELL, command)
+            stream = s
+            currentStream = s
+            val all = StringBuilder()
+            s.openInputStream().use { ins ->
+                val reader = java.io.InputStreamReader(ins, Charsets.UTF_8)
+                val buf = CharArray(4096)
+                while (true) {
+                    val n = reader.read(buf)
+                    if (n <= 0) break
+                    val chunk = String(buf, 0, n)
+                    all.append(chunk)
+                    onChunk(chunk)
+                }
+            }
+            ExecResult(0, all.toString(), "")
+        } catch (t: Throwable) {
+            ExecResult(1, "", "Erro no ADB: ${describe(t)}")
+        } finally {
+            currentStream = null
+            try { stream?.close() } catch (_: Throwable) {}
+        }
+    }
+
+    override fun cancel() {
+        try { currentStream?.close() } catch (_: Throwable) {}
     }
 
     override fun close() {

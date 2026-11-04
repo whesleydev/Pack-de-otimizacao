@@ -2456,6 +2456,30 @@ t_panel_v219() {
     grep -q 'list="applist"' "$app" && bad "app: ainda pede pacote digitado" || ok "app: pacote não é digitado"
     # terminal do app executa via shell privilegiado (não por api.php)
     grep -q 'otm("term"' "$app" && ok "app: terminal usa a ponte nativa" || bad "app: terminal sem ponte"
+    # Terminal ao vivo: streaming de verdade no app (Kotlin) + tela cheia + parar
+    grep -q 'execStream' "$src/ShellRunner.kt" && ok "shell: execStream na interface" || bad "sem execStream"
+    grep -q 'override suspend fun execStream' "$src/ShizukuRunner.kt" && ok "shizuku: le a saida ao vivo" || bad "shizuku sem stream"
+    grep -q 'override suspend fun execStream' "$src/AdbRunner.kt" && ok "adb: le a saida ao vivo" || bad "adb sem stream"
+    grep -q '"term_stream" -> termStreamImpl(payload)' "$src/PackBridge.kt" && ok "bridge: term_stream" || bad "bridge sem term_stream"
+    grep -q '"term_cancel" ->' "$src/PackBridge.kt" && ok "bridge: term_cancel (parar)" || bad "bridge sem term_cancel"
+    grep -q 'put("streamed", true)' "$src/PackBridge.kt" && ok "bridge: marca a saida como ao vivo" || bad "bridge sem streamed"
+    grep -q 'push("term"' "$src/PackBridge.kt" && ok "bridge: empurra a saida em pedacos" || bad "bridge sem push"
+    grep -q 'push = { event, json ->' "$src/PanelActivity.kt" && ok "app: canal de push para o WebView" || bad "sem canal de push"
+    grep -q '__otmPush' "$app" && ok "app: JS recebe a saida ao vivo" || bad "app sem __otmPush"
+    grep -q 'id="termFull"' "$app" && ok "app: botao tela cheia" || bad "app sem tela cheia"
+    grep -q 'term-shell.fs' "$app" && ok "app: CSS da tela cheia" || bad "app sem CSS de tela cheia"
+    grep -q 'id="termStop"' "$app" && ok "app: botao parar" || bad "app sem parar"
+    grep -q 'termBufSave' "$app" && ok "app: buffer do terminal persiste" || bad "app sem buffer persistente"
+    grep -q 'term_stream' "$api" && grep -q "'streamed' => false" "$api" && ok "api.php: term_stream (fallback web)" || bad "api.php sem term_stream"
+    # Logs: duracao + resumo do que aplicou/nao aplicou + filtro + exportar
+    grep -q "'dur_ms' =>" "$lib" && grep -q 'put("dur_ms", durMs)' "$src/PackBridge.kt" \
+        && ok "log: duracao nos dois lados" || bad "log sem duracao"
+    grep -q 'logSummary' "$app" && grep -q 'logSummary' "$ROOT/web/index.php" \
+        && ok "app+web: resumo do log (aplicado/nao)" || bad "log sem resumo"
+    grep -q 'id="logsFilter"' "$app" && grep -q 'id="logsFilter"' "$ROOT/web/index.php" \
+        && ok "app+web: filtro de logs" || bad "log sem filtro"
+    grep -q 'id="logsExport"' "$app" && grep -q 'id="logsExport"' "$ROOT/web/index.php" \
+        && ok "app+web: exportar logs" || bad "log sem exportar"
 }
 
 t_keepalive() {
@@ -3230,6 +3254,83 @@ t_privilege_detect() {
     unset TMP_CMD_LOG TMP_AM_LOG TMP_PM_LOG
 }
 
+t_new_toggles() {
+    printf '\n  # toggles novos: composição, taxa de tela, toque e trava térmica\n'
+    local src="$ROOT/scripts/adb-tweaks.sh"
+    local lib="$ROOT/web/lib.php"
+    local st="$ROOT/scripts/panel-state.sh"
+    local app="$ROOT/app/src/main/assets/panel/index.html"
+
+    # os grupos existem, rodam e revertem (reversão com a tag certa)
+    rm -rf "$HOME/.packotm"; mkdir -p "$HOME/.packotm"
+    for g in gfx_comp gfx_comp_off fps_daemon touch_resp; do
+        OTM_MODE=local sh "$src" "$g" >/dev/null 2>&1
+        assert_eq "0" "$?" "grupo $g roda sem erro"
+    done
+    OTM_MODE=local sh "$src" fps_daemon off >/dev/null 2>&1
+    OTM_MODE=local sh "$src" touch_resp off >/dev/null 2>&1
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "peak_refresh_rate" \
+        "fps_daemon guarda a reversão da taxa"
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "touch_responsiveness" \
+        "touch_resp guarda a reversão do toque"
+    assert_contains "$HOME/.packotm/undo/adb-tweaks.sh" "disable_draw_defer" \
+        "gfx_comp guarda a reversão da composição"
+
+    # a trava térmica é SEM root: lê a temperatura e não escreve em /sys
+    grep -q 'otm_temp' "$src" && ok "trava térmica lê a temperatura real" \
+        || bad "trava térmica não lê temperatura"
+    grep -q 'thermal.*sys/class/thermal/thermal_zone.*>' "$src" \
+        && bad "trava térmica escreve em /sys (exige root)" \
+        || ok "trava térmica não escreve em /sys (sem root)"
+
+    # as ações novas existem no registro e apontam para argv válido
+    php -r 'require "'"$lib"'"; $a=otm_actions();
+             $need=["gfx.comp_on","gfx.comp_off","gfx.fpsdaemon_on","gfx.fpsdaemon_off",
+                    "gfx.fpsdaemon_status","touch.resp_on","touch.resp_off","thermal.guard"];
+             $bad=[]; foreach($need as $id){ if(!isset($a[$id])) $bad[]=$id; }
+             echo $bad ? implode(", ",$bad) : "OK";' > "$TMP/nt_act" 2>&1
+    assert_contains "$TMP/nt_act" "OK" "registro: as 8 ações novas existem"
+
+    # os interruptores novos têm par on/off válido e estado real
+    php -r 'require "'"$lib"'"; $a=otm_actions(); $t=otm_toggles(); $bad=[];
+             foreach (["t.gfx_comp","t.touch_resp"] as $id){
+               $g=$t[$id] ?? null;
+               if(!$g){ $bad[]="$id:ausente"; continue; }
+               foreach(["on","off"] as $k){ if(!isset($a[$g[$k]])) $bad[]="$id.$k"; }
+             }
+             echo $bad ? implode(", ",$bad) : "OK";' > "$TMP/nt_tg" 2>&1
+    assert_contains "$TMP/nt_tg" "OK" "registro: os interruptores novos são consistentes"
+    for k in gfx_comp touch_resp; do
+        grep -q "\"$k\"" "$st" && ok "estado real: panel-state tem '$k'" \
+            || bad "estado real: panel-state sem '$k'"
+    done
+
+    # paridade: os dois painéis têm os mesmos interruptores novos. O web é um
+    # template PHP: o que importa é o HTML RENDERIZADO, não a fonte.
+    php -r 'require "'"$ROOT"'/web/auth.php"; otm_auth_start(); $_SESSION["otm_user"]="x";
+             $_SERVER["REQUEST_METHOD"]="GET"; ob_start();
+             require "'"$ROOT"'/web/index.php"; echo ob_get_clean();' > "$TMP/nt_web.html" 2>/dev/null
+    for f in "$app" "$TMP/nt_web.html"; do
+        grep -q 't.gfx_comp' "$f" && grep -q 't.touch_resp' "$f" \
+            && ok "$(basename "$f"): interruptores novos presentes" \
+            || bad "$(basename "$f"): faltam interruptores novos"
+    done
+
+    # o catálogo do app (gerado de lib.php) tem as ações novas
+    for id in gfx.comp_on gfx.fpsdaemon_on touch.resp_on thermal.guard; do
+        grep -q "\"$id\"" "$ROOT/app/src/main/assets/panel/actions.json" \
+            && ok "catálogo: $id presente" || bad "catálogo: falta $id"
+    done
+
+    # o gerador é reprodutível: rodar de novo não muda os arquivos
+    h1="$(cat "$ROOT/app/src/main/assets/panel/actions.json" "$app" | cksum)"
+    sh "$ROOT/scripts/panel-actions.sh" >/dev/null 2>&1
+    h2="$(cat "$ROOT/app/src/main/assets/panel/actions.json" "$app" | cksum)"
+    assert_eq "$h1" "$h2" "gerador do catálogo é idempotente"
+
+    rm -rf "$HOME/.packotm"
+}
+
 t_undo_scope() {
     printf '\n  # reversão por escopo: desfazer uma ação não apaga o que outra aplicou\n'
     rm -rf "$HOME/.packotm"
@@ -3286,6 +3387,14 @@ t_no_silent_conflicts() {
         global accessibility_reduce_transparency
         global app_standby_enabled
         global adaptive_battery_management_enabled
+        # otimizações escondidas (hidden-tune.sh): cada módulo tem o par
+        # liga/desliga dele (proc, verify, bg, freezer, gpu, netstats), então a
+        # mesma chave aparece com dois valores de propósito.
+        global app_auto_restriction_enabled
+        global cached_apps_freezer
+        global package_verifier_enable
+        global verifier_verify_adb_installs
+        global netstats_enabled
         global private_dns_mode
         global private_dns_specifier
         global settings_enable_monitor_phantom_procs
@@ -3317,6 +3426,12 @@ t_no_silent_conflicts() {
         # economia de dados: mobile_net() desliga e mobile_net_off() devolve.
         # É o par liga/desliga (mesma chave, valores opostos), intencional.
         global data_saver_mode
+        # composição gráfica enxuta: gfx_comp() liga e gfx_comp_off() devolve
+        # ao padrão (par liga/desliga, mesma chave e valores opostos).
+        global debug.hwui.disable_draw_defer
+        global debug.hwui.disable_scissor_opt
+        global debug.hwui.render_dirty_regions
+        global debug.hwui.use_buffer_age
     "
     python3 - "$ROOT" "$allow" <<'PYEOF' > "$TMP/conf"
 import re,sys,glob,collections,os
@@ -4475,6 +4590,7 @@ t_toggles_registry() {
 }
 
 t_toggles_registry
+t_new_toggles
 t_undo_scope
 t_undo_scopes_declared
 t_no_silent_conflicts

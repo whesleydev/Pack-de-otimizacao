@@ -245,6 +245,57 @@ function otm_toggles(): array {
             'desc' => 'Desliga a economia e o App Standby.',
             'help' => 'Desliga a economia de bateria adaptativa e o App Standby, que costumam derrubar apps em segundo plano.',
             'on' => 'perm.battery', 'off' => 'perm.battery_off', 'state' => 'adaptive_batt', 'on_values' => ['0']],
+
+        // ----- Otimizações que o Android esconde (hidden-tune.sh) -----
+        // Cada interruptor acende pelo estado REAL lido em panel-state.sh (as
+        // chaves "am_tuned"/"aot_tuned"/"ram_tuned" são derivadas: só valem
+        // quando a marca do ajuste existe no aparelho).
+        't.h_proc' => ['group' => 'Geral', 'title' => 'Constantes do ActivityManager',
+            'desc' => 'Memória, jobs e serviços de 2º plano.',
+            'help' => 'Mexe nas constantes internas do ActivityManager: cache de processos, limites de memória por app, tempos de serviço em segundo plano e a verificação periódica de CPU. É o ajuste de maior impacto para o sistema parar de "acordar à toa" e o jogo não ser fechado por falta de RAM.',
+            'on' => 'hidden.proc_on', 'off' => 'hidden.proc_off', 'state' => 'am_tuned', 'on_values' => ['on']],
+        't.h_verify' => ['group' => 'Geral', 'title' => 'Sem checagem de assinatura',
+            'desc' => 'Não verifica os apps a cada instalação.',
+            'help' => 'O verificador de pacotes confere a assinatura dos apps a cada instalação e em cada boot. Em aparelho com muitos apps isso custa tempo e leitura de disco. Desligar não afeta apps da Play Store (a loja tem o próprio controle).',
+            'on' => 'hidden.verify_on', 'off' => 'hidden.verify_off', 'state' => 'pkg_verify', 'on_values' => ['0']],
+        't.h_bg' => ['group' => 'Geral', 'title' => 'App Standby agressivo',
+            'desc' => 'Restringe apps ociosos em 2º plano.',
+            'help' => 'Põe apps ociosos em standby e restringe o que eles podem fazer em segundo plano. Reduz o consumo de CPU e bateria "à toa" sem impedir o app que você está usando.',
+            'on' => 'hidden.bg_on', 'off' => 'hidden.bg_off', 'state' => 'app_standby', 'on_values' => ['1']],
+        't.h_aot' => ['group' => 'Geral', 'title' => 'Compilar apps (AOT)',
+            'desc' => 'Compila em código nativo: abre mais rápido.',
+            'help' => 'Sem compilação, cada app é interpretado na primeira abertura e compila enquanto você usa — é a causa do "abre devagar e engasga". Aqui o sistema compila tudo em código nativo, com prioridade máxima para o jogo. Pode demorar alguns minutos e o ganho aparece nas próximas aberturas.',
+            'on' => 'hidden.aot_on', 'off' => 'hidden.aot_off', 'state' => 'aot_tuned', 'on_values' => ['on']],
+        't.h_ram' => ['group' => 'Geral', 'title' => 'Compactação de memória',
+            'desc' => 'zRAM mais agressivo: sobra mais RAM.',
+            'help' => 'Ajusta a compactação de memória (zRAM) e os limites de água do kernel. O sistema compacta a RAM em vez de fechar o app, então sobra mais memória para o jogo. Custa um pouco de CPU.',
+            'on' => 'hidden.ram_on', 'off' => 'hidden.ram_off', 'state' => 'ram_tuned', 'on_values' => ['on']],
+        't.h_gc' => ['group' => 'Geral', 'title' => 'Coleta de lixo sem travar',
+            'desc' => 'GC em paralelo: menos engasgo no jogo.',
+            'help' => 'Liga a coleta de lixo concorrente: o Android coleta memória em paralelo em vez de pausar o app. É o que causa aquela travada de meio segundo no meio da partida.',
+            'on' => 'hidden.gc_on', 'off' => 'hidden.gc_off', 'state' => 'concurrent_gc', 'on_values' => ['1']],
+        't.h_freezer' => ['group' => 'Geral', 'title' => 'Congelar apps em cache',
+            'desc' => 'Congela em vez de matar (volta instantâneo).',
+            'help' => 'Congela os apps que estão em cache: eles param de consumir CPU, mas voltam na hora em que você abre de novo (sem recarregar). É o que o Hail/Greenify fazem, aqui pelo mecanismo do próprio Android.',
+            'on' => 'hidden.freezer_on', 'off' => 'hidden.freezer_off', 'state' => 'cache_freezer', 'on_values' => ['enabled']],
+        't.h_gpu' => ['group' => 'Geral', 'title' => 'Driver gráfico liberado',
+            'desc' => 'Driver de jogo para todos os apps.',
+            'help' => 'Libera o driver gráfico de jogo para todos os apps. O driver de jogo fala mais direto com a GPU, tirando uma camada de tradução no caminho dos frames.',
+            'on' => 'hidden.gpu_on', 'off' => 'hidden.gpu_off', 'state' => 'game_driver_all', 'on_values' => ['1']],
+        't.h_netstats' => ['group' => 'Geral', 'title' => 'Sem estatísticas de rede',
+            'desc' => 'O sistema para de gravar uso de dados.',
+            'help' => 'O Android coleta o uso de dados de cada app o tempo todo e grava em disco. Parar isso reduz leitura/escrita no armazenamento e um pouco de CPU; só deixa de existir o gráfico de "uso de dados por app" nas configurações.',
+            'on' => 'hidden.netstats_on', 'off' => 'hidden.netstats_off', 'state' => 'netstats', 'on_values' => ['0']],
+
+        // ----- Gráficos e toque -----
+        't.gfx_comp' => ['group' => 'Display & Touch', 'title' => 'Composição gráfica enxuta',
+            'desc' => 'Menos camadas por frame: menos buffer intermediário.',
+            'help' => 'Enxuga a composição (draw defer, scissor, buffer age) e desliga o blur. Cada camada a menos é uma composição a menos por frame. Vale sem root e sobrevive ao reboot.',
+            'on' => 'gfx.comp_on', 'off' => 'gfx.comp_off', 'state' => 'gfx_comp', 'on_values' => ['on']],
+        't.touch_resp' => ['group' => 'Display & Touch', 'title' => 'Resposta ao toque rápida',
+            'desc' => 'Janelas curtas: o sistema reage na hora.',
+            'help' => 'Encurta as janelas do toque (responsividade, slop, multitouch e long-press). É o "atraso" entre o dedo e o sistema reagir — não troca o perfil de mira.',
+            'on' => 'touch.resp_on', 'off' => 'touch.resp_off', 'state' => 'touch_resp', 'on_values' => ['on']],
     ];
 }
 
@@ -424,12 +475,12 @@ function otm_actions(): array {
           'label' => 'Salvar configurações',
           'desc' => 'Salva um arquivo criptografado com as suas configurações.',
           'help' => 'Tira uma foto COMPLETA das configurações que o pack mexe (animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o que mais estiver ativo), junta num arquivo .txt criptografado e guarda numa pasta do app no seu aparelho. É o ponto de retorno: com esse arquivo você volta exatamente como estava, mesmo depois de mexer em muita coisa. O arquivo é seu e fica no seu aparelho — a chave é gerada aqui e não sai dele.',
-          'argv' => ['backup.sh', 'export'], 'timeout' => 180]);
+          'argv' => ['backup.sh', 'collect'], 'timeout' => 180]);
     $add(['id' => 'backup.import', 'group' => 'Geral', 'card' => false,
           'label' => 'Restaurar configurações',
           'desc' => 'Lê o arquivo criptografado e devolve as configurações salvas.',
           'help' => 'Lê o arquivo criptografado que você salvou e devolve TODAS as configurações de uma vez — animações, RAM, taxa de tela, renderizador, toque, rede, bateria e o resto. Serve para voltar ao estado da foto depois de qualquer mexida. Se você tem mais de um arquivo, ele restaura o mais recente; o painel mostra qual foi usado.',
-          'argv' => ['backup.sh', 'import'], 'confirm' => true, 'timeout' => 180]);
+          'argv' => ['backup.sh', 'restore'], 'confirm' => true, 'timeout' => 180]);
     $add(['id' => 'backup.list', 'group' => 'Geral', 'card' => false,
           'label' => 'Ver backups salvos',
           'desc' => 'Lista os arquivos de configuração guardados no aparelho.',
@@ -715,6 +766,42 @@ function otm_actions(): array {
           'desc' => 'Mostra o driver gráfico que está realmente em uso.',
           'help' => 'Mostra, lido do aparelho: se o ANGLE está ligado em todos os apps, se o driver de jogos está ligado, qual driver atualizável está escolhido e qual driver gráfico está instalado. Só leitura — nada fictício.',
           'argv' => ['deep-tune.sh', 'gfxdriver', 'status']]);
+
+    // ----- Gráficos e toque (novos toggles, SEM root) -----
+    $add(['id' => 'gfx.comp_on', 'group' => 'Display & Touch', 'label' => 'Composição gráfica enxuta',
+          'desc' => 'Menos camadas por frame: menos buffer intermediário e sem blur.',
+          'help' => 'Enxuga a composição: cada camada a menos é uma composição a menos por frame. São flags do sistema que valem sem root e continuam valendo depois de reiniciar (não é prop, que some no reboot). Combine com "Motor gráfico" para o resultado máximo. Reversível em "Reverter TUDO".',
+          'argv' => ['adb-tweaks.sh', 'gfx_comp']]);
+    $add(['id' => 'gfx.comp_off', 'group' => 'Display & Touch', 'label' => 'Composição gráfica: padrão',
+          'desc' => 'Devolve a composição ao padrão de fábrica.',
+          'help' => 'Devolve as flags de composição (draw defer, scissor, buffer age, blur) ao padrão de fábrica.',
+          'argv' => ['adb-tweaks.sh', 'gfx_comp_off']]);
+    $add(['id' => 'gfx.fpsdaemon_on', 'group' => 'Display & Touch', 'label' => 'Travar a taxa da tela (sem daemon de FPS)',
+          'desc' => 'Fixa a taxa no maior Hz da tela: o jogo não oscila de FPS.',
+          'help' => 'Em vez de deixar o sistema oscilar a taxa (60 -> 90 -> 120) conforme a carga, fixa mín = máx no maior Hz que a SUA tela suporta. O jogo para de "cair" de FPS e a composição não reconfigura o modo de vídeo no meio da partida. Usa a lista do próprio aparelho, não inventa Hz. Reversível em "Daemon de FPS: automático".',
+          'argv' => ['adb-tweaks.sh', 'fps_daemon', 'on']]);
+    $add(['id' => 'gfx.fpsdaemon_off', 'group' => 'Display & Touch', 'label' => 'Daemon de FPS: automático',
+          'desc' => 'Devolve a taxa da tela ao controle do sistema.',
+          'help' => 'Apaga a taxa fixa e o sistema volta a escolher a taxa sozinho (modo automático).',
+          'argv' => ['adb-tweaks.sh', 'fps_daemon', 'off']]);
+    $add(['id' => 'gfx.fpsdaemon_status', 'group' => 'Display & Touch', 'card' => false, 'label' => 'Daemon de FPS: ver a taxa',
+          'desc' => 'Mostra a taxa mínima e máxima em uso agora.',
+          'help' => 'Mostra a taxa mínima e a máxima da tela neste momento. Só leitura.',
+          'argv' => ['adb-tweaks.sh', 'fps_daemon', 'status']]);
+    $add(['id' => 'touch.resp_on', 'group' => 'Display & Touch', 'label' => 'Resposta ao toque: rápida',
+          'desc' => 'Janelas curtas de toque: o sistema reage na hora.',
+          'help' => 'Encurta as janelas do toque (responsividade, slop, multitouch e long-press). É o "atraso" entre o dedo e o sistema reagir — não troca o perfil de mira (isso fica nos perfis de sensibilidade). Reversível em "Resposta ao toque: padrão".',
+          'argv' => ['adb-tweaks.sh', 'touch_resp', 'on']]);
+    $add(['id' => 'touch.resp_off', 'group' => 'Display & Touch', 'label' => 'Resposta ao toque: padrão',
+          'desc' => 'Devolve as janelas de toque ao padrão.',
+          'help' => 'Apaga os ajustes de janela de toque e devolve o aparelho ao padrão.',
+          'argv' => ['adb-tweaks.sh', 'touch_resp', 'off']]);
+    $add(['id' => 'thermal.guard', 'group' => 'Desempenho', 'label' => 'Trava térmica (sem root)',
+          'desc' => 'Lê a temperatura e alivia a carga se passar do teto.',
+          'help' => 'A versão sem root da trava térmica: não reescreve limites do kernel (isso exige root). Ele LÊ a temperatura real do aparelho (sensor do sistema ou bateria) e, se passar do teto, alivia a carga — devolve a taxa de tela ao padrão e religa o blur. Use antes de uma sessão longa de jogo. O teto é configurável (padrão 43 °C).',
+          'argv' => ['adb-tweaks.sh', 'thermal_guard', 'on', '{celsius}'],
+          'params' => [['name' => 'celsius', 'type' => 'int', 'label' => 'Teto (°C)',
+                         'min' => 35, 'max' => 60, 'default' => 43]]]);
 
     // ----- Taxa de atualização (Hz) — escolha rápida -----
     $add(['id' => 'refresh.60', 'group' => 'Display & Touch', 'label' => '60Hz (economia)',
@@ -1573,6 +1660,116 @@ function otm_actions(): array {
           'help' => 'Reverte tudo o que o perfil personalizado aplicou e devolve o aparelho ao estado de fábrica de configuração. A sua escolha de recursos fica salva para aplicar de novo depois.',
           'argv' => ['profile-custom.sh', 'off'], 'confirm' => true, 'risk' => 'safe', 'timeout' => 300]);
 
+    // --- otimizações escondidas do Android (scripts/hidden-tune.sh) -----------
+    // Ações sem card: quem chama são os interruptores da aba Geral (o par
+    // liga/desliga de cada módulo). `hidden.all_on/all_off/trim` são chamadas
+    // pelo bloco "otimizações escondidas" do painel.
+    $add(['id' => 'hidden.proc_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Constantes do ActivityManager',
+          'desc' => 'Ajusta memória, jobs e serviços de 2º plano (escondido).',
+          'help' => 'Mexe nas constantes internas do ActivityManager: cache de processos, limites de memória por app, tempos de serviço em segundo plano e a verificação periódica de CPU. É o ajuste de maior impacto para o sistema parar de "acordar à toa" e o jogo não ser fechado por falta de RAM.',
+          'argv' => ['hidden-tune.sh', 'proc', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.proc_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Constantes do ActivityManager: padrão',
+          'desc' => 'Devolve as constantes ao padrão de fábrica.',
+          'help' => 'Apaga a chave de constantes do ActivityManager e o sistema volta ao padrão de fábrica.',
+          'argv' => ['hidden-tune.sh', 'proc', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.verify_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Menos checagem de assinatura',
+          'desc' => 'Corta a verificação de pacotes a cada instalação.',
+          'help' => 'O verificador de pacotes confere a assinatura dos apps a cada instalação e em cada boot. Em aparelho com muitos apps isso custa tempo e leitura de disco. Desligar não afeta apps da Play Store (a loja tem o próprio controle).',
+          'argv' => ['hidden-tune.sh', 'verify', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.verify_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Checagem de assinatura: padrão',
+          'desc' => 'Devolve a verificação de pacotes.',
+          'help' => 'Volta a verificar a assinatura dos apps a cada instalação.',
+          'argv' => ['hidden-tune.sh', 'verify', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.bg_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'App Standby agressivo',
+          'desc' => 'Restringe apps ociosos em segundo plano.',
+          'help' => 'Põe apps ociosos em standby e restringe o que eles podem fazer em segundo plano. Reduz o consumo de CPU e bateria "à toa" sem impedir o app que você está usando.',
+          'argv' => ['hidden-tune.sh', 'bg', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.bg_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'App Standby: padrão',
+          'desc' => 'Devolve a restrição de 2º plano ao padrão.',
+          'help' => 'Volta a restrição automática de apps em segundo plano ao padrão do sistema.',
+          'argv' => ['hidden-tune.sh', 'bg', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.aot_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Compilar apps (abre mais rápido)',
+          'desc' => 'Compila os apps em código nativo (AOT).',
+          'help' => 'Sem compilação, cada app é interpretado na primeira abertura e compila enquanto você usa — é a causa do "abre devagar e engasga". Aqui o sistema compila tudo em código nativo, com prioridade máxima para o jogo. Pode demorar alguns minutos e o ganho aparece nas próximas aberturas.',
+          'argv' => ['hidden-tune.sh', 'aot', 'on'], 'risk' => 'safe', 'timeout' => 600]);
+    $add(['id' => 'hidden.aot_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Compilação: padrão',
+          'desc' => 'Volta a compilar só o perfil de uso.',
+          'help' => 'Devolve o modo de compilação ao padrão (compila só o perfil de uso, não o app inteiro).',
+          'argv' => ['hidden-tune.sh', 'aot', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.ram_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Compactação de memória',
+          'desc' => 'zRAM mais agressivo e menos pressão de cache.',
+          'help' => 'Ajusta a compactação de memória (zRAM) e os limites de água do kernel. O sistema compacta a RAM em vez de fechar o app, então sobra mais memória para o jogo. Custa um pouco de CPU.',
+          'argv' => ['hidden-tune.sh', 'ram', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.ram_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Compactação: padrão',
+          'desc' => 'Devolve a compactação ao padrão.',
+          'help' => 'Devolve a compactação de memória ao padrão do sistema.',
+          'argv' => ['hidden-tune.sh', 'ram', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.gc_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Coleta de lixo sem travar',
+          'desc' => 'Coleta de lixo em paralelo (menos engasgo).',
+          'help' => 'Liga a coleta de lixo concorrente: o Android coleta memória em paralelo em vez de pausar o app. É o que causa aquela travada de meio segundo no meio da partida.',
+          'argv' => ['hidden-tune.sh', 'gc', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.gc_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Coleta de lixo: padrão',
+          'desc' => 'Devolve a coleta de lixo ao padrão.',
+          'help' => 'Devolve a coleta de lixo ao comportamento padrão do sistema.',
+          'argv' => ['hidden-tune.sh', 'gc', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.freezer_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Congelar apps em cache',
+          'desc' => 'Congela o que está em cache em vez de matar.',
+          'help' => 'Congela os apps que estão em cache: eles param de consumir CPU, mas voltam na hora em que você abre de novo (sem recarregar). É o que o Hail/Greenify fazem, aqui pelo mecanismo do próprio Android.',
+          'argv' => ['hidden-tune.sh', 'freezer', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.freezer_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Congelador: padrão',
+          'desc' => 'Devolve o congelador ao padrão.',
+          'help' => 'Devolve o congelamento de apps em cache ao padrão do sistema.',
+          'argv' => ['hidden-tune.sh', 'freezer', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.gpu_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Driver gráfico para os apps',
+          'desc' => 'Libera o driver de jogo para todos os apps.',
+          'help' => 'Libera o driver gráfico de jogo para todos os apps. O driver de jogo fala mais direto com a GPU, tirando uma camada de tradução no caminho dos frames.',
+          'argv' => ['hidden-tune.sh', 'gpu', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.gpu_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Driver gráfico: padrão',
+          'desc' => 'Devolve o driver gráfico ao padrão.',
+          'help' => 'Devolve a seleção de driver gráfico ao padrão do sistema.',
+          'argv' => ['hidden-tune.sh', 'gpu', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.netstats_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Parar estatísticas de rede',
+          'desc' => 'O sistema para de gravar o uso de dados por app.',
+          'help' => 'O Android coleta o uso de dados de cada app o tempo todo e grava em disco. Parar isso reduz leitura/escrita no armazenamento e um pouco de CPU; só deixa de existir o gráfico de "uso de dados por app" nas configurações.',
+          'argv' => ['hidden-tune.sh', 'netstats', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.netstats_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Estatísticas de rede: padrão',
+          'desc' => 'Volta a coletar o uso de dados por app.',
+          'help' => 'Volta a coletar as estatísticas de rede por app.',
+          'argv' => ['hidden-tune.sh', 'netstats', 'off'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.trim', 'group' => 'Geral', 'card' => false,
+          'label' => 'TRIM do armazenamento',
+          'desc' => 'Limpa os blocos livres do armazenamento (uma vez).',
+          'help' => 'Roda o TRIM sob demanda: o armazenamento avisa o chip quais blocos estão livres, o que mantém a velocidade de leitura com o tempo. É uma limpeza pontual e segura (não tem o que desfazer).',
+          'argv' => ['hidden-tune.sh', 'trim', 'on'], 'risk' => 'safe']);
+    $add(['id' => 'hidden.all_on', 'group' => 'Geral', 'card' => false,
+          'label' => 'Aplicar TODAS as otimizações escondidas',
+          'desc' => 'Liga de uma vez tudo que o Android esconde.',
+          'help' => 'Liga de uma vez todos os ajustes escondidos: constantes do ActivityManager, verificador de pacotes, App Standby, compilação AOT, compactação de memória, coleta de lixo, congelador, driver gráfico, estatísticas de rede e TRIM. Tudo é reversível em "Reverter TUDO".',
+          'argv' => ['hidden-tune.sh', 'all', 'on'], 'risk' => 'safe', 'timeout' => 900]);
+    $add(['id' => 'hidden.all_off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Desligar TODAS as otimizações escondidas',
+          'desc' => 'Devolve tudo ao padrão de fábrica.',
+          'help' => 'Devolve todos os ajustes escondidos ao padrão de fábrica de uma vez.',
+          'argv' => ['hidden-tune.sh', 'all', 'off'], 'risk' => 'safe', 'timeout' => 900]);
+
     return $A;
 }
 
@@ -1644,15 +1841,17 @@ function otm_run(string $id, array $params, bool $confirmed): array {
     }
     // backup cifrado: não roda script direto — o PHP cifra/decifra em volta
     // (mesmo desenho do app, onde quem cifra é o Keystore).
-    if ($id === 'backup.export') { $r = otm_backup_export(); otm_log($id, $a['label'], ['backup.sh', 'export'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
-    if ($id === 'backup.import') { $r = otm_backup_import(); otm_log($id, $a['label'], ['backup.sh', 'import'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
+    if ($id === 'backup.export') { $r = otm_backup_export(); otm_log($id, $a['label'], ['backup.sh', 'collect'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
+    if ($id === 'backup.import') { $r = otm_backup_import(); otm_log($id, $a['label'], ['backup.sh', 'restore'], $r); return $r + ['id' => $id, 'label' => $a['label']]; }
     if ($id === 'backup.list')   { $r = otm_backup_list();   return $r + ['id' => $id, 'label' => $a['label']]; }
 
     $script = $argv[0];
     $args = array_slice($argv, 1);
 
     $t = (int)($a['timeout'] ?? 60);
+    $t0 = microtime(true);
     $r = otm_script($script, $args, $t);
+    $durMs = (int)round((microtime(true) - $t0) * 1000);
 
     // verificação REAL: se o script informou quantas mudanças confirmou e nenhuma
     // pegou, isso é erro (não dá para dizer "feito" sem alterar o sistema).
@@ -1671,7 +1870,7 @@ function otm_run(string $id, array $params, bool $confirmed): array {
         $r['code'] = $r['code'] ?? -1;
     }
 
-    otm_log($id, $a['label'], $argv, $r + ['applies' => $applies, 'changed' => $changed, 'failed' => $failed]);
+    otm_log($id, $a['label'], $argv, $r + ['applies' => $applies, 'changed' => $changed, 'failed' => $failed, 'dur_ms' => $durMs]);
     return $r + ['id' => $id, 'label' => $a['label'], 'applies' => $applies,
                  'changed' => $changed, 'failed' => $failed, 'applied' => $applied, 'real' => $real];
 }
@@ -1834,6 +2033,7 @@ function otm_log(string $id, string $label, array $argv, array $res): void {
         'applies' => $res['applies'] ?? null,
         'changed' => $res['changed'] ?? null,
         'failed' => $res['failed'] ?? null,
+        'dur_ms' => $res['dur_ms'] ?? null,
         'reasons' => otm_fail_reasons($out),
         'out' => otm_clip($out, 6000),
     ];
@@ -1889,7 +2089,9 @@ function otm_run_command(string $cmd): array {
     $cmd = trim($cmd);
     if ($cmd === '') return ['ok' => false, 'code' => -1, 'out' => 'comando vazio'];
     if (strlen($cmd) > 2000) return ['ok' => false, 'code' => -1, 'out' => 'comando muito longo (máx. 2000)'];
+    $t0 = microtime(true);
     $r = otm_exec(['sh', '-c', $cmd], 120);
+    $r['dur_ms'] = (int)round((microtime(true) - $t0) * 1000);
     otm_log('terminal', 'Terminal: ' . substr($cmd, 0, 80), ['sh', '-c', $cmd], $r);
     return $r + ['cmd' => $cmd];
 }
