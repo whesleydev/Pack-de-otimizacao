@@ -1239,6 +1239,20 @@ function otm_actions(): array {
           'desc' => 'Mostra phantom killer, refresh, logs e scans em uma tela.',
           'help' => 'Resume o estado dos recursos turbo: Phantom Process Killer, taxa de atualização travada, logs persistentes e scans de Wi-Fi/Bluetooth "sempre disponível". Bom para conferir antes e depois de aplicar.',
           'argv' => ['turbo.sh', 'status']]);
+    $add(['id' => 'fps.now', 'group' => 'Desempenho', 'label' => 'FPS real do jogo (agora)',
+          'desc' => 'Lê o FPS de verdade do compositor, sem estimativa.',
+          'help' => 'Mostra o FPS REAL do jogo lido do SurfaceFlinger: cada quadro apresentado é contado com o horário de verdade, então o número é medido, não estimado. Deixe o jogo aberto e em movimento (no menu parado o número fica vazio). Sem escolher app, ele usa o que está em primeiro plano.',
+          'argv' => ['fps.sh', 'now', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo (opcional)']]]);
+    $add(['id' => 'fps.layer', 'group' => 'Desempenho', 'card' => false, 'label' => 'FPS: ver a camada do app',
+          'desc' => 'Mostra qual camada do compositor corresponde ao app.',
+          'help' => 'Descobre a camada do SurfaceFlinger que pertence ao app escolhido. Serve para conferir se o FPS está sendo lido da camada certa quando o jogo tem mais de uma (ex.: vídeo + HUD).',
+          'argv' => ['fps.sh', 'layer', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo (opcional)']]]);
+    $add(['id' => 'fps.list', 'group' => 'Desempenho', 'card' => false, 'label' => 'FPS: listar camadas da tela',
+          'desc' => 'Lista as camadas ativas do compositor agora.',
+          'help' => 'Lista as camadas que o compositor está desenhando neste momento. Útil para achar o nome da camada de um jogo que não aparece pelo pacote.',
+          'argv' => ['fps.sh', 'list']]);
     $add(['id' => 'turbo.art', 'group' => 'Desempenho', 'label' => 'Abrir apps mais rápido (compilar)',
           'desc' => 'Compila o app escolhido para ele abrir mais rápido.',
           'help' => 'Força o Android a pré-compilar (ART/AOT) o app escolhido, para ele abrir mais rápido e sem engasgo. Escolha o app pelo nome e ícone — não precisa digitar o pacote. "speed-profile" é o equilíbrio (abre rápido sem inflar o armazenamento); "speed" compila tudo (mais rápido ainda, ocupa mais espaço). Para desfazer, use "Recompilar todos os apps (ART)".',
@@ -1511,6 +1525,21 @@ function otm_actions(): array {
           'help' => 'Coleta o estado atual e compara com a medida anterior, mostrando a diferença. Rode depois de aplicar o pack.',
           'argv' => ['bench.sh', 'run', '{label}'],
           'params' => [['name' => 'label', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'depois']]]);
+    $add(['id' => 'diag.bench_report', 'group' => 'Sistema', 'card' => false, 'label' => 'Benchmark: comparar duas medidas',
+          'desc' => 'Mostra o relatório comparando dois rótulos salvos.',
+          'help' => 'Gera o relatório comparativo entre duas medidas (por padrão "antes" e "depois"), com a diferença de RAM livre, temperatura, bateria, carga de CPU, frequência e refresh. É o "prove com número" do que mudou.',
+          'argv' => ['bench.sh', 'report', '{a}', '{b}'],
+          'params' => [
+              ['name' => 'a', 'type' => 'name', 'label' => 'Antes', 'default' => 'antes'],
+              ['name' => 'b', 'type' => 'name', 'label' => 'Depois', 'default' => 'depois']]]);
+    $add(['id' => 'diag.bench_app', 'group' => 'Sistema', 'card' => false, 'label' => 'Benchmark: tempo de abrir um app',
+          'desc' => 'Mede em milissegundos quanto um app leva para abrir.',
+          'help' => 'Abre o app escolhido e mede o tempo até ele aparecer na tela, em milissegundos. Rode antes e depois de compilar (ART) ou de aplicar o pack para ver o ganho real de abertura.',
+          'argv' => ['bench.sh', 'app', '{pkg}', '{n}'],
+          'params' => [
+              ['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo'],
+              ['name' => 'n', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'abertura']],
+          'risk' => 'careful']);
 
     // ----- Dispositivos: resolução de tela (mesma de vários aparelhos) -----
     $add(['id' => 'res.list', 'group' => 'Dispositivos', 'label' => 'Ver resoluções disponíveis',
