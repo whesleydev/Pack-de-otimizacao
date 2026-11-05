@@ -179,10 +179,20 @@ mkdir -p "$ST" "$UNDO_DIR" 2>/dev/null
 # Sem isso, um `off` de uma função desfaz e apaga a reversão das outras: o
 # "Clean: desfazer" apagava o 0.5x do "Performance" e a reversão geral ficava
 # pela metade. Cada escopo tem seu off.sh + marcador; `restore_all` percorre todos.
+#
+# OTM_SCOPE_OVERRIDE: um "modo" pronto (profiles.sh) fixa o escopo antes de
+# chamar os scripts, para TODOS eles escreverem no MESMO arquivo de reversão.
+# Assim `profiles.sh off <modo>` desfaz só o que aquele modo aplicou, sem mexer
+# no que outras ações deixaram — e o "Reverter TUDO" continua alcançando o modo,
+# porque o arquivo dele fica em $UNDO_DIR igual aos outros.
 scope_begin() {
-    OTM_SCOPE="$1"
-    OFF_SH="$UNDO_DIR/$1.sh"
-    MARK="$UNDO_DIR/$1.on"
+    if [ -n "$OTM_SCOPE_OVERRIDE" ]; then
+        OTM_SCOPE="$OTM_SCOPE_OVERRIDE"
+    else
+        OTM_SCOPE="$1"
+    fi
+    OFF_SH="$UNDO_DIR/$OTM_SCOPE.sh"
+    MARK="$UNDO_DIR/$OTM_SCOPE.on"
 }
 
 # otm_undo_files -> lista os arquivos de reversão existentes (todos os escopos)

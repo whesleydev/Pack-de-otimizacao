@@ -933,7 +933,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Compilação Dexopt recomendada</li>
               <li>Resolução/DPI reduzida</li>
             </ul>
-            <button class="btn" type="button" data-qa="clean" style="width:100%;">Ativar Modo Batata</button>
+            <button class="btn" type="button" data-mode="mode.batata" style="width:100%;">Ativar Modo Batata</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm); border: 1.5px solid var(--accent);">
             <h4 style="margin:0 0 8px; color:var(--accent);">2. Modo Competitivo (Free Fire / CODM / FF MAX) — Recomendado</h4>
@@ -952,7 +952,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
                 <?= otm_pkg_picker('home-game-pkg', 'pkg') ?>
               </div>
             </div>
-            <button class="btn primary" type="button" data-game-home style="width:100%;">Ativar Competitivo</button>
+            <button class="btn primary" type="button" data-mode-game="mode.competitivo" style="width:100%;">Ativar Competitivo</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">3. Modo 90Hz / 120Hz Ultra Fluido</h4>
@@ -963,7 +963,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Buffer de log reduzido para mínimo atraso</li>
               <li>Controle térmico preventivo</li>
             </ul>
-            <button class="btn" type="button" data-qa="turbo.refresh_max" style="width:100%;">Ativar 90Hz/120Hz</button>
+            <button class="btn" type="button" data-mode="mode.fluido" style="width:100%;">Ativar 90Hz/120Hz</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">4. Modo Econômico</h4>
@@ -974,12 +974,18 @@ body.drawer .scrim{opacity:1;visibility:visible}
               <li>Desativação de serviços desnecessários</li>
               <li>Menos atividade em segundo plano</li>
             </ul>
-            <button class="btn" type="button" data-qa="refresh.60" style="width:100%;">Ativar Modo Econômico</button>
+            <button class="btn" type="button" data-mode="mode.economico" style="width:100%;">Ativar Modo Econômico</button>
           </div>
           <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
             <h4 style="margin:0 0 8px; color:var(--accent);">5. Personalizado</h4>
             <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Monte o seu perfil: ligue só o que quiser e aplique quando estiver pronto.</p>
             <button class="btn primary" type="button" data-qa="profile.custom" style="width:100%;">Configurar Personalizado</button>
+          </div>
+          <div class="card" style="padding: 16px; background: var(--paper); border-radius: var(--r-sm);">
+            <h4 style="margin:0 0 8px; color:var(--accent);">Modo ativo</h4>
+            <p class="sub" style="font-size:0.85em; margin-bottom:8px;">Cada modo é um conjunto completo de ajustes. Você pode desativar SÓ o modo ativo — sem mexer no resto.</p>
+            <button class="btn" type="button" data-mode="mode.status" style="width:100%; margin-bottom:8px;">Ver o que está ativo</button>
+            <button class="btn" type="button" data-mode="mode.off" style="width:100%;">Desativar modo ativo</button>
           </div>
         </div>
       </div>
@@ -2486,6 +2492,22 @@ function runGameHome(btn){
   doRun(a, { pkg }, false, btn);
 }
 document.querySelectorAll("[data-qa]").forEach(b => tapOnly(b, () => runActionById(b.dataset.qa)));
+/* modos prontos: rodam a ação mode.* pelo id (o cartão lista o que o modo faz).
+   O id vai no botão (`_subId`) porque o askConfirm põe o botão em `pending` e o
+   runPending precisa saber o que reexecutar depois do "ok". */
+document.querySelectorAll("[data-mode]").forEach(b => tapOnly(b, () => {
+  const a = ACTIONS[b.dataset.mode]; if (!a) return;
+  b._subId = a.id; b._subParams = {};
+  if (a.confirm) askConfirm(b, a); else doRun(a, b._subParams, false, b);
+}));
+/* Modo Competitivo: leva o jogo escolhido no card junto com a ação. */
+document.querySelectorAll("[data-mode-game]").forEach(b => tapOnly(b, () => {
+  const a = ACTIONS[b.dataset.modeGame]; if (!a) return;
+  const inp = b.closest(".card")?.querySelector('input[data-p="pkg"]');
+  const pkg = inp ? inp.value.trim() : "";
+  b._subId = a.id; b._subParams = { pkg };
+  if (a.confirm) askConfirm(b, a); else doRun(a, b._subParams, false, b);
+}));
 document.querySelectorAll("[data-game-home]").forEach(b => tapOnly(b, () => runGameHome(b)));
 /* botões do hub do otimizador: rodam a sub-ação pelo id, como os atalhos da Home.
    O perfil escolhido no card é repassado às sub-ações que o aceitam. */

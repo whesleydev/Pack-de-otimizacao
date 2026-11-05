@@ -74,6 +74,7 @@ function otm_allowed_scripts(): array {
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'fps.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
         'profile-custom.sh', 'smart-opt.sh', 'vitality.sh', 'resolution.sh',
+        'profiles.sh', 'sensi.sh', 'hidden-tune.sh',
     ];
 }
 
@@ -1702,6 +1703,45 @@ function otm_actions(): array {
           'desc' => 'Desfaz o perfil personalizado e volta o aparelho ao padrão.',
           'help' => 'Reverte tudo o que o perfil personalizado aplicou e devolve o aparelho ao estado de fábrica de configuração. A sua escolha de recursos fica salva para aplicar de novo depois.',
           'argv' => ['profile-custom.sh', 'off'], 'confirm' => true, 'risk' => 'safe', 'timeout' => 300]);
+
+    // --- modos prontos (scripts/profiles.sh) ----------------------------------
+    // Os cartões do "Game Lab" chamam ESTAS ações. Antes cada botão rodava uma
+    // linha só (Batata = clean, Econômico = trocar Hz, Ultra Fluido = taxa de
+    // tela), então o cartão prometia quatro itens e entregava um. Agora o modo
+    // aplica o conjunto inteiro e cada um fica num escopo próprio: dá para
+    // desfazer SÓ aquele modo (mode.off), sem mexer no resto.
+    $add(['id' => 'mode.batata', 'group' => 'Geral', 'card' => false,
+          'label' => 'Ativar Modo Batata',
+          'desc' => 'Aparelho de 2-4GB: animações 0, poucos apps em 2º plano, resolução reduzida.',
+          'help' => 'Aplica o conjunto inteiro do Modo Batata: animações desligadas (0x), no máximo 2 apps em segundo plano, ajustes obscuros (menos kills em 2º plano), resolução lógica reduzida conforme a tela, recompilação dos apps agendada (dexopt) e limpeza de RAM. É tudo reversível em "Desativar modo ativo".',
+          'argv' => ['profiles.sh', 'apply', 'batata'], 'confirm' => true, 'risk' => 'careful', 'timeout' => 900]);
+    $add(['id' => 'mode.competitivo', 'group' => 'Geral', 'card' => false,
+          'label' => 'Ativar Modo Competitivo',
+          'desc' => 'Jogo: driver de jogo, anti-relog, DND, sensi e 4 apps em 2º plano.',
+          'help' => 'Aplica o conjunto inteiro do Modo Competitivo e abre o jogo escolhido: driver de jogo para todos os apps, Não Perturbe, foco de jogo (DND extremo), latência de toque forte, perfil de toque "speed" e o anti-relog (jogo sem restrição de bateria, no máximo 4 apps em segundo plano e balde ativo). Escolha o jogo no campo do cartão. Reversível em "Desativar modo ativo".',
+          'argv' => ['profiles.sh', 'apply', 'competitivo', '{pkg}'],
+          'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'Pacote do jogo', 'optional' => true]],
+          'confirm' => true, 'risk' => 'careful', 'timeout' => 600]);
+    $add(['id' => 'mode.fluido', 'group' => 'Geral', 'card' => false,
+          'label' => 'Ativar Modo 90Hz/120Hz Ultra Fluido',
+          'desc' => 'Taxa no pico, speed-profile, buffer de log mínimo e trava térmica.',
+          'help' => 'Aplica o conjunto inteiro do Modo Ultra Fluido: taxa de atualização forçada no pico, animações 0 e toque sem atraso, GPU na interface, telemetria/log reduzidos ao mínimo, trava térmica preventiva, mais RAM livre e recompilação dos apps (speed-profile). Reversível em "Desativar modo ativo".',
+          'argv' => ['profiles.sh', 'apply', 'fluido'], 'confirm' => true, 'risk' => 'careful', 'timeout' => 1200]);
+    $add(['id' => 'mode.economico', 'group' => 'Geral', 'card' => false,
+          'label' => 'Ativar Modo Econômico',
+          'desc' => '60Hz, economia de energia, Doze rápido e menos 2º plano.',
+          'help' => 'Aplica o conjunto inteiro do Modo Econômico: taxa de tela em 60Hz, economia de energia ligada, sono profundo (Doze) rápido, Wi-Fi sem economia/scan, menos apps em segundo plano e telemetria/log desligados. Reversível em "Desativar modo ativo".',
+          'argv' => ['profiles.sh', 'apply', 'economico'], 'confirm' => true, 'risk' => 'careful', 'timeout' => 600]);
+    $add(['id' => 'mode.off', 'group' => 'Geral', 'card' => false,
+          'label' => 'Desativar modo ativo',
+          'desc' => 'Desfaz SÓ o modo aplicado (Batata, Competitivo, Ultra Fluido ou Econômico).',
+          'help' => 'Reverte apenas o que o modo ativo aplicou — sem tocar no que outras ações (ou outros modos já desfeitos) deixaram. O aparelho volta ao estado anterior a este modo.',
+          'argv' => ['profiles.sh', 'off'], 'confirm' => true, 'risk' => 'safe', 'timeout' => 300]);
+    $add(['id' => 'mode.status', 'group' => 'Geral', 'card' => false,
+          'label' => 'Modos: ver o que está ativo',
+          'desc' => 'Mostra o modo aplicado por último e os que estão ativos.',
+          'help' => 'Mostra qual modo está ativo e quais têm reversão registrada. Só leitura.',
+          'argv' => ['profiles.sh', 'status']]);
 
     // --- otimizações escondidas do Android (scripts/hidden-tune.sh) -----------
     // Ações sem card: quem chama são os interruptores da aba Geral (o par

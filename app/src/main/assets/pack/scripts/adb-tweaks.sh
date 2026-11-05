@@ -651,6 +651,14 @@ mem() {
             proc_limit_set 4
             am_set max_phantom_processes=1024
             ;;
+        batata)
+            # Aparelho de 2-4GB: o que mais rende é manter POUQUÍSSIMOS apps em
+            # cache. Antes "batata" caía no `*)` e virava multitarefa (32) — o
+            # oposto do prometido. Agora limita a 2.
+            say "RAM - perfil BATATA (poucos apps em cache)"
+            proc_limit_set 2
+            am_set max_phantom_processes=32
+            ;;
         4|8|16|32)
             say "RAM - limite de $perfil apps em segundo plano"
             proc_limit_set "$perfil"

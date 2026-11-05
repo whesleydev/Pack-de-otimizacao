@@ -1166,3 +1166,34 @@ instalado — por isso o jsdom é `devDependency` e `node_modules/` fica fora do
 git. Ao mexer no HTML do Admin/Perfil/Dashboard/Feedback, rode
 `node tests/dom/admin_profile.mjs`.
 
+## Modos prontos (Game Lab) e reversão por modo
+
+Os cartões do Game Lab ("Modo Batata", "Competitivo", "Ultra Fluido",
+"Econômico") **não** são uma linha só. Cada botão chama uma ação `mode.*`
+(`web/lib.php`), que roda `scripts/profiles.sh apply <modo>`: o script chama os
+mesmos comandos das abas (nada é reimplementado) e aplica o conjunto INTEIRO
+que o cartão promete. Regra: se o cartão lista N itens, o modo aplica os N.
+
+A reversão é **por modo**. `common.sh::scope_begin` respeita
+`OTM_SCOPE_OVERRIDE`: o `profiles.sh` exporta esse override antes de chamar os
+outros scripts, então a reversão inteira do modo cai num arquivo só
+(`$UNDO_DIR/profile-<modo>.sh`). Assim:
+
+- `profiles.sh off <modo>` (botão "Desativar modo ativo", ação `mode.off`)
+  desfaz só aquele modo, sem tocar no que outras ações deixaram;
+- `profiles.sh apply` desfaz o modo anterior antes de aplicar o novo (um modo
+  por vez);
+- o "Reverter TUDO" (`adb-tweaks.sh restore_all`) alcança o modo, porque o
+  arquivo dele fica em `$UNDO_DIR` igual aos outros escopos.
+
+**Cuidado em `sh`: não existe `local`.** Dentro de uma função, variáveis sem
+`local` são globais — reusar um nome (`m`, `f`, `sc`) numa função chamada de
+dentro de outra sobrescreve o valor do chamador. Em `profiles.sh` as variáveis
+auxiliares usam prefixo `_` por isso.
+
+Toda ação que roda script tem que estar em `otm_allowed_scripts()`
+(`web/lib.php`): o painel **web** recusa com "script não permitido" qualquer
+script fora da lista (o app roda direto, sem allowlist). O teste `t_profiles`
+cobre isso varrendo todas as ações — foi assim que `sensi.sh` e
+`hidden-tune.sh` (30 ações) foram achados mortos só no web.
+

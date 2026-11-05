@@ -4616,6 +4616,115 @@ t_smart_card_single
 t_clean
 t_smart_clean_protect
 t_privilege_detect
+
+# --- modos prontos (profiles.sh): conjunto real + desfazer por modo ----------
+t_profiles() {
+    printf '\n  # modos prontos: aplicam o conjunto do cartão e desfazem só o modo\n'
+    local panel="$ROOT/app/src/main/assets/panel/index.html"
+
+    # 1) o script existe, é válido e espelha no app
+    sh -n "$ROOT/scripts/profiles.sh" 2>/dev/null \
+        && ok "profiles.sh: sintaxe válida" || bad "profiles.sh: erro de sintaxe"
+    cmp -s "$ROOT/scripts/profiles.sh" "$ROOT/app/src/main/assets/pack/scripts/profiles.sh" \
+        && ok "profiles.sh espelhado no app" || bad "espelho do profiles.sh divergiu"
+
+    # 2) os quatro modos existem e cada um tem o seu escopo próprio
+    for m in batata competitivo fluido economico; do
+        grep -q "pr_apply_$m()" "$ROOT/scripts/profiles.sh" \
+            && ok "modo $m definido" || bad "modo $m ausente"
+    done
+    grep -q 'profile-\$1\|profile-%s' "$ROOT/scripts/profiles.sh" \
+        && ok "cada modo tem escopo próprio de reversão" || bad "modos sem escopo próprio"
+
+    # 3) o cartão do painel aponta para as ações mode.* (não para uma linha só)
+    grep -q 'data-mode="mode.batata"' "$panel" && ok "Batata chama mode.batata" || bad "Batata sem ação real"
+    grep -q 'data-mode-game="mode.competitivo"' "$panel" && ok "Competitivo chama mode.competitivo" || bad "Competitivo sem ação real"
+    grep -q 'data-mode="mode.fluido"' "$panel" && ok "Ultra Fluido chama mode.fluido" || bad "Ultra Fluido sem ação real"
+    grep -q 'data-mode="mode.economico"' "$panel" && ok "Econômico chama mode.economico" || bad "Econômico sem ação real"
+    grep -q 'data-mode="mode.off"' "$panel" && ok "há botão de desativar o modo ativo" || bad "sem botão de desativar modo"
+    # nenhum botão do Game Lab pode voltar a ser a linha solta antiga
+    grep -q 'data-qa="turbo.refresh_max" style="width:100%;">Ativar 90Hz' "$panel" \
+        && bad "Ultra Fluido voltou a ser só a taxa de tela" || ok "Ultra Fluido não é só a taxa de tela"
+    grep -q 'data-qa="refresh.60" style="width:100%;">Ativar Modo Econ' "$panel" \
+        && bad "Econômico voltou a ser só o Hz" || ok "Econômico não é só o Hz"
+
+    # 4) as ações mode.* existem no catálogo, com argv de profiles.sh
+    php -r 'require "'"$ROOT"'/web/lib.php"; $A=otm_actions();
+             foreach (["mode.batata","mode.competitivo","mode.fluido","mode.economico","mode.off","mode.status"] as $id){
+               $a=$A[$id] ?? null;
+               echo $id, " ", (!$a ? "AUSENTE" : implode(" ", $a["argv"])), "\n";
+             }' > "$TMP/mode_argv" 2>&1
+    assert_contains "$TMP/mode_argv" "mode.batata profiles.sh apply batata" "ação mode.batata"
+    assert_contains "$TMP/mode_argv" "mode.competitivo profiles.sh apply competitivo {pkg}" "ação mode.competitivo"
+    assert_contains "$TMP/mode_argv" "mode.fluido profiles.sh apply fluido" "ação mode.fluido"
+    assert_contains "$TMP/mode_argv" "mode.economico profiles.sh apply economico" "ação mode.economico"
+    assert_contains "$TMP/mode_argv" "mode.off profiles.sh off" "ação mode.off"
+    grep -q '"mode\.' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "catálogo do app tem as ações mode.*" || bad "catálogo do app sem mode.*"
+
+    # 4b) TODA ação que roda script tem o script na allowlist do web. Sem isso o
+    # painel web recusa a ação com "script não permitido" e o botão não faz nada.
+    php -r 'require "'"$ROOT"'/web/lib.php"; $ok=otm_allowed_scripts();
+             $falta=[]; foreach (otm_actions() as $a){
+               $argv=$a["argv"] ?? []; if (!$argv) continue;
+               $s=$argv[0];
+               if (!str_ends_with($s, ".sh")) continue;
+               if (!in_array($s, $ok, true)) $falta[]=$a["id"]."->".$s;
+             }
+             echo $falta ? implode("\n", $falta) : "OK\n";' > "$TMP/mode_allow" 2>&1
+    assert_contains "$TMP/mode_allow" "OK" "todo script de ação está na allowlist do web"
+
+    # 5) EXECUÇÃO real: aplicar deixa reversão, e o off desfaz SÓ o modo
+    rm -rf "$HOME/.packotm"
+    printf '0.5' > "$TMP_STORE/global.window_animation_scale"
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/profiles.sh" apply batata >/dev/null 2>&1
+    [ -s "$HOME/.packotm/undo/profile-batata.sh" ] \
+        && ok "batata registra a própria reversão" || bad "batata não registrou reversão"
+    assert_eq "0" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "batata desliga as animações (0x)"
+    assert_eq "2" "$(cat "$TMP_STORE/dc.activity_manager.max_cached_processes" 2>/dev/null)" \
+        "batata limita a 2 apps em 2º plano (bug do 'batata'=multitarefa corrigido)"
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/profiles.sh" off batata >/dev/null 2>&1
+    [ -s "$HOME/.packotm/undo/profile-batata.sh" ] \
+        && bad "off não limpou a reversão do modo" || ok "off limpa a reversão do modo"
+    assert_eq "0.5" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "off devolve o valor original do aparelho"
+
+    # 6) trocar de modo desfaz o anterior e não empilha escopo
+    rm -rf "$HOME/.packotm"
+    printf '0.5' > "$TMP_STORE/global.window_animation_scale"
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/profiles.sh" apply batata >/dev/null 2>&1
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/profiles.sh" apply economico >/dev/null 2>&1
+    [ -s "$HOME/.packotm/undo/profile-batata.sh" ] \
+        && bad "trocar de modo deixou o escopo do anterior" || ok "trocar de modo desfaz o anterior"
+    [ -s "$HOME/.packotm/undo/profile-economico.sh" ] \
+        && ok "o novo modo tem a própria reversão" || bad "novo modo sem reversão"
+    assert_eq "1" "$(cat "$TMP_STORE/global.low_power" 2>/dev/null)" \
+        "econômico liga a economia de energia"
+    assert_eq "0.5" "$(cat "$TMP_STORE/global.window_animation_scale" 2>/dev/null)" \
+        "trocar de modo devolve o valor original do aparelho"
+
+    # 7) o "Reverter TUDO" alcança o escopo do modo (não fica órfão)
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/adb-tweaks.sh" restore_all >/dev/null 2>&1
+    [ -s "$HOME/.packotm/undo/profile-economico.sh" ] \
+        && bad "restore_all não alcançou o escopo do modo" || ok "restore_all alcança o escopo do modo"
+
+    # 8) competitivo leva o jogo escolhido (pkg) e aplica o anti-relog
+    rm -rf "$HOME/.packotm"
+    export TMP_CMD_LOG="$TMP/prof.log"; : > "$TMP_CMD_LOG"
+    export TMP_AM_LOG="$TMP/prof.am"; : > "$TMP_AM_LOG"
+    OTM_MODE=su OTM_NO_COLOR=1 sh "$ROOT/scripts/profiles.sh" apply competitivo com.mojang.minecraftpe \
+        >/dev/null 2>&1
+    grep -q 'com.mojang.minecraftpe' "$TMP_AM_LOG" \
+        && ok "competitivo abre o jogo escolhido" || bad "competitivo não abriu o jogo"
+    grep -q 'com.mojang.minecraftpe' "$HOME/.packotm/game/pkg" 2>/dev/null \
+        && ok "competitivo guarda o jogo escolhido" || bad "competitivo não guardou o jogo"
+    assert_eq "4" "$(cat "$TMP_STORE/dc.activity_manager.max_cached_processes" 2>/dev/null)" \
+        "competitivo limita a 4 apps em 2º plano (anti-relog)"
+    unset TMP_CMD_LOG TMP_AM_LOG
+    rm -rf "$HOME/.packotm"
+}
+
 # --- Admin no app: cofre da chave, edição, aparelhos, planos e Perfil --------
 t_app_admin_full() {
     printf '\n  # Admin: chave guardada, edição, aparelhos, planos e Perfil\n'
@@ -4942,6 +5051,7 @@ t_undo_scopes_declared
 t_no_silent_conflicts
 t_vitality
 t_custom_profile
+t_profiles
 t_pack
 t_proc_limit
 t_latency
