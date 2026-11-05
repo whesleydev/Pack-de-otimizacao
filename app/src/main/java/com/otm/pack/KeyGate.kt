@@ -25,7 +25,15 @@ object KeyGate {
     private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
     private const val GROUPS = 3
     private const val GLEN = 4
-    private const val PREFIX = "00"
+
+    /** Prefixo das chaves de dono/admin. */
+    const val PREFIX_OWNER = "00"
+
+    /** Prefixo das chaves de usuário comum. */
+    const val PREFIX_USER = "TRIX"
+
+    /** Prefixo que a chave de cada papel usa. */
+    fun prefixFor(role: String): String = if (role == "user") PREFIX_USER else PREFIX_OWNER
 
     private const val PREF = "otm_gate"
     private const val PREF_SESSION = "session_key_hash"
@@ -58,12 +66,23 @@ object KeyGate {
     //  formato da chave
     // -------------------------------------------------------------------------
 
-    fun normalize(raw: String): String {
+    /**
+     * Descobre qual prefixo a chave digitada usa. "TRIX" é o prefixo de usuário;
+     * qualquer outra coisa cai em "00" (dono/admin).
+     */
+    fun detectPrefix(raw: String): String {
+        val clean = raw.uppercase().replace(Regex("[^A-Z0-9]"), "")
+        return if (clean.startsWith(PREFIX_USER)) PREFIX_USER else PREFIX_OWNER
+    }
+
+    fun normalize(raw: String): String = normalize(raw, detectPrefix(raw))
+
+    fun normalize(raw: String, prefix: String): String {
         val clean = raw.uppercase().replace(Regex("[^A-Z0-9]"), "")
         val body = GROUPS * GLEN
-        // O prefixo "00" também é caractere do alfabeto: só remove quando sobra
-        // corpo suficiente, senão um corpo que comece com "00" perderia dígitos.
-        val stripped = if (clean.startsWith(PREFIX) && clean.length > body) clean.substring(PREFIX.length) else clean
+        // O prefixo também é feito de caracteres do alfabeto: só remove quando
+        // sobra corpo suficiente, senão um corpo que comece igual perderia dígitos.
+        val stripped = if (clean.startsWith(prefix) && clean.length > body) clean.substring(prefix.length) else clean
         val trimmed = stripped.take(body)
         val groups = ArrayList<String>()
         for (i in 0 until GROUPS) {
@@ -71,27 +90,34 @@ object KeyGate {
             if (start >= trimmed.length) break
             groups.add(trimmed.substring(start, minOf(start + GLEN, trimmed.length)))
         }
-        return PREFIX + if (groups.isEmpty()) "" else "-" + groups.joinToString("-")
+        return prefix + if (groups.isEmpty()) "" else "-" + groups.joinToString("-")
     }
 
+    private val OWNER_RE = Regex("^$PREFIX_OWNER(-[$ALPHABET]{$GLEN}){$GROUPS}$")
+    private val USER_RE = Regex("^$PREFIX_USER(-[$ALPHABET]{$GLEN}){$GROUPS}$")
+
     fun wellFormed(raw: String): Boolean =
-        Regex("^$PREFIX(-[$ALPHABET]{$GLEN}){$GROUPS}$").matches(normalize(raw))
+        OWNER_RE.matches(normalize(raw)) || USER_RE.matches(normalize(raw))
 
     fun hash(raw: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(normalize(raw).toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
 
-    /** Gera uma chave nova (usada pelo admin ao criar usuário). */
-    fun generate(): String {
+    /** Gera uma chave nova. `role` decide o prefixo: usuário usa "TRIX". */
+    fun generate(role: String = "user"): String {
+        val prefix = prefixFor(role)
         val rnd = SecureRandom()
         val sb = StringBuilder()
         repeat(GROUPS * GLEN) { sb.append(ALPHABET[rnd.nextInt(ALPHABET.length)]) }
-        return normalize(sb.toString())
+        return normalize(sb.toString(), prefix)
     }
 
-    /** Pedaço visível (00-XXXX) para identificar sem revelar a chave. */
-    fun prefixOf(raw: String): String = normalize(raw).take(8)
+    /** Pedaço visível (00-XXXX / TRIX-XXXX) para identificar sem revelar a chave. */
+    fun prefixOf(raw: String): String {
+        val p = detectPrefix(raw)
+        return p + "-" + normalize(raw).removePrefix(p).removePrefix("-").take(GLEN)
+    }
 
     // -------------------------------------------------------------------------
     //  aparelho
@@ -153,7 +179,7 @@ object KeyGate {
     /** Valida a chave: online quando dá; sem rede, decide pelo cache local. */
     fun check(c: Context, raw: String): Result {
         if (!wellFormed(raw)) {
-            return Result(false, "unknown", "Formato inválido. Use 00-XXXX-XXXX-XXXX.")
+            return Result(false, "unknown", "Formato inválido. Use 00-XXXX-XXXX-XXXX (admin) ou TRIX-XXXX-XXXX-XXXX (usuário).")
         }
         val key = normalize(raw)
         val h = hash(key)

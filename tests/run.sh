@@ -631,6 +631,15 @@ t_app_login() {
         || bad "login sem validação de chave"
     grep -q '00-XXXX-XXXX-XXXX' "$p/login.html" && ok "login mostra o formato da chave" \
         || bad "login sem o formato da chave"
+    # dois prefixos: dono/admin usa "00", usuário comum usa "TRIX"
+    grep -q 'PREFIX_OWNER = "00"' "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" \
+        && ok "KeyGate: prefixo do dono é 00" || bad "KeyGate sem PREFIX_OWNER"
+    grep -q 'PREFIX_USER = "TRIX"' "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" \
+        && ok "KeyGate: prefixo do usuário é TRIX" || bad "KeyGate sem PREFIX_USER"
+    grep -q 'TRIX-XXXX-XXXX-XXXX' "$p/login.html" \
+        && ok "login mostra o formato TRIX (usuário)" || bad "login sem o formato TRIX"
+    grep -q 'KeyGate.generate(cleanRole)' "$ROOT/app/src/main/java/com/otm/pack/AdminService.kt" \
+        && ok "chave criada usa o prefixo do papel" || bad "AdminService não usa o papel no prefixo"
     grep -q 'panel/login.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
         && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre login"
     # o sistema de chaves voltou: KeyGate fala com o Turso e a categoria Admin

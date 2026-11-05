@@ -1040,8 +1040,18 @@ os `.sha256` de `releases/` e `serve/`.
 
 ## Sistema de chaves (o app fala direto com o Turso)
 
-O acesso é por **chave** (`00-XXXX-XXXX-XXXX`, alfabeto sem I/L/O/U), não por
-senha. O app valida direto no **Turso** (libSQL) — não existe painel web no
+O acesso é por **chave**, não por senha. São dois prefixos:
+
+- **Dono/admin**: `00-XXXX-XXXX-XXXX`.
+- **Usuário comum**: `TRIX-XXXX-XXXX-XXXX`.
+
+O prefixo é só rótulo visual — quem manda é a coluna `role` (`owner`/`admin`/
+`user`). O corpo tem 12 caracteres no alfabeto sem I/L/O/U (total 17 ou 19 com
+hífens), e o hash é o SHA-256 da chave normalizada. `AdminService.create` gera o
+prefixo a partir do papel (`KeyGate.generate(role)`); `KeyGate.detectPrefix`
+aceita os dois formatos na validação.
+
+O app valida direto no **Turso** (libSQL) — não existe painel web no
 caminho do login. Peças:
 
 - `TursoClient.kt` — HTTP `/v2/pipeline` (mesmo protocolo do `panel/src/Turso.php`).

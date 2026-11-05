@@ -96,7 +96,7 @@ object AdminService {
         requireOwner(c)?.let { return it }
         val cleanLabel = label.trim().take(80).ifEmpty { "sem nome" }
         val cleanRole = if (role == "admin") "admin" else "user"
-        val key = KeyGate.generate()
+        val key = KeyGate.generate(cleanRole)
         val hash = KeyGate.hash(key)
         val prefix = KeyGate.prefixOf(key)
         val expires = KeyGate.utcPlusDays(days)
