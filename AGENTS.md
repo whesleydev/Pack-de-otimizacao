@@ -974,6 +974,14 @@ A versão do app acompanha `VERSION` (`versionName`/`versionCode` em
 publicado em `releases/` e em `serve/` (ambos ignoram `*.apk` no git; os
 `.sha256` **são** versionados).
 
+**Dois repositórios.** O `origin` público é `whesleydev/Pack-de-otimizacao`
+(histórico mais novo, é onde o trabalho vive). Existe também o repo **privado**
+`whesleydev/Trix` (`remote trix`), que é a mesma base — mesmo pacote
+`com.otm.pack`, mesma marca — parado numa versão antiga (2.25.0). Ao publicar
+algo privado, dê `git push trix <branch>`; os dois repos **não** compartilham
+histórico, então é push de branch, não `main` sobre `main`. O `Trix` está
+privado por conter o painel de licenças; mantenha-o assim.
+
 **Marca (nome/cor/logo).** A marca é "Trix" e a cor de destaque padrão é
 **prata** (`#C7CCD6`); o laranja continua na paleta, só deixou de ser o padrão.
 Ao trocar a marca, o mesmo valor aparece em vários lugares que precisam ficar
