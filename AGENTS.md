@@ -1064,6 +1064,15 @@ O app valida direto no **Turso** (libSQL) — não existe painel web no
 caminho do login. Peças:
 
 - `TursoClient.kt` — HTTP `/v2/pipeline` (mesmo protocolo do `panel/src/Turso.php`).
+  **Coluna NULL fica de fora do mapa de linhas** (`rows()`): o `JSONObject` do
+  Android não tem valor nulo utilizável — `JSONObject.NULL` existe, mas
+  `optString` devolve a **string `"null"`** para ele (o `JSON.toString` do AOSP
+  cai em `String.valueOf(NULL)`). Gravar NULL no mapa fazia
+  `optString("revoked_at").isNotEmpty()` dar `true` em toda chave não revogada,
+  ou seja, **nenhuma chave entrava** ("Chave revogada."). O mesmo valia para
+  `expires_at`, `blocked_at` e `activated_at`. Omitir deixa `optString` devolver
+  `""` e `optLong` devolver `0`, que é o que o resto do código espera. Não volte
+  a gravar `JSONObject.NULL` no mapa.
 - `KeyGate.kt` — formato/hash da chave, validação no banco e **cache offline**
   (SharedPreferences; a última chave vale 7 dias sem rede). Guarda só SHA-256.
 - `AdminService.kt` — CRUD de chaves + auditoria. **Exige papel `owner`**.
