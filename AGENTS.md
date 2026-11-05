@@ -1038,3 +1038,32 @@ bump `VERSION`/`versionCode` → `git tag vX.Y.Z && git push origin vX.Y.Z` →
 esperar o CI → anexar o APK → ajustar nome/corpo → atualizar `serve/index.html` e
 os `.sha256` de `releases/` e `serve/`.
 
+## Sistema de chaves (o app fala direto com o Turso)
+
+O acesso é por **chave** (`00-XXXX-XXXX-XXXX`, alfabeto sem I/L/O/U), não por
+senha. O app valida direto no **Turso** (libSQL) — não existe painel web no
+caminho do login. Peças:
+
+- `TursoClient.kt` — HTTP `/v2/pipeline` (mesmo protocolo do `panel/src/Turso.php`).
+- `KeyGate.kt` — formato/hash da chave, validação no banco e **cache offline**
+  (SharedPreferences; a última chave vale 7 dias sem rede). Guarda só SHA-256.
+- `AdminService.kt` — CRUD de chaves + auditoria. **Exige papel `owner`**.
+- `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`.
+- `panel/database/migrations/0007_key_role.sql` — coluna `role` em `otm_keys`
+  (`owner`/`admin`/`user`). Migrações SQL são aplicadas à mão no Turso.
+
+O papel de dono é checado **no nativo** (`KeyGate.isOwner`), não no HTML: a
+categoria Admin do `index.html` começa `hidden` e só aparece com `role=owner`
+vindo de `key_status`. Esconder/mostrar no JS é cosmético; a porta de verdade é
+o `AdminService`.
+
+Credenciais do Turso ficam em `local.properties` (gitignored), lidas pelo
+`app/build.gradle.kts` e injetadas como `BuildConfig.TURSO_URL/TURSO_TOKEN`.
+Sobrescreva no build com `-PotmTursoUrl=... -PotmTursoToken=...`.
+
+O painel do app (`assets/panel/index.html`) é **mantido à mão**; o
+`scripts/panel-actions.sh` só reescreve a linha `const ACTIONS` a partir de
+`otm_actions()` (`web/lib.php`). Ao criar uma ação **com card**, o card precisa
+ser adicionado à mão no `index.html` — os testes cobram (card fora de seção,
+duplicado, ou link de nav sem seção).
+
