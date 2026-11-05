@@ -505,6 +505,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .adm-newkey{margin-top:12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
 .adm-newkey p{margin:0 0 6px;font-size:12px;color:var(--muted)}
 .adm-newkey code{font-family:var(--mono);font-weight:800;font-size:15px;letter-spacing:.08em}
+.adm-newkey .acts{display:flex;gap:8px;margin-top:10px}
+.adm-newkey .acts .btn{width:auto;font-size:12.5px;padding:7px 14px}
 .adm-empty{margin:10px 0 0;color:var(--muted);font-size:13px}
 
 /* ---- terminal real -------------------------------------------------------- */
@@ -4892,6 +4894,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <div class="adm-newkey" id="admNewKey" hidden>
           <p>Chave criada — copie agora, não mostramos de novo:</p>
           <code id="admNewKeyVal"></code>
+          <div class="acts">
+            <button class="btn" id="admCopy" type="button">Copiar</button>
+            <button class="btn" id="admShare" type="button">Enviar</button>
+          </div>
         </div>
       </article>
 
@@ -6762,6 +6768,22 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     } else {
       alert("Não deu para criar: " + ((r && r.error) || "erro"));
     }
+  };
+  const novaChave = () => document.getElementById("admNewKeyVal").textContent.trim();
+  document.getElementById("admCopy").onclick = async () => {
+    try { await navigator.clipboard.writeText(novaChave()); toast("Chave copiada", "ok"); }
+    catch (e) { toast("Não consegui copiar", "bad"); }
+  };
+  document.getElementById("admShare").onclick = async () => {
+    const chave = novaChave();
+    const txt = "Sua chave do Trix: " + chave
+      + "\n\nAbra o app, cole a chave e entre. Ela vale para "
+      + (document.getElementById("admDevices").value || "1") + " aparelho(s).";
+    if (navigator.share) {
+      try { await navigator.share({ text: txt, title: "Chave do Trix" }); return; } catch (e) {}
+    }
+    try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
+    catch (e) { toast("Não consegui copiar", "bad"); }
   };
   document.getElementById("admRefresh").onclick = () => { refresh(); refreshAudit(); };
   document.getElementById("admLogout").onclick = async () => {

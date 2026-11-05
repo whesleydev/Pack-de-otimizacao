@@ -3,6 +3,14 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.52.0] - 2026-11-05
+
+### Adicionado
+- **Copiar e enviar a chave na hora de criar.** Depois de gerar uma chave, o
+  painel Admin mostra o botão "Copiar" (área de transferência) e "Enviar"
+  (`navigator.share`, com a mensagem pronta para o cliente). Antes a chave
+  aparecia e você tinha que selecionar com o dedo.
+
 ## [2.51.0] - 2026-11-05
 
 ### Removido
