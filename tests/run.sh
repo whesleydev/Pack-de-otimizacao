@@ -656,6 +656,11 @@ t_app_login() {
         && ok "link Admin começa oculto" || bad "link Admin não começa oculto"
     grep -q 'key_status' "$p/index.html" && ok "painel confirma o papel no nativo (key_status)" \
         || bad "painel não confirma o papel"
+    # sem confirmação no nativo, um app antigo deixava "otm_session" no localStorage
+    # e o painel abria sem pedir chave. Agora a sessão é confirmada com o nativo.
+    grep -q 'function confirmarSessao' "$p/index.html" \
+        && ok "painel confirma a sessão no nativo (não confia só no localStorage)" \
+        || bad "painel confia só no localStorage para a sessão"
     # todo link do menu tem de ter a seção correspondente: o painel é gerado por
     # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
     # deixando um link que não abre nada.

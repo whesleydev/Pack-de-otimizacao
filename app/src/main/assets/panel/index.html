@@ -2,6 +2,8 @@
 <html lang="pt-BR">
 <head>
 <script>
+/* Atalho: sem a bandeira local, já vai para o login sem piscar o painel. A
+   confirmação de verdade é no fim do script, com o nativo (key_status). */
 try { if (!localStorage.getItem("otm_session")) location.replace("login.html"); } catch(e){}
 </script>
 
@@ -6729,6 +6731,23 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
       refresh(); refreshAudit();
     }
   })();
+})();
+
+/* ===== confirmação da sessão no nativo =====
+   A bandeira "otm_session" é do localStorage: um app antigo pode ter deixado
+   ela lá, e nesse caso o painel abria sem pedir chave nenhuma. Aqui a sessão é
+   confirmada com o nativo (que guarda o papel de quem entrou); se não houver
+   chave válida no aparelho, volta para o login. */
+(function confirmarSessao(){
+  const irParaLogin = () => { try { localStorage.removeItem("otm_session"); } catch(e){} location.replace("login.html"); };
+  if (!window.__otm) { irParaLogin(); return; }
+  let pronto = false;
+  const espera = setTimeout(() => { if (!pronto) irParaLogin(); }, 4000);
+  window.__otm("key_status", "").then(r => r.json()).then(st => {
+    pronto = true; clearTimeout(espera);
+    if (!st || !st.logged) { irParaLogin(); return; }
+    try { localStorage.setItem("otm_role", st.role || "user"); localStorage.setItem("otm_label", st.label || ""); } catch(e){}
+  }).catch(() => { pronto = true; clearTimeout(espera); irParaLogin(); });
 })();
 
 fromHash();

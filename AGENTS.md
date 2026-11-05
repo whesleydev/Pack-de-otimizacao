@@ -1035,8 +1035,17 @@ versões, ~60 KB) — o padrão das releases boas é só a seção da versão: c
 `re.findall(r'^## \[<versão>\].*?(?=^## \[)', changelog, re.S|re.M)` e mande por
 `PATCH /repos/.../releases/<id>` junto do `name` novo. Fluxo completo do release:
 bump `VERSION`/`versionCode` → `git tag vX.Y.Z && git push origin vX.Y.Z` →
-esperar o CI → anexar o APK → ajustar nome/corpo → atualizar `serve/index.html` e
-os `.sha256` de `releases/` e `serve/`.
+esperar o CI → anexar o APK → ajustar nome/corpo → rodar `sh tools/serve-index.sh`
+(regenera `serve/index.html` a partir dos APKs que existem) e os `.sha256` de
+`releases/` e `serve/`.
+
+A página `serve/index.html` é **gerada**: antes era estática e ficou para trás,
+anunciando uma versão velha como "RECOMENDADO" enquanto o APK novo já existia —
+quem baixava por ela instalava a versão errada. Agora `tools/serve-index.sh` monta
+a lista a partir dos `*.apk` de `serve/` e marca o de maior versão. Rode-o depois
+de publicar um APK novo. (Fica em `tools/`, não em `scripts/`: `scripts/` é
+espelhado em `app/src/main/assets/pack/scripts` e o teste do espelho quebra com
+qualquer arquivo só de um lado.)
 
 ## Sistema de chaves (o app fala direto com o Turso)
 

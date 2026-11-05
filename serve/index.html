@@ -22,172 +22,21 @@
   .btn { display:inline-block; margin-top:12px; padding:10px 16px; font-weight:700; text-decoration:none; border-radius:9px; background:#c7ccd6; color:#12151a; }
   .btn.alt { background:#2b323d; color:#e6e9ef; }
   .cred { margin-top:12px; padding:10px 12px; border-radius:9px; background:#0e1116; border:1px dashed #3a424f; font-size:13px; }
-  ul { margin:6px 0 0; padding-left:18px; }
-  li { margin:3px 0; }
 </style>
 </head>
 <body>
 <h1>Trix - downloads</h1>
-<p class="sub">Servidor local. Baixe pelo botao ou copie o link.</p>
-
+<p class="sub">Baixe pelo botao. A instalacao acontece por cima (mesma assinatura), sem desinstalar.</p>
 <div class="card best">
-  <strong>Trix-v2.44.1-dumpsys-grande-e-bateria.apk</strong><span class="tag">RECOMENDADO</span>
-  <div class="muted">versionCode 83 &middot; versionName 2.44.1 &middot; 9769417 bytes</div>
-  <div class="muted">Atualiza por cima da versao instalada: mesma assinatura (keystore fixa), versionCode maior. Sem desinstalar.</div>
-  <div class="muted">Novidades:</div>
-  <ul class="muted">
-    <li><b>Fim do "Argument list too long":</b> ao analisar o aparelho, a leitura da taxa de tela mandava a saida inteira do <code>dumpsys display</code> (mais de 400 KB num Samsung) como argumento de um comando, e o sistema recusava. Agora o texto vai por outro caminho, sem limite de tamanho. O erro aparecia numa linha distante da real e parecia bug aleatorio no meio da otimizacao.</li>
-    <li><b>Bateria certa:</b> o nivel podia virar um numero gigante (tipo 808182838...) porque o Android novo repete a linha <code>level:</code> dezenas de vezes. Agora ele le so a linha certa e confere a faixa (0 a 100). A temperatura tambem.</li>
-    <li><b>Resumo sem repeticao:</b> as duas ultimas linhas do resumo saiam duplicadas.</li>
-    <li>Mantem tudo da 2.44.0: backup criptografado e otimizador que aprende neste aparelho</li>
-  </ul>
-  <div><a class="btn" href="Trix-v2.44.1-dumpsys-grande-e-bateria.apk">Baixar APK 2.44.1</a></div>
+  <strong>Trix-v2.49.1-chave-trix-admin.apk</strong><span class="tag">RECOMENDADO</span>
+  <div class="muted">9807719 bytes</div>
+  <div><a class="btn" href="Trix-v2.49.1-chave-trix-admin.apk">Baixar</a></div>
   <div class="cred">
-    Entre com:<br>
-    usuario <code>00deUdia</code><br>
-    senha <code>159951</code>
+    <b>Entrada por chave</b> (nao tem mais usuario/senha):<br>
+    chave de <b>dono/admin</b> comeca com <code>00-</code><br>
+    chave de <b>usuario</b> comeca com <code>TRIX-</code>
   </div>
-  <div class="muted">SHA-256: <code>4395439c1a89c53597fc7636c678a94afea9699ebc21da8cad5b32cba8f3c425</code></div>
+  <div class="muted">SHA-256: <code>1b5f8ee1fe8681367996981dcc1bee91785b6c0e5db25b3fbe10d7b881517131</code></div>
 </div>
-
-<div class="card">
-  <strong>Trix-v2.44.0-backup-cifrado-otimizador-aprende.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 82 &middot; versionName 2.44.0 &middot; 9768661 bytes</div>
-  <div class="muted">Backup criptografado e otimizador que aprende. Tinha o bug do "Argument list too long" e da bateria.</div>
-  <div><a class="btn alt" href="Trix-v2.44.0-backup-cifrado-otimizador-aprende.apk">Baixar APK 2.44.0</a></div>
-</div>
-
-<div class="card">
-  <strong>Trix-v2.43.2-toque-corrigido.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 81 &middot; versionName 2.43.2 &middot; 9764582 bytes</div>
-  <div class="muted">Correcao principal: os botoes voltaram a responder ao toque.</div>
-  <div><a class="btn alt" href="Trix-v2.43.2-toque-corrigido.apk">Baixar APK 2.43.2</a></div>
-</div>
-
-<div class="card">
-  <strong>Trix-v2.43.1-perfil-42-recursos.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 80 &middot; versionName 2.43.1 &middot; 9764470 bytes</div>
-  <div class="muted">Perfil personalizado com 42 recursos. Tinha o bug do toque: os botoes nao respondiam.</div>
-  <div><a class="btn alt" href="Trix-v2.43.1-perfil-42-recursos.apk">Baixar APK 2.43.1</a></div>
-  <div class="muted">SHA-256: <code>39e9a726a75d87d81ed0effb1cb18107ce2ac02891a45076bffa1b37ff48eaa2</code></div>
-</div>
-
-<div class="card">
-  <strong>Trix-v2.43.0-perfil-personalizado.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 79 &middot; versionName 2.43.0 &middot; 9741154 bytes</div>
-  <div class="muted">Perfil personalizado com 28 recursos e correcoes do painel.</div>
-  <div><a class="btn alt" href="Trix-v2.43.0-perfil-personalizado.apk">Baixar APK 2.43.0</a></div>
-  <div class="muted">SHA-256: <code>87c124f257076c7da691bfe41ba86ad30db2c4595a2fd7ac39d64e3728b872df</code></div>
-</div>
-
-<div class="card">
-  <strong>Trix-v2.42.1-fix-flutuante-painel.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 78 &middot; versionName 2.42.1 &middot; 9733122 bytes</div>
-  <div class="muted">Correcoes: bolha flutuante arrasta e fim dos cards repetidos no painel.</div>
-  <div><a class="btn alt" href="Trix-v2.42.1-fix-flutuante-painel.apk">Baixar APK 2.42.1</a></div>
-  <div class="muted">SHA-256: <code>c3f784fc9fbf7a02ff9125c6c393eab590ddd65983a1ab3ab4ed69a5c43159e8</code></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.41.2-dispositivos-otimizador.apk</strong>
-  <div class="muted">versionCode 76 &middot; versionName 2.41.2 &middot; 9531210 bytes</div>
-  <div class="muted">Categoria Dispositivos (resolucao de tela) e otimizador que mede antes x depois.</div>
-  <div><a class="btn" href="Pack-Otimizacao-00-v2.41.2-dispositivos-otimizador.apk">Baixar APK 2.41.2</a></div>
-  <div class="muted">SHA-256: <code>f5a78d8c4a6beb0f949b2a6d2359ef5ed9ef7c291457cb4fcc464fa18efe90b5</code></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.41.1-flutuante-ajustado.apk</strong>
-  <div class="muted">versionCode 75 &middot; versionName 2.41.1 &middot; 9518151 bytes</div>
-  <div class="muted">Painel flutuante com tamanho fixo e a aba do FPS no lugar certo.</div>
-  <div><a class="btn" href="Pack-Otimizacao-00-v2.41.1-flutuante-ajustado.apk">Baixar APK 2.41.1</a></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.39.1-shizuku-fix.apk</strong>
-  <div class="muted">versionCode 72 &middot; versionName 2.39.1 &middot; 9.511.683 bytes</div>
-  <div class="muted">Correcao do Shizuku e configuracoes mais limpas.</div>
-  <div><a class="btn" href="Pack-Otimizacao-00-v2.39.1-shizuku-fix.apk">Baixar APK 2.39.1</a></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.39.0-aparencia-personalizada.apk</strong>
-  <div class="muted">versionCode 71 &middot; versionName 2.39.0 &middot; 9.495.315 bytes</div>
-  <div class="muted">Aparencia nova: app so modo escuro, cor de destaque personalizada e o painel flutuante com o mesmo tema.</div>
-  <div><a class="btn" href="Pack-Otimizacao-00-v2.39.0-aparencia-personalizada.apk">Baixar APK 2.39.0</a></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.37.0-painel-organizado.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 69 &middot; versionName 2.37.0 &middot; 9.042.236 bytes</div>
-  <div class="muted">Painel flutuante organizado: secoes, nome "00" e minimizar para o icone do app.</div>
-  <div class="muted">Novidades:</div>
-  <ul class="muted">
-    <li>Painel flutuante agora se chama so "00" e fica organizado em secoes (Sensi, Perfil de toque, Atalhos) - antes era uma lista unica</li>
-    <li>Minimizar vira so o icone do app; um toque no icone devolve o painel completo, no mesmo lugar</li>
-    <li>Barras do sistema: icones da barra de cima e bateria em % agora sao cards de ligar/desligar (nao botoes soltos)</li>
-    <li>Os cards marcam a opcao em uso lendo o estado real do aparelho</li>
-  </ul>
-  <div><a class="btn" href="Pack-Otimizacao-00-v2.37.0-painel-organizado.apk">Baixar APK 2.37.0</a></div>
-  <div class="cred">
-    Entre com:<br>
-    usuario <code>00deUdia</code><br>
-    senha <code>159951</code>
-  </div>
-  <div class="muted">SHA-256: <code>c0bc65301a737d628533824e4227b5d2f11a57683f8f0b650022493c27821d4b</code></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.34.6-desfoque-teclado.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 66 &middot; versionName 2.34.6 &middot; 9.030.484 bytes</div>
-  <div class="muted">Corrige o desfoque do teclado e da barra, e traz o card para ligar/desligar.</div>
-  <div><a class="btn alt" href="Pack-Otimizacao-00-v2.34.6-desfoque-teclado.apk">Baixar APK 2.34.6</a></div>
-  <div class="muted">SHA-256: <code>b73dbcf5b9d461777705efe8e3c176a428d3856391ec0818f41790fadd8286ac</code></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.34.3-correcao-cards.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 63 &middot; versionName 2.34.3 &middot; 8.997.794 bytes</div>
-  <div class="muted">Correcao dos cards do painel (Perfil de Desempenho e Saude do telefone).</div>
-  <div><a class="btn alt" href="Pack-Otimizacao-00-v2.34.3-correcao-cards.apk">Baixar APK 2.34.3</a></div>
-  <div class="muted">SHA-256: <code>4b3c33b6544c2adc2f886685cf44d0da1e83d5326d63fa79fdef1037a63b9534</code></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.34.2-saude-do-telefone.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 62 &middot; versionName 2.34.2</div>
-  <div class="muted">Adicionou o card "Saude do telefone" com o botao "Otimizar saude do telefone".</div>
-  <div><a class="btn alt" href="Pack-Otimizacao-00-v2.34.2-saude-do-telefone.apk">Baixar APK 2.34.2</a></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.31.0-login-senha.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 54 &middot; versionName 2.31.0 &middot; 8.970.741 bytes</div>
-  <div class="muted">Modo gamer protege o jogo contra relog: sem restricao de bateria, no maximo 4 apps em 2&ordm; plano.</div>
-  <div><a class="btn alt" href="Pack-Otimizacao-00-v2.31.0-login-senha.apk">Baixar APK 2.31.0 (login/senha)</a></div>
-  <div class="muted">SHA-256: <code>92276f854d94e31fa256cfebef01f940e0792c6d4b1f661013e027dd1651be0d</code></div>
-</div>
-
-<div class="card">
-  <strong>Pack-Otimizacao-00-v2.30.0-login-senha.apk</strong><span class="tag warn">versao anterior</span>
-  <div class="muted">versionCode 52 &middot; versionName 2.30.0 &middot; 8.968.065 bytes</div>
-  <div class="muted">Tem o seletor de jogo, mas o aparelho pode nao receber os scripts novos (o selo so olhava o nome da versao). Prefira a 2.30.1.</div>
-  <div><a class="btn alt" href="Pack-Otimizacao-00-v2.30.0-login-senha.apk">Baixar APK 2.30.0 (login/senha)</a></div>
-  <div class="muted">SHA-256: <code>96221fc0ab1a2d11be1350255a28b396fdc4705501abd1d96b6ae5d43ea68f99</code></div>
-</div>
-
-<div class="card old">
-  <strong>Pack-Otimizacao-00-v2.30.0.apk</strong><span class="tag warn">acesso por CHAVE</span>
-  <div class="muted">Build antigo, com chave. So para comparacao.</div>
-  <div><a class="btn alt" href="Pack-Otimizacao-00-v2.30.0.apk">Baixar APK 2.30.0 (chave)</a></div>
-  <div class="muted">SHA-256: <code>24b4ac0643d733d5512fb33508e45adc10ba7195d9564eb7068a1457a065cdf6</code></div>
-</div>
-
-<p class="sub" style="max-width:660px">
-As versoes <b>2.32.0</b> e <b>2.32.1</b> foram retiradas desta pagina: elas foram assinadas com a
-chave de depuracao do Android, e por isso o celular pede para desinstalar antes de instalar.
-Da <b>2.33.1</b> em diante tudo usa a mesma chave de release, entao a instalacao acontece por cima,
-como uma atualizacao normal, sem perder dados nem configuracoes.
-</p>
 </body>
 </html>
