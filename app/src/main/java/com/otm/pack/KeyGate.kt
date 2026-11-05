@@ -51,27 +51,6 @@ object KeyGate {
 
     const val ROLE_OWNER = "owner"
 
-    /**
-     * Chave de dono embutida, para o dono do aparelho não ficar trancado fora.
-     *
-     * Sem isso, a única chave de dono é a que foi sorteada e gravada no banco:
-     * banco fora do ar, chave perdida ou base recriada = ninguém entra na
-     * categoria Admin, e não há como se recuperar pelo app. Esta chave é
-     * constante no código, então vale sempre, mesmo sem rede.
-     *
-     * É um segredo compartilhado (está no APK): serve para o dono entrar, não
-     * como fronteira de segurança. Quem tem o APK tem esta chave — por isso o
-     * papel de dono continua sendo checado no nativo e o Turso segue sendo a
-     * fonte das chaves de usuário.
-     */
-    const val BUILTIN_OWNER_KEY = "00-ADMN-KEYS-2026"
-
-    /** SHA-256 da chave embutida, na mesma forma que vai para o banco. */
-    val BUILTIN_OWNER_HASH: String = hash(BUILTIN_OWNER_KEY)
-
-    /** A chave digitada é a chave de dono embutida? */
-    fun isBuiltinOwner(raw: String): Boolean = normalize(raw) == BUILTIN_OWNER_KEY
-
     /** Resultado da verificação: o que aconteceu e o que mostrar ao usuário. */
     data class Result(
         val ok: Boolean,
@@ -204,15 +183,6 @@ object KeyGate {
         }
         val key = normalize(raw)
         val h = hash(key)
-
-        // Chave de dono embutida: entra sempre, sem depender do banco.
-        if (isBuiltinOwner(key)) {
-            saveSession(c, h, ROLE_OWNER, "Admin (padrão)", null)
-            if (dbConfigured()) {
-                try { logEvent(db(), null, prefixOf(key), "ok", c, "Chave de dono embutida.") } catch (_: Throwable) {}
-            }
-            return Result(true, "ok", "Chave de dono aceita.", "Admin (padrão)", ROLE_OWNER)
-        }
 
         if (dbConfigured()) {
             val remote = try { checkRemote(c, key, h) } catch (_: Throwable) { null }

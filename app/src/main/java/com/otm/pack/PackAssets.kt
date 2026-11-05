@@ -20,9 +20,23 @@ object PackAssets {
     /** Onde os scripts rodam (visível ao usuário `shell` do Shizuku/ADB). */
     const val EXEC_DIR = "/data/local/tmp/otm-pack"
 
+    /**
+     * `HOME` dos scripts. Fica FORA de [EXEC_DIR], que é apagado inteiro quando
+     * os scripts mudam: aqui moram os snapshots, a config e os ajustes salvos.
+     */
+    const val STATE_DIR = "/data/local/tmp/otm-state"
+
     private const val STAMP = ".extracted"
 
-    /** Extrai assets/pack para filesDir/pack (uso local do app: .txt do nível 1). */
+    /**
+     * Pasta de estado que NÃO pode ser apagada.
+     * O histórico (log.jsonl, term.jsonl) morava em `filesDir/pack/state`, e o
+     * `pack` é reescrito do zero a cada mudança de assets. Resultado: instalar
+     * uma versão nova apagava o histórico de tudo que o usuário tinha feito.
+     * Aqui o estado fica fora da pasta extraída e sobrevive à atualização.
+     */
+    fun stateDir(context: Context): File = File(context.filesDir, "otm-state").apply { mkdirs() }
+
     fun ensureExtracted(context: Context): File = ensureExtracted(context, ASSET_ROOT)
 
     /** Extrai uma pasta de assets para filesDir/<nome> (uma vez por versão). */
@@ -77,6 +91,10 @@ object PackAssets {
             val stamp = r.exec("cat '$EXEC_DIR/$STAMP' 2>/dev/null")
             if (stamp.stdout.trim() == want) return@runBlocking
 
+            // Antes de limpar: resgata o estado do usuário que morava aqui dentro
+            // (o `rm -rf` abaixo apagaria snapshots e config junto com os scripts).
+            migrarEstado(r)
+
             r.exec("rm -rf '$EXEC_DIR' && mkdir -p '$EXEC_DIR/scripts'")
             for (name in context.assets.list("$ASSET_ROOT/scripts").orEmpty()) {
                 val content = context.assets.open("$ASSET_ROOT/scripts/$name")
@@ -89,6 +107,21 @@ object PackAssets {
             r.exec("chmod -R 755 '$EXEC_DIR' && printf '%s' '$want' > '$EXEC_DIR/$STAMP'")
         }
         return EXEC_DIR
+    }
+
+    /**
+     * Traz o `.packotm` que morava dentro do [EXEC_DIR] (versões antigas) para a
+     * pasta nova. Não sobrescreve: se já houver estado novo, o novo ganha.
+     */
+    private suspend fun migrarEstado(r: ShellRunner) {
+        try {
+            r.exec("mkdir -p '$STATE_DIR'")
+            val tem = r.exec("ls -A '$STATE_DIR/.packotm' 2>/dev/null | head -1")
+            if (tem.stdout.trim().isNotEmpty()) return
+            val antigo = r.exec("ls -A '$EXEC_DIR/.packotm' 2>/dev/null | head -1")
+            if (antigo.stdout.trim().isEmpty()) return
+            r.exec("cp -a '$EXEC_DIR/.packotm' '$STATE_DIR/' 2>/dev/null")
+        } catch (_: Throwable) {}
     }
 
     private fun copyAssetDir(context: Context, assetPath: String, dest: File) {

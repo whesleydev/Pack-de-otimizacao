@@ -3,6 +3,40 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.51.0] - 2026-11-05
+
+### Removido
+- **Chave de dono fixa no APK (backdoor).** A versão anterior embutia
+  `BUILTIN_OWNER_KEY` (`00-ADMN-KEYS-2026`) no `KeyGate.kt` e um botão "entrar
+  como dono" no `login.html`. Quem tivesse o APK entrava como dono — e o dono é
+  quem cria e revoga as chaves de todo mundo. A chave fixa foi tirada do código,
+  o botão do login saiu e a linha correspondente foi apagada do banco. O acesso
+  de dono agora é só por uma chave `00-...` criada no banco.
+
+### Corrigido
+- **Logs e histórico do terminal sumiam.** `log.jsonl` e `term.jsonl` moravam em
+  `filesDir/pack/state`, e o `PackAssets.ensureExtracted` apaga a pasta `pack`
+  inteira (`deleteRecursively`) a cada mudança de assets — ou seja, cada
+  atualização zerava o histórico de tudo que o usuário tinha feito. O estado foi
+  para `filesDir/otm-state`, fora da pasta extraída, com migração do estado
+  antigo na primeira abertura.
+- **Snapshots e configuração dos scripts sumiam.** O `HOME` dos scripts apontava
+  para `/data/local/tmp/otm-pack`, que o próprio `ensureShellCopy` apaga com
+  `rm -rf` antes de recopiar. O `HOME` agora é `/data/local/tmp/otm-state`, e a
+  migração do `.packotm` roda ANTES da limpeza.
+
+### Adicionado
+- **Categoria Admin dentro do app** (`AdminService.kt` + aba Admin no painel):
+  listar, criar, ligar/desligar e apagar chaves e ver a auditoria, falando direto
+  com o Turso. A aba só aparece para o dono. Toda operação é autorizada no lado
+  nativo (`KeyGate.isOwner`), não no JavaScript.
+- **Caminho legítimo do dono**: o painel cria chave com papel `owner` (prefixo
+  `00-`), então dá para gerar uma chave nova antes de revogar a antiga — sem
+  precisar de chave fixa no APK.
+- **Testes de regressão**: `tests/run.sh` agora proíbe a chave fixa de voltar
+  (no código e no login) e exige que o log/terminal/`HOME` fiquem fora da pasta
+  que a atualização apaga.
+
 ## [2.47.0] - 2026-10-31
 
 ### Adicionado

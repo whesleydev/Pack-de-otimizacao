@@ -680,45 +680,29 @@ PY
     else
         bad "coluna NULL vira 'null' no mapa de linhas ($(head -1 "$TMP/nulldb"))"
     fi
-    # Chave de dono embutida: sem ela, perder a chave sorteada (ou o banco sair do
-    # ar) tranca o dono fora do menu Admin sem recuperação pelo app.
+    # NÃO pode existir chave de dono fixa no APK: quem tem o APK entraria como
+    # dono, mesmo sem ter recebido chave nenhuma. Isso é backdoor, não recurso.
+    # O caminho do dono é a chave dele, criada por ele e guardada no banco.
     local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
-    grep -q 'const val BUILTIN_OWNER_KEY = "00-ADMN-KEYS-2026"' "$gate" \
-        && ok "KeyGate tem a chave de dono embutida" || bad "KeyGate sem chave de dono embutida"
-    grep -q 'if (isBuiltinOwner(key))' "$gate" \
-        && ok "KeyGate aceita a chave embutida" || bad "KeyGate não usa a chave embutida"
-    # A checagem embutida tem de vir ANTES do banco: se vier depois, o banco fora
-    # do ar (ou sem a linha) recusa a chave padrão e o dono não entra.
-    python3 - "$gate" <<'PY' > "$TMP/ordem" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("fun check(c: Context, raw: String): Result {")
-if i < 0: print("sem check()"); raise SystemExit(1)
-body = src[i:i+1400]
-print("ok" if body.find("isBuiltinOwner(key)") < body.find("checkRemote(c, key, h)") else "ordem errada")
-PY
-    grep -q '^ok$' "$TMP/ordem" \
-        && ok "chave embutida é checada antes do banco (entra sem rede)" \
-        || bad "chave embutida é checada depois do banco ($(head -1 "$TMP/ordem"))"
-    # a chave embutida tem de ser bem formada (senão `wellFormed` recusa antes de tudo)
-    python3 - "$gate" <<'PY' > "$TMP/form" 2>&1
-import re, sys
-src = open(sys.argv[1], encoding="utf-8").read()
-m = re.search(r'BUILTIN_OWNER_KEY = "([^"]+)"', src)
-key = m.group(1)
-alphabet = re.search(r'ALPHABET = "([^"]+)"', src).group(1)
-ok = re.fullmatch(r"00(-[" + re.escape(alphabet) + r"]{4}){3}", key)
-print("ok" if ok else "chave fora do alfabeto: " + key)
-PY
-    grep -q '^ok$' "$TMP/form" \
-        && ok "chave embutida respeita o alfabeto das chaves" || bad "$(head -1 "$TMP/form")"
-    # a tela de login oferece a entrada de dono sem digitar
-    grep -q 'id="entrarDono"' "$p/login.html" && ok "login tem o botão de dono padrão" \
-        || bad "login sem o botão de dono padrão"
-    grep -q '00-ADMN-KEYS-2026' "$p/login.html" && ok "login mostra a chave padrão" \
-        || bad "login não mostra a chave padrão"
-    grep -q 'el("entrarDono").addEventListener' "$p/login.html" \
-        && ok "botão de dono padrão está ligado" || bad "botão de dono padrão sem ação"
+    if grep -qE 'const val [A-Z_]*(BUILTIN|MASTER|DEFAULT)[A-Z_]*KEY *= *"00-' "$gate"; then
+        bad "KeyGate tem chave de dono fixa no código (backdoor)"
+    else
+        ok "KeyGate não embute chave de dono (sem backdoor)"
+    fi
+    grep -q 'isBuiltinOwner' "$gate" && bad "KeyGate ainda aceita chave embutida" \
+        || ok "KeyGate não tem atalho de chave embutida"
+    # o placeholder do formato ("00-XXXX-...") é ok; uma chave de verdade, não
+    if grep -oE '00-([A-Z0-9]{4}-){2}[A-Z0-9]{4}' "$p/login.html" \
+        | grep -qvE '^00-X{4}-X{4}-X{4}$'; then
+        bad "login.html expõe uma chave de dono pronta"
+    else
+        ok "login.html não expõe chave pronta (só o formato)"
+    fi
+    grep -q 'id="entrarDono"' "$p/login.html" && bad "login tem botão de dono embutido" \
+        || ok "login não tem botão de dono embutido"
+    # ...mas o dono precisa de um caminho legítimo: poder criar a própria chave.
+    grep -q 'value="owner"' "$p/index.html" \
+        && ok "painel deixa criar chave de dono" || bad "painel não deixa criar chave de dono"
     # o hífen não pode sumir enquanto se digita: a máscara reagrupa a cada tecla e
     # engolia o separador recém-digitado ("00-" voltava a exibir "00").
     python3 - "$p/login.html" <<'PY' > "$TMP/hif" 2>&1
@@ -790,6 +774,27 @@ t_app_exec() {
     fi
     grep -q 'ensureShellCopy' "$src/OtmExec.kt" \
         && ok "executor compartilhado usa a pasta do shell" || bad "OtmExec sem ensureShellCopy"
+    # o histórico não pode morar dentro da pasta extraída: ensureExtracted faz
+    # deleteRecursively() a cada mudança de assets, e o log/terminal zerava.
+    grep -q 'File(stateDir(), "log.jsonl")' "$src/PackBridge.kt" \
+        && ok "log fora da pasta extraída (sobrevive à atualização)" \
+        || bad "log ainda em packDir()/state (some ao atualizar)"
+    grep -q 'File(stateDir(), "term.jsonl")' "$src/PackBridge.kt" \
+        && ok "histórico do terminal fora da pasta extraída" \
+        || bad "histórico do terminal ainda em packDir()/state"
+    grep -qE 'File\(packDir\(\), "state/(log|term)\.jsonl"\)' "$src/PackBridge.kt" \
+        && bad "ainda há estado gravado dentro da pasta extraída" \
+        || ok "nada de estado dentro da pasta extraída"
+    grep -q 'fun stateDir(context: Context): File = File(context.filesDir' "$src/PackAssets.kt" \
+        && ok "stateDir fica no filesDir (não é apagado)" || bad "stateDir dentro do pack"
+    # o HOME dos scripts também apontava para a pasta que o rm -rf apaga
+    grep -q 'PackAssets.STATE_DIR' "$src/OtmExec.kt" \
+        && ok "HOME dos scripts vem da pasta de estado" || bad "HOME ainda é a pasta dos scripts"
+    grep -q 'const val STATE_DIR = "/data/local/tmp/otm-state"' "$src/PackAssets.kt" \
+        && ok "estado dos scripts fora do /data/local/tmp/otm-pack" \
+        || bad "estado dos scripts dentro da pasta apagada"
+    grep -q 'migrarEstado' "$src/PackAssets.kt" \
+        && ok "migra o estado da versão antiga antes de limpar" || bad "sem migração do estado antigo"
 }
 
 # --- menu lateral do painel: fica fixo ao rolar ------------------------------

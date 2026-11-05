@@ -293,7 +293,7 @@ class PackBridge(
     }
 
     private fun logImpl(): String {
-        val f = File(packDir(), "state/log.jsonl")
+        val f = File(stateDir(), "log.jsonl")
         val arr = JSONArray()
         if (f.isFile) {
             val lines = f.readLines().filter { it.isNotBlank() }.takeLast(40).reversed()
@@ -304,7 +304,7 @@ class PackBridge(
 
     /** Histórico COMPLETO (o painel mostra em "Logs", sem truncar). */
     private fun logAllImpl(): String {
-        val f = File(packDir(), "state/log.jsonl")
+        val f = File(stateDir(), "log.jsonl")
         val arr = JSONArray()
         if (f.isFile) {
             val lines = f.readLines().filter { it.isNotBlank() }.reversed()
@@ -407,7 +407,7 @@ class PackBridge(
     }
 
     private fun termHistImpl(): String {
-        val f = File(packDir(), "state/term.jsonl")
+        val f = File(stateDir(), "term.jsonl")
         val arr = JSONArray()
         if (f.isFile) {
             for (l in f.readLines().filter { it.isNotBlank() }.takeLast(200)) {
@@ -419,7 +419,7 @@ class PackBridge(
 
     private fun termAppend(cmd: String, out: String) {
         try {
-            val f = File(packDir(), "state/term.jsonl")
+            val f = File(stateDir(), "term.jsonl")
             f.parentFile?.mkdirs()
             val rec = JSONObject().put("cmd", cmd).put("out", out.take(20000)).toString()
             f.appendText(rec + "\n")
@@ -438,7 +438,7 @@ class PackBridge(
         durMs: Long = 0,
     ) {
         try {
-            val f = File(packDir(), "state/log.jsonl")
+            val f = File(stateDir(), "log.jsonl")
             f.parentFile?.mkdirs()
             val rec = JSONObject()
                 .put("ts", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date()))
@@ -535,6 +535,26 @@ class PackBridge(
         OtmExec.scriptCommand(context, runnerProvider(), script, args)
 
     private fun packDir(): File = PackAssets.ensureExtracted(context)
+
+    /**
+     * Onde vive o histórico. Antes era `packDir()/state`, dentro da pasta que o
+     * app apaga a cada atualização — instalar uma versão nova zerava o histórico.
+     */
+    private fun stateDir(): File {
+        val dir = PackAssets.stateDir(context)
+        // Resgata o histórico da versão anterior (morava dentro do `pack`).
+        try {
+            val antigo = File(packDir(), "state")
+            if (antigo.isDirectory) {
+                for (nome in listOf("log.jsonl", "term.jsonl")) {
+                    val de = File(antigo, nome)
+                    val para = File(dir, nome)
+                    if (de.isFile && !para.exists()) de.copyTo(para, overwrite = false)
+                }
+            }
+        } catch (_: Throwable) {}
+        return dir
+    }
 
     private fun parseResult(out: String): Map<String, String> = OtmExec.parseResult(out)
 

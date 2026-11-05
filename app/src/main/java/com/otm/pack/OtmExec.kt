@@ -13,12 +13,20 @@ import kotlinx.coroutines.runBlocking
  */
 object OtmExec {
 
-    /** Monta `sh <execDir>/scripts/<script> <args>` com `HOME` na pasta de execução. */
+    /**
+     * Monta `sh <execDir>/scripts/<script> <args>` com `HOME` na pasta de estado.
+     *
+     * O `HOME` NÃO pode ser a pasta dos scripts: o [PackAssets.ensureShellCopy]
+     * apaga `/data/local/tmp/otm-pack` inteiro quando os scripts mudam, e o
+     * estado dos scripts (`$HOME/.packotm`: snapshots, config, ajustes de jogo)
+     * ia junto. Por isso ele aponta para uma pasta vizinha que ninguém limpa.
+     */
     fun scriptCommand(context: Context, runner: ShellRunner?, script: String, args: List<String>): String {
         val dir = PackAssets.ensureShellCopy(context, runner)
             ?: return "echo 'sem acesso (conecte o Shizuku ou o ADB)' >&2; exit 1"
+        val home = PackAssets.STATE_DIR
         val sb = StringBuilder()
-        sb.append("export HOME='").append(dir).append("'; ")
+        sb.append("export HOME='").append(home).append("'; ")
         sb.append("cd '").append(dir).append("'; ")
         sb.append("sh '").append(dir).append("/scripts/").append(script).append('\'')
         for (a in args) sb.append(" '").append(a.replace("'", "'\\''")).append('\'')

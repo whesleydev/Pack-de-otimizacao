@@ -90,12 +90,18 @@ object AdminService {
 
     /**
      * Cria uma chave nova. Devolve a chave em texto UMA vez (só o hash vai para
-     * o banco). `role` deve ser "user" ou "admin" (nunca "owner" por aqui).
+     * o banco). `role` pode ser "user", "admin" ou "owner": o dono precisa poder
+     * gerar uma chave de dono nova para si, senão perde o acesso para sempre se
+     * a única chave de dono se perder. Nunca rebaixa: um dono não vira admin.
      */
     fun create(c: Context, label: String, days: Long, maxDevices: Long, role: String): JSONObject {
         requireOwner(c)?.let { return it }
         val cleanLabel = label.trim().take(80).ifEmpty { "sem nome" }
-        val cleanRole = if (role == "admin") "admin" else "user"
+        val cleanRole = when (role) {
+            "owner" -> "owner"
+            "admin" -> "admin"
+            else -> "user"
+        }
         val key = KeyGate.generate(cleanRole)
         val hash = KeyGate.hash(key)
         val prefix = KeyGate.prefixOf(key)

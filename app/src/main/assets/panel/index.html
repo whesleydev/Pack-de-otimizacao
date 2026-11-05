@@ -476,6 +476,37 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .logsrow .dur{color:var(--muted);font-size:11px;flex:none}
 .logsrow .sum{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
 
+/* ---- admin (só para o dono) ------------------------------------------------ */
+.adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px;margin-top:12px}
+.adm-stat{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--glass-2)}
+.adm-stat b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.adm-stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.adm-list{display:grid;gap:8px;margin-top:12px}
+.adm-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--glass-2)}
+.adm-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.adm-key{font-family:var(--mono);font-weight:800;font-size:13.5px;letter-spacing:.04em}
+.adm-item .nm{font-size:13px;margin-top:3px}
+.adm-item .meta{font-size:11.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+.adm-item .acts{display:flex;gap:8px;margin-top:9px}
+.adm-item .acts .btn{width:auto;font-size:12.5px;padding:7px 12px}
+.adm-badge{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);white-space:nowrap}
+.adm-badge.dono{color:var(--teal);border-color:color-mix(in srgb,var(--teal) 45%,var(--line))}
+.adm-badge.admin{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.adm-badge.user{color:var(--muted)}
+.adm-audit{display:grid;gap:2px;margin-top:10px;font-size:12.5px}
+.adm-ev{display:flex;gap:10px;justify-content:space-between;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid var(--line)}
+.adm-ev:last-child{border-bottom:0}
+.adm-ev .pfx{font-family:var(--mono);font-weight:700;flex:none}
+.adm-ev .res{flex:1;min-width:0;word-break:break-word}
+.adm-ev .when{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.adm-ev.no .res{color:var(--danger)}
+.adm-newkey{margin-top:12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
+.adm-newkey p{margin:0 0 6px;font-size:12px;color:var(--muted)}
+.adm-newkey code{font-family:var(--mono);font-weight:800;font-size:15px;letter-spacing:.08em}
+.adm-empty{margin:10px 0 0;color:var(--muted);font-size:13px}
+
 /* ---- terminal real -------------------------------------------------------- */
 /* ---- terminal amplo ------------------------------------------------------- */
 .term-sec .head{max-width:72ch}
@@ -4811,24 +4842,36 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <section id="g-Admin" data-g="Admin" hidden>
       <div class="head">
         <h2>Admin</h2>
-        <p>Gerenciar usuários e chaves de acesso. Visível só para o dono.</p>
+        <p>Chaves de acesso e quem está usando. Esta categoria só aparece para o dono.</p>
       </div>
 
-      <div class="note" id="admWho">
+      <div class="note">
         <span aria-hidden="true">ⓘ</span>
-        <div><b>Sessão:</b> <span id="admLabel">—</span> · <span id="admRole">—</span>
-        · <span id="admDb">—</span></div>
+        <div><b>Como funciona:</b> a chave é a identidade — quem tem a chave entra.
+        <b>TRIX-</b> é usuário comum; <b>00-</b> é admin. Só o dono vê esta aba, e a
+        permissão é conferida no app, não na tela.</div>
       </div>
+
+      <article class="card" data-id="adm.session">
+        <div class="row"><h3>Sua sessão</h3><span class="adm-badge dono" id="admBadge">dono</span></div>
+        <div class="adm-stats">
+          <div class="adm-stat"><b id="admKeys">0</b><span>chaves</span></div>
+          <div class="adm-stat"><b id="admActive">0</b><span>ativas</span></div>
+          <div class="adm-stat"><b id="admDevs">0</b><span>aparelhos</span></div>
+        </div>
+        <p class="adm-empty">Entrou como <b id="admLabel">—</b> · <span id="admDb">—</span></p>
+        <div class="go"><button class="btn" id="admLogout" type="button">Sair da conta</button></div>
+      </article>
 
       <article class="card" data-id="adm.create">
-        <div class="row"><h3>Criar chave para um usuário</h3></div>
+        <div class="row"><h3>Criar uma chave</h3></div>
         <div class="fields">
           <div class="field wide">
             <label for="admName">Nome de quem vai receber</label>
             <input id="admName" type="text" placeholder="ex.: João / cliente do zap" autocomplete="off">
           </div>
           <div class="field">
-            <label for="admDays">Dias de validade (0 = vitalício)</label>
+            <label for="admDays">Dias de validade (0 = para sempre)</label>
             <input id="admDays" type="number" min="0" value="30" inputmode="numeric">
           </div>
           <div class="field">
@@ -4836,36 +4879,34 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <input id="admDevices" type="number" min="0" value="1" inputmode="numeric">
           </div>
           <div class="field">
-            <label for="admRole">Papel</label>
+            <label for="admRoleSel">Papel</label>
             <select id="admRoleSel">
-              <option value="user">Usuário comum</option>
-              <option value="admin">Administrador</option>
+              <option value="user">Usuário comum (TRIX-)</option>
+              <option value="admin">Administrador (00-)</option>
+              <option value="owner">Dono (00-) — mexe nesta aba</option>
             </select>
           </div>
         </div>
         <div class="go"><button class="btn primary" id="admCreate" type="button">Criar chave</button></div>
-        <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">Usuário comum recebe uma chave <b>TRIX-XXXX-XXXX-XXXX</b>; administrador, <b>00-XXXX-XXXX-XXXX</b>.</p>
-        <div id="admNewKey" hidden style="margin-top:12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)">
-          <p style="margin:0 0 6px;font-size:12px;color:var(--muted)">Chave criada — copie agora, não mostramos de novo:</p>
-          <p id="admNewKeyVal" style="margin:0;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:16px;letter-spacing:.08em"></p>
+        <p class="adm-empty">A chave aparece uma vez. Copie e mande para a pessoa — depois só o prefixo fica visível.</p>
+        <div class="adm-newkey" id="admNewKey" hidden>
+          <p>Chave criada — copie agora, não mostramos de novo:</p>
+          <code id="admNewKeyVal"></code>
         </div>
       </article>
 
       <article class="card" data-id="adm.list">
         <div class="row">
-          <h3>Usuários e chaves</h3>
+          <h3>Chaves</h3>
           <button class="btn" id="admRefresh" type="button" style="width:auto">Atualizar</button>
         </div>
-        <div id="admList" style="display:grid;gap:10px;margin-top:10px"></div>
+        <div class="adm-list" id="admList"></div>
       </article>
 
       <article class="card" data-id="adm.audit">
-        <div class="row"><h3>Auditoria (últimos acessos)</h3></div>
-        <div id="admAudit" style="display:grid;gap:6px;margin-top:10px;font-size:13px"></div>
-      </article>
-
-      <article class="card" data-id="adm.session">
-        <div class="go"><button class="btn" id="admLogout" type="button">Sair da conta</button></div>
+        <div class="row"><h3>Auditoria</h3></div>
+        <p class="adm-empty">Tentativas de entrada recentes: quem tentou, de qual aparelho e o que aconteceu.</p>
+        <div class="adm-audit" id="admAudit"></div>
       </article>
     </section>
     <section id="g-Lat%C3%AAncia%20e%20ping" data-g="Latência e ping" hidden>
@@ -6642,34 +6683,41 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
   });
   const fmtDt = s => { if (!s) return "—"; const d = new Date(String(s).replace(" ", "T") + "Z");
     return isNaN(d) ? s : d.toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); };
-  const STATUS = { active:["ativa","#2e7d32"], scheduled:["agendada","#8a7a2a"], expired:["expirada","#a56"], revoked:["revogada","#c0392b"], exhausted:["esgotada","#c0392b"] };
+  const STATUS = { active:["ativa","var(--teal)"], scheduled:["agendada","var(--warn)"],
+    expired:["expirada","var(--muted)"], revoked:["revogada","var(--danger)"], exhausted:["esgotada","var(--danger)"] };
+  const PAPEL = { owner:["dono","dono"], admin:["admin","admin"], user:["usuário","user"] };
+
+  function item(k){
+    const st = STATUS[k.status] || [k.status, "var(--muted)"];
+    const [papel, cls] = PAPEL[k.role] || [k.role, "user"];
+    const dono = k.role === "owner";
+    const dev = k.maxDevices > 0 ? (k.devices + "/" + k.maxDevices) : (k.devices + "/∞");
+    const ativa = k.status === "active" || k.status === "scheduled";
+    return '<div class="adm-item">'
+      + '<div class="top"><span class="adm-key">' + esc(k.prefix) + "-····-····</span>"
+      +   '<span class="adm-badge ' + cls + '">' + esc(papel) + "</span></div>"
+      + '<div class="nm">' + esc(k.label || "sem nome") + "</div>"
+      + '<div class="meta"><span class="adm-st" style="color:' + st[1] + '">' + esc(st[0]) + "</span>"
+      +   " · aparelhos " + esc(dev) + " · usos " + esc(k.uses) + (k.maxUses > 0 ? "/" + esc(k.maxUses) : "")
+      +   " · expira " + esc(k.expiresAt ? fmtDt(k.expiresAt) : "nunca") + "</div>"
+      + (dono ? "" :
+          '<div class="acts">'
+          + '<button class="btn" data-adm-toggle="' + k.id + '" data-adm-active="' + (ativa ? "0" : "1") + '">' + (ativa ? "Desativar" : "Reativar") + "</button>"
+          + '<button class="btn" data-adm-del="' + k.id + '">Excluir</button>'
+          + "</div>")
+      + "</div>";
+  }
 
   async function refresh(){
     const r = await call("admin_list");
-    if (!r || !r.ok) { listEl.innerHTML = '<p style="color:var(--muted)">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
+    if (!r || !r.ok) { listEl.innerHTML = '<p class="adm-empty">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
     const keys = r.keys || [];
-    if (!keys.length) { listEl.innerHTML = '<p style="color:var(--muted)">Nenhuma chave ainda.</p>'; return; }
-    listEl.innerHTML = keys.map(k => {
-      const st = STATUS[k.status] || [k.status, "#888"];
-      const owner = k.role === "owner";
-      const dev = k.maxDevices > 0 ? (k.devices + "/" + k.maxDevices) : (k.devices + "/∞");
-      const ativa = k.status === "active" || k.status === "scheduled";
-      return '<div style="border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px">'
-        + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'
-        +   '<b style="font-family:ui-monospace,Menlo,monospace">' + esc(k.prefix) + "-····-····</b>"
-        +   '<span style="font-size:11px;font-weight:800;color:' + st[1] + '">' + esc(st[0]) + (owner ? " · DONO" : (k.role === "admin" ? " · ADMIN" : "")) + "</span>"
-        + "</div>"
-        + '<div style="font-size:12.5px;color:var(--muted);margin-top:4px">' + esc(k.label) + "</div>"
-        + '<div style="font-size:11.5px;color:var(--muted)">aparelhos ' + esc(dev)
-        +   " · usos " + esc(k.uses) + (k.maxUses > 0 ? "/" + esc(k.maxUses) : "")
-        +   " · expira " + esc(k.expiresAt ? fmtDt(k.expiresAt) : "nunca") + "</div>"
-        + (owner ? "" :
-            '<div style="display:flex;gap:8px;margin-top:8px">'
-            + '<button class="btn" data-adm-toggle="' + k.id + '" data-adm-active="' + (ativa ? "0" : "1") + '" style="width:auto;font-size:13px">' + (ativa ? "Desativar" : "Reativar") + "</button>"
-            + '<button class="btn" data-adm-del="' + k.id + '" style="width:auto;font-size:13px">Excluir</button>'
-            + "</div>")
-        + "</div>";
-    }).join("");
+    listEl.innerHTML = keys.length ? keys.map(item).join("")
+      : '<p class="adm-empty">Nenhuma chave ainda. Crie a primeira acima.</p>';
+    const ativas = keys.filter(k => k.status === "active" || k.status === "scheduled").length;
+    const devs = keys.reduce((n, k) => n + (+k.devices || 0), 0);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set("admKeys", keys.length); set("admActive", ativas); set("admDevs", devs);
     listEl.querySelectorAll("[data-adm-toggle]").forEach(b => b.onclick = async () => {
       b.disabled = true;
       await call("admin_toggle", { id: +b.dataset.admToggle, active: b.dataset.admActive === "1" });
@@ -6685,13 +6733,15 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
 
   async function refreshAudit(){
     const r = await call("admin_audit");
-    if (!r || !r.ok) { auditEl.innerHTML = '<span style="color:var(--muted)">—</span>'; return; }
+    if (!r || !r.ok) { auditEl.innerHTML = '<p class="adm-empty">—</p>'; return; }
     const ev = r.events || [];
     auditEl.innerHTML = ev.length ? ev.map(e =>
-      '<div style="display:flex;gap:8px;justify-content:space-between">'
-      + '<span><b>' + esc(e.prefix) + "</b> " + esc(e.result) + (e.detail ? " — " + esc(e.detail) : "") + "</span>"
-      + '<span style="color:var(--muted);white-space:nowrap">' + esc(fmtDt(e.at)) + "</span></div>"
-    ).join("") : '<span style="color:var(--muted)">Sem eventos.</span>';
+      '<div class="adm-ev' + (e.result === "ok" ? "" : " no") + '">'
+      + '<span class="pfx">' + esc(e.prefix) + "</span>"
+      + '<span class="res">' + esc(e.result) + (e.detail ? " — " + esc(e.detail) : "")
+      +   (e.model ? ' <span style="color:var(--muted)">· ' + esc(e.model) + "</span>" : "") + "</span>"
+      + '<span class="when">' + esc(fmtDt(e.at)) + "</span></div>"
+    ).join("") : '<p class="adm-empty">Sem eventos ainda.</p>';
   }
 
   document.getElementById("admCreate").onclick = async () => {
@@ -6723,8 +6773,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
   (async () => {
     const st = await call("key_status");
     document.getElementById("admLabel").textContent = (st && st.label) || "—";
-    document.getElementById("admRole").textContent = (st && st.role) || "—";
     document.getElementById("admDb").textContent = st && st.db ? "banco conectado" : "banco não configurado";
+    const badge = document.getElementById("admBadge");
+    if (badge) badge.textContent = (st && st.role) || "—";
     if (st && st.owner) {
       nav.hidden = false;
       document.getElementById("admCreate").hidden = !st.db;
