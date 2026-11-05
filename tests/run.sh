@@ -680,6 +680,56 @@ PY
     else
         bad "coluna NULL vira 'null' no mapa de linhas ($(head -1 "$TMP/nulldb"))"
     fi
+    # Chave de dono embutida: sem ela, perder a chave sorteada (ou o banco sair do
+    # ar) tranca o dono fora do menu Admin sem recuperação pelo app.
+    local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
+    grep -q 'const val BUILTIN_OWNER_KEY = "00-ADMN-KEYS-2026"' "$gate" \
+        && ok "KeyGate tem a chave de dono embutida" || bad "KeyGate sem chave de dono embutida"
+    grep -q 'if (isBuiltinOwner(key))' "$gate" \
+        && ok "KeyGate aceita a chave embutida" || bad "KeyGate não usa a chave embutida"
+    # A checagem embutida tem de vir ANTES do banco: se vier depois, o banco fora
+    # do ar (ou sem a linha) recusa a chave padrão e o dono não entra.
+    python3 - "$gate" <<'PY' > "$TMP/ordem" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("fun check(c: Context, raw: String): Result {")
+if i < 0: print("sem check()"); raise SystemExit(1)
+body = src[i:i+1400]
+print("ok" if body.find("isBuiltinOwner(key)") < body.find("checkRemote(c, key, h)") else "ordem errada")
+PY
+    grep -q '^ok$' "$TMP/ordem" \
+        && ok "chave embutida é checada antes do banco (entra sem rede)" \
+        || bad "chave embutida é checada depois do banco ($(head -1 "$TMP/ordem"))"
+    # a chave embutida tem de ser bem formada (senão `wellFormed` recusa antes de tudo)
+    python3 - "$gate" <<'PY' > "$TMP/form" 2>&1
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'BUILTIN_OWNER_KEY = "([^"]+)"', src)
+key = m.group(1)
+alphabet = re.search(r'ALPHABET = "([^"]+)"', src).group(1)
+ok = re.fullmatch(r"00(-[" + re.escape(alphabet) + r"]{4}){3}", key)
+print("ok" if ok else "chave fora do alfabeto: " + key)
+PY
+    grep -q '^ok$' "$TMP/form" \
+        && ok "chave embutida respeita o alfabeto das chaves" || bad "$(head -1 "$TMP/form")"
+    # a tela de login oferece a entrada de dono sem digitar
+    grep -q 'id="entrarDono"' "$p/login.html" && ok "login tem o botão de dono padrão" \
+        || bad "login sem o botão de dono padrão"
+    grep -q '00-ADMN-KEYS-2026' "$p/login.html" && ok "login mostra a chave padrão" \
+        || bad "login não mostra a chave padrão"
+    grep -q 'el("entrarDono").addEventListener' "$p/login.html" \
+        && ok "botão de dono padrão está ligado" || bad "botão de dono padrão sem ação"
+    # o hífen não pode sumir enquanto se digita: a máscara reagrupa a cada tecla e
+    # engolia o separador recém-digitado ("00-" voltava a exibir "00").
+    python3 - "$p/login.html" <<'PY' > "$TMP/hif" 2>&1
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("function mask(raw){")
+m = src[i:src.find("\n}", i)+2]
+print("ok" if "str.slice(-1)" in m and "out += \"-\"" in m else "mascara engole o hifen")
+PY
+    grep -q '^ok$' "$TMP/hif" \
+        && ok "máscara do login mostra o hífen ao digitar" || bad "$(head -1 "$TMP/hif")"
     # todo link do menu tem de ter a seção correspondente: o painel é gerado por
     # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
     # deixando um link que não abre nada.

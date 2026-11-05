@@ -56,6 +56,11 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
 .erro b{color:var(--danger)}
 .erro svg{width:16px;height:16px;flex:none;color:var(--danger);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .hint{margin:14px 0 0; font-size:12px; color:var(--muted); text-align:center}
+.dono{margin-top:16px; padding-top:14px; border-top:1px dashed var(--line-strong)}
+.btn.ghost{background:transparent; color:var(--ink); border-color:var(--line-strong)}
+.hint.small{margin-top:8px; font-size:11.5px}
+.hint code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+  background:var(--glass-2); border:1px solid var(--line); border-radius:6px; padding:2px 6px; letter-spacing:.06em}
 .foot{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); animation:otmFade .7s .2s both}
 </style>
 </head>
@@ -77,6 +82,10 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
     </div>
     <button class="btn" id="entrar" type="submit">Entrar</button>
     <p class="hint">Chave de admin começa com <b>00</b>; de usuário, com <b>TRIX</b>. Guarde-a: quem tem a chave entra.</p>
+    <div class="dono">
+      <button class="btn ghost" id="entrarDono" type="button">Entrar como dono (chave padrão)</button>
+      <p class="hint small">Chave padrão do aparelho: <code id="donoKey">00-ADMN-KEYS-2026</code></p>
+    </div>
   </form>
   <div class="foot">Painel local — sem root, via Shizuku ou ADB por Wi-Fi.</div>
 </div>
@@ -92,13 +101,18 @@ const input = el("key");
    digitado/colado, e agrupa o corpo de 4 em 4. Não injeta prefixo sozinha, senão
    quem digita "TRIX..." veria um "00-" na frente e a chave sairia errada. */
 function mask(raw){
-  let s = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const str = String(raw);
+  let s = str.toUpperCase().replace(/[^A-Z0-9]/g, "");
   let p = "";
   if (s.startsWith("TRIX")) { p = "TRIX"; s = s.slice(4); }
   else if (s.startsWith("00")) { p = "00"; s = s.slice(2); }
   s = s.slice(0, 12);
   const g = [s.slice(0,4), s.slice(4,8), s.slice(8,12)].filter(Boolean);
-  return p + (g.length ? (p ? "-" : "") + g.join("-") : "");
+  let out = p + (g.length ? (p ? "-" : "") + g.join("-") : "");
+  // Se a última tecla foi um separador, mostra o traço em vez de engolir: sem
+  // isso, digitar "00-" volta a exibir "00" e o campo parece que não aceita hífen.
+  if (out && out.length < 19 && !out.endsWith("-") && /[^A-Za-z0-9]/.test(str.slice(-1))) out += "-";
+  return out;
 }
 input.addEventListener("input", () => {
   const atEnd = input.selectionStart === input.value.length;
@@ -138,6 +152,18 @@ el("form").addEventListener("submit", async (e) => {
   if (key.length !== 17 && key.length !== 19) {
     showErro("A chave tem o formato 00-XXXX-XXXX-XXXX (admin) ou TRIX-XXXX-XXXX-XXXX (usuário)."); return;
   }
+  entrar(key);
+});
+
+/* Chave de dono padrão: entra sem digitar nada. O nativo reconhece esta chave
+   mesmo sem banco, então é a saída para quando o Turso está fora ou a chave
+   sorteada se perdeu. */
+el("entrarDono").addEventListener("click", () => {
+  input.value = el("donoKey").textContent.trim();
+  entrar(input.value);
+});
+
+async function entrar(key){
   el("erro").hidden = true;
   const btn = el("entrar"); btn.disabled = true; btn.textContent = "Verificando…";
   const r = await otmCall("key_login", JSON.stringify({ key }));
@@ -152,7 +178,7 @@ el("form").addEventListener("submit", async (e) => {
   } else {
     showErro((r && r.message) || "Chave não reconhecida.");
   }
-});
+}
 
 /* Já entrou antes: vai direto (o painel confirma o papel com o nativo). */
 try { if (localStorage.getItem(SESSION_FLAG)) location.replace("index.html"); } catch(e){}

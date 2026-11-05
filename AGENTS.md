@@ -1075,6 +1075,13 @@ caminho do login. Peças:
   a gravar `JSONObject.NULL` no mapa.
 - `KeyGate.kt` — formato/hash da chave, validação no banco e **cache offline**
   (SharedPreferences; a última chave vale 7 dias sem rede). Guarda só SHA-256.
+  Tem também a **chave de dono embutida** (`BUILTIN_OWNER_KEY =
+  "00-ADMN-KEYS-2026"`): `check()` a reconhece **antes** de falar com o banco e
+  devolve `role=owner`. É a saída para o dono não ficar trancado fora quando o
+  Turso cai ou a chave sorteada se perde — sem ela não há como recuperar o menu
+  Admin pelo app, porque `AdminService.create` nunca gera `owner`. Cuidado: a
+  chave está no APK, então é segredo compartilhado, não fronteira de segurança;
+  a ordem (embutida antes do banco) é o que a faz valer offline, e há teste.
 - `AdminService.kt` — CRUD de chaves + auditoria. **Exige papel `owner`**.
 - `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`.
 - `panel/database/migrations/0007_key_role.sql` — coluna `role` em `otm_keys`
