@@ -316,10 +316,23 @@ nativa além do necessário para conectar e rodar os comandos.
 - Onde os scripts rodam: o Shizuku/ADB executa como usuário `shell` (uid 2000),
   que **não** lê `/data/user/0/com.otm.pack` (modo 0700). Por isso
   `PackAssets.ensureShellCopy` copia `assets/pack/scripts` + `VERSION` para
-  `/data/local/tmp/otm-pack` (visível ao shell) e o `HOME` aponta para lá — o
-  estado (`~/.packotm`) fica no mesmo lugar. A cópia local em `filesDir/pack`
+  `/data/local/tmp/otm-pack` (visível ao shell). A cópia local em `filesDir/pack`
   serve só para o app ler os `.txt` do nível 1. `PackAssets.EXEC_DIR` guarda o
   caminho.
+- **O `HOME` dos scripts NÃO pode ser `EXEC_DIR`.** O `ensureShellCopy` roda
+  `rm -rf` nessa pasta sempre que os assets mudam (atualização, reboot), então
+  tudo que mora lá é descartável. `PackAssets.STATE_DIR`
+  (`/data/local/tmp/otm-state`) é a pasta vizinha que ninguém apaga, e é para lá
+  que o `HOME` aponta (`~/.packotm`: snapshots, config, ajustes de jogo).
+  `migrarEstado` copia o `.packotm` antigo **antes** do `rm -rf` — depois não
+  haveria o que copiar.
+- **O estado do app (`filesDir/otm-state`) também não pode ficar dentro de
+  `filesDir/pack`.** `PackAssets.ensureExtracted` faz `deleteRecursively()` na
+  pasta `pack` a cada mudança de assets, e o `log.jsonl`/`term.jsonl` moravam em
+  `pack/state` — cada atualização apagava o histórico de tudo. `PackAssets.stateDir`
+  devolve `filesDir/otm-state`; `PackBridge.stateDir()` ainda migra o histórico
+  antigo na primeira abertura. `tests/run.sh` cobre os dois (log/terminal fora do
+  `pack`, `HOME` no `STATE_DIR`).
 - O catálogo do painel vem de `assets/panel/actions.json`, gerado de
   `web/lib.php`. O gerador **versionado** é `scripts/panel-actions.sh` (só precisa
   de `php` no PATH): ele reescreve `actions.json` e o objeto `ACTIONS` embutido no
@@ -1075,13 +1088,13 @@ caminho do login. Peças:
   a gravar `JSONObject.NULL` no mapa.
 - `KeyGate.kt` — formato/hash da chave, validação no banco e **cache offline**
   (SharedPreferences; a última chave vale 7 dias sem rede). Guarda só SHA-256.
-  Tem também a **chave de dono embutida** (`BUILTIN_OWNER_KEY =
-  "00-ADMN-KEYS-2026"`): `check()` a reconhece **antes** de falar com o banco e
-  devolve `role=owner`. É a saída para o dono não ficar trancado fora quando o
-  Turso cai ou a chave sorteada se perde — sem ela não há como recuperar o menu
-  Admin pelo app, porque `AdminService.create` nunca gera `owner`. Cuidado: a
-  chave está no APK, então é segredo compartilhado, não fronteira de segurança;
-  a ordem (embutida antes do banco) é o que a faz valer offline, e há teste.
+  **NÃO existe chave embutida no APK.** Havia uma (`BUILTIN_OWNER_KEY =
+  "00-ADMN-KEYS-2026"`) e ela era backdoor: quem tivesse o APK entrava como dono,
+  e dono cria e revoga a chave de todo mundo. Foi removida do código, do login e
+  do banco, com teste em `tests/run.sh` proibindo a volta. O caminho legítimo é o
+  dono criar a própria chave `00-...` no painel Admin (`AdminService.create`
+  aceita `role=owner`); se você não é dono de nenhuma chave, não tem como virar
+  dono — é assim que tem que ser.
 - `AdminService.kt` — CRUD de chaves + auditoria. **Exige papel `owner`**.
 - `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`.
 - `panel/database/migrations/0007_key_role.sql` — coluna `role` em `otm_keys`
