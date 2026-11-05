@@ -1112,14 +1112,32 @@ caminho do login. Peças:
   (`key_sealed` vazio), o app aproveita a chave em claro que passou por ali e
   preenche o cofre.
 - `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`,
-  `me`, `my_key` e `nick` (apelido do perfil, só local).
+  `feedback_*`, `me`, `my_key` e `nick` (apelido do perfil, só local).
 - `panel/database/migrations/0007_key_role.sql` — coluna `role` em `otm_keys`
   (`owner`/`admin`/`user`). Migrações SQL são aplicadas à mão no Turso.
+- `panel/database/migrations/0009_key_tail.sql` — coluna `key_tail` em
+  `otm_keys` (o fim da chave, para o rótulo `prefixo-····-fim`).
+- `panel/database/migrations/0010_feedback.sql` — tabela `otm_feedback`
+  (recados dos usuários). `AdminService.sendFeedback` grava; `feedbackList`/
+  `feedbackUpdate`/`feedbackDelete` (só dono) gerenciam; `feedbackMine` mostra
+  ao próprio autor.
 
-O papel de dono é checado **no nativo** (`KeyGate.isOwner`), não no HTML: a
-categoria Admin do `index.html` começa `hidden` e só aparece com `role=owner`
-vindo de `key_status`. Esconder/mostrar no JS é cosmético; a porta de verdade é
-o `AdminService`.
+**A chave nunca aparece inteira na tela.** `KeyGate.maskOf(prefix, tail)` monta
+o rótulo `00-FWYE-····-99WV`; lista, detalhe, Perfil e o painel de recados usam
+esse rótulo (`mask`). A chave completa só sai do cofre (`reveal`/`my_key`) e
+apenas para a própria chave da sessão. A busca do Admin casa com `prefix`+`tail`
++`label`+`mask`, então dá para achar pelo fim da chave.
+
+O **Dashboard** (`AdminService.dashboard`, kind `admin_dashboard`) calcula os
+agregados em SQL (chaves por estado/papel, aparelhos, usos, eventos por dia) —
+não baixa a lista e soma no app. Só o dono abre. O **Feedback** é a única parte
+que não exige dono: qualquer chave logada pode mandar (`feedback_send`).
+
+O papel de dono é checado **no nativo** (`KeyGate.isOwner`), não no HTML: as
+categorias Admin e Dashboard do `index.html` começam `hidden` e só aparecem com
+`role=owner` vindo de `key_status`. A categoria Feedback aparece para qualquer
+sessão logada. Esconder/mostrar no JS é cosmético; a porta de verdade é o
+`AdminService`.
 
 Credenciais do Turso ficam em `local.properties` (gitignored), lidas pelo
 `app/build.gradle.kts` e injetadas como `BuildConfig.TURSO_URL/TURSO_TOKEN`.
@@ -1133,8 +1151,10 @@ duplicado, ou link de nav sem seção).
 
 A tela do painel é testada de verdade num DOM: `tests/dom/admin_profile.mjs`
 carrega o `index.html` no **jsdom** com um stub de `window.OTM.call` e exercita
-busca, filtros, modal de edição, revelar chave e o Perfil. O `tests/run.sh`
+busca, filtros, modal de edição, revelar chave, o Perfil, o Dashboard e o
+Feedback (inclusive que a chave inteira nunca vaza na lista). O `tests/run.sh`
 chama isso em `t_app_admin_dom` e **pula** (não falha) quando o jsdom não está
 instalado — por isso o jsdom é `devDependency` e `node_modules/` fica fora do
-git. Ao mexer no HTML do Admin/Perfil, rode `node tests/dom/admin_profile.mjs`.
+git. Ao mexer no HTML do Admin/Perfil/Dashboard/Feedback, rode
+`node tests/dom/admin_profile.mjs`.
 

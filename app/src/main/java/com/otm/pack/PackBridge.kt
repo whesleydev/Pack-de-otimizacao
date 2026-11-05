@@ -117,6 +117,12 @@ class PackBridge(
                     "admin_update" -> adminUpdateImpl(payload)
                     "admin_device" -> adminDeviceImpl(payload)
                     "admin_plans" -> AdminService.plans(context).toString()
+                    "admin_dashboard" -> AdminService.dashboard(context).toString()
+                    "feedback_send" -> feedbackSendImpl(payload)
+                    "feedback_mine" -> AdminService.feedbackMine(context).toString()
+                    "feedback_list" -> AdminService.feedbackList(context, statusFrom(payload)).toString()
+                    "feedback_update" -> feedbackUpdateImpl(payload)
+                    "feedback_delete" -> AdminService.feedbackDelete(context, idFrom(payload)).toString()
                     "me" -> AdminService.me(context).toString()
                     "my_key" -> AdminService.revealMine(context).toString()
                     "sound" -> {
@@ -715,6 +721,13 @@ class PackBridge(
     private fun idFrom(payload: String): Long =
         try { JSONObject(payload).optLong("id") } catch (e: Exception) { 0L }
 
+    /** Filtro de estado do feedback: aceita `novo`, `"novo"`, `{status:"novo"}` ou vazio. */
+    private fun statusFrom(payload: String): String {
+        val t = payload.trim()
+        if (t.isEmpty()) return ""
+        return try { JSONObject(t).optString("status") } catch (e: Exception) { t.trim('"', '\'', ' ') }
+    }
+
     private fun adminUpdateImpl(payload: String): String {
         val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
         val id = b.optLong("id")
@@ -734,6 +747,27 @@ class PackBridge(
             "unblock" -> AdminService.blockDevice(context, did, false)
             else -> AdminService.blockDevice(context, did, true)
         }.toString()
+    }
+
+    /** Envio de feedback: qualquer usuário logado pode mandar (não exige dono). */
+    private fun feedbackSendImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        return AdminService.sendFeedback(
+            context,
+            kind = b.optString("kind", "sugestao"),
+            message = b.optString("message"),
+            contact = b.optString("contact"),
+        ).toString()
+    }
+
+    /** Muda o estado de um feedback (lido/resolvido/arquivado) e guarda a resposta. */
+    private fun feedbackUpdateImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        val id = b.optLong("id")
+        if (id <= 0L) return JSONObject().put("ok", false).put("error", "id inválido").toString()
+        return AdminService.feedbackUpdate(
+            context, id, b.optString("status"), b.optString("reply"),
+        ).toString()
     }
 
     private companion object {

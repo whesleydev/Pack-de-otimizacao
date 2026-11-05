@@ -47,6 +47,7 @@ object KeyGate {
     private const val PREF_OFFLINE_UNTIL = "offline_until"
     private const val PREF_MAX_SEEN = "max_seen_epoch"
     private const val PREF_PREFIX = "session_prefix"
+    private const val PREF_TAIL = "session_tail"
     private const val PREF_NICK = "profile_nick"
 
     /** Tolerância de relógio (segundos) antes de acusar adulteração. */
@@ -123,6 +124,23 @@ object KeyGate {
     fun prefixOf(raw: String): String {
         val p = detectPrefix(raw)
         return p + "-" + normalize(raw).removePrefix(p).removePrefix("-").take(GLEN)
+    }
+
+    /** Últimos caracteres da chave: o bastante para reconhecê-la, não para usá-la. */
+    fun tailOf(raw: String): String =
+        normalize(raw).substringAfter("-").replace("-", "").takeLast(GLEN)
+
+    /**
+     * Rótulo com o **começo e o fim** da chave e o meio escondido
+     * (`00-FWYE-····-99WV`). É o que aparece nas listas: dá para bater o olho e
+     * reconhecer a chave sem expor o miolo, que é o que interessa a quem rouba.
+     */
+    fun maskOf(raw: String): String = maskOf(prefixOf(raw), tailOf(raw))
+
+    fun maskOf(prefix: String, tail: String): String {
+        val p = prefix.ifBlank { PREFIX_OWNER + "-····" }
+        val t = tail.ifBlank { "····" }
+        return "$p-····-$t"
     }
 
     // -------------------------------------------------------------------------
@@ -204,6 +222,10 @@ object KeyGate {
     fun sessionLabel(c: Context): String = prefs(c).getString(PREF_LABEL, "") ?: ""
     /** Prefixo da chave da sessão (00-XXXX / TRIX-XXXX) para mostrar no perfil. */
     fun sessionPrefix(c: Context): String = prefs(c).getString(PREF_PREFIX, "") ?: ""
+    /** Fim da chave da sessão, para o rótulo "começo-····-fim". */
+    fun sessionTail(c: Context): String = prefs(c).getString(PREF_TAIL, "") ?: ""
+    /** Rótulo da chave da sessão com começo e fim (`00-FWYE-····-99WV`). */
+    fun sessionMask(c: Context): String = maskOf(sessionPrefix(c), sessionTail(c))
     /** SHA-256 da chave da sessão (nunca a chave em claro). */
     fun sessionHash(c: Context): String = prefs(c).getString(PREF_SESSION, "") ?: ""
     /** Validade combinada na entrada (texto UTC), vazio quando é vitalícia. */
@@ -222,7 +244,7 @@ object KeyGate {
     fun logout(c: Context) {
         prefs(c).edit()
             .remove(PREF_SESSION).remove(PREF_ROLE).remove(PREF_LABEL).remove(PREF_EXPIRES)
-            .remove(PREF_PREFIX)
+            .remove(PREF_PREFIX).remove(PREF_TAIL)
             .apply()
     }
 
@@ -233,6 +255,7 @@ object KeyGate {
         label: String,
         expiresAt: String?,
         prefix: String,
+        tail: String,
     ) {
         val now = System.currentTimeMillis() / 1000L
         prefs(c).edit()
@@ -240,6 +263,7 @@ object KeyGate {
             .putString(PREF_ROLE, role)
             .putString(PREF_LABEL, label)
             .putString(PREF_PREFIX, prefix)
+            .putString(PREF_TAIL, tail)
             .putString(PREF_EXPIRES, expiresAt ?: "")
             .putString(PREF_OFFLINE_UNTIL, (now + OFFLINE_DAYS * 86400).toString())
             .putLong(PREF_MAX_SEEN, now)
@@ -333,13 +357,21 @@ object KeyGate {
             )
         }
         logEvent(db, keyId, prefixOf(key), "ok", c, "")
-        saveSession(c, h, role, label, exp.ifEmpty { null }, prefixOf(key))
+        saveSession(c, h, role, label, exp.ifEmpty { null }, prefixOf(key), tailOf(key))
         // A chave em claro passa por aqui uma vez: aproveita para encher o cofre
         // de quem foi criado antes dele (essas só tinham o hash).
         if (row.optString("key_sealed").isEmpty()) {
             runCatching {
                 db.run("UPDATE otm_keys SET key_sealed = ? WHERE id = ? AND (key_sealed IS NULL OR key_sealed = '')",
                     listOf(seal(key), keyId))
+            }
+        }
+        // Idem para o fim da chave: chave criada antes do rótulo "começo-····-fim"
+        // só tem o prefixo guardado, e a lista precisa dos dois pedaços.
+        if (row.optString("key_tail").isEmpty()) {
+            runCatching {
+                db.run("UPDATE otm_keys SET key_tail = ? WHERE id = ? AND (key_tail IS NULL OR key_tail = '')",
+                    listOf(tailOf(key), keyId))
             }
         }
         return Result(true, "ok", "Chave válida.", label, role, exp.ifEmpty { null })
@@ -402,6 +434,13 @@ object KeyGate {
         val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
         fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return fmt.format(java.util.Date(System.currentTimeMillis() + days * 86400_000L))
+    }
+
+    /** N dias atrás em texto UTC (para recortes de "última semana"). */
+    fun utcDaysAgo(days: Long): String {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+        fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return fmt.format(java.util.Date(System.currentTimeMillis() - days * 86400_000L))
     }
 
     /**

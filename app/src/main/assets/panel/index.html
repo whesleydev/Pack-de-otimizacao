@@ -540,6 +540,36 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .adm-owner-note{margin-top:10px;padding:9px 12px;border-left:3px solid var(--warn);
   background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:12.5px;color:var(--muted)}
 
+/* ---- dashboard (só para o dono) -------------------------------------------- */
+.dash-chart{display:flex;align-items:flex-end;gap:8px;height:130px;margin-top:14px}
+.dash-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;min-width:0}
+.dash-col .bar{width:100%;border-radius:6px 6px 0 0;background:linear-gradient(180deg,
+  color-mix(in srgb,var(--accent) 85%,transparent),color-mix(in srgb,var(--accent) 35%,transparent));
+  min-height:3px;transition:height .3s ease}
+.dash-col .v{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.dash-col .d{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.dash-bars{display:grid;gap:9px;margin-top:12px}
+.dash-bar{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;font-size:12.5px}
+.dash-bar .lbl{color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+.dash-bar .trk{height:9px;border-radius:999px;background:var(--glass-2);border:1px solid var(--line);overflow:hidden}
+.dash-bar .fill{height:100%;border-radius:999px;background:var(--accent);min-width:2px}
+.dash-bar .n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.fb-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--glass-2)}
+.fb-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.fb-item .msg{font-size:13px;margin-top:7px;white-space:pre-wrap;word-break:break-word}
+.fb-item .meta{font-size:11.5px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
+.fb-item .acts{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.fb-item .acts .btn{width:auto;font-size:12.5px;padding:7px 12px}
+.fb-reply{margin-top:8px;padding:8px 11px;border-left:3px solid var(--accent);
+  background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:12.5px}
+.fb-kind{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);white-space:nowrap}
+.fb-kind.sugestao{color:var(--teal);border-color:color-mix(in srgb,var(--teal) 45%,var(--line))}
+.fb-kind.problema{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+.fb-kind.elogio{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.fb-kind.duvida{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.fb-kind.outro{color:var(--muted)}
+
 /* ---- perfil (categoria própria, como app de verdade) ----------------------- */
 .pf-hero{display:flex;gap:14px;align-items:center;margin-top:12px}
 .pf-avatar{width:62px;height:62px;border-radius:20px;flex:none;display:grid;place-items:center;
@@ -797,7 +827,9 @@ body.drawer .scrim{opacity:1;visibility:visible}
           </a>
       <a href="#Terminal" data-g="Terminal" aria-current="false"><span class="c"></span>Terminal</a>
       <a href="#Perfil" data-g="Perfil" id="navPerfil" aria-current="false"><span class="c"></span>Perfil</a>
-      <a href="#Admin" data-g="Admin" id="navAdmin" aria-current="false" hidden><span class="c"></span>Admin</a>
+      <a href="#Feedback" data-g="Feedback" id="navFeedback" aria-current="false" hidden><span class="c"></span>Feedback<span class="count" id="navFeedbackCount" hidden></span></a>
+      <a href="#Dashboard" data-g="Dashboard" id="navDash" aria-current="false" hidden><span class="c"></span>Dashboard</a>
+      <a href="#Admin" data-g="Admin" id="navAdmin" aria-current="false" hidden><span class="c"></span>Admin<span class="count" id="navAdminCount" hidden></span></a>
       </nav>
     </div>
   </aside>
@@ -4897,6 +4929,79 @@ body.drawer .scrim{opacity:1;visibility:visible}
         Toque num atalho para preencher o campo.</p>
       </div>
     </section>
+    <section id="g-Feedback" data-g="Feedback" hidden>
+      <div class="head">
+        <h2>Feedback</h2>
+        <p>Manda sua sugestão, problema ou elogio direto pra quem cuida do Trix.</p>
+      </div>
+
+      <article class="card" data-id="fb.form">
+        <div class="row"><h3>Falar com a equipe</h3></div>
+        <p class="adm-empty">Escreve o que quiser: ideia de função nova, bug, travamento, o que
+        tá faltando. Vai com o modelo do seu aparelho e a versão do app, e chega direto no Admin.</p>
+        <div class="adm-chips" id="fbKinds"></div>
+        <div class="adm-field">
+          <label for="fbMsg">Sua mensagem</label>
+          <textarea id="fbMsg" maxlength="2000" placeholder="ex.: o painel flutuante some quando eu abro o Free Fire…"></textarea>
+        </div>
+        <div class="adm-field">
+          <label for="fbContact">Contato (opcional — se quiser resposta)</label>
+          <input id="fbContact" type="text" placeholder="zap / discord / e-mail" autocomplete="off" maxlength="120">
+        </div>
+        <div class="go"><button class="btn primary" id="fbSend" type="button">Enviar</button></div>
+        <p class="adm-empty" id="fbStatus"></p>
+      </article>
+
+      <article class="card" data-id="fb.mine">
+        <div class="row"><h3>O que você já mandou</h3>
+          <button class="btn" id="fbRefresh" type="button" style="width:auto">Atualizar</button>
+        </div>
+        <div class="adm-list" id="fbList"></div>
+      </article>
+    </section>
+    <section id="g-Dashboard" data-g="Dashboard" hidden>
+      <div class="head">
+        <h2>Dashboard</h2>
+        <p>Os números do Trix num lugar só: chaves, aparelhos, uso e o que chegou de recado.</p>
+      </div>
+
+      <article class="card" data-id="dash.kpi">
+        <div class="row"><h3>Resumo</h3>
+          <button class="btn" id="dashRefresh" type="button" style="width:auto">Atualizar</button>
+        </div>
+        <div class="adm-stats">
+          <div class="adm-stat"><b id="dTotal">0</b><span>chaves</span></div>
+          <div class="adm-stat"><b id="dActive">0</b><span>ativas</span></div>
+          <div class="adm-stat"><b id="dDevices">0</b><span>aparelhos</span></div>
+          <div class="adm-stat"><b id="dUses">0</b><span>usos</span></div>
+          <div class="adm-stat"><b id="dOkDay">0</b><span>entradas hoje</span></div>
+          <div class="adm-stat"><b id="dOkWeek">0</b><span>entradas 7d</span></div>
+          <div class="adm-stat"><b id="dFailWeek">0</b><span>falhas 7d</span></div>
+          <div class="adm-stat"><b id="dNewWeek">0</b><span>chaves novas 7d</span></div>
+          <div class="adm-stat"><b id="dFbNew">0</b><span>recados novos</span></div>
+        </div>
+      </article>
+
+      <article class="card" data-id="dash.chart">
+        <div class="row"><h3>Entradas por dia (7 dias)</h3></div>
+        <div class="dash-chart" id="dashChart"></div>
+      </article>
+
+      <article class="card" data-id="dash.status">
+        <div class="row"><h3>Chaves por estado</h3></div>
+        <div class="dash-bars" id="dashStatus"></div>
+      </article>
+
+      <article class="card" data-id="dash.roles">
+        <div class="row"><h3>Quem é quem</h3></div>
+        <div class="dash-bars" id="dashRoles"></div>
+      </article>
+
+      <article class="card" data-id="dash.plans">
+        <div class="row"><h3>Planos mais usados</h3></div>
+        <div class="dash-bars" id="dashPlans"></div>
+      </article>
+    </section>
     <section id="g-Admin" data-g="Admin" hidden>
       <div class="head">
         <h2>Admin</h2>
@@ -4983,6 +5088,16 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <p class="adm-empty">Tentativas de entrada recentes: quem tentou, de qual aparelho e o que aconteceu.</p>
         <div class="adm-audit" id="admAudit"></div>
       </article>
+
+      <article class="card" data-id="adm.feedback">
+        <div class="row"><h3>Recados dos usuários</h3>
+          <button class="btn" id="admFbRefresh" type="button" style="width:auto">Atualizar</button>
+        </div>
+        <p class="adm-empty">Sugestões, problemas e elogios enviados pelo app. Marque como lido ou
+        resolvido e escreva uma resposta para o histórico.</p>
+        <div class="adm-chips" id="admFbChips"></div>
+        <div class="adm-list" id="admFbList"></div>
+      </article>
     </section>
     <section id="g-Perfil" data-g="Perfil" hidden>
       <div class="head">
@@ -5036,6 +5151,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <div class="row"><h3>Atalhos</h3></div>
         <div class="pf-links">
           <button class="pf-link" type="button" id="pfGoConfigs">Configurações <span class="arw">›</span></button>
+          <button class="pf-link" type="button" id="pfGoFeedback">Mandar feedback <span class="arw">›</span></button>
+          <button class="pf-link" type="button" id="pfGoDash" hidden>Dashboard <span class="arw">›</span></button>
           <button class="pf-link" type="button" id="pfGoAdmin" hidden>Gerenciar chaves (Admin) <span class="arw">›</span></button>
           <button class="pf-link" type="button" id="pfLogout">Sair da conta <span class="arw">›</span></button>
         </div>
@@ -5940,6 +6057,8 @@ function go(g, push){
   if (g === "Painel") startStats(); else stopStats();
   // replaceState não dispara hashchange: recarrega o Perfil na mão.
   if (g === "Perfil" && window.__otmProfileReload) window.__otmProfileReload();
+  if (g === "Dashboard" && window.__otmDashboardReload) window.__otmDashboardReload();
+  if (g === "Feedback" && window.__otmFeedbackReload) window.__otmFeedbackReload();
 }
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
 const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Painel", false); };
@@ -6882,10 +7001,13 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
   const nav = document.getElementById("navAdmin");
   const listEl = document.getElementById("admList");
   const auditEl = document.getElementById("admAudit");
+  const fbListEl = document.getElementById("admFbList");
   if (!nav || !listEl) return;
 
   const esc = s => String(s == null ? "" : s)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  /** Rótulo da chave com começo e fim: usa o `mask` do nativo, ou monta do prefixo+fim. */
+  const keyLabel = k => k.mask || ((k.prefix || "—") + "-····-" + (k.tail || "····"));
   const call = (kind, payload) => new Promise(resolve => {
     if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
     window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
@@ -6903,7 +7025,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     const dev = k.maxDevices > 0 ? (k.devices + "/" + k.maxDevices) : (k.devices + "/∞");
     const ativa = k.status === "active" || k.status === "scheduled";
     return '<div class="adm-item">'
-      + '<div class="top"><span class="adm-key">' + esc(k.prefix) + "-····-····</span>"
+      + '<div class="top"><span class="adm-key">' + esc(keyLabel(k)) + "</span>"
       +   '<span class="adm-badge ' + cls + '">' + esc(papel) + (k.mine ? " · você" : "") + "</span></div>"
       + '<div class="nm">' + esc(k.label || "sem nome") + "</div>"
       + '<div class="meta"><span class="adm-st" style="color:' + st[1] + '">' + esc(st[0]) + "</span>"
@@ -6943,7 +7065,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     const rows = KEYS.filter(k => {
       if (FILTER !== "all" && k.status !== FILTER) return false;
       if (!q) return true;
-      return (String(k.label || "") + " " + String(k.prefix || "")).toLowerCase().indexOf(q) >= 0;
+      return (String(k.label || "") + " " + String(k.prefix || "") + " " + String(k.tail || "")
+        + " " + String(k.mask || "")).toLowerCase().indexOf(q) >= 0;
     });
     listEl.innerHTML = rows.length ? rows.map(item).join("")
       : '<p class="adm-empty">' + (KEYS.length ? "Nada bate com esse filtro." : "Nenhuma chave ainda. Crie a primeira acima.") + "</p>";
@@ -7003,6 +7126,80 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     ).join("") : '<p class="adm-empty">Sem eventos ainda.</p>';
   }
 
+  // ---- recados (feedback) ----
+  let FB_FILTER = "todos";
+  const FB_CHIPS = [["todos","todos"],["novo","novos"],["lido","lidos"],
+    ["resolvido","resolvidos"],["arquivado","arquivados"]];
+  const KINDNAME = { sugestao:"sugestão", problema:"problema", elogio:"elogio", duvida:"dúvida", outro:"outro" };
+  const FBSTATUS = { novo:["novo","var(--accent)"], lido:["lido","var(--warn)"],
+    resolvido:["resolvido","var(--teal)"], arquivado:["arquivado","var(--muted)"] };
+
+  function renderFbChips(novo){
+    const el = document.getElementById("admFbChips");
+    if (!el) return;
+    el.innerHTML = FB_CHIPS.map(c =>
+      '<button type="button" class="adm-chip' + (FB_FILTER === c[0] ? " on" : "") + '" data-fb-filter="' + c[0] + '">'
+      + esc(c[1]) + (c[0] === "novo" && novo ? " <b>" + novo + "</b>" : "") + "</button>").join("");
+    el.querySelectorAll("[data-fb-filter]").forEach(b => b.onclick = () => {
+      FB_FILTER = b.dataset.fbFilter; refreshFeedback();
+    });
+  }
+
+  function fbItem(f){
+    const [stName, stColor] = FBSTATUS[f.status] || [f.status, "var(--muted)"];
+    return '<div class="fb-item">'
+      + '<div class="top">'
+      +   '<span class="fb-kind ' + esc(f.kind) + '">' + esc(KINDNAME[f.kind] || f.kind) + "</span>"
+      +   '<span class="adm-st" style="color:' + stColor + ';font-size:11.5px">' + esc(stName) + "</span></div>"
+      + '<div class="msg">' + esc(f.message) + "</div>"
+      + '<div class="meta">' + esc(f.author || "sem nome") + " · " + esc(f.mask || "—")
+      +   (f.model ? " · " + esc(f.model) : "") + (f.app ? " · v" + esc(f.app) : "")
+      +   (f.contact ? " · contato: " + esc(f.contact) : "") + " · " + esc(fmtDt(f.at)) + "</div>"
+      + (f.reply ? '<div class="fb-reply"><b>Resposta:</b> ' + esc(f.reply) + "</div>" : "")
+      + '<div class="acts">'
+      + (f.status !== "lido" ? '<button class="btn" data-fb-set="lido" data-fb-id="' + f.id + '">Marcar lido</button>' : "")
+      + (f.status !== "resolvido" ? '<button class="btn primary" data-fb-set="resolvido" data-fb-id="' + f.id + '">Resolvido</button>' : "")
+      + '<button class="btn" data-fb-reply="' + f.id + '">Responder</button>'
+      + '<button class="btn" data-fb-del="' + f.id + '">Excluir</button>'
+      + "</div></div>";
+  }
+
+  async function refreshFeedback(){
+    if (!fbListEl) return;
+    const r = await call("feedback_list", FB_FILTER === "todos" ? "" : FB_FILTER);
+    if (!r || !r.ok) { fbListEl.innerHTML = '<p class="adm-empty">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
+    const rows = r.feedback || [];
+    renderFbChips(r.novo);
+    const cnt = document.getElementById("navAdminCount");
+    if (cnt) { if (r.novo > 0) { cnt.hidden = false; cnt.textContent = r.novo; } else { cnt.hidden = true; } }
+    fbListEl.innerHTML = rows.length ? rows.map(fbItem).join("")
+      : '<p class="adm-empty">Nenhum recado' + (FB_FILTER === "todos" ? " ainda." : " nesse filtro.") + "</p>";
+    wireFeedback();
+  }
+
+  function wireFeedback(){
+    fbListEl.querySelectorAll("[data-fb-set]").forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      await call("feedback_update", { id: +b.dataset.fbId, status: b.dataset.fbSet });
+      refreshFeedback();
+    });
+    fbListEl.querySelectorAll("[data-fb-reply]").forEach(b => b.onclick = async () => {
+      const txt = prompt("Resposta (fica no histórico; o usuário vê na aba Feedback dele):");
+      if (txt == null) return;
+      b.disabled = true;
+      await call("feedback_update", { id: +b.dataset.fbReply, status: "resolvido", reply: txt.trim() });
+      refreshFeedback();
+    });
+    fbListEl.querySelectorAll("[data-fb-del]").forEach(b => b.onclick = async () => {
+      if (!confirm("Excluir este recado?")) return;
+      b.disabled = true;
+      await call("feedback_delete", { id: +b.dataset.fbDel });
+      refreshFeedback();
+    });
+  }
+
+  document.getElementById("admFbRefresh").onclick = refreshFeedback;
+
   // ---- edição de uma chave (modal) ----
   let EDIT_ID = 0;
 
@@ -7026,7 +7223,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     const k = r.key || {};
     const g = (i) => document.getElementById(i);
     g("admTitle").textContent = "Editar chave";
-    g("admTitleSub").textContent = (k.prefix || "—") + "-····-···· · " + (k.label || "sem nome");
+    g("admTitleSub").textContent = keyLabel(k) + " · " + (k.label || "sem nome");
     g("edLabel").value = k.label || "";
     g("edRole").value = k.role || "user";
     // A própria chave não pode ser rebaixada: você se trancaria fora do Admin.
@@ -7038,7 +7235,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     g("edUses").value = k.maxUses || 0;
     g("edContact").value = k.ownerContact || "";
     g("edNote").value = k.note || "";
-    g("edKeyVal").textContent = (k.prefix || "—") + "-····-····-····";
+    g("edKeyVal").textContent = keyLabel(k);
     g("edReveal").disabled = !k.sealed;
     g("edKeyBox").dataset.key = "";
     const dl = g("edDevicesList");
@@ -7170,7 +7367,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
     catch (e) { toast("Não consegui copiar", "bad"); }
   };
-  document.getElementById("admRefresh").onclick = () => { refresh(); refreshAudit(); };
+  document.getElementById("admRefresh").onclick = () => { refresh(); refreshAudit(); refreshFeedback(); };
   const searchEl = document.getElementById("admSearch");
   if (searchEl) searchEl.oninput = () => { SEARCH = searchEl.value || ""; drawList(); };
   document.getElementById("admLogout").onclick = async () => {
@@ -7189,9 +7386,160 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
       nav.hidden = false;
       document.getElementById("admCreate").hidden = !st.db;
       loadPlans();
-      refresh(); refreshAudit();
+      refresh(); refreshAudit(); refreshFeedback();
     }
   })();
+})();
+
+/* ===== categoria Feedback (qualquer usuário logado) =====
+   Manda recado pra equipe e mostra o que já mandou. Não precisa ser dono. */
+(function initFeedback(){
+  const nav = document.getElementById("navFeedback");
+  const sendBtn = document.getElementById("fbSend");
+  const listEl = document.getElementById("fbList");
+  if (!nav || !sendBtn || !listEl) return;
+
+  const call = (kind, payload) => new Promise(resolve => {
+    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
+    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
+  });
+  const esc = s => String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const fmtDt = s => { if (!s) return "—"; const d = new Date(String(s).replace(" ", "T") + "Z");
+    return isNaN(d) ? s : d.toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); };
+
+  const KINDS = [["sugestao","sugestão"],["problema","problema"],["elogio","elogio"],["duvida","dúvida"],["outro","outro"]];
+  const KINDNAME = Object.fromEntries(KINDS);
+  const FBSTATUS = { novo:["novo","var(--accent)"], lido:["lido","var(--warn)"],
+    resolvido:["resolvido","var(--teal)"], arquivado:["arquivado","var(--muted)"] };
+  let KIND = "sugestao";
+
+  function drawKinds(){
+    const el = document.getElementById("fbKinds");
+    if (!el) return;
+    el.innerHTML = KINDS.map(k =>
+      '<button type="button" class="adm-chip' + (KIND === k[0] ? " on" : "") + '" data-fb-kind="' + k[0] + '">'
+      + esc(k[1]) + "</button>").join("");
+    el.querySelectorAll("[data-fb-kind]").forEach(b => b.onclick = () => { KIND = b.dataset.fbKind; drawKinds(); });
+  }
+
+  function item(f){
+    const [stName, stColor] = FBSTATUS[f.status] || [f.status, "var(--muted)"];
+    return '<div class="fb-item">'
+      + '<div class="top"><span class="fb-kind ' + esc(f.kind) + '">' + esc(KINDNAME[f.kind] || f.kind) + "</span>"
+      +   '<span class="adm-st" style="color:' + stColor + ';font-size:11.5px">' + esc(stName) + "</span></div>"
+      + '<div class="msg">' + esc(f.message) + "</div>"
+      + (f.reply ? '<div class="fb-reply"><b>Resposta:</b> ' + esc(f.reply) + "</div>" : "")
+      + '<div class="meta">' + esc(f.at ? fmtDt(f.at) : "") + "</div></div>";
+  }
+
+  async function load(){
+    const r = await call("feedback_mine");
+    const rows = (r && r.feedback) || [];
+    listEl.innerHTML = rows.length ? rows.map(item).join("")
+      : '<p class="adm-empty">Você ainda não mandou nada. Escreve aí em cima.</p>';
+  }
+
+  sendBtn.onclick = async () => {
+    const msg = document.getElementById("fbMsg").value.trim();
+    const status = document.getElementById("fbStatus");
+    if (msg.length < 3) { status.textContent = "Escreve um pouco mais."; status.style.color = "var(--danger)"; return; }
+    sendBtn.disabled = true; sendBtn.textContent = "Enviando…";
+    const r = await call("feedback_send", { kind: KIND, message: msg,
+      contact: document.getElementById("fbContact").value.trim() });
+    sendBtn.disabled = false; sendBtn.textContent = "Enviar";
+    if (r && r.ok) {
+      document.getElementById("fbMsg").value = "";
+      status.textContent = "Recebido! Obrigado pelo recado.";
+      status.style.color = "var(--teal)";
+      if (window.toast) toast("Feedback enviado", "ok");
+      load();
+    } else {
+      status.textContent = (r && r.error) || "não deu para enviar";
+      status.style.color = "var(--danger)";
+    }
+  };
+  document.getElementById("fbRefresh").onclick = load;
+
+  (async () => {
+    const st = await call("key_status");
+    if (st && st.logged) { nav.hidden = false; drawKinds(); load(); }
+  })();
+  window.__otmFeedbackReload = load;
+})();
+
+/* ===== categoria Dashboard (só para o dono) ===== */
+(function initDashboard(){
+  const nav = document.getElementById("navDash");
+  if (!nav) return;
+  const call = (kind, payload) => new Promise(resolve => {
+    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
+    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
+  });
+  const esc = s => String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const fmtNum = n => Number(n || 0).toLocaleString("pt-BR");
+
+  function bars(el, rows){
+    if (!el) return;
+    const max = rows.reduce((m, r) => Math.max(m, r[1]), 0) || 1;
+    el.innerHTML = rows.map(r =>
+      '<div class="dash-bar"><span class="lbl">' + esc(r[0]) + "</span>"
+      + '<span class="trk"><span class="fill" style="width:' + Math.round(100 * r[1] / max) + "%;background:" + (r[2] || "var(--accent)") + '"></span></span>'
+      + '<span class="n">' + fmtNum(r[1]) + "</span></div>").join("");
+  }
+
+  async function load(){
+    const d = await call("admin_dashboard");
+    if (!d || !d.ok) return;
+    set("dTotal", fmtNum(d.total));
+    set("dActive", fmtNum(d.summary && d.summary.active));
+    set("dDevices", fmtNum(d.devices));
+    set("dUses", fmtNum(d.uses));
+    set("dOkDay", fmtNum(d.okDay));
+    set("dOkWeek", fmtNum(d.okWeek));
+    set("dFailWeek", fmtNum(d.failWeek));
+    set("dNewWeek", fmtNum(d.newKeysWeek));
+    set("dFbNew", fmtNum(d.feedbackNew));
+
+    const daily = d.daily || [];
+    const maxDay = daily.reduce((m, x) => Math.max(m, x.ok || 0), 0) || 1;
+    const chart = document.getElementById("dashChart");
+    if (chart) {
+      chart.innerHTML = daily.map(x => {
+        const h = Math.max(3, Math.round(96 * (x.ok || 0) / maxDay));
+        const lbl = String(x.day || "").slice(5);
+        return '<div class="dash-col"><span class="v">' + (x.ok || 0) + '</span>'
+          + '<span class="bar" style="height:' + h + 'px"></span>'
+          + '<span class="d">' + esc(lbl) + "</span></div>";
+      }).join("");
+    }
+
+    const s = d.summary || {};
+    bars(document.getElementById("dashStatus"), [
+      ["ativas", s.active || 0, "var(--teal)"],
+      ["agendadas", s.scheduled || 0, "var(--warn)"],
+      ["expiradas", s.expired || 0, "var(--muted)"],
+      ["esgotadas", s.exhausted || 0, "var(--danger)"],
+      ["revogadas", s.revoked || 0, "var(--danger)"],
+    ]);
+    const rl = d.roles || {};
+    bars(document.getElementById("dashRoles"), [
+      ["donos", rl.owner || 0, "var(--teal)"],
+      ["admins", rl.admin || 0, "var(--warn)"],
+      ["usuários", rl.user || 0, "var(--accent)"],
+    ]);
+    const pl = (d.plans || []).map(p => [p.name, p.count]);
+    bars(document.getElementById("dashPlans"), pl.length ? pl : [["sem planos", 0]]);
+  }
+
+  document.getElementById("dashRefresh").onclick = load;
+  (async () => {
+    const st = await call("key_status");
+    if (st && st.owner) { nav.hidden = false; load(); }
+  })();
+  window.__otmDashboardReload = load;
 })();
 
 /* ===== categoria Perfil =====
@@ -7221,7 +7569,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     const badge = document.getElementById("pfBadge");
     if (badge) { badge.textContent = papel; badge.className = "adm-badge " + cls; }
     set("pfRowRole", papel);
-    set("pfRowPrefix", ME.prefix ? ME.prefix + "-····-····" : "—");
+    set("pfRowPrefix", ME.mask || (ME.prefix ? ME.prefix + "-····-····" : "—"));
     set("pfRowExp", ME.expiresAt ? fmtDt(ME.expiresAt) : "nunca");
     set("pfRowDev", ME.maxDevices > 0 ? (ME.devices + "/" + ME.maxDevices) : (ME.devices + "/∞"));
     set("pfRowDb", ME.db ? "conectado" : "não configurado");
@@ -7239,6 +7587,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     if (nick && document.activeElement !== nick) nick.value = NICK;
     const goAdm = document.getElementById("pfGoAdmin");
     if (goAdm) goAdm.hidden = !ME.owner;
+    const goDash = document.getElementById("pfGoDash");
+    if (goDash) goDash.hidden = !ME.owner;
     if (box) box.hidden = true;
   }
 
@@ -7285,6 +7635,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     catch (e) { toast("Não consegui copiar", "bad"); }
   };
   document.getElementById("pfGoConfigs").onclick = () => { syncGear(); document.getElementById("gearMask").classList.add("open"); };
+  document.getElementById("pfGoFeedback").onclick = () => go("Feedback");
+  document.getElementById("pfGoDash").onclick = () => go("Dashboard");
   document.getElementById("pfGoAdmin").onclick = () => go("Admin");
   document.getElementById("pfLogout").onclick = async () => {
     if (!confirm("Sair da conta neste aparelho?")) return;

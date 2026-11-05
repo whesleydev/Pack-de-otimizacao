@@ -4752,6 +4752,111 @@ t_app_admin_dom() {
     esac
 }
 
+# --- Dashboard, Feedback e a chave mostrada só pelo começo+fim ----------------
+t_app_dash_feedback() {
+    printf '\n  # Dashboard, Feedback e chave mascarada (início + fim)\n'
+    local p="$ROOT/app/src/main/assets/panel"
+    local svc="$ROOT/app/src/main/java/com/otm/pack/AdminService.kt"
+    local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
+    local br="$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt"
+
+    # 1) a chave nunca é mostrada inteira: só começo e fim
+    grep -q 'fun maskOf(' "$gate" && ok "KeyGate.maskOf() monta o rótulo início+fim" \
+        || bad "KeyGate sem maskOf()"
+    grep -q 'fun tailOf(' "$gate" && ok "KeyGate.tailOf() extrai o fim da chave" \
+        || bad "KeyGate sem tailOf()"
+    grep -q 'PREF_TAIL' "$gate" && ok "a sessão guarda o fim da chave (PREF_TAIL)" \
+        || bad "sessão não guarda o fim da chave"
+    python3 - "$gate" <<'PY' > "$TMP/mask_label" 2>&1
+import sys, re
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("fun maskOf(")
+body = src[i:src.find("}", src.find("return", i)) + 1] if i >= 0 else ""
+# o rótulo tem que ter o miolo escondido (····) e nunca a chave crua
+print("OK" if ("····" in body or "\\u00b7" in body) else "sem miolo escondido")
+PY
+    assert_contains "$TMP/mask_label" "OK" "o rótulo esconde o miolo com ····"
+    grep -q '"mask"' "$svc" && ok "lista/detalhe/me expõem o rótulo mascarado" \
+        || bad "serviço não expõe o rótulo mascarado"
+    grep -q 'k.mask' "$p/index.html" && ok "painel usa o rótulo mascarado do nativo" \
+        || bad "painel não usa o rótulo mascarado"
+    python3 - "$p/index.html" <<'PY' > "$TMP/mask_js" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+# o HTML não pode montar a chave com o texto cru do prefixo sem esconder o miolo
+ruins = [m for m in ("esc(k.prefix)+\"-····-····\"", "k.prefix + \"-\"") if m in src]
+print("OK" if not ruins else "monta rótulo antigo: " + ",".join(ruins))
+PY
+    assert_contains "$TMP/mask_js" "OK" "não sobrou o rótulo antigo (só prefixo)"
+
+    # 2) Dashboard: agregados no serviço + tela
+    grep -q 'fun dashboard(' "$svc" && ok "AdminService.dashboard()" || bad "sem dashboard()"
+    grep -q 'admin_dashboard' "$br" && ok "ponte expõe admin_dashboard" || bad "ponte sem admin_dashboard"
+    python3 - "$svc" <<'PY' > "$TMP/dash_guard" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("fun dashboard(")
+print("OK" if i >= 0 and "requireOwner" in src[i:i+200] else "sem requireOwner")
+PY
+    assert_contains "$TMP/dash_guard" "OK" "dashboard só para o dono (requireOwner)"
+    for id in navDash g-Dashboard dTotal dActive dDevices dUses dashChart dashStatus dashRoles dashPlans; do
+        grep -q "id=\"$id\"" "$p/index.html" && ok "painel tem #$id" || bad "painel sem #$id"
+    done
+    grep -q 'function initDashboard(' "$p/index.html" && ok "dashboard tem o próprio JS" \
+        || bad "dashboard sem JS"
+    grep -q '__otmDashboardReload' "$p/index.html" && ok "dashboard recarrega ao abrir a aba" \
+        || bad "dashboard não recarrega"
+
+    # 3) Feedback: usuário manda, dono lê/respondе
+    grep -q 'fun sendFeedback(' "$svc" && ok "AdminService.sendFeedback()" || bad "sem sendFeedback()"
+    grep -q 'fun feedbackList(' "$svc" && ok "AdminService.feedbackList()" || bad "sem feedbackList()"
+    grep -q 'fun feedbackMine(' "$svc" && ok "AdminService.feedbackMine()" || bad "sem feedbackMine()"
+    grep -q 'fun feedbackUpdate(' "$svc" && ok "AdminService.feedbackUpdate()" || bad "sem feedbackUpdate()"
+    python3 - "$svc" <<'PY' > "$TMP/fb_send" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("fun sendFeedback(")
+body = src[i:src.find("\n    /**", i)] if i >= 0 else ""
+# mandar recado NÃO pode exigir dono (o usuário comum também fala)
+print("OK" if i >= 0 and "requireOwner" not in body and "isLogged" in body else "errado")
+PY
+    assert_contains "$TMP/fb_send" "OK" "qualquer usuário logado manda recado (não só o dono)"
+    python3 - "$svc" <<'PY' > "$TMP/fb_owner" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+faltam = []
+for fn in ("feedbackList", "feedbackUpdate", "feedbackDelete"):
+    i = src.find("fun " + fn + "(")
+    if i < 0 or "requireOwner" not in src[i:i+200]:
+        faltam.append(fn)
+print("OK" if not faltam else "sem requireOwner: " + ",".join(faltam))
+PY
+    assert_contains "$TMP/fb_owner" "OK" "só o dono lê/gerencia os recados"
+    for k in feedback_send feedback_mine feedback_list feedback_update feedback_delete; do
+        grep -q "\"$k\"" "$br" && ok "ponte expõe $k" || bad "ponte sem $k"
+    done
+    for id in navFeedback g-Feedback fbKinds fbMsg fbContact fbSend fbList admFbList admFbChips navAdminCount; do
+        grep -q "id=\"$id\"" "$p/index.html" && ok "painel tem #$id" || bad "painel sem #$id"
+    done
+    grep -q 'function initFeedback(' "$p/index.html" && ok "feedback tem o próprio JS" \
+        || bad "feedback sem JS"
+    grep -q 'function refreshFeedback(' "$p/index.html" && ok "admin lista os recados (refreshFeedback)" \
+        || bad "admin não lista recados"
+    grep -q 'feedback_update' "$p/index.html" && ok "admin responde/marca recado (feedback_update)" \
+        || bad "admin não responde recado"
+
+    # 4) migrações do rótulo (key_tail) e do feedback existem e são idempotentes
+    local migdir="$ROOT/panel/database/migrations"
+    grep -rlq 'key_tail' "$migdir" && ok "migração adiciona a coluna key_tail" \
+        || bad "sem migração de key_tail"
+    grep -rq 'CREATE TABLE IF NOT EXISTS otm_feedback' "$migdir" \
+        && ok "tabela otm_feedback criada com IF NOT EXISTS" || bad "otm_feedback sem IF NOT EXISTS"
+    for c in key_prefix key_tail kind message status reply; do
+        grep -rq "$c" "$migdir"/0010_feedback.sql && ok "otm_feedback tem $c" \
+            || bad "otm_feedback sem $c"
+    done
+}
+
 # --- interruptores (liga/desliga) e o painel de saude dentro de Geral ---------
 t_toggles_registry() {
     printf '\n  # interruptores: registro, estado real e paridade web/app\n'
@@ -4829,6 +4934,7 @@ t_toggles_registry() {
 
 t_app_admin_full
 t_app_admin_dom
+t_app_dash_feedback
 t_toggles_registry
 t_new_toggles
 t_undo_scope

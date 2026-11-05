@@ -3,6 +3,31 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.54.0] - 2026-11-06
+
+### Adicionado
+- **Dashboard de dados (só o dono).** Aba nova com os números do Trix num lugar
+  só: total de chaves, quantas ativas, aparelhos, usos somados, entradas de hoje
+  e dos últimos 7 dias, falhas da semana, chaves novas e recados não lidos. Traz
+  ainda o gráfico de entradas por dia (7 dias), as barras de chaves por estado
+  (ativas/agendadas/expiradas/esgotadas/revogadas), a divisão por papel
+  (donos/admins/usuários) e os planos mais usados. Os agregados são calculados
+  em SQL no Turso, então o painel abre rápido mesmo com a base cheia.
+- **Feedback e sugestões.** Categoria nova onde qualquer pessoa com chave válida
+  manda recado (sugestão, problema, elogio, dúvida ou outro), com contato
+  opcional. O recado vai com o modelo do aparelho, a versão do app e a chave de
+  quem escreveu (só o rótulo mascarado). O usuário vê o que já mandou e a
+  resposta, quando houver; o dono lê tudo na aba Admin, filtra por estado, marca
+  como lido/resolvido e responde. O menu Admin mostra um contador de recados
+  novos. Nova tabela `otm_feedback` (migração 0010).
+
+### Mudado
+- **A chave nunca mais aparece inteira na tela.** A lista, o detalhe, o Perfil e
+  o Admin agora mostram só o começo e o fim da chave (ex.: `00-FWYE-····-99WV`).
+  A busca também acha pelo fim da chave. Para ver dados e gerenciar, use o
+  Dashboard e o Admin — a chave completa só continua abrindo no cofre, quando é
+  a sua. Nova coluna `key_tail` guarda o fim da chave (migração 0009).
+
 ## [2.53.0] - 2026-11-05
 
 ### Adicionado
