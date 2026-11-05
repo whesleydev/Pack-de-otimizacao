@@ -1088,13 +1088,13 @@ caminho do login. Peças:
   a gravar `JSONObject.NULL` no mapa.
 - `KeyGate.kt` — formato/hash da chave, validação no banco e **cache offline**
   (SharedPreferences; a última chave vale 7 dias sem rede). Guarda só SHA-256.
-  **NÃO existe chave embutida no APK.** Havia uma (`BUILTIN_OWNER_KEY =
-  "00-ADMN-KEYS-2026"`) e ela era backdoor: quem tivesse o APK entrava como dono,
-  e dono cria e revoga a chave de todo mundo. Foi removida do código, do login e
-  do banco, com teste em `tests/run.sh` proibindo a volta. O caminho legítimo é o
-  dono criar a própria chave `00-...` no painel Admin (`AdminService.create`
-  aceita `role=owner`); se você não é dono de nenhuma chave, não tem como virar
-  dono — é assim que tem que ser.
+  **NÃO existe chave embutida no APK.** Havia uma (uma chave de dono literal, de
+  valor fixo, em `KeyGate.kt`) e ela era backdoor: quem tivesse o APK entrava como
+  dono, e dono cria e revoga a chave de todo mundo. Foi removida do código, do
+  login e do banco, com teste em `tests/run.sh` proibindo a volta. O caminho
+  legítimo é o dono criar a própria chave `00-...` no painel Admin
+  (`AdminService.create` aceita `role=owner`); se você não é dono de nenhuma
+  chave, não tem como virar dono — é assim que tem que ser.
 - `AdminService.kt` — CRUD de chaves + auditoria. **Exige papel `owner`**.
 - `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`.
 - `panel/database/migrations/0007_key_role.sql` — coluna `role` em `otm_keys`

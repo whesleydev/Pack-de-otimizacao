@@ -6,12 +6,14 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [2.51.0] - 2026-11-05
 
 ### Removido
-- **Chave de dono fixa no APK (backdoor).** A versão anterior embutia
-  `BUILTIN_OWNER_KEY` (`00-ADMN-KEYS-2026`) no `KeyGate.kt` e um botão "entrar
-  como dono" no `login.html`. Quem tivesse o APK entrava como dono — e o dono é
-  quem cria e revoga as chaves de todo mundo. A chave fixa foi tirada do código,
-  o botão do login saiu e a linha correspondente foi apagada do banco. O acesso
-  de dono agora é só por uma chave `00-...` criada no banco.
+- **Chave de dono fixa no APK (backdoor).** A versão anterior embutia uma chave
+  de dono literal no `KeyGate.kt` e um botão "entrar como dono" no `login.html`.
+  Quem tivesse o APK entrava como dono — e o dono é quem cria e revoga as chaves
+  de todo mundo. A chave saiu do código, o botão saiu do login e a linha
+  correspondente foi apagada do banco. O acesso de dono agora é só por uma chave
+  `00-...` criada no banco. (O valor literal não é reproduzido aqui de
+  propósito: o repositório é público e uma chave revogada volta a valer se
+  alguém a recriar com o mesmo texto.)
 
 ### Corrigido
 - **Logs e histórico do terminal sumiam.** `log.jsonl` e `term.jsonl` moravam em
