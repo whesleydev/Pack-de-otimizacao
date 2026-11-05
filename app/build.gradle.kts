@@ -30,8 +30,8 @@ android {
         applicationId = "com.otm.pack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 93
-        versionName = "2.52.0"
+        versionCode = 94
+        versionName = "2.53.0"
 
         // Endereço e token do banco de chaves (Turso). Vazio = o app só entra
         // com a chave em cache (modo offline) e não gerencia nada.

@@ -3,10 +3,14 @@ package com.otm.pack
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Chaves de acesso (licenças) e a sessão local.
@@ -42,6 +46,8 @@ object KeyGate {
     private const val PREF_EXPIRES = "session_expires"
     private const val PREF_OFFLINE_UNTIL = "offline_until"
     private const val PREF_MAX_SEEN = "max_seen_epoch"
+    private const val PREF_PREFIX = "session_prefix"
+    private const val PREF_NICK = "profile_nick"
 
     /** Tolerância de relógio (segundos) antes de acusar adulteração. */
     private const val CLOCK_TOLERANCE = 3600L
@@ -120,6 +126,51 @@ object KeyGate {
     }
 
     // -------------------------------------------------------------------------
+    //  cofre da chave (para o dono poder ver/copiar depois)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Guarda a chave em claro no banco, cifrada, para o dono poder revelar e
+     * copiar depois. O `key_hash` sozinho não permite reconstruir a chave, e sem
+     * isso uma chave vendida e perdida não teria como ser reenviada.
+     *
+     * O sigilo aqui é limitado de propósito: a chave de cifra é derivada do
+     * token do banco, que vai no APK. Quem tem o APK e o token consegue abrir.
+     * Serve para a chave não ficar em texto puro num dump do banco — não é
+     * segredo forte. Por isso o painel só revela uma chave por vez, e não a
+     * lista inteira de uma vez.
+     */
+    private const val SEAL_SALT = "otm-pack:cofre-de-chave:v1"
+
+    private fun sealKey(): SecretKeySpec {
+        val base = BuildConfig.TURSO_TOKEN + "|" + SEAL_SALT
+        val digest = MessageDigest.getInstance("SHA-256").digest(base.toByteArray(Charsets.UTF_8))
+        return SecretKeySpec(digest, "AES")
+    }
+
+    /** Cifra a chave (AES-GCM). Devolve base64(iv || ciphertext). */
+    fun seal(raw: String): String {
+        val iv = ByteArray(12).also { SecureRandom().nextBytes(it) }
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, sealKey(), GCMParameterSpec(128, iv))
+        val out = c.doFinal(normalize(raw).toByteArray(Charsets.UTF_8))
+        val buf = ByteArray(iv.size + out.size)
+        System.arraycopy(iv, 0, buf, 0, iv.size)
+        System.arraycopy(out, 0, buf, iv.size, out.size)
+        return Base64.encodeToString(buf, Base64.NO_WRAP)
+    }
+
+    /** Abre o que [seal] cifrou. Devolve null se o blob for de outra instalação. */
+    fun unseal(blob: String): String? = try {
+        val buf = Base64.decode(blob, Base64.NO_WRAP)
+        if (buf.size <= 12) null else {
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.DECRYPT_MODE, sealKey(), GCMParameterSpec(128, buf.copyOfRange(0, 12)))
+            normalize(String(c.doFinal(buf.copyOfRange(12, buf.size)), Charsets.UTF_8))
+        }
+    } catch (_: Throwable) { null }
+
+    // -------------------------------------------------------------------------
     //  aparelho
     // -------------------------------------------------------------------------
 
@@ -151,21 +202,44 @@ object KeyGate {
 
     fun sessionRole(c: Context): String = prefs(c).getString(PREF_ROLE, "") ?: ""
     fun sessionLabel(c: Context): String = prefs(c).getString(PREF_LABEL, "") ?: ""
+    /** Prefixo da chave da sessão (00-XXXX / TRIX-XXXX) para mostrar no perfil. */
+    fun sessionPrefix(c: Context): String = prefs(c).getString(PREF_PREFIX, "") ?: ""
+    /** SHA-256 da chave da sessão (nunca a chave em claro). */
+    fun sessionHash(c: Context): String = prefs(c).getString(PREF_SESSION, "") ?: ""
+    /** Validade combinada na entrada (texto UTC), vazio quando é vitalícia. */
+    fun sessionExpires(c: Context): String = prefs(c).getString(PREF_EXPIRES, "") ?: ""
+
+    /** Apelido do perfil: só deste aparelho, não vai para o banco. */
+    fun nick(c: Context): String = prefs(c).getString(PREF_NICK, "") ?: ""
+
+    fun setNick(c: Context, value: String) {
+        prefs(c).edit().putString(PREF_NICK, value.trim().take(40)).apply()
+    }
+
     fun isLogged(c: Context): Boolean = (prefs(c).getString(PREF_SESSION, "") ?: "").isNotEmpty()
     fun isOwner(c: Context): Boolean = sessionRole(c) == ROLE_OWNER
 
     fun logout(c: Context) {
         prefs(c).edit()
             .remove(PREF_SESSION).remove(PREF_ROLE).remove(PREF_LABEL).remove(PREF_EXPIRES)
+            .remove(PREF_PREFIX)
             .apply()
     }
 
-    private fun saveSession(c: Context, keyHash: String, role: String, label: String, expiresAt: String?) {
+    private fun saveSession(
+        c: Context,
+        keyHash: String,
+        role: String,
+        label: String,
+        expiresAt: String?,
+        prefix: String,
+    ) {
         val now = System.currentTimeMillis() / 1000L
         prefs(c).edit()
             .putString(PREF_SESSION, keyHash)
             .putString(PREF_ROLE, role)
             .putString(PREF_LABEL, label)
+            .putString(PREF_PREFIX, prefix)
             .putString(PREF_EXPIRES, expiresAt ?: "")
             .putString(PREF_OFFLINE_UNTIL, (now + OFFLINE_DAYS * 86400).toString())
             .putLong(PREF_MAX_SEEN, now)
@@ -259,7 +333,15 @@ object KeyGate {
             )
         }
         logEvent(db, keyId, prefixOf(key), "ok", c, "")
-        saveSession(c, h, role, label, exp.ifEmpty { null })
+        saveSession(c, h, role, label, exp.ifEmpty { null }, prefixOf(key))
+        // A chave em claro passa por aqui uma vez: aproveita para encher o cofre
+        // de quem foi criado antes dele (essas só tinham o hash).
+        if (row.optString("key_sealed").isEmpty()) {
+            runCatching {
+                db.run("UPDATE otm_keys SET key_sealed = ? WHERE id = ? AND (key_sealed IS NULL OR key_sealed = '')",
+                    listOf(seal(key), keyId))
+            }
+        }
         return Result(true, "ok", "Chave válida.", label, role, exp.ifEmpty { null })
     }
 
@@ -320,5 +402,20 @@ object KeyGate {
         val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
         fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return fmt.format(java.util.Date(System.currentTimeMillis() + days * 86400_000L))
+    }
+
+    /**
+     * Daqui a N dias, contando a partir de [from] quando ele ainda não venceu
+     * (renovar não pode encurtar o prazo de quem já pagou); se [from] já passou,
+     * conta de hoje. Devolve null quando N<=0 e [from] vazio (vitalício).
+     */
+    fun utcPlusDaysFrom(days: Long, from: String?): String? {
+        if (days <= 0) return from
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+        fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val base = from?.let { try { fmt.parse(it) } catch (_: Throwable) { null } }
+        val now = System.currentTimeMillis()
+        val start = if (base != null && base.time > now) base.time else now
+        return fmt.format(java.util.Date(start + days * 86400_000L))
     }
 }

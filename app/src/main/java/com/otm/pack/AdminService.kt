@@ -32,22 +32,27 @@ object AdminService {
         requireOwner(c)?.let { return it }
         val rows = db().all(
             "SELECT id, key_prefix, label, role, max_devices, max_uses, uses_count, " +
-                "created_at, activated_at, expires_at, last_used_at, revoked_at " +
-                "FROM otm_keys ORDER BY created_at DESC LIMIT 200"
+                "created_at, activated_at, expires_at, last_used_at, revoked_at, " +
+                "(key_sealed IS NOT NULL AND key_sealed <> '') AS tem_chave, key_hash " +
+                "FROM otm_keys ORDER BY created_at DESC LIMIT 500"
         )
         val arr = JSONArray()
         val now = KeyGate.utcNow()
+        val meHash = KeyGate.sessionHash(c)
+        val counts = HashMap<String, Int>()
         for (r in rows) {
             val devices = db().scalar(
                 "SELECT COUNT(*) FROM otm_key_devices WHERE key_id = ?", listOf(r.optLong("id"))
             )?.toIntOrNull() ?: 0
+            val status = statusOf(r, now)
+            counts[status] = (counts[status] ?: 0) + 1
             arr.put(
                 JSONObject()
                     .put("id", r.optLong("id"))
                     .put("prefix", r.optString("key_prefix"))
                     .put("label", r.optString("label"))
                     .put("role", r.optString("role").ifBlank { "user" })
-                    .put("status", statusOf(r, now))
+                    .put("status", status)
                     .put("devices", devices)
                     .put("maxDevices", r.optLong("max_devices"))
                     .put("uses", r.optLong("uses_count"))
@@ -55,11 +60,164 @@ object AdminService {
                     .put("createdAt", r.optString("created_at"))
                     .put("expiresAt", r.optString("expires_at"))
                     .put("lastUsedAt", r.optString("last_used_at"))
+                    .put("sealed", r.optBoolean("tem_chave"))
+                    .put("mine", meHash.isNotEmpty() && r.optString("key_hash") == meHash)
             )
         }
+        val summary = JSONObject()
+        for ((k, v) in counts) summary.put(k, v)
         return JSONObject().put("ok", true).put("keys", arr)
-            .put("total", rows.size).put("db", db().isConfigured())
+            .put("total", rows.size).put("summary", summary).put("db", db().isConfigured())
     }
+
+    /** Devolve a chave em claro (do cofre cifrado) para copiar e reenviar. */
+    fun reveal(c: Context, id: Long): JSONObject {
+        requireOwner(c)?.let { return it }
+        return revealOwn(c, id, enforceOwnership = false)
+    }
+
+    /**
+     * Abre o cofre de uma chave. Quando [enforceOwnership] é true, só libera se
+     * for a chave da sessão — assim um usuário comum consegue ver/copiar a
+     * própria chave sem ganhar acesso à dos outros.
+     */
+    private fun revealOwn(c: Context, id: Long, enforceOwnership: Boolean): JSONObject {
+        val row = db().one("SELECT key_hash, key_sealed FROM otm_keys WHERE id = ?", listOf(id))
+            ?: return JSONObject().put("ok", false).put("error", "chave não encontrada")
+        if (enforceOwnership && row.optString("key_hash") != KeyGate.sessionHash(c)) {
+            return JSONObject().put("ok", false).put("error", "esta chave não é a sua")
+        }
+        val sealed = row.optString("key_sealed")
+        if (sealed.isEmpty()) {
+            return JSONObject().put("ok", false)
+                .put("error", "Esta chave foi criada antes do cofre: só o prefixo ficou guardado.")
+        }
+        val key = KeyGate.unseal(sealed)
+            ?: return JSONObject().put("ok", false).put("error", "Não consegui abrir o cofre desta chave.")
+        return JSONObject().put("ok", true).put("key", key)
+    }
+
+    /** Perfil de quem está logado: usa a chave da sessão (não a lista de admin). */
+    fun me(c: Context): JSONObject {
+        if (!KeyGate.isLogged(c)) return JSONObject().put("ok", false).put("error", "sem sessão")
+        val h = KeyGate.sessionHash(c)
+        val row = if (db().isConfigured()) {
+            try { db().one("SELECT * FROM otm_keys WHERE key_hash = ?", listOf(h)) } catch (_: Throwable) { null }
+        } else null
+
+        val devices = if (row != null) {
+            try {
+                db().scalar("SELECT COUNT(*) FROM otm_key_devices WHERE key_id = ?", listOf(row.optLong("id")))
+                    ?.toIntOrNull() ?: 0
+            } catch (_: Throwable) { 0 }
+        } else 0
+
+        return JSONObject()
+            .put("ok", true)
+            .put("role", KeyGate.sessionRole(c))
+            .put("owner", KeyGate.isOwner(c))
+            .put("label", KeyGate.sessionLabel(c))
+            .put("prefix", KeyGate.sessionPrefix(c))
+            .put("expiresAt", row?.optString("expires_at")?.takeIf { it.isNotEmpty() }
+                ?: KeyGate.sessionExpires(c))
+            .put("devices", devices)
+            .put("maxDevices", row?.optLong("max_devices") ?: 0L)
+            .put("uses", row?.optLong("uses_count") ?: 0L)
+            .put("createdAt", row?.optString("created_at") ?: "")
+            .put("id", row?.optLong("id") ?: 0L)
+            .put("sealed", (row?.optString("key_sealed") ?: "").isNotEmpty())
+            .put("db", db().isConfigured())
+    }
+
+    /** Só a própria chave (qualquer usuário logado). */
+    fun revealMine(c: Context): JSONObject {
+        if (!KeyGate.isLogged(c)) return JSONObject().put("ok", false).put("error", "sem sessão")
+        val row = db().one("SELECT id FROM otm_keys WHERE key_hash = ?", listOf(KeyGate.sessionHash(c)))
+            ?: return JSONObject().put("ok", false).put("error", "chave não encontrada no banco")
+        return revealOwn(c, row.optLong("id"), enforceOwnership = true)
+    }
+
+    /** Detalhe de uma chave: campos + aparelhos. */
+    fun detail(c: Context, id: Long): JSONObject {
+        requireOwner(c)?.let { return it }
+        val row = db().one("SELECT * FROM otm_keys WHERE id = ?", listOf(id))
+            ?: return JSONObject().put("ok", false).put("error", "chave não encontrada")
+        val k = JSONObject()
+            .put("id", row.optLong("id"))
+            .put("prefix", row.optString("key_prefix"))
+            .put("label", row.optString("label"))
+            .put("note", row.optString("note"))
+            .put("ownerContact", row.optString("owner_contact"))
+            .put("role", row.optString("role").ifBlank { "user" })
+            .put("maxDevices", row.optLong("max_devices"))
+            .put("maxUses", row.optLong("max_uses"))
+            .put("uses", row.optLong("uses_count"))
+            .put("createdAt", row.optString("created_at"))
+            .put("expiresAt", row.optString("expires_at"))
+            .put("revokedAt", row.optString("revoked_at"))
+            .put("revokedReason", row.optString("revoked_reason"))
+            .put("sealed", row.optString("key_sealed").isNotEmpty())
+            .put("status", statusOf(row, KeyGate.utcNow()))
+            .put("mine", row.optString("key_hash") == KeyGate.sessionHash(c))
+
+        val devs = JSONArray()
+        for (d in db().all(
+            "SELECT id, model, android_ver, app_version, first_seen_at, last_seen_at, blocked_at " +
+                "FROM otm_key_devices WHERE key_id = ? ORDER BY last_seen_at DESC", listOf(id)
+        )) {
+            devs.put(JSONObject()
+                .put("id", d.optLong("id"))
+                .put("model", d.optString("model"))
+                .put("android", d.optString("android_ver"))
+                .put("app", d.optString("app_version"))
+                .put("firstSeen", d.optString("first_seen_at"))
+                .put("lastSeen", d.optString("last_seen_at"))
+                .put("blocked", d.optString("blocked_at").isNotEmpty()))
+        }
+        return JSONObject().put("ok", true).put("key", k).put("devices", devs)
+    }
+
+    /** Bloqueia ou libera um aparelho específico de uma chave. */
+    fun blockDevice(c: Context, deviceRowId: Long, blocked: Boolean): JSONObject {
+        requireOwner(c)?.let { return it }
+        db().run(
+            "UPDATE otm_key_devices SET blocked_at = ? WHERE id = ?",
+            listOf(if (blocked) KeyGate.utcNow() else null, deviceRowId)
+        )
+        return JSONObject().put("ok", true).put("blocked", blocked)
+    }
+
+    /** Remove um aparelho da lista (libera a vaga para outro). */
+    fun removeDevice(c: Context, deviceRowId: Long): JSONObject {
+        requireOwner(c)?.let { return it }
+        db().run("DELETE FROM otm_key_devices WHERE id = ?", listOf(deviceRowId))
+        return JSONObject().put("ok", true)
+    }
+
+    /** Planos cadastrados (para preencher a criação com um toque). */
+    fun plans(c: Context): JSONObject {
+        requireOwner(c)?.let { return it }
+        val arr = JSONArray()
+        for (p in db().all(
+            "SELECT id, slug, name, description, duration_days, max_devices, max_uses, price_cents " +
+                "FROM otm_plans WHERE COALESCE(is_active,1) = 1 ORDER BY COALESCE(sort_order,0), id"
+        )) {
+            arr.put(JSONObject()
+                .put("id", p.optLong("id"))
+                .put("slug", p.optString("slug"))
+                .put("name", p.optString("name"))
+                .put("description", p.optString("description"))
+                .put("days", p.optLong("duration_days"))
+                .put("devices", p.optLong("max_devices"))
+                .put("uses", p.optLong("max_uses"))
+                .put("priceCents", p.optLong("price_cents")))
+        }
+        return JSONObject().put("ok", true).put("plans", arr)
+    }
+
+    // -------------------------------------------------------------------------
+    //  escrita
+    // -------------------------------------------------------------------------
 
     /** Eventos recentes (auditoria). */
     fun audit(c: Context, limit: Int = 60): JSONObject {
@@ -94,7 +252,16 @@ object AdminService {
      * gerar uma chave de dono nova para si, senão perde o acesso para sempre se
      * a única chave de dono se perder. Nunca rebaixa: um dono não vira admin.
      */
-    fun create(c: Context, label: String, days: Long, maxDevices: Long, role: String): JSONObject {
+    fun create(
+        c: Context,
+        label: String,
+        days: Long,
+        maxDevices: Long,
+        role: String,
+        maxUses: Long = 0L,
+        ownerContact: String = "",
+        note: String = "",
+    ): JSONObject {
         requireOwner(c)?.let { return it }
         val cleanLabel = label.trim().take(80).ifEmpty { "sem nome" }
         val cleanRole = when (role) {
@@ -109,9 +276,12 @@ object AdminService {
 
         val id = db().insert(
             "INSERT INTO otm_keys (key_hash, key_prefix, label, role, max_devices, max_uses, " +
-                "created_at, expires_at, created_by) VALUES (?,?,?,?,?,?,?,?,?)",
-            listOf(hash, prefix, cleanLabel, cleanRole, maxDevices.coerceAtLeast(0), 0L,
-                KeyGate.utcNow(), expires, "app:" + KeyGate.sessionLabel(c))
+                "created_at, expires_at, created_by, key_sealed, owner_contact, note) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            listOf(hash, prefix, cleanLabel, cleanRole, maxDevices.coerceAtLeast(0),
+                maxUses.coerceAtLeast(0), KeyGate.utcNow(), expires,
+                "app:" + KeyGate.sessionLabel(c), KeyGate.seal(key),
+                ownerContact.trim().take(120), note.trim().take(300))
         )
         if (id <= 0L) return JSONObject().put("ok", false).put("error", "não consegui gravar a chave")
 
@@ -121,10 +291,72 @@ object AdminService {
             .put("expiresAt", expires ?: "")
     }
 
-    /** Revoga (desativa) ou reativa uma chave. Nunca mexe na chave do dono. */
+    /**
+     * Edita uma chave: nome, papel, validade (em dias a partir de hoje), limite de
+     * aparelhos, limite de usos, contato e observação. Campo ausente não é tocado
+     * (só o que vier no `patch` muda). A chave em si (o texto) não muda — mudar o
+     * texto invalidaria quem já entrou com ela.
+     */
+    fun update(c: Context, id: Long, patch: JSONObject): JSONObject {
+        requireOwner(c)?.let { return it }
+        val row = db().one("SELECT * FROM otm_keys WHERE id = ?", listOf(id))
+            ?: return JSONObject().put("ok", false).put("error", "chave não encontrada")
+
+        val sets = ArrayList<String>()
+        val args = ArrayList<Any?>()
+
+        if (patch.has("label")) {
+            sets.add("label = ?"); args.add(patch.optString("label").trim().take(80).ifEmpty { "sem nome" })
+        }
+        if (patch.has("note")) {
+            sets.add("note = ?"); args.add(patch.optString("note").trim().take(300))
+        }
+        if (patch.has("ownerContact")) {
+            sets.add("owner_contact = ?"); args.add(patch.optString("ownerContact").trim().take(120))
+        }
+        if (patch.has("role")) {
+            val r = patch.optString("role")
+            val novo = if (r == "owner" || r == "admin") r else "user"
+            // Não deixa rebaixar a própria chave: você se trancaria fora do Admin.
+            if (novo != "owner" && isSelfKey(c, id)) {
+                return JSONObject().put("ok", false)
+                    .put("error", "você não pode rebaixar a chave com que está logado")
+            }
+            sets.add("role = ?"); args.add(novo)
+        }
+        if (patch.has("maxDevices")) {
+            sets.add("max_devices = ?"); args.add(patch.optLong("maxDevices").coerceAtLeast(0))
+        }
+        if (patch.has("maxUses")) {
+            sets.add("max_uses = ?"); args.add(patch.optLong("maxUses").coerceAtLeast(0))
+        }
+        if (patch.has("days")) {
+            val d = patch.optLong("days", -1L)
+            if (d < 0) {
+                // não mexe
+            } else {
+                sets.add("expires_at = ?"); args.add(KeyGate.utcPlusDays(d))
+            }
+        }
+        if (patch.has("extendDays")) {
+            // empurra o vencimento a partir do que já valia (ou de hoje, se já venceu)
+            val d = patch.optLong("extendDays").coerceAtLeast(0)
+            if (d > 0) {
+                val atual = row.optString("expires_at").ifEmpty { null }
+                sets.add("expires_at = ?"); args.add(KeyGate.utcPlusDaysFrom(d, atual))
+            }
+        }
+        if (sets.isEmpty()) return JSONObject().put("ok", false).put("error", "nada para mudar")
+
+        args.add(id)
+        val n = db().run("UPDATE otm_keys SET " + sets.joinToString(", ") + " WHERE id = ?", args)
+        return JSONObject().put("ok", n >= 0).put("changed", n)
+    }
+
+    /** Revoga (desativa) ou reativa uma chave. Nunca mexe na chave da sessão. */
     fun setActive(c: Context, id: Long, active: Boolean, reason: String = ""): JSONObject {
         requireOwner(c)?.let { return it }
-        if (isOwnerKey(id)) return JSONObject().put("ok", false).put("error", "a chave do dono não pode ser desativada")
+        if (isSelfKey(c, id)) return JSONObject().put("ok", false).put("error", "você não pode desativar a chave com que está logado")
         return if (active) {
             db().run("UPDATE otm_keys SET revoked_at = NULL, revoked_reason = '' WHERE id = ?", listOf(id))
             JSONObject().put("ok", true).put("status", "active")
@@ -135,10 +367,10 @@ object AdminService {
         }
     }
 
-    /** Exclui uma chave e o que pende dela. Nunca a do dono. */
+    /** Exclui uma chave e o que pende dela. Nunca a da sessão. */
     fun delete(c: Context, id: Long): JSONObject {
         requireOwner(c)?.let { return it }
-        if (isOwnerKey(id)) return JSONObject().put("ok", false).put("error", "a chave do dono não pode ser excluída")
+        if (isSelfKey(c, id)) return JSONObject().put("ok", false).put("error", "você não pode excluir a chave com que está logado")
         db().batch(
             listOf(
                 "DELETE FROM otm_key_devices WHERE key_id = ?" to listOf(id),
@@ -152,6 +384,13 @@ object AdminService {
 
     private fun isOwnerKey(id: Long): Boolean =
         (db().scalar("SELECT role FROM otm_keys WHERE id = ?", listOf(id)) ?: "") == KeyGate.ROLE_OWNER
+
+    /** A chave com que este aparelho está logado agora. */
+    private fun isSelfKey(c: Context, id: Long): Boolean {
+        val h = KeyGate.sessionHash(c)
+        if (h.isEmpty()) return false
+        return (db().scalar("SELECT key_hash FROM otm_keys WHERE id = ?", listOf(id)) ?: "") == h
+    }
 
     private fun statusOf(r: JSONObject, now: String): String {
         if (r.optString("revoked_at").isNotEmpty()) return "revoked"

@@ -1096,7 +1096,23 @@ caminho do login. Peças:
   (`AdminService.create` aceita `role=owner`); se você não é dono de nenhuma
   chave, não tem como virar dono — é assim que tem que ser.
 - `AdminService.kt` — CRUD de chaves + auditoria. **Exige papel `owner`**.
-- `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`.
+  **A chave da própria sessão é intocável**: `setActive`, `delete` e o `role` do
+  `update` recusam quando o id é o da sessão (`isSelfKey`, comparando
+  `key_hash`). Antes a trava era "não mexer em chave `owner`", o que impedia o
+  dono de rotacionar: com uma única chave de dono ele não podia nem criar a
+  substituta sem ficar com duas, nem revogar a antiga. A regra certa é proteger
+  a sessão, não o papel. `detail()` devolve `mine` para o painel desabilitar o
+  seletor de papel na própria chave.
+- `KeyGate.kt` — o cofre (`seal`/`unseal`, AES-GCM) guarda a chave em claro no
+  banco para o dono poder revelar/copiar depois. **O sigilo é fraco de
+  propósito**: a chave de cifra é `SHA-256(TURSO_TOKEN + salt)`, e o token vai
+  no APK — quem tem o APK abre o cofre. Serve só para a chave não ficar em
+  texto puro num dump. Não transforme isso em "segredo" nem guarde ali nada
+  além da própria chave. No login, se a chave entrou antes do cofre existir
+  (`key_sealed` vazio), o app aproveita a chave em claro que passou por ali e
+  preenche o cofre.
+- `PackBridge.kt` — kinds `key_login`, `key_logout`, `key_status`, `admin_*`,
+  `me`, `my_key` e `nick` (apelido do perfil, só local).
 - `panel/database/migrations/0007_key_role.sql` — coluna `role` em `otm_keys`
   (`owner`/`admin`/`user`). Migrações SQL são aplicadas à mão no Turso.
 
@@ -1114,4 +1130,11 @@ O painel do app (`assets/panel/index.html`) é **mantido à mão**; o
 `otm_actions()` (`web/lib.php`). Ao criar uma ação **com card**, o card precisa
 ser adicionado à mão no `index.html` — os testes cobram (card fora de seção,
 duplicado, ou link de nav sem seção).
+
+A tela do painel é testada de verdade num DOM: `tests/dom/admin_profile.mjs`
+carrega o `index.html` no **jsdom** com um stub de `window.OTM.call` e exercita
+busca, filtros, modal de edição, revelar chave e o Perfil. O `tests/run.sh`
+chama isso em `t_app_admin_dom` e **pula** (não falha) quando o jsdom não está
+instalado — por isso o jsdom é `devDependency` e `node_modules/` fica fora do
+git. Ao mexer no HTML do Admin/Perfil, rode `node tests/dom/admin_profile.mjs`.
 

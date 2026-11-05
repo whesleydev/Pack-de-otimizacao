@@ -106,11 +106,19 @@ class PackBridge(
                     "key_login" -> keyLoginImpl(payload)
                     "key_logout" -> { KeyGate.logout(context); okJson() }
                     "key_status" -> keyStatusImpl()
+                    "nick" -> nickImpl(payload)
                     "admin_list" -> AdminService.list(context).toString()
                     "admin_create" -> adminCreateImpl(payload)
                     "admin_toggle" -> adminToggleImpl(payload)
                     "admin_delete" -> adminDeleteImpl(payload)
                     "admin_audit" -> AdminService.audit(context).toString()
+                    "admin_detail" -> AdminService.detail(context, idFrom(payload)).toString()
+                    "admin_reveal" -> AdminService.reveal(context, idFrom(payload)).toString()
+                    "admin_update" -> adminUpdateImpl(payload)
+                    "admin_device" -> adminDeviceImpl(payload)
+                    "admin_plans" -> AdminService.plans(context).toString()
+                    "me" -> AdminService.me(context).toString()
+                    "my_key" -> AdminService.revealMine(context).toString()
                     "sound" -> {
                         val want = payload.trim().lowercase() != "off"
                         val muted = withContext(Dispatchers.Main) { onSoundSet(want) }
@@ -664,8 +672,17 @@ class PackBridge(
         .put("owner", KeyGate.isOwner(context))
         .put("role", KeyGate.sessionRole(context))
         .put("label", KeyGate.sessionLabel(context))
+        .put("prefix", KeyGate.sessionPrefix(context))
+        .put("expires_at", KeyGate.sessionExpires(context))
         .put("db", KeyGate.dbConfigured())
         .toString()
+
+    /** Apelido só deste aparelho (perfil). Não vai para o banco. */
+    private fun nickImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        if (b.has("nick")) KeyGate.setNick(context, b.optString("nick"))
+        return JSONObject().put("ok", true).put("nick", KeyGate.nick(context)).toString()
+    }
 
     private fun adminCreateImpl(payload: String): String {
         val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
@@ -675,6 +692,9 @@ class PackBridge(
             days = b.optLong("days", 30L),
             maxDevices = b.optLong("devices", 1L),
             role = b.optString("role", "user"),
+            maxUses = b.optLong("uses", 0L),
+            ownerContact = b.optString("contact"),
+            note = b.optString("note"),
         ).toString()
     }
 
@@ -689,6 +709,31 @@ class PackBridge(
     private fun adminDeleteImpl(payload: String): String {
         val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
         return AdminService.delete(context, b.optLong("id")).toString()
+    }
+
+    /** Id numérico solto no payload (para admin_detail/admin_reveal). */
+    private fun idFrom(payload: String): Long =
+        try { JSONObject(payload).optLong("id") } catch (e: Exception) { 0L }
+
+    private fun adminUpdateImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        val id = b.optLong("id")
+        if (id <= 0L) return JSONObject().put("ok", false).put("error", "id inválido").toString()
+        // tudo além do id é o patch (o que veio muda; o que faltou fica como está)
+        val patch = JSONObject(b.toString())
+        patch.remove("id")
+        return AdminService.update(context, id, patch).toString()
+    }
+
+    private fun adminDeviceImpl(payload: String): String {
+        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
+        val did = b.optLong("deviceId")
+        if (did <= 0L) return JSONObject().put("ok", false).put("error", "aparelho inválido").toString()
+        return when (b.optString("action", "block")) {
+            "remove" -> AdminService.removeDevice(context, did)
+            "unblock" -> AdminService.blockDevice(context, did, false)
+            else -> AdminService.blockDevice(context, did, true)
+        }.toString()
     }
 
     private companion object {

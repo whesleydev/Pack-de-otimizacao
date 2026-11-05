@@ -508,6 +508,61 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .adm-newkey .acts{display:flex;gap:8px;margin-top:10px}
 .adm-newkey .acts .btn{width:auto;font-size:12.5px;padding:7px 14px}
 .adm-empty{margin:10px 0 0;color:var(--muted);font-size:13px}
+.adm-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.adm-bar input,.adm-bar select{flex:1;min-width:130px;padding:9px 12px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--glass-2);color:var(--ink);font-size:13.5px;font-family:inherit}
+.adm-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.adm-chip{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line-strong);background:var(--glass-2);color:var(--muted);font-family:inherit}
+.adm-chip.on{color:var(--ink);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.adm-chip b{font-variant-numeric:tabular-nums}
+.adm-plans{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.adm-plan{text-align:left;border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 12px;
+  background:var(--glass-2);cursor:pointer;font-family:inherit;color:var(--ink);font-size:12.5px}
+.adm-plan:hover{border-color:var(--accent)}
+.adm-plan b{display:block;font-size:13px}
+.adm-plan span{color:var(--muted);font-size:11px}
+.adm-dev{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:7px 0;
+  border-bottom:1px solid var(--line);font-size:12.5px}
+.adm-dev:last-child{border-bottom:0}
+.adm-dev .m{flex:1;min-width:0}
+.adm-dev .m b{display:block;font-weight:700;word-break:break-word}
+.adm-dev .m span{color:var(--muted);font-size:11px}
+.adm-dev .acts{display:flex;gap:6px;flex:none}
+.adm-dev .acts .btn{width:auto;font-size:11.5px;padding:5px 10px}
+.adm-dev.off .m b{color:var(--muted);text-decoration:line-through}
+.adm-field{margin-top:10px}
+.adm-field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin:0 0 4px 2px}
+.adm-field input,.adm-field textarea,.adm-field select{width:100%;padding:9px 12px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--glass-2);color:var(--ink);font-size:13.5px;font-family:inherit}
+.adm-field textarea{min-height:62px;resize:vertical}
+.adm-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.adm-owner-note{margin-top:10px;padding:9px 12px;border-left:3px solid var(--warn);
+  background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:12.5px;color:var(--muted)}
+
+/* ---- perfil (categoria própria, como app de verdade) ----------------------- */
+.pf-hero{display:flex;gap:14px;align-items:center;margin-top:12px}
+.pf-avatar{width:62px;height:62px;border-radius:20px;flex:none;display:grid;place-items:center;
+  font-size:24px;font-weight:800;background:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
+.pf-id{min-width:0;flex:1}
+.pf-id b{display:block;font-size:17px;font-weight:800;letter-spacing:-.01em;word-break:break-word}
+.pf-id span{color:var(--muted);font-size:12.5px}
+.pf-key{margin-top:12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
+.pf-key code{font-family:var(--mono);font-weight:800;font-size:15px;letter-spacing:.08em;word-break:break-all}
+.pf-key .acts{display:flex;gap:8px;margin-top:10px}
+.pf-key .acts .btn{width:auto;font-size:12.5px;padding:7px 14px}
+.pf-rows{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.pf-row{display:flex;gap:10px;justify-content:space-between;align-items:baseline;padding:10px 13px;
+  border-bottom:1px solid var(--line);font-size:13px}
+.pf-row:last-child{border-bottom:0}
+.pf-row .k{color:var(--muted)}
+.pf-row .v{font-weight:700;text-align:right;word-break:break-word;font-variant-numeric:tabular-nums}
+.pf-links{display:grid;gap:8px;margin-top:12px}
+.pf-link{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;
+  padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--glass-2);
+  color:var(--ink);font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left}
+.pf-link:hover{border-color:var(--accent)}
+.pf-link .arw{color:var(--muted);flex:none}
 
 /* ---- terminal real -------------------------------------------------------- */
 /* ---- terminal amplo ------------------------------------------------------- */
@@ -741,6 +796,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <span class="c"></span>Sistema            <span class="count">24</span>
           </a>
       <a href="#Terminal" data-g="Terminal" aria-current="false"><span class="c"></span>Terminal</a>
+      <a href="#Perfil" data-g="Perfil" id="navPerfil" aria-current="false"><span class="c"></span>Perfil</a>
       <a href="#Admin" data-g="Admin" id="navAdmin" aria-current="false" hidden><span class="c"></span>Admin</a>
       </nav>
     </div>
@@ -4867,6 +4923,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
 
       <article class="card" data-id="adm.create">
         <div class="row"><h3>Criar uma chave</h3></div>
+        <div class="adm-plans" id="admPlans"></div>
         <div class="fields">
           <div class="field wide">
             <label for="admName">Nome de quem vai receber</label>
@@ -4881,12 +4938,20 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <input id="admDevices" type="number" min="0" value="1" inputmode="numeric">
           </div>
           <div class="field">
+            <label for="admUses">Usos (0 = ilimitado)</label>
+            <input id="admUses" type="number" min="0" value="0" inputmode="numeric">
+          </div>
+          <div class="field">
             <label for="admRoleSel">Papel</label>
             <select id="admRoleSel">
               <option value="user">Usuário comum (TRIX-)</option>
               <option value="admin">Administrador (00-)</option>
               <option value="owner">Dono (00-) — mexe nesta aba</option>
             </select>
+          </div>
+          <div class="field">
+            <label for="admContact">Contato (opcional)</label>
+            <input id="admContact" type="text" placeholder="zap / discord / e-mail" autocomplete="off">
           </div>
         </div>
         <div class="go"><button class="btn primary" id="admCreate" type="button">Criar chave</button></div>
@@ -4906,6 +4971,10 @@ body.drawer .scrim{opacity:1;visibility:visible}
           <h3>Chaves</h3>
           <button class="btn" id="admRefresh" type="button" style="width:auto">Atualizar</button>
         </div>
+        <div class="adm-bar">
+          <input id="admSearch" type="search" placeholder="buscar por nome, prefixo, contato…" autocomplete="off">
+        </div>
+        <div class="adm-chips" id="admChips"></div>
         <div class="adm-list" id="admList"></div>
       </article>
 
@@ -4913,6 +4982,63 @@ body.drawer .scrim{opacity:1;visibility:visible}
         <div class="row"><h3>Auditoria</h3></div>
         <p class="adm-empty">Tentativas de entrada recentes: quem tentou, de qual aparelho e o que aconteceu.</p>
         <div class="adm-audit" id="admAudit"></div>
+      </article>
+    </section>
+    <section id="g-Perfil" data-g="Perfil" hidden>
+      <div class="head">
+        <h2>Perfil</h2>
+        <p>Sua conta no Trix: quem você é, qual chave está usando e até quando ela vale.</p>
+      </div>
+
+      <article class="card" data-id="pf.hero">
+        <div class="pf-hero">
+          <div class="pf-avatar" id="pfAvatar" aria-hidden="true">?</div>
+          <div class="pf-id">
+            <b id="pfName">—</b>
+            <span id="pfRole">—</span>
+          </div>
+          <span class="adm-badge user" id="pfBadge">—</span>
+        </div>
+        <div class="adm-field">
+          <label for="pfNick">Seu apelido (só neste aparelho)</label>
+          <input id="pfNick" type="text" placeholder="ex.: Whesley" autocomplete="off" maxlength="40">
+        </div>
+        <div class="go"><button class="btn" id="pfSaveNick" type="button">Salvar apelido</button></div>
+      </article>
+
+      <article class="card" data-id="pf.key">
+        <div class="row"><h3>Sua chave</h3>
+          <button class="btn" id="pfReveal" type="button" style="width:auto">Mostrar</button>
+        </div>
+        <div class="pf-key" id="pfKeyBox" hidden>
+          <code id="pfKeyVal">—</code>
+          <div class="acts">
+            <button class="btn" id="pfCopy" type="button">Copiar</button>
+            <button class="btn" id="pfSend" type="button">Enviar</button>
+          </div>
+        </div>
+        <p class="adm-empty" id="pfKeyHint">A chave completa só é mostrada se você for o dono.
+        Usuário comum vê só o prefixo.</p>
+      </article>
+
+      <article class="card" data-id="pf.plan">
+        <div class="row"><h3>Seu plano</h3></div>
+        <div class="pf-rows">
+          <div class="pf-row"><span class="k">Papel</span><span class="v" id="pfRowRole">—</span></div>
+          <div class="pf-row"><span class="k">Chave</span><span class="v" id="pfRowPrefix">—</span></div>
+          <div class="pf-row"><span class="k">Validade</span><span class="v" id="pfRowExp">—</span></div>
+          <div class="pf-row"><span class="k">Aparelhos</span><span class="v" id="pfRowDev">—</span></div>
+          <div class="pf-row"><span class="k">Banco</span><span class="v" id="pfRowDb">—</span></div>
+        </div>
+      </article>
+
+      <article class="card" data-id="pf.links">
+        <div class="row"><h3>Atalhos</h3></div>
+        <div class="pf-links">
+          <button class="pf-link" type="button" id="pfGoConfigs">Configurações <span class="arw">›</span></button>
+          <button class="pf-link" type="button" id="pfGoAdmin" hidden>Gerenciar chaves (Admin) <span class="arw">›</span></button>
+          <button class="pf-link" type="button" id="pfLogout">Sair da conta <span class="arw">›</span></button>
+        </div>
       </article>
     </section>
     <section id="g-Lat%C3%AAncia%20e%20ping" data-g="Latência e ping" hidden>
@@ -5307,6 +5433,81 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <div class="row" style="margin-top:8px">
       <button class="btn" id="profClose" type="button">Fechar</button>
       <button class="btn primary" id="profApply" type="button">Aplicar perfil</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="admMask" role="dialog" aria-modal="true" aria-labelledby="admTitle">
+  <div class="modal wide">
+    <h3 id="admTitle">Editar chave</h3>
+    <p id="admTitleSub">—</p>
+
+    <div class="adm-2col">
+      <div class="adm-field">
+        <label for="edLabel">Nome</label>
+        <input id="edLabel" type="text" maxlength="80" autocomplete="off">
+      </div>
+      <div class="adm-field">
+        <label for="edRole">Papel</label>
+        <select id="edRole">
+          <option value="user">Usuário (TRIX-)</option>
+          <option value="admin">Administrador (00-)</option>
+          <option value="owner">Dono (00-)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="adm-2col">
+      <div class="adm-field">
+        <label for="edDays">Validade (dias a partir de hoje; 0 = nunca)</label>
+        <input id="edDays" type="number" min="0" inputmode="numeric">
+      </div>
+      <div class="adm-field">
+        <label for="edExtend">Renovar + dias</label>
+        <input id="edExtend" type="number" min="0" value="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="adm-2col">
+      <div class="adm-field">
+        <label for="edDevices">Aparelhos (0 = ilimitado)</label>
+        <input id="edDevices" type="number" min="0" inputmode="numeric">
+      </div>
+      <div class="adm-field">
+        <label for="edUses">Usos (0 = ilimitado)</label>
+        <input id="edUses" type="number" min="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="adm-field">
+      <label for="edContact">Contato</label>
+      <input id="edContact" type="text" maxlength="120" autocomplete="off">
+    </div>
+    <div class="adm-field">
+      <label for="edNote">Observação</label>
+      <textarea id="edNote" maxlength="300"></textarea>
+    </div>
+
+    <div class="adm-field">
+      <label>A chave</label>
+      <div class="pf-key" id="edKeyBox">
+        <code id="edKeyVal">TRIX-····-····-····</code>
+        <div class="acts">
+          <button class="btn" id="edReveal" type="button">Mostrar</button>
+          <button class="btn" id="edCopy" type="button">Copiar</button>
+          <button class="btn" id="edSend" type="button">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="adm-field">
+      <label>Aparelhos que usaram esta chave</label>
+      <div id="edDevicesList"><p class="adm-empty">—</p></div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="edClose" type="button">Fechar</button>
+      <button class="btn primary" id="edSave" type="button">Salvar</button>
     </div>
   </div>
 </div>
@@ -5737,6 +5938,8 @@ function go(g, push){
   if (push !== false) history.replaceState(null, "", "#" + encodeURIComponent(g));
   window.scrollTo({top:0, behavior:"instant"});
   if (g === "Painel") startStats(); else stopStats();
+  // replaceState não dispara hashchange: recarrega o Perfil na mão.
+  if (g === "Perfil" && window.__otmProfileReload) window.__otmProfileReload();
 }
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
 const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Painel", false); };
@@ -6696,34 +6899,65 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
   function item(k){
     const st = STATUS[k.status] || [k.status, "var(--muted)"];
     const [papel, cls] = PAPEL[k.role] || [k.role, "user"];
-    const dono = k.role === "owner";
+    const meu = !!k.mine;
     const dev = k.maxDevices > 0 ? (k.devices + "/" + k.maxDevices) : (k.devices + "/∞");
     const ativa = k.status === "active" || k.status === "scheduled";
     return '<div class="adm-item">'
       + '<div class="top"><span class="adm-key">' + esc(k.prefix) + "-····-····</span>"
-      +   '<span class="adm-badge ' + cls + '">' + esc(papel) + "</span></div>"
+      +   '<span class="adm-badge ' + cls + '">' + esc(papel) + (k.mine ? " · você" : "") + "</span></div>"
       + '<div class="nm">' + esc(k.label || "sem nome") + "</div>"
       + '<div class="meta"><span class="adm-st" style="color:' + st[1] + '">' + esc(st[0]) + "</span>"
       +   " · aparelhos " + esc(dev) + " · usos " + esc(k.uses) + (k.maxUses > 0 ? "/" + esc(k.maxUses) : "")
       +   " · expira " + esc(k.expiresAt ? fmtDt(k.expiresAt) : "nunca") + "</div>"
-      + (dono ? "" :
-          '<div class="acts">'
-          + '<button class="btn" data-adm-toggle="' + k.id + '" data-adm-active="' + (ativa ? "0" : "1") + '">' + (ativa ? "Desativar" : "Reativar") + "</button>"
-          + '<button class="btn" data-adm-del="' + k.id + '">Excluir</button>'
-          + "</div>")
-      + "</div>";
+      + '<div class="acts">'
+      + '<button class="btn primary" data-adm-edit="' + k.id + '">Editar</button>'
+      + '<button class="btn" data-adm-reveal="' + k.id + '"' + (k.sealed ? "" : " disabled") + ">Ver chave</button>"
+      + (meu ? "" :
+          '<button class="btn" data-adm-toggle="' + k.id + '" data-adm-active="' + (ativa ? "0" : "1") + '">' + (ativa ? "Desativar" : "Reativar") + "</button>"
+          + '<button class="btn" data-adm-del="' + k.id + '">Excluir</button>')
+      + "</div></div>";
   }
 
-  async function refresh(){
-    const r = await call("admin_list");
-    if (!r || !r.ok) { listEl.innerHTML = '<p class="adm-empty">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
-    const keys = r.keys || [];
-    listEl.innerHTML = keys.length ? keys.map(item).join("")
-      : '<p class="adm-empty">Nenhuma chave ainda. Crie a primeira acima.</p>';
-    const ativas = keys.filter(k => k.status === "active" || k.status === "scheduled").length;
-    const devs = keys.reduce((n, k) => n + (+k.devices || 0), 0);
-    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    set("admKeys", keys.length); set("admActive", ativas); set("admDevs", devs);
+  // ---- estado da tela (busca, filtro e cache da última lista) ----
+  let KEYS = [], FILTER = "all", SEARCH = "";
+
+  const CHIPS = [["all","todas"],["active","ativas"],["scheduled","agendadas"],
+    ["expired","expiradas"],["revoked","revogadas"],["exhausted","esgotadas"]];
+
+  function renderChips(summary, total){
+    const el = document.getElementById("admChips");
+    if (!el) return;
+    const s = summary || {};
+    const n = { all: total || 0 };
+    CHIPS.forEach(c => { if (c[0] !== "all") n[c[0]] = s[c[0]] || 0; });
+    el.innerHTML = CHIPS.map(c =>
+      '<button type="button" class="adm-chip' + (FILTER === c[0] ? " on" : "") + '" data-adm-filter="' + c[0] + '">'
+      + esc(c[1]) + ' <b>' + n[c[0]] + "</b></button>").join("");
+    el.querySelectorAll("[data-adm-filter]").forEach(b => b.onclick = () => {
+      FILTER = b.dataset.admFilter; drawList();
+    });
+  }
+
+  function drawList(){
+    const q = SEARCH.trim().toLowerCase();
+    const rows = KEYS.filter(k => {
+      if (FILTER !== "all" && k.status !== FILTER) return false;
+      if (!q) return true;
+      return (String(k.label || "") + " " + String(k.prefix || "")).toLowerCase().indexOf(q) >= 0;
+    });
+    listEl.innerHTML = rows.length ? rows.map(item).join("")
+      : '<p class="adm-empty">' + (KEYS.length ? "Nada bate com esse filtro." : "Nenhuma chave ainda. Crie a primeira acima.") + "</p>";
+    wireRows();
+  }
+
+  function wireRows(){
+    listEl.querySelectorAll("[data-adm-edit]").forEach(b => b.onclick = () => openEdit(+b.dataset.admEdit));
+    listEl.querySelectorAll("[data-adm-reveal]").forEach(b => b.onclick = async () => {
+      b.disabled = true; b.textContent = "…";
+      const r = await call("admin_reveal", { id: +b.dataset.admReveal });
+      b.disabled = false; b.textContent = "Ver chave";
+      if (r && r.ok) { copyOrShow(r.key); } else { toast((r && r.error) || "não deu para abrir", "bad"); }
+    });
     listEl.querySelectorAll("[data-adm-toggle]").forEach(b => b.onclick = async () => {
       b.disabled = true;
       await call("admin_toggle", { id: +b.dataset.admToggle, active: b.dataset.admActive === "1" });
@@ -6735,6 +6969,25 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
       await call("admin_delete", { id: +b.dataset.admDel });
       refresh();
     });
+  }
+
+  async function copyOrShow(chave){
+    if (confirm("Chave:\n\n" + chave + "\n\nCopiar para a área de transferência?")) {
+      try { await navigator.clipboard.writeText(chave); toast("Chave copiada", "ok"); return; }
+      catch (e) { toast("Não consegui copiar", "bad"); }
+    }
+  }
+
+  async function refresh(){
+    const r = await call("admin_list");
+    if (!r || !r.ok) { listEl.innerHTML = '<p class="adm-empty">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
+    KEYS = r.keys || [];
+    const ativas = KEYS.filter(k => k.status === "active" || k.status === "scheduled").length;
+    const devs = KEYS.reduce((n, k) => n + (+k.devices || 0), 0);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set("admKeys", KEYS.length); set("admActive", ativas); set("admDevs", devs);
+    renderChips(r.summary, r.total);
+    drawList();
   }
 
   async function refreshAudit(){
@@ -6750,20 +7003,152 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     ).join("") : '<p class="adm-empty">Sem eventos ainda.</p>';
   }
 
+  // ---- edição de uma chave (modal) ----
+  let EDIT_ID = 0;
+
+  function deviceRow(d){
+    const nome = d.model || "aparelho";
+    const sub = [d.android ? "Android " + d.android : "", d.app || "",
+      d.lastSeen ? "visto " + fmtDt(d.lastSeen) : ""].filter(Boolean).join(" · ");
+    return '<div class="adm-dev' + (d.blocked ? " off" : "") + '">'
+      + '<div class="m"><b>' + esc(nome) + "</b><span>" + esc(sub) + "</span></div>"
+      + '<div class="acts">'
+      + '<button class="btn" data-dev-block="' + d.id + '" data-dev-on="' + (d.blocked ? "0" : "1") + '">'
+      + (d.blocked ? "Liberar" : "Bloquear") + "</button>"
+      + '<button class="btn" data-dev-del="' + d.id + '">Remover</button>'
+      + "</div></div>";
+  }
+
+  async function openEdit(id){
+    EDIT_ID = id;
+    const r = await call("admin_detail", { id });
+    if (!r || !r.ok) { toast((r && r.error) || "não deu para abrir", "bad"); return; }
+    const k = r.key || {};
+    const g = (i) => document.getElementById(i);
+    g("admTitle").textContent = "Editar chave";
+    g("admTitleSub").textContent = (k.prefix || "—") + "-····-···· · " + (k.label || "sem nome");
+    g("edLabel").value = k.label || "";
+    g("edRole").value = k.role || "user";
+    // A própria chave não pode ser rebaixada: você se trancaria fora do Admin.
+    g("edRole").disabled = !!k.mine;
+    g("edDays").value = "";
+    g("edDays").placeholder = k.expiresAt ? "atual: " + fmtDt(k.expiresAt) : "nunca expira";
+    g("edExtend").value = "0";
+    g("edDevices").value = k.maxDevices || 0;
+    g("edUses").value = k.maxUses || 0;
+    g("edContact").value = k.ownerContact || "";
+    g("edNote").value = k.note || "";
+    g("edKeyVal").textContent = (k.prefix || "—") + "-····-····-····";
+    g("edReveal").disabled = !k.sealed;
+    g("edKeyBox").dataset.key = "";
+    const dl = g("edDevicesList");
+    const devs = r.devices || [];
+    dl.innerHTML = devs.length ? devs.map(deviceRow).join("")
+      : '<p class="adm-empty">Nenhum aparelho usou esta chave ainda.</p>';
+    dl.querySelectorAll("[data-dev-block]").forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      await call("admin_device", { deviceId: +b.dataset.devBlock,
+        action: b.dataset.devOn === "1" ? "block" : "unblock" });
+      openEdit(EDIT_ID);
+    });
+    dl.querySelectorAll("[data-dev-del]").forEach(b => b.onclick = async () => {
+      if (!confirm("Remover este aparelho? Ele vai poder entrar de novo em outro.")) return;
+      b.disabled = true;
+      await call("admin_device", { deviceId: +b.dataset.devDel, action: "remove" });
+      openEdit(EDIT_ID);
+    });
+    document.getElementById("admMask").classList.add("open");
+  }
+
+  document.getElementById("edReveal").onclick = async () => {
+    const btn = document.getElementById("edReveal");
+    const box = document.getElementById("edKeyBox");
+    if (box.dataset.key) { copyOrShow(box.dataset.key); return; }
+    btn.disabled = true; btn.textContent = "…";
+    const r = await call("admin_reveal", { id: EDIT_ID });
+    btn.disabled = false; btn.textContent = "Mostrar";
+    if (r && r.ok) {
+      box.dataset.key = r.key;
+      document.getElementById("edKeyVal").textContent = r.key;
+    } else { toast((r && r.error) || "não deu para abrir", "bad"); }
+  };
+  document.getElementById("edCopy").onclick = async () => {
+    const key = document.getElementById("edKeyBox").dataset.key;
+    if (!key) { toast("Toque em Mostrar primeiro", "bad"); return; }
+    try { await navigator.clipboard.writeText(key); toast("Chave copiada", "ok"); }
+    catch (e) { toast("Não consegui copiar", "bad"); }
+  };
+  document.getElementById("edSend").onclick = async () => {
+    const key = document.getElementById("edKeyBox").dataset.key;
+    if (!key) { toast("Toque em Mostrar primeiro", "bad"); return; }
+    const txt = "Sua chave do Trix: " + key + "\n\nAbra o app, cole a chave e entre.";
+    if (navigator.share) { try { await navigator.share({ text: txt, title: "Chave do Trix" }); return; } catch (e) {} }
+    try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
+    catch (e) { toast("Não consegui copiar", "bad"); }
+  };
+  document.getElementById("edClose").onclick = () => document.getElementById("admMask").classList.remove("open");
+  document.getElementById("admMask").onclick = e => { if (e.target.id === "admMask") e.currentTarget.classList.remove("open"); };
+  document.getElementById("edSave").onclick = async () => {
+    const btn = document.getElementById("edSave");
+    const patch = { id: EDIT_ID };
+    const g = (i) => document.getElementById(i);
+    patch.label = g("edLabel").value.trim();
+    patch.role = g("edRole").value;
+    patch.maxDevices = +g("edDevices").value || 0;
+    patch.maxUses = +g("edUses").value || 0;
+    patch.ownerContact = g("edContact").value.trim();
+    patch.note = g("edNote").value.trim();
+    const daysRaw = g("edDays").value;
+    if (daysRaw !== "") patch.days = +daysRaw || 0;
+    const ext = +g("edExtend").value || 0;
+    if (ext > 0) patch.extendDays = ext;
+    btn.disabled = true; btn.textContent = "Salvando…";
+    const r = await call("admin_update", patch);
+    btn.disabled = false; btn.textContent = "Salvar";
+    if (r && r.ok) {
+      toast("Chave atualizada", "ok");
+      document.getElementById("admMask").classList.remove("open");
+      refresh();
+    } else { toast((r && r.error) || "não deu para salvar", "bad"); }
+  };
+
+  async function loadPlans(){
+    const box = document.getElementById("admPlans");
+    if (!box) return;
+    const r = await call("admin_plans");
+    const plans = (r && r.plans) || [];
+    if (!plans.length) { box.innerHTML = ""; return; }
+    box.innerHTML = '<span style="align-self:center;color:var(--muted);font-size:12px">plano:</span>'
+      + plans.map(p => '<button type="button" class="adm-plan" data-plan="' + p.id + '"><b>' + esc(p.name || p.slug)
+        + "</b><span>" + (p.days > 0 ? p.days + " dias" : "vitalício") + " · "
+        + (p.devices > 0 ? p.devices + " aparelho(s)" : "ilimitado") + "</span></button>").join("");
+    box.querySelectorAll("[data-plan]").forEach(b => b.onclick = () => {
+      const p = plans.find(x => String(x.id) === b.dataset.plan);
+      if (!p) return;
+      document.getElementById("admDays").value = p.days || 0;
+      document.getElementById("admDevices").value = p.devices || 0;
+      document.getElementById("admUses").value = p.uses || 0;
+      toast("Plano " + (p.name || p.slug) + " aplicado", "ok");
+    });
+  }
+
   document.getElementById("admCreate").onclick = async () => {
     const btn = document.getElementById("admCreate");
     const label = document.getElementById("admName").value.trim();
     const days = +document.getElementById("admDays").value || 0;
     const devices = +document.getElementById("admDevices").value || 0;
+    const uses = +document.getElementById("admUses").value || 0;
     const role = document.getElementById("admRoleSel").value;
+    const contact = document.getElementById("admContact").value.trim();
     btn.disabled = true; btn.textContent = "Criando…";
-    const r = await call("admin_create", { label, days, devices, role });
+    const r = await call("admin_create", { label, days, devices, uses, role, contact });
     btn.disabled = false; btn.textContent = "Criar chave";
     if (r && r.ok) {
       const box = document.getElementById("admNewKey");
       document.getElementById("admNewKeyVal").textContent = r.key;
       box.hidden = false;
       document.getElementById("admName").value = "";
+      document.getElementById("admContact").value = "";
       refresh();
     } else {
       alert("Não deu para criar: " + ((r && r.error) || "erro"));
@@ -6786,6 +7171,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     catch (e) { toast("Não consegui copiar", "bad"); }
   };
   document.getElementById("admRefresh").onclick = () => { refresh(); refreshAudit(); };
+  const searchEl = document.getElementById("admSearch");
+  if (searchEl) searchEl.oninput = () => { SEARCH = searchEl.value || ""; drawList(); };
   document.getElementById("admLogout").onclick = async () => {
     await call("key_logout");
     try { localStorage.removeItem("otm_session"); localStorage.removeItem("otm_role"); localStorage.removeItem("otm_label"); } catch(e){}
@@ -6801,9 +7188,114 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
     if (st && st.owner) {
       nav.hidden = false;
       document.getElementById("admCreate").hidden = !st.db;
+      loadPlans();
       refresh(); refreshAudit();
     }
   })();
+})();
+
+/* ===== categoria Perfil =====
+   Mostra quem está logado usando a chave da sessão (não a lista de admin).
+   O apelido é só deste aparelho; a chave completa só abre se for a sua. */
+(function initProfile(){
+  const nav = document.getElementById("navPerfil");
+  if (!nav) return;
+  const call = (kind, payload) => new Promise(resolve => {
+    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
+    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
+  });
+  const fmtDt = s => { if (!s) return "—"; const d = new Date(String(s).replace(" ", "T") + "Z");
+    return isNaN(d) ? s : d.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit",year:"numeric"}); };
+  const PAPEL = { owner:["Dono","dono"], admin:["Administrador","admin"], user:["Usuário","user"] };
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
+  let ME = {}, NICK = "";
+
+  function paint(){
+    const [papel, cls] = PAPEL[ME.role] || [ME.role || "—", "user"];
+    const nome = NICK || ME.label || "Sem apelido";
+    set("pfName", nome);
+    set("pfRole", (ME.label ? "chave: " + ME.label + " · " : "") + papel);
+    const av = document.getElementById("pfAvatar");
+    if (av) av.textContent = (nome.trim()[0] || "?").toUpperCase();
+    const badge = document.getElementById("pfBadge");
+    if (badge) { badge.textContent = papel; badge.className = "adm-badge " + cls; }
+    set("pfRowRole", papel);
+    set("pfRowPrefix", ME.prefix ? ME.prefix + "-····-····" : "—");
+    set("pfRowExp", ME.expiresAt ? fmtDt(ME.expiresAt) : "nunca");
+    set("pfRowDev", ME.maxDevices > 0 ? (ME.devices + "/" + ME.maxDevices) : (ME.devices + "/∞"));
+    set("pfRowDb", ME.db ? "conectado" : "não configurado");
+    const hint = document.getElementById("pfKeyHint");
+    const box = document.getElementById("pfKeyBox");
+    const rev = document.getElementById("pfReveal");
+    if (!ME.sealed) {
+      if (hint) hint.textContent = "Esta chave foi criada antes do cofre: só o prefixo ficou guardado.";
+      if (rev) rev.disabled = true;
+    } else if (hint) {
+      hint.textContent = "Toque em Mostrar para ver a chave completa e poder copiar.";
+      if (rev) rev.disabled = false;
+    }
+    const nick = document.getElementById("pfNick");
+    if (nick && document.activeElement !== nick) nick.value = NICK;
+    const goAdm = document.getElementById("pfGoAdmin");
+    if (goAdm) goAdm.hidden = !ME.owner;
+    if (box) box.hidden = true;
+  }
+
+  async function load(){
+    const st = await call("key_status");
+    const nick = await call("nick");
+    NICK = (nick && nick.nick) || "";
+    const me = await call("me");
+    if (!me || !me.ok) {
+      // sem banco/sem sessão ainda mostramos o que dá
+      ME = { role: (st && st.role) || "", owner: !!(st && st.owner), label: (st && st.label) || "",
+        prefix: (st && st.prefix) || "", expiresAt: (st && st.expires_at) || "", db: !!(st && st.db) };
+    } else { ME = me; }
+    paint();
+  }
+
+  document.getElementById("pfSaveNick").onclick = async () => {
+    const v = document.getElementById("pfNick").value.trim();
+    await call("nick", { nick: v });
+    NICK = v;
+    toast("Apelido salvo", "ok");
+    paint();
+  };
+  document.getElementById("pfReveal").onclick = async () => {
+    const btn = document.getElementById("pfReveal");
+    const box = document.getElementById("pfKeyBox");
+    btn.disabled = true; btn.textContent = "…";
+    const r = await call("my_key");
+    btn.disabled = false; btn.textContent = "Mostrar";
+    if (r && r.ok) {
+      document.getElementById("pfKeyVal").textContent = r.key;
+      box.hidden = false;
+    } else { toast((r && r.error) || "não deu para abrir", "bad"); }
+  };
+  const myKey = () => document.getElementById("pfKeyVal").textContent.trim();
+  document.getElementById("pfCopy").onclick = async () => {
+    try { await navigator.clipboard.writeText(myKey()); toast("Chave copiada", "ok"); }
+    catch (e) { toast("Não consegui copiar", "bad"); }
+  };
+  document.getElementById("pfSend").onclick = async () => {
+    const txt = "Minha chave do Trix: " + myKey();
+    if (navigator.share) { try { await navigator.share({ text: txt, title: "Chave do Trix" }); return; } catch (e) {} }
+    try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
+    catch (e) { toast("Não consegui copiar", "bad"); }
+  };
+  document.getElementById("pfGoConfigs").onclick = () => { syncGear(); document.getElementById("gearMask").classList.add("open"); };
+  document.getElementById("pfGoAdmin").onclick = () => go("Admin");
+  document.getElementById("pfLogout").onclick = async () => {
+    if (!confirm("Sair da conta neste aparelho?")) return;
+    await call("key_logout");
+    try { localStorage.removeItem("otm_session"); localStorage.removeItem("otm_role"); localStorage.removeItem("otm_label"); } catch(e){}
+    location.replace("login.html");
+  };
+
+  addEventListener("hashchange", () => { if (decodeURIComponent(location.hash.slice(1)) === "Perfil") load(); });
+  if (decodeURIComponent(location.hash.slice(1)) === "Perfil") load();
+  window.__otmProfileReload = load;
 })();
 
 /* ===== confirmação da sessão no nativo =====

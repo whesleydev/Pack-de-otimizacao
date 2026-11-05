@@ -3,6 +3,33 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.53.0] - 2026-11-05
+
+### Adicionado
+- **Painel Admin completo dentro do app.** A aba Admin agora lista as chaves com
+  busca e filtros (todas/ativas/agendadas/expiradas/revogadas/esgotadas), mostra
+  quantas chaves, quantas ativas e quantos aparelhos, e traz a auditoria. Cada
+  chave abre um modal de edição: nome, papel, validade (dias ou "renovar +"),
+  limite de aparelhos, limite de usos, contato e observação, além da lista de
+  aparelhos (bloquear/liberar/remover) e do botão "Ver chave".
+- **Cofre da chave.** A chave em claro é guardada cifrada (AES-GCM) no banco no
+  momento da criação, para o dono poder revelar e reenviar depois. O sigilo é
+  limitado de propósito: a cifra é derivada do token do banco, que vai no APK.
+  Serve para a chave não ficar em texto puro num dump — não é segredo forte.
+- **Planos.** Cadastro de planos (semanal/mensal/vitalício) que preenchem a
+  criação com um toque.
+- **Categoria Perfil.** Mostra quem está logado pela chave da sessão (não pela
+  lista de admin): papel, prefixo, validade, aparelhos, apelido local e atalhos
+  para as Configurações e para o Admin (só se for dono).
+
+### Corrigido
+- **Chave antiga não podia ser revelada.** Chaves criadas antes do cofre só
+  tinham o hash. Agora, quando uma dessas chaves entra, o app aproveita a chave
+  em claro (que passa pelo login) para preencher o cofre.
+- **Rebaixamento do dono.** Editar uma chave não deixa mais rebaixar/alterar o
+  papel da chave com que você está logado; o dono pode gerar uma chave de dono
+  nova antes de revogar a antiga.
+
 ## [2.52.0] - 2026-11-05
 
 ### Adicionado

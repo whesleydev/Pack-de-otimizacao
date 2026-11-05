@@ -52,3 +52,7 @@ panel/database/*.sqlite-shm
 
 # toolchain local (JDK/PHP usados só no ambiente de dev)
 .toolchain/
+
+# dependencias de teste (jsdom para o teste de DOM)
+node_modules/
+package-lock.json

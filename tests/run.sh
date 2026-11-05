@@ -4616,6 +4616,142 @@ t_smart_card_single
 t_clean
 t_smart_clean_protect
 t_privilege_detect
+# --- Admin no app: cofre da chave, edição, aparelhos, planos e Perfil --------
+t_app_admin_full() {
+    printf '\n  # Admin: chave guardada, edição, aparelhos, planos e Perfil\n'
+    local p="$ROOT/app/src/main/assets/panel"
+    local svc="$ROOT/app/src/main/java/com/otm/pack/AdminService.kt"
+    local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
+    local br="$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt"
+
+    # 1) o cofre: sem guardar a chave, "Ver chave"/"Copiar" não teriam o que abrir
+    grep -q 'fun seal(' "$gate" && ok "KeyGate cifra a chave (cofre)" || bad "KeyGate sem seal()"
+    grep -q 'fun unseal(' "$gate" && ok "KeyGate abre o cofre (unseal)" || bad "KeyGate sem unseal()"
+    grep -q 'AES/GCM/NoPadding' "$gate" && ok "cofre usa AES-GCM" || bad "cofre sem AES-GCM"
+    grep -q 'key_sealed' "$svc" && ok "create grava a chave cifrada em key_sealed" \
+        || bad "create não grava key_sealed"
+    grep -q 'take(GLEN)' "$gate" && ok "prefixo mostra só o começo da chave" \
+        || bad "prefixo pode expor a chave inteira"
+
+    # 2) CRUD completo no serviço e na ponte
+    for fn in update reveal detail blockDevice removeDevice plans me revealMine; do
+        grep -q "fun $fn(" "$svc" && ok "AdminService.$fn()" || bad "AdminService sem $fn()"
+    done
+    for k in admin_detail admin_reveal admin_update admin_device admin_plans me my_key; do
+        grep -q "\"$k\"" "$br" && ok "ponte expõe $k" || bad "ponte sem $k"
+    done
+
+    # 3) editar não pode mexer no texto da chave (invalidaria quem já entrou)
+    python3 - "$svc" <<'PY' > "$TMP/adm_no_keychange" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("fun update(")
+body = src[i:src.find("\n    /**", i)]
+bad = [c for c in ("key_hash =", "key_prefix =", "key_sealed =") if c in body]
+print("OK" if not bad else "mexe em " + ",".join(bad))
+PY
+    assert_contains "$TMP/adm_no_keychange" "OK" "editar não troca o texto da chave"
+
+    # 4) só o dono edita/exclui; o usuário comum só abre a própria chave
+    python3 - "$svc" <<'PY' > "$TMP/adm_guard" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+faltam = []
+for fn in ("update", "detail", "blockDevice", "removeDevice", "plans"):
+    i = src.find("fun " + fn + "(")
+    if i < 0 or "requireOwner" not in src[i:i+200]:
+        faltam.append(fn)
+print("OK" if not faltam else "sem requireOwner: " + ",".join(faltam))
+PY
+    assert_contains "$TMP/adm_guard" "OK" "só o dono edita/gerencia (requireOwner)"
+    grep -q 'enforceOwnership' "$svc" && ok "usuário comum só abre a própria chave" \
+        || bad "revealMine sem trava de posse"
+
+    # 5) a lista traz TUDO o que a tela precisa (era o 'não mostra toda')
+    python3 - "$svc" <<'PY' > "$TMP/adm_list" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+i = src.find("fun list(")
+body = src[i:src.find("\n    /**", i)]
+need = ["key_prefix", "label", "role", "max_devices", "max_uses", "uses_count",
+        "expires_at", "last_used_at", "tem_chave", "summary", "mine"]
+faltam = [n for n in need if n not in body]
+print("OK" if not faltam else "faltam: " + ",".join(faltam))
+PY
+    assert_contains "$TMP/adm_list" "OK" "lista traz todos os campos da tela + resumo"
+    grep -q 'LIMIT 500' "$svc" && ok "lista cobre até 500 chaves (não só as recentes)" \
+        || bad "lista limitada demais"
+
+    # 6) a tela: busca, filtros, edição e aparelhos
+    for id in admSearch admChips admPlans edSave edReveal edDevicesList; do
+        grep -q "id=\"$id\"" "$p/index.html" && ok "painel tem #$id" || bad "painel sem #$id"
+    done
+    for fn in openEdit drawList renderChips deviceRow loadPlans; do
+        grep -q "function $fn(" "$p/index.html" && ok "painel define $fn()" || bad "painel sem $fn()"
+    done
+    grep -q 'admin_update' "$p/index.html" && ok "painel salva edição (admin_update)" \
+        || bad "painel não salva edição"
+
+    # 7) o Perfil: categoria própria e integrada às configurações
+    grep -q 'id="navPerfil"' "$p/index.html" && ok "menu tem Perfil" || bad "menu sem Perfil"
+    grep -q 'id="g-Perfil"' "$p/index.html" && ok "seção do Perfil existe" || bad "sem seção Perfil"
+    for id in pfAvatar pfName pfNick pfReveal pfRowExp pfRowDev pfGoConfigs pfGoAdmin; do
+        grep -q "id=\"$id\"" "$p/index.html" && ok "perfil tem #$id" || bad "perfil sem #$id"
+    done
+    grep -q 'function initProfile(' "$p/index.html" && ok "perfil tem o próprio JS" \
+        || bad "perfil sem JS"
+    grep -q 'syncGear(); document.getElementById("gearMask")' "$p/index.html" \
+        && ok "perfil encaixa com as Configurações (abre a mesma gaveta)" \
+        || bad "perfil não encaixa com as Configurações"
+    grep -q '"nick"' "$br" && ok "ponte guarda o apelido do perfil (nick)" \
+        || bad "ponte sem nick"
+
+    # 8) a própria chave da sessão não pode ser rebaixada/desativada/excluída:
+    #    fazer isso trancaria o dono fora do próprio Admin.
+    grep -q 'isSelfKey' "$svc" && ok "serviço sabe qual é a chave da sessão" \
+        || bad "serviço não distingue a chave da sessão"
+    python3 - "$svc" <<'PY' > "$TMP/adm_self" 2>&1
+import sys
+src = open(sys.argv[1], encoding="utf-8").read()
+faltam = []
+for fn in ("setActive", "delete", "update"):
+    i = src.find("fun " + fn + "(")
+    body = src[i:src.find("\n    /**", i)] if i >= 0 else ""
+    if i < 0 or "isSelfKey" not in body:
+        faltam.append(fn)
+print("OK" if not faltam else "sem trava de sessão: " + ",".join(faltam))
+PY
+    assert_contains "$TMP/adm_self" "OK" "não dá para desativar/excluir/rebaixar a própria chave"
+    grep -q 'edRole").disabled' "$p/index.html" && ok "painel trava o papel da própria chave" \
+        || bad "painel deixa rebaixar a própria chave"
+
+    # 9) entrar com uma chave antiga (sem cofre) preenche o cofre
+    grep -q 'SET key_sealed = ?' "$gate" && ok "login preenche o cofre da chave antiga" \
+        || bad "chave antiga nunca ganha cofre"
+}
+
+# --- Admin/Perfil exercitados de verdade num DOM (jsdom), sem celular --------
+# Depende de `jsdom` (devDependency). Sem ele, o teste é PULADO — não é falha.
+t_app_admin_dom() {
+    printf '\n  # Admin/Perfil: a tela rodando num DOM (jsdom)\n'
+    local t="$ROOT/tests/dom/admin_profile.mjs"
+    [ -f "$t" ] && ok "teste de DOM existe" || { bad "teste de DOM ausente"; return; }
+    if ! command -v node >/dev/null 2>&1; then
+        ok "node ausente: pulo o teste de DOM"
+        return
+    fi
+    if ! node -e 'import("jsdom")' >/dev/null 2>&1; then
+        ok "jsdom ausente: pulo o teste de DOM (npm i -D jsdom)"
+        return
+    fi
+    node "$t" > "$TMP/dom_admin" 2>&1
+    case $? in
+        0) ok "DOM: Admin e Perfil passaram (filtros, edição, revelar chave)" ;;
+        3) ok "jsdom ausente: pulo o teste de DOM" ;;
+        *) bad "DOM: falhou -> $(grep -m3 'FAIL' "$TMP/dom_admin" | tr '\n' ' ')" ;;
+    esac
+}
+
 # --- interruptores (liga/desliga) e o painel de saude dentro de Geral ---------
 t_toggles_registry() {
     printf '\n  # interruptores: registro, estado real e paridade web/app\n'
@@ -4691,6 +4827,8 @@ t_toggles_registry() {
     fi
 }
 
+t_app_admin_full
+t_app_admin_dom
 t_toggles_registry
 t_new_toggles
 t_undo_scope
