@@ -1572,6 +1572,20 @@ function otm_actions(): array {
           'argv' => ['modules.sh', 'run', '{name}'],
           'params' => [['name' => 'name', 'type' => 'name', 'label' => 'Nome do módulo']],
           'risk' => 'careful', 'confirm' => true, 'timeout' => 180]);
+    $add(['id' => 'module.list', 'group' => 'Sistema', 'label' => 'Listar módulos e plugins',
+          'desc' => 'Mostra os módulos/plugins incluídos no pack.',
+          'help' => 'Lista os módulos (Magisk/KernelSU/APatch/AxManager) e plugins que vieram na pasta do pack, com o nome exato de cada um. Use o nome daqui para "Executar um módulo". Só leitura.',
+          'argv' => ['modules.sh', 'list']]);
+    $add(['id' => 'module.info', 'group' => 'Sistema', 'card' => false, 'label' => 'Módulo: ver os scripts',
+          'desc' => 'Mostra os scripts de um módulo (action, service, uninstall…).',
+          'help' => 'Mostra quais scripts um módulo traz (action.sh, service.sh, uninstall.sh, apply.sh…) para você saber o que ele faz antes de executar. Só leitura.',
+          'argv' => ['modules.sh', 'info', '{name}'],
+          'params' => [['name' => 'name', 'type' => 'name', 'label' => 'Nome do módulo']]]);
+    $add(['id' => 'module.actions', 'group' => 'Sistema', 'card' => false, 'label' => 'Módulo: listar executáveis',
+          'desc' => 'Lista os scripts executáveis de um módulo.',
+          'help' => 'Lista os scripts que podem ser rodados de um módulo, para usar com a execução de um script específico. Só leitura.',
+          'argv' => ['modules.sh', 'actions', '{name}'],
+          'params' => [['name' => 'name', 'type' => 'name', 'label' => 'Nome do módulo']]]);
 
     // ----- Touch: abrir o jogo -----
     $add(['id' => 'ff_open', 'group' => 'Display & Touch', 'label' => 'Abrir o Free Fire',
