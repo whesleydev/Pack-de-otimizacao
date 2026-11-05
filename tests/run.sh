@@ -661,6 +661,25 @@ t_app_login() {
     grep -q 'function confirmarSessao' "$p/index.html" \
         && ok "painel confirma a sessão no nativo (não confia só no localStorage)" \
         || bad "painel confia só no localStorage para a sessão"
+    # Coluna NULL lida como "null" (string) fazia toda chave parecer revogada: o
+    # optString do JSONObject do Android devolve "null" para JSONObject.NULL.
+    # A correção é omitir as colunas nulas no TursoClient, então o app inteiro
+    # depende disso — se voltar a gravar NULL no mapa, a chave é "revogada" de novo.
+    python3 - "$ROOT/app/src/main/java/com/otm/pack/TursoClient.kt" <<'PY' > "$TMP/nulldb" 2>&1
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r"private fun rows\(.*?\n    \}", src, re.S)
+if not m:
+    print("nao achei rows()"); raise SystemExit(1)
+if "if (value != JSONObject.NULL) row.put(" not in m.group(0):
+    print("rows() volta a gravar coluna NULL no mapa"); raise SystemExit(1)
+print("ok")
+PY
+    if grep -q '^ok$' "$TMP/nulldb"; then
+        ok "coluna NULL não vira a string 'null' (chave não é 'revogada' à toa)"
+    else
+        bad "coluna NULL vira 'null' no mapa de linhas ($(head -1 "$TMP/nulldb"))"
+    fi
     # todo link do menu tem de ter a seção correspondente: o painel é gerado por
     # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
     # deixando um link que não abre nada.

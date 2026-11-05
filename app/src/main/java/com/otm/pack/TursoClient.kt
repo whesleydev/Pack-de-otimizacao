@@ -130,7 +130,16 @@ class TursoClient(endpoint: String, private val token: String) {
         return out
     }
 
-    /** Transforma a resposta de um execute em linhas coluna→valor. */
+    /**
+     * Transforma a resposta de um execute em linhas coluna→valor.
+     *
+     * Colunas NULL ficam **de fora** do mapa de propósito. O `JSONObject` do
+     * Android não tem "valor nulo": `JSONObject.NULL` existe, mas `optString`
+     * devolve a string `"null"` para ele — que é "não vazia" e passava em
+     * `optString("revoked_at").isNotEmpty()`. Resultado: toda chave sem data de
+     * revogação (NULL) era lida como revogada. Ausente e nulo significam o mesmo
+     * aqui, então omitir deixa `optString` devolver "" e `optLong` devolver 0.
+     */
     private fun rows(resp: JSONObject): List<JSONObject> {
         val result = resp.optJSONObject("result") ?: return emptyList()
         val cols = result.optJSONArray("cols") ?: return emptyList()
@@ -144,14 +153,15 @@ class TursoClient(endpoint: String, private val token: String) {
             val row = JSONObject()
             for (c in names.indices) {
                 val cell = if (c < cells.length()) cells.optJSONObject(c) else null
-                row.put(names[c], untyped(cell))
+                val value = untyped(cell)
+                if (value != JSONObject.NULL) row.put(names[c], value)
             }
             out.add(row)
         }
         return out
     }
 
-    /** Valor "solto" de uma célula tipada; null quando o campo é NULL. */
+    /** Valor "solto" de uma célula tipada; `JSONObject.NULL` quando é NULL. */
     private fun untyped(cell: JSONObject?): Any? {
         if (cell == null) return JSONObject.NULL
         return when (cell.optString("type")) {
