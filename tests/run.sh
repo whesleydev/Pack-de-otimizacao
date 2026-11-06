@@ -4480,6 +4480,24 @@ PY
     # o espelho do app bate com scripts/
     cmp -s "$ROOT/scripts/vitality.sh" "$ROOT/app/src/main/assets/pack/scripts/vitality.sh" \
         && ok "vitality.sh espelhado no app" || bad "espelho do vitality.sh divergiu"
+
+    # card de saúde com dado real SEM shell: o app lê a bateria pelo BatteryManager
+    grep -q 'object OtmBattery' "$ROOT/app/src/main/java/com/otm/pack/OtmBattery.kt" \
+        && ok "app: leitura de bateria nativa existe" || bad "app: sem leitura nativa de bateria"
+    grep -q 'OtmBattery.snapshot(context)' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "ponte: bateria nativa entra nas métricas" || bad "ponte: bateria nativa fora das métricas"
+    grep -q 'OtmBattery.snapshot(this)' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && ok "overlay: monitor mostra bateria sem shell" || bad "overlay: monitor vazio sem shell"
+    grep -q 'BATTERY_PROPERTY_CAPACITY' "$ROOT/app/src/main/java/com/otm/pack/OtmBattery.kt" \
+        && grep -q 'EXTRA_TEMPERATURE' "$ROOT/app/src/main/java/com/otm/pack/OtmBattery.kt" \
+        && ok "app: lê nível e temperatura reais" || bad "app: não lê nível/temperatura"
+    grep -q 'bat_health_label' "$ROOT/app/src/main/java/com/otm/pack/OtmBattery.kt" \
+        && ok "app: expõe o rótulo de saúde do Android" || bad "app: sem rótulo de saúde"
+    for f in "$app" "$web"; do
+        grep -q 'bat_health_label' "$f" \
+            && ok "$(basename "$f"): mostra o rótulo de saúde do Android" \
+            || bad "$(basename "$f"): ignora o rótulo de saúde"
+    done
 }
 
 # --- perfil personalizado: escolhas (seg) e liga/desliga (toggle) -------------

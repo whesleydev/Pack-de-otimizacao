@@ -247,6 +247,15 @@ class PackBridge(
             if (l.startsWith("{")) { stats = try { JSONObject(l) } catch (e: Exception) { null }; if (stats != null) break }
         }
         val s = stats ?: JSONObject()
+        // Bateria pelo próprio Android: o shell pode não ter acesso, mas o
+        // BatteryManager sempre entrega nível/temperatura/estado. Só preenche o
+        // que o shell não trouxe (o shell lê mais: ciclos, capacidade de fábrica).
+        val bat = OtmBattery.snapshot(context)
+        val bkeys = bat.keys()
+        while (bkeys.hasNext()) {
+            val k = bkeys.next()
+            if (!s.has(k) || s.optString(k).isEmpty()) s.put(k, bat.get(k))
+        }
         val usage = Usage.snapshot(context)
         val keys = usage.keys()
         while (keys.hasNext()) {

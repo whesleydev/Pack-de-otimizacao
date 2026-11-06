@@ -346,8 +346,15 @@ class OverlayService : Service() {
     private fun loadMonitor() {
         val box = monitorBox ?: return
         if (shellRunner() == null) {
+            // Sem shell ainda dá para mostrar a bateria: o próprio Android
+            // entrega nível/temperatura/estado. Melhor do que uma tela vazia.
             box.removeAllViews()
-            box.addView(procNote("sem acesso — abra o app e conecte o Shizuku"))
+            val bat = OtmBattery.snapshot(this)
+            val m = LinkedHashMap<String, String>()
+            val keys = bat.keys()
+            while (keys.hasNext()) { val k = keys.next(); m[k] = bat.optString(k) }
+            for (linha in monitorRows(m)) box.addView(linha)
+            box.addView(procNote("conecte o Shizuku para ver CPU, RAM e FPS"))
             return
         }
         scope.launch {

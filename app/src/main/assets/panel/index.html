@@ -5884,11 +5884,14 @@ function renderVital(){
 
   const now = vitalEl('[data-vital="now"]');
   if (now){
+    const hlabel = has(S.bat_health_label) ? S.bat_health_label : "";
     let t = "";
     if (health === null) t = "Este aparelho não expõe a saúde da bateria sem root. O resto continua funcionando: ciclos, temperatura e o guardião de carga.";
     else if (score >= 75) t = "Bateria saudável. Mantenha o modo longevidade ligado e evite carregar acima de 80% para segurar esse número por mais tempo.";
     else if (score >= 60) t = "Começando a desgastar. Vale ligar o modo longevidade e evitar cargas longas durante a noite.";
     else t = "Bateria desgastada. Evite calor na tomada e cargas acima de 80%; considere avaliar a troca da célula.";
+    // o Android informa um rótulo de saúde mesmo sem a capacidade de fábrica
+    if (hlabel && hlabel !== "Boa") t = "O Android reporta a bateria como \"" + hlabel + "\". " + t;
     if (care) t += " Modo longevidade ligado.";
     if (whot > 0) t += " " + whot + " carga(s) com calor contabilizada(s).";
     now.textContent = t; now.hidden = false;
