@@ -637,7 +637,7 @@ class PackBridge(
     // ---- entrada local -------------------------------------------------------
 
     /** Login por usuário/senha, conferido no aparelho. Abre a sessão local. */
-    private fun appLoginImpl(payload: String): String {
+    private suspend fun appLoginImpl(payload: String): String {
         val body = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
         val user = body.optString("user").trim()
         val pass = body.optString("pass")
