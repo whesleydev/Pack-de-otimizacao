@@ -91,6 +91,11 @@ case "$refresh_min" in ""|null) refresh_min="" ;; esac
 refresh_peak="$(sh_get 'settings get system peak_refresh_rate' 2>/dev/null)"
 case "$refresh_peak" in ""|null) refresh_peak="" ;; esac
 [ -n "$refresh_peak" ] && [ "$refresh_peak" != "$refresh_min" ] && refresh_peak=""
+# Teto REAL do painel (maior modo que a tela suporta). Sem isto o monitor
+# chamava de "teto da tela" o valor TRAVADO nas settings — que pode ser 120
+# num painel de 90 Hz (o pack antigo gravava 120.0 na mão). O teto é do painel,
+# não do ajuste.
+refresh_max="$(otm_max_refresh 2>/dev/null)"
 
 # --- armazenamento (data) -----------------------------------------------------
 df_line="$(sh_get 'df -k /data' 2>/dev/null | tail -1)"
@@ -146,6 +151,7 @@ printf ',"bat_temp_c":"%s"'        "$(_clean "$bat_temp_c")"
 printf ',"bat_status":"%s"'        "$(_clean "$bat_status")"
 printf ',"refresh_hz":"%s"'        "$(_clean "$refresh_hz")"
 printf ',"refresh_peak":"%s"'      "$(_clean "$refresh_peak")"
+printf ',"refresh_max":"%s"'       "$(_clean "$refresh_max")"
 printf ',"fps":"%s"'               "$(_clean "$fps")"
 printf ',"fps_layer":"%s"'         "$(_clean "$fps_layer")"
 printf ',"stor_total_mb":"%s"'     "$(_clean "$stor_total_mb")"

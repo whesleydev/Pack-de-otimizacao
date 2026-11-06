@@ -4576,6 +4576,24 @@ t_custom_profile() {
             && ok "$(basename "$f"): o padrão vem da fonte única" || bad "$(basename "$f"): sem CPROF_DEFAULT"
     done
 
+    # 3b) nenhuma linha do HTML fica órfã: toda data-key existe na fonte única.
+    # Foi assim que a linha "Resolução" (chave res, removida em 2.56.0) ficou
+    # sozinha no painel do app depois que a opção saiu do lib.php — o HTML tem
+    # as linhas na mão, então nada avisava quando a fonte única mudava.
+    php -r 'require "'"$ROOT"'/web/lib.php";
+             $keys=array_map(fn($c)=>$c["k"], otm_custom_profile_opts());
+             echo implode("\n",$keys),"\n";' > "$TMP/cp_keys" 2>&1
+    for f in "$panel" "$web"; do
+        # o web monta a linha no PHP (data-key="<?= ... ?>"), então só interessam
+        # as chaves literais; a dinâmica é validada pelo teste de PC_ORDER acima.
+        grep -o 'class="cp-row" data-key="[^"<]*"' "$f" | sed 's/.*data-key="//; s/"$//' | sort -u \
+            > "$TMP/cp_html_keys" 2>/dev/null
+        grep -vxF -f "$TMP/cp_keys" "$TMP/cp_html_keys" > "$TMP/cp_orphan" 2>/dev/null
+        [ -s "$TMP/cp_orphan" ] \
+            && bad "$(basename "$f"): linha de perfil órfã (fora do lib.php): $(tr '\n' ' ' < "$TMP/cp_orphan")" \
+            || ok "$(basename "$f"): nenhuma linha de perfil órfã"
+    done
+
     # 4) o padrão do toggle é DESLIGADO (nunca liga nada sozinho)
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_actions()["profile.custom.apply"];
              $o=otm_custom_profile_opts(); $bad=[];

@@ -55,6 +55,8 @@ printf ',"touch_slop":"%s"' "$(_clean "$(_g system touch_slop)")"
 printf ',"multi_press_timeout":"%s"' "$(_clean "$(_g system multi_press_timeout)")"
 printf ',"refresh_min":"%s"' "$(_clean "$(_g system min_refresh_rate)")"
 printf ',"refresh_peak":"%s"' "$(_clean "$(_g system peak_refresh_rate)")"
+# teto real do painel (maior modo que a tela suporta) — separado do travado
+printf ',"refresh_max":"%s"' "$(_clean "$(otm_max_refresh 2>/dev/null)")"
 # DPI lógico em vigor: o `wm density` mostra "Override density" só quando há
 # override; sem ele, vale a densidade física. O painel usa isto para marcar
 # qual perfil de DPI está em uso (e "" = padrão de fábrica).

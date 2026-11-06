@@ -403,9 +403,20 @@ class OverlayService : Service() {
     private fun monitorRows(s: Map<String, String>): List<View> {
         val linhas = ArrayList<View>()
         val fps = s["fps"]?.takeIf { it.isNotEmpty() }
-        val hz = s["refresh_peak"]?.takeIf { it.isNotEmpty() } ?: s["refresh_hz"]?.takeIf { it.isNotEmpty() }
+        // "Teto da tela" é o MAIOR modo que o PAINEL suporta (refresh_max, do
+        // dumpsys display) — não o valor travado nas settings. Antes o monitor
+        // mostrava o peak gravado (ex.: 120 num aparelho de 90 Hz) e parecia
+        // que o aparelho tinha um teto que não existe.
+        val teto = s["refresh_max"]?.takeIf { it.isNotEmpty() }
+        val travado = s["refresh_peak"]?.takeIf { it.isNotEmpty() }
+        val atual = s["refresh_hz"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("FPS do jogo", fps ?: "—", destaque = true))
-        linhas.add(monitorRow("Teto da tela", if (hz != null) "$hz Hz" else "—"))
+        linhas.add(monitorRow("Teto da tela", if (teto != null) "$teto Hz" else "—"))
+        val agora = travado ?: atual
+        linhas.add(monitorRow(
+            "Taxa agora",
+            if (agora != null) "$agora Hz" + (if (travado != null) " (travada)" else "") else "—",
+        ))
         fun pct(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it%" } ?: "—"
         fun mb(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it MB" } ?: "—"
         linhas.add(monitorRow("RAM em uso", pct("ram_uso_pct")))

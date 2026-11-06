@@ -5073,16 +5073,6 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
           <button class="seg-btn" type="button" data-val="full" aria-pressed="false">Imersivo</button>
         </div>
       </div>
-      <div class="cp-row" data-key="res">
-        <div class="cp-info"><b>Resolução</b><span>Resolução lógica: menos pixels, mais FPS.</span></div>
-        <div class="seg cp-seg">
-          <button class="seg-btn" type="button" data-val="nao" aria-pressed="true">Não mexer</button>
-          <button class="seg-btn" type="button" data-val="auto" aria-pressed="false">Recomendada</button>
-          <button class="seg-btn" type="button" data-val="720x1600" aria-pressed="false">720p</button>
-          <button class="seg-btn" type="button" data-val="1080x1920" aria-pressed="false">1080p</button>
-          <button class="seg-btn" type="button" data-val="1080x2340" aria-pressed="false">1080p+</button>
-        </div>
-      </div>
       <div class="cp-row" data-key="touchlat">
         <div class="cp-info"><b>Latência de toque</b><span>Responsividade e janelas de toque (só o que o aparelho aceita).</span></div>
         <div class="seg cp-seg">
@@ -6054,8 +6044,10 @@ function applyState(){
       txt = "Em uso agora: " + (active || STATE.dns_host);
     } else if (key === "refresh_peak"){
       const rp = stateNum(STATE.refresh_peak), rc = stateNum(STATE.refresh_hz);
-      if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz";
-      else if (rc !== null) txt = "Em uso agora: " + rc + "Hz (o sistema decide)";
+      const rm = stateNum(STATE.refresh_max);
+      const teto = rm !== null ? " (painel vai até " + rm + "Hz)" : "";
+      if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz" + teto;
+      else if (rc !== null) txt = "Em uso agora: " + rc + "Hz (o sistema decide)" + teto;
     }
     now.textContent = txt;
     now.hidden = !txt;
