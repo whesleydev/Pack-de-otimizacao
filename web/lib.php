@@ -135,9 +135,9 @@ function otm_choices(): array {
             'app'   => true,
         ],
         'dpi' => [
-            'title' => 'DPI na partida (densidade da tela)',
-            'desc'  => 'Muda a densidade lógica da tela durante o jogo. "Compacto" deixa HUD e botões menores: sobra mais campo de visão e o aparelho compõe menos pixels (mais FPS em celular fraco). "Grande" faz o contrário, para tela pequena. Muda na hora — reinicie o jogo. Volte em "Padrão".',
-            'state' => 'dpi_override',
+            'title' => 'DPI da tela (densidade)',
+            'desc'  => 'Muda a densidade lógica da tela — o mesmo "Menor largura" das Opções do desenvolvedor, mas com faixa segura (300 a 600). Vale para o telefone inteiro. "Pequeno" deixa tudo menor (cabe mais, HUD/botões menores); "Grande" deixa maior, para tela pequena. Muda na hora. Volte em "Padrão".',
+            'state' => 'dpi_profile',
             'risk'  => 'careful',
         ],
         'effects' => [
@@ -864,30 +864,33 @@ function otm_actions(): array {
           'argv' => ['game-per-app.sh', 'reset', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
 
-    // ----- DPI (densidade) durante o jogo -----
-    $add(['id' => 'dpi.compacto', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: compacto',
-          'desc' => 'HUD e botões menores: mais campo de visão e menos pixels para compor.',
-          'help' => 'Diminui ~15% a densidade lógica da tela durante o jogo. Tudo fica um pouco menor: sobra mais tela útil (você vê mais do mapa/HUD) e o aparelho compõe menos pixels, o que ajuda no FPS em celular fraco. Muda na hora — REINICIE o jogo. Volte com "DPI: padrão".',
-          'choice' => 'dpi', 'option' => 'Compacto', 'state_value' => 'compacto',
-          'argv' => ['game-per-app.sh', 'dpi', 'compacto'],
+    // ----- DPI (densidade) do telefone -----
+    // É o mesmo ajuste global das "Opções do desenvolvedor" (Menor largura),
+    // mas com faixa segura: 300 (mínimo) a 600 (máximo). Vale para o sistema
+    // inteiro (não é por app) e é reversível com "DPI: padrão".
+    $add(['id' => 'dpi.pequeno', 'group' => 'Apps e jogos', 'label' => 'DPI da tela: pequeno',
+          'desc' => 'Interface menor: cabe mais coisa e o HUD/botões ficam menores.',
+          'help' => 'Diminui ~15% a densidade lógica da tela (o mesmo "Menor largura" das Opções do desenvolvedor). Vale para o telefone inteiro: ícones, texto e botões ficam menores, então cabe mais coisa na tela e você vê mais do jogo. Muda na hora. Volte com "DPI: padrão".',
+          'choice' => 'dpi', 'option' => 'Pequeno', 'state_value' => 'pequeno',
+          'argv' => ['game-per-app.sh', 'dpi', 'pequeno'],
           'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'dpi.padrao', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: padrão',
+    $add(['id' => 'dpi.padrao', 'group' => 'Apps e jogos', 'label' => 'DPI da tela: padrão',
           'desc' => 'Volta a densidade de fábrica do aparelho.',
           'help' => 'Remove o override de densidade e devolve a tela ao DPI físico de fábrica. Use quando terminar de jogar ou se a interface ficou estranha.',
           'choice' => 'dpi', 'option' => 'Padrão', 'state_value' => '',
           'argv' => ['game-per-app.sh', 'dpi', 'padrao'],
           'risk' => 'safe']);
-    $add(['id' => 'dpi.grande', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: grande',
-          'desc' => 'Tudo ~15% maior: bom em tela pequena ou vista cansada.',
-          'help' => 'Aumenta ~15% a densidade lógica: ícones, HUD e texto ficam maiores e mais fáceis de acertar em tela pequena. Custa um pouco de FPS (mais pixels para compor). Muda na hora — REINICIE o jogo.',
+    $add(['id' => 'dpi.grande', 'group' => 'Apps e jogos', 'label' => 'DPI da tela: grande',
+          'desc' => 'Interface ~15% maior: bom em tela pequena ou vista cansada.',
+          'help' => 'Aumenta ~15% a densidade lógica: ícones, texto e botões ficam maiores e mais fáceis de acertar em tela pequena. Vale para o telefone inteiro. Muda na hora.',
           'choice' => 'dpi', 'option' => 'Grande', 'state_value' => 'grande',
           'argv' => ['game-per-app.sh', 'dpi', 'grande'],
           'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'dpi.custom', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: personalizado',
-          'desc' => 'Escolha a densidade exata (80 a 600).',
-          'help' => 'Define a densidade lógica exata da tela. Valores comuns: 360-480 em celulares. Menor = mais campo de visão e mais FPS; maior = tudo maior. Fora da faixa 80-600 o aparelho recusa. Volte com "DPI: padrão".',
+    $add(['id' => 'dpi.custom', 'group' => 'Apps e jogos', 'label' => 'DPI da tela: personalizado',
+          'desc' => 'Escolha a densidade exata (300 a 600).',
+          'help' => 'Define a densidade lógica exata da tela, como o "Menor largura" das Opções do desenvolvedor. Faixa segura: 300 (pequeno) a 600 (grande). 400-500 é o meio-termo na maioria dos celulares. Vale para o telefone inteiro e muda na hora. Volte com "DPI: padrão".',
           'argv' => ['game-per-app.sh', 'dpi', '{dpi}'],
-          'params' => [['name' => 'dpi', 'type' => 'int', 'label' => 'DPI', 'min' => 80, 'max' => 600, 'default' => 400]],
+          'params' => [['name' => 'dpi', 'type' => 'int', 'label' => 'DPI', 'min' => 300, 'max' => 600, 'default' => 450]],
           'risk' => 'careful', 'confirm' => true]);
 
     // ----- Game Clean (deixa o jogo limpo e otimizado) -----

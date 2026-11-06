@@ -77,11 +77,11 @@ listar() {
         [ -z "$p" ] && continue
         printf '   %-38s %s\n' "$p" "$n"
     done
-    printf '\n  DPI (densidade) na partida:\n'
-    printf '   %bcompacto%b   ~15%% menor que o físico (mais campo de visão)\n' "$C_A" "$C_R"
-    printf '   %bpadrao%b     densidade de fábrica\n' "$C_A" "$C_R"
-    printf '   %bgrande%b     ~15%% maior (tela pequena / vista cansada)\n' "$C_A" "$C_R"
-    printf '   ou um número (ex.: 400). Volte com: dpi-reset\n'
+    printf '\n  DPI (densidade do telefone) — vale para o sistema inteiro:\n'
+    printf '   %bpequeno%b   ~15%% menor que o físico (cabe mais, HUD menor)\n' "$C_A" "$C_R"
+    printf '   %bpadrao%b    densidade de fábrica\n' "$C_A" "$C_R"
+    printf '   %bgrande%b    ~15%% maior (tela pequena / vista cansada)\n' "$C_A" "$C_R"
+    printf '   ou um número (%s a %s). Volte com: dpi-reset\n' "$DPI_MIN" "$DPI_MAX"
     printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | dpi <perfil> | reset <pkg>\n' "$0"
 }
 
@@ -194,14 +194,19 @@ resetar_tudo() {
     say "restaurado"
 }
 
-# --- DPI (densidade) durante o jogo -------------------------------------------
-# Muda a densidade LÓGICA da tela na partida. Menos DPI deixa o HUD e os botões
-# menores: mais campo de visão útil e menos pixels para compor (ajuda no FPS em
-# aparelho fraco). Mais DPI deixa tudo maior, para quem tem a tela pequena.
+# --- DPI (densidade) do telefone ----------------------------------------------
+# Muda a densidade LÓGICA da tela (o mesmo "Menor largura" das Opções do
+# desenvolvedor). É um ajuste GLOBAL do telefone: vale para o sistema inteiro,
+# não só para um app. Menos DPI = interface menor (cabe mais coisa, HUD/botões
+# menores, mais campo de visão e menos pixels para compor); mais DPI = tudo
+# maior. Muda na hora.
 #
-# É um override GLOBAL (`wm density`) — por isso vai para a reversão e tem o
-# `dpi reset`. O valor é relativo à densidade FÍSICA do aparelho, então o mesmo
-# perfil serve para telas diferentes.
+# Faixa: 300 (mínimo) a 600 (máximo). Abaixo de 300 a interface fica pequena
+# demais para usar; acima de 600 fica gigante na tela. O padrão é a densidade
+# de fábrica (`dpi padrao` / `dpi-reset` remove o override).
+DPI_MIN=300
+DPI_MAX=600
+
 DPI_FISICA() {
     d="$(sh_get 'wm density' | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)"
     d="$(otm_num "$d")"
@@ -211,29 +216,37 @@ DPI_FISICA() {
     printf '%s' "$d"
 }
 
+# otm_dpi_clamp <valor> -> prende o valor na faixa segura
+otm_dpi_clamp() {
+    awk -v v="$1" -v lo="$DPI_MIN" -v hi="$DPI_MAX" \
+        'BEGIN{ v+=0; if (v<lo) v=lo; if (v>hi) v=hi; printf "%d", v }'
+}
+
 dpi_valor() {
     base="$(DPI_FISICA)"
     case "$1" in
-        compacto|menor)  awk -v b="$base" 'BEGIN{printf "%d", b*0.85+0.5}' ;;
-        padrao|normal)   printf '%s' "$base" ;;
-        grande|maior)    awk -v b="$base" 'BEGIN{printf "%d", b*1.15+0.5}' ;;
-        ''|*[!0-9]*)     printf '' ;;
-        *)               printf '%s' "$1" ;;
+        pequeno|compacto|menor) awk -v b="$base" 'BEGIN{printf "%d", b*0.85+0.5}' ;;
+        padrao|normal|medio)    printf '%s' "$base" ;;
+        grande|maior)           awk -v b="$base" 'BEGIN{printf "%d", b*1.15+0.5}' ;;
+        ''|*[!0-9]*)            printf '' ;;
+        *)                      printf '%s' "$1" ;;
     esac
 }
 
 aplicar_dpi() {
     alvo="$1"
-    [ -z "$alvo" ] && { err "uso: dpi <compacto|padrao|grande|80-600>"; return 1; }
+    [ -z "$alvo" ] && { err "uso: dpi <valor ${DPI_MIN}-${DPI_MAX}|pequeno|padrao|grande>"; return 1; }
     # "padrão" não escreve densidade: remove o override (volta à física).
     if [ "$alvo" = "padrao" ] || [ "$alvo" = "normal" ]; then
         resetar_dpi; return $?
     fi
     valor="$(dpi_valor "$alvo")"
     [ -z "$valor" ] && { err "valor de DPI inválido: $alvo"; return 1; }
-    # sanidade: nada fora de 80..600 (fora disso a tela fica inutilizável)
-    if [ "$valor" -lt 80 ] || [ "$valor" -gt 600 ]; then
-        err "DPI $valor fora da faixa segura (80-600)"; return 1
+    # prende na faixa segura (300-600): fora disso a tela fica inutilizável
+    preso="$(otm_dpi_clamp "$valor")"
+    if [ "$preso" != "$valor" ]; then
+        warn "DPI $valor fora da faixa ${DPI_MIN}-${DPI_MAX}; usando ${preso}"
+        valor="$preso"
     fi
     bkp_begin
     base="$(DPI_FISICA)"
@@ -252,7 +265,7 @@ aplicar_dpi() {
         mkdir -p "$ST" 2>/dev/null
         printf '%s\n' "$alvo" > "$ST/dpi_profile" 2>/dev/null
         printf '   %bOK%b DPI %s (físico %s)\n' "$C_G" "$C_R" "$valor" "$base"
-        say "pronto — a interface muda na hora; REINICIE o jogo"
+        say "pronto — a interface muda na hora"
     else
         otm_v_inc apply; otm_v_inc failed
         printf '   %bX%b DPI não mudou (lido: %s)\n' "$C_RD" "$C_R" "${agora:-vazio}"

@@ -3231,11 +3231,15 @@ t_dpi() {
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi grande > /dev/null 2>&1
     assert_eq "460" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi grande = 115% da densidade física"
     # número explícito dentro da faixa
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 360 > /dev/null 2>&1
-    assert_eq "360" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi aceita valor exato"
-    # fora da faixa segura é recusado
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 500 > /dev/null 2>&1
+    assert_eq "500" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi aceita valor exato (500 = médio)"
+    # abaixo do mínimo (300) é preso no mínimo, com aviso
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 40 > "$TMP/dpi_bad" 2>&1
-    assert_contains "$TMP/dpi_bad" "faixa segura" "dpi recusa valor fora de 80-600"
+    assert_eq "300" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi abaixo de 300 sobe para 300"
+    assert_contains "$TMP/dpi_bad" "fora da faixa" "dpi avisa que prendeu no limite"
+    # acima do máximo (600) é preso no máximo
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 1000 > /dev/null 2>&1
+    assert_eq "600" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi acima de 600 desce para 600"
     # "padrão" remove o override (volta à densidade física)
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi padrao > /dev/null 2>&1
     [ ! -f "$TMP_STORE/wm.density" ] && ok "dpi padrão remove o override" \
@@ -3833,6 +3837,14 @@ PY
         || bad "overlay ignora o campo fps"
     grep -q 'private fun monitorTab' "$svc" && ok "overlay tem a aba Monitor" \
         || bad "overlay sem a aba Monitor"
+    # o painelzinho tem o controle de DPI (densidade do telefone)
+    grep -q 'sectionHeader("DPI da tela (densidade)")' "$svc" \
+        && ok "overlay tem a seção de DPI" || bad "overlay sem a seção de DPI"
+    grep -q 'game-per-app.sh", listOf("dpi", "padrao")' "$svc" \
+        && ok "overlay aplica DPI padrão (reverte)" || bad "overlay sem DPI padrão"
+    grep -q 'EditText' "$svc" && grep -q 'listOf("dpi", v.toString())' "$svc" \
+        && ok "overlay aceita DPI personalizado (campo numérico)" \
+        || bad "overlay sem campo de DPI personalizado"
     # o monitor não inventa: campo ausente vira "—"
     grep -q 'monitorRow' "$svc" && grep -q '?: "—"' "$svc" \
         && ok "overlay mostra '—' no que o aparelho não informou" || bad "overlay sem fallback do monitor"

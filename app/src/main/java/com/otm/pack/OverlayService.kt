@@ -14,11 +14,13 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import android.text.InputType
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.MeasureSpec
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -875,6 +877,52 @@ class OverlayService : Service() {
         avisos2.addView(smallButton("Menos avisos") { runScript("adb-tweaks.sh", listOf("notif"), "Heads-up desligado") })
         avisos2.addView(smallButton("Telemetria off") { runScript("turbo.sh", listOf("telemetry", "off"), "Telemetria desligada") })
         box.addView(avisos2, matchWrap())
+
+        box.addView(sectionHeader("DPI da tela (densidade)"))
+        val dpiAviso = TextView(this).apply {
+            text = "Muda o tamanho da interface no telefone inteiro (300 a 600). Igual ao \"Menor largura\" das Opções do desenvolvedor."
+            textSize = 10f
+            setTextColor(col(C_MUTED))
+            setTypeface(bodyTypeface())
+            setPadding(0, 0, 0, dp(4))
+        }
+        box.addView(dpiAviso, matchWrap())
+        val dpiLinha = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        dpiLinha.addView(smallButton("Pequeno") { runScript("game-per-app.sh", listOf("dpi", "pequeno"), "DPI pequeno") })
+        dpiLinha.addView(smallButton("Padrão") { runScript("game-per-app.sh", listOf("dpi", "padrao"), "DPI padrão") })
+        dpiLinha.addView(smallButton("Grande") { runScript("game-per-app.sh", listOf("dpi", "grande"), "DPI grande") })
+        box.addView(dpiLinha, matchWrap())
+
+        // valor exato: caixa de número + Aplicar (o overlay não tem slider, então
+        // o campo é o caminho para quem quer 500, 350 etc.)
+        val dpiExato = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val dpiCampo = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            textSize = 12f
+            hint = "DPI"
+            setTextColor(col(C_TEXT))
+            setHintTextColor(col(C_MUTED))
+            setTypeface(bodyTypeface())
+            background = pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+            setText("500")
+            setSelectAllOnFocus(true)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { marginEnd = dp(4) }
+        }
+        dpiExato.addView(dpiCampo)
+        dpiExato.addView(smallButton("Aplicar") {
+            val v = dpiCampo.text.toString().trim().toIntOrNull()
+            if (v == null) {
+                statusText?.text = "DPI: digite um número"
+            } else {
+                runScript("game-per-app.sh", listOf("dpi", v.toString()), "DPI $v")
+            }
+        })
+        box.addView(dpiExato, matchWrap())
 
         box.addView(sectionHeader("Aparência e tela"))
         val visual = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
