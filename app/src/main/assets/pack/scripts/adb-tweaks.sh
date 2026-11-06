@@ -579,10 +579,13 @@ screen() {
     bkp_begin
     say "Tela / brilho"
     bkp_set system screen_off_timeout 600000
-    bkp_set system peak_refresh_rate 120.0
-    bkp_set system min_refresh_rate 120.0
+    # taxa no MAIOR valor que o painel aceita (antes era 120.0 fixo e mentia
+    # num aparelho de 60/90 Hz).
+    _hz="$(otm_max_refresh)"; _hz="${_hz:-60.0}"
+    bkp_set system peak_refresh_rate "$_hz"
+    bkp_set system min_refresh_rate "$_hz"
     sh_run "settings put system screen_brightness 200" >/dev/null
-    say "timeout 10min, refresh 120Hz"
+    say "timeout 10min, refresh no máximo do aparelho (${_hz}Hz)"
 }
 
 # --- touch / sensibilidade (Free Fire) ----------------------------------------
@@ -604,8 +607,11 @@ touch() {
 # --- fluidez (animações 0, long/multi press, Hz máximo) -----------------------
 fluidez() {
     # fluidez [long_press_timeout] [hz]
-    lpt="${1:-150}"; hz="${2:-120.0}"
+    lpt="${1:-150}"; hz="${2:-}"
     bkp_begin
+    # sem hz informado, usa o teto real da tela (antes era 120.0 fixo)
+    [ -n "$hz" ] || hz="$(otm_max_refresh)"
+    hz="$(otm_clamp_hz "${hz:-60}")"
     say "Fluidez (animações 0, long_press=$lpt, multi_press=0, ${hz}Hz)"
     bkp_set global window_animation_scale 0
     bkp_set global transition_animation_scale 0

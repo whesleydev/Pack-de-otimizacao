@@ -116,6 +116,10 @@ $1
 OTM_ECHO_EOF
 }
 
+# otm_num <texto> -> só os dígitos (vazio se não houver nenhum). Vários scripts
+# já tinham um `_num` local; este fica no comum para quem não tem.
+otm_num() { printf '%s' "$1" | tr -cd '0-9' | cut -c1-9; }
+
 # otm_batt_field <texto do dumpsys battery> <chave> -> 1º valor numérico da linha
 # CANÔNICA "<chave>:" (ex.: "  level: 85"). O padrão é ancorado de propósito: o
 # dump tem dezenas de linhas que também contêm " level:" (uma por UID), e um
@@ -132,6 +136,33 @@ otm_batt_get() {
 }
 
 sh_ok() { [ "$(sh_get 'id -u')" = "0" ]; }
+
+# otm_max_refresh -> maior taxa (Hz) que a TELA do aparelho suporta, lida do
+# `dumpsys display` (lista de modos suportados). Devolve vazio quando não dá
+# para ler. Serve para NUNCA travar a tela acima do que o painel aceita: antes
+# o "refresh máximo" gravava 120.0 na mão e num aparelho de 90 Hz a tela ficava
+# presa numa taxa inexistente (o sistema arredondava ou ignorava).
+otm_max_refresh() {
+    _out="$(sh_get 'dumpsys display' 2>/dev/null)"
+    [ -n "$_out" ] || return 0
+    _hz="$(otm_echo "$_out" | grep -oE 'fps=[0-9]+(\.[0-9]+)?' | cut -d= -f2 | sort -n | tail -1)"
+    if [ -z "$_hz" ]; then
+        _hz="$(otm_echo "$_out" | grep -oE '[0-9]+x[0-9]+@[0-9.]+' | sed 's/.*@//' | sort -n | tail -1)"
+    fi
+    case "$_hz" in ''|null) return 0 ;; esac
+    printf '%s' "$_hz"
+}
+
+# otm_clamp_hz <hz> -> devolve <hz> se o painel suporta; senão o teto real da
+# tela; e <hz> de novo se nem der para ler (melhor tentar do que recusar).
+otm_clamp_hz() {
+    _w="$1"; _m="$(otm_max_refresh)"
+    case "$_m" in ''|*[!0-9.]*) printf '%s' "$_w"; return 0 ;; esac
+    _r="$(awk -v w="$_w" -v m="$_m" 'BEGIN{printf "%d", (w+0 > m+0) ? m+0 : w+0}')"
+    printf '%s' "$_r"
+}
+
+
 have()  { command -v "$1" >/dev/null 2>&1; }
 
 # tem privilégio de shell (root OU Shizuku/ADB), não só shell local sem poder.

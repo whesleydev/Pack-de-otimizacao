@@ -150,11 +150,14 @@ refresh() {
     bkp_begin
     case "$a" in
         max)
-            hz="${hz:-$(sh_get 'dumpsys display' | sed -n 's/.*mSupportedModes.*//p')}"
-            hz="${hz:-120.0}"
+            # lê a MAIOR taxa que a TELA aceita (o sed antigo devolvia vazio e
+            # caía no 120.0 fixo — num aparelho de 90 Hz isso gravava uma taxa
+            # que o painel não tem). Só cai em 60 se nem isso der para ler.
+            hz="${hz:-$(otm_max_refresh)}"
+            hz="${hz:-60.0}"
             bkp_set system peak_refresh_rate "$hz"
             bkp_set system min_refresh_rate "$hz"
-            say "refresh travado no máximo (${hz}Hz)" ;;
+            say "refresh travado no máximo do aparelho (${hz}Hz)" ;;
         min)
             bkp_set system peak_refresh_rate 60.0
             bkp_set system min_refresh_rate 60.0
@@ -176,6 +179,10 @@ refresh_fixed() {
         60|90|120|144) ;;
         *) err "uso: refresh_fixed <60|90|120|144>"; return 1 ;;
     esac
+    # nunca trava acima do teto real da tela (aparelho de 90 Hz + "120" = taxa
+    # que o painel não tem). Se o usuário pediu mais, avisa e usa o teto.
+    _pedido="$hz"; hz="$(otm_clamp_hz "$hz")"
+    [ "$hz" != "$_pedido" ] && warn "seu painel vai até ${hz}Hz; travando em ${hz}Hz (pedido: ${_pedido}Hz)"
     bkp_begin
     bkp_set system peak_refresh_rate "$hz.0"
     bkp_set system min_refresh_rate "$hz.0"
