@@ -817,6 +817,32 @@ Regra: todo `<article class="card">` tem de estar **dentro** de uma `<section>`.
 `sync_app_panel.py` agora remove órfãos e avisa se as seções ficarem desbalanceadas; o
 teste `t_app_login` (bloco `panstruct`) falha se houver card duplicado ou fora de seção.
 
+### Painel "engasgado": o desfoque é o culpado (modo leve)
+
+O WebView do Android compõe o `backdrop-filter` (o desfoque do vidro) na CPU em
+aparelho de entrada, e o painel usa isso em 13 lugares. Em celular fraco o painel
+"engasga" ao rolar e ao trocar de aba — e não é impressão: é o custo do desfoque.
+O `html.otm-lite` tira o desfoque e as animações sem mudar o layout, e o
+`applyLiteMode()` liga sozinho quando `navigator.deviceMemory <= 4` ou
+`hardwareConcurrency <= 4`. A escolha do usuário (`localStorage["otm-lite"]` =
+`"1"`/`"0"`, o interruptor "Modo leve" nas Configurações) **vence** o automático.
+Vale nos dois painéis (app e `web/index.php`), com paridade cobrada em
+`t_personalization`. Regra: efeito visual caro (desfoque, sombra grande, animação
+infinita) precisa de um caminho de saída para aparelho fraco.
+
+### Card de saúde sem shell: a bateria vem do próprio Android
+
+O card "Saúde do telefone" e a aba Monitor do flutuante liam só o
+`panel-stats.sh` (via Shizuku/ADB). Sem shell, tudo virava "—" e o usuário achava
+que o card "não mostra dado real". O `OtmBattery` lê o que **qualquer** app vê:
+nível, temperatura, estado e o rótulo de saúde pelo `BatteryManager`/
+`ACTION_BATTERY_CHANGED`. O shell continua sendo a fonte preferida (lê mais:
+ciclos, capacidade de fábrica) — o nativo só preenche o que o shell **não**
+trouxe (`PackBridge.statsImpl` e `OverlayService.loadMonitor`). Sem shell, o
+monitor mostra a bateria e avisa "conecte o Shizuku para ver CPU, RAM e FPS" em
+vez de uma tela vazia. Regra: leitura que depende de shell precisa de um fallback
+nativo para o caso sem shell, e nunca inventar número quando nada foi lido.
+
 ### Bug histórico: handler global de `.opt` (ainda vale como regra)
 
 O card antigo de Perfil de Desempenho ficou "morto" porque `document.querySelectorAll(".opt")`
