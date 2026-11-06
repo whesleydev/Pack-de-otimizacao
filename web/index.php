@@ -593,6 +593,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .credits .ctitle{margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700}
 .credits .who{font-size:13px; color:var(--muted); margin:0}
 .credits .who b{color:var(--ink)}
+.credits .who.aviso{margin-top:2px}
+.credits .who.aviso b{color:var(--danger)}
 .credits .who code{color:var(--accent); background:var(--glass-2); border:1px solid var(--line);
   border-radius:6px; padding:1px 6px}
 .credits .sp{flex:1}
@@ -1277,19 +1279,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="in">
     <div class="cwho">
       <p class="ctitle">Créditos</p>
-      <p class="who">Feito por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
+      <p class="who">Feito por <b>00deUdia</b> (WS) · testadora oficial <b>Nezuku</b></p>
+      <p class="who aviso">A venda oficial é <b>só</b> no servidor do dono. Comprou em outro lugar? Você tomou um golpe.</p>
     </div>
     <span class="sp"></span>
     <div class="clinks">
-      <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
-         title="Abrir meu perfil no Discord">
-        <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-        Meu Discord <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
-      </a>
       <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
-         title="Entrar no meu servidor do Discord">
+         title="Entrar no servidor oficial do dono">
         <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-        Servidor <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+        Servidor oficial <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
       </a>
     </div>
   </div>
