@@ -12,6 +12,8 @@
 #     ./game-per-app.sh apply <pkg> <perfil>
 #     ./game-per-app.sh custom <pkg> <downscale> [fps]
 #     ./game-per-app.sh mode <pkg> [standard|performance|battery]
+#     ./game-per-app.sh dpi <compacto|padrao|grande|80-600>
+#     ./game-per-app.sh dpi-reset
 #     ./game-per-app.sh reset <pkg>
 #     ./game-per-app.sh reset-all
 #
@@ -75,7 +77,12 @@ listar() {
         [ -z "$p" ] && continue
         printf '   %-38s %s\n' "$p" "$n"
     done
-    printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | reset <pkg>\n' "$0"
+    printf '\n  DPI (densidade) na partida:\n'
+    printf '   %bcompacto%b   ~15%% menor que o físico (mais campo de visão)\n' "$C_A" "$C_R"
+    printf '   %bpadrao%b     densidade de fábrica\n' "$C_A" "$C_R"
+    printf '   %bgrande%b     ~15%% maior (tela pequena / vista cansada)\n' "$C_A" "$C_R"
+    printf '   ou um número (ex.: 400). Volte com: dpi-reset\n'
+    printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | dpi <perfil> | reset <pkg>\n' "$0"
 }
 
 # _resolver_pkg <pkg|auto> -> define RESOLVED_PKG. "auto" = o jogo escolhido no
@@ -187,6 +194,80 @@ resetar_tudo() {
     say "restaurado"
 }
 
+# --- DPI (densidade) durante o jogo -------------------------------------------
+# Muda a densidade LÓGICA da tela na partida. Menos DPI deixa o HUD e os botões
+# menores: mais campo de visão útil e menos pixels para compor (ajuda no FPS em
+# aparelho fraco). Mais DPI deixa tudo maior, para quem tem a tela pequena.
+#
+# É um override GLOBAL (`wm density`) — por isso vai para a reversão e tem o
+# `dpi reset`. O valor é relativo à densidade FÍSICA do aparelho, então o mesmo
+# perfil serve para telas diferentes.
+DPI_FISICA() {
+    d="$(sh_get 'wm density' | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)"
+    d="$(otm_num "$d")"
+    [ -z "$d" ] && d="$(sh_get 'getprop ro.sf.lcd_density')"
+    d="$(otm_num "$d")"
+    [ -z "$d" ] && d=420
+    printf '%s' "$d"
+}
+
+dpi_valor() {
+    base="$(DPI_FISICA)"
+    case "$1" in
+        compacto|menor)  awk -v b="$base" 'BEGIN{printf "%d", b*0.85+0.5}' ;;
+        padrao|normal)   printf '%s' "$base" ;;
+        grande|maior)    awk -v b="$base" 'BEGIN{printf "%d", b*1.15+0.5}' ;;
+        ''|*[!0-9]*)     printf '' ;;
+        *)               printf '%s' "$1" ;;
+    esac
+}
+
+aplicar_dpi() {
+    alvo="$1"
+    [ -z "$alvo" ] && { err "uso: dpi <compacto|padrao|grande|80-600>"; return 1; }
+    # "padrão" não escreve densidade: remove o override (volta à física).
+    if [ "$alvo" = "padrao" ] || [ "$alvo" = "normal" ]; then
+        resetar_dpi; return $?
+    fi
+    valor="$(dpi_valor "$alvo")"
+    [ -z "$valor" ] && { err "valor de DPI inválido: $alvo"; return 1; }
+    # sanidade: nada fora de 80..600 (fora disso a tela fica inutilizável)
+    if [ "$valor" -lt 80 ] || [ "$valor" -gt 600 ]; then
+        err "DPI $valor fora da faixa segura (80-600)"; return 1
+    fi
+    bkp_begin
+    base="$(DPI_FISICA)"
+    # guarda a reversão: o override é removido com `wm density reset` (volta à
+    # densidade física), que é o estado padrão do aparelho.
+    if ! grep -q 'wm density reset' "$OFF_SH" 2>/dev/null; then
+        bkp_raw "wm density reset"
+    fi
+    sh_run "wm density $valor" >/dev/null 2>&1
+    agora="$(sh_get 'wm density' | sed -n 's/.*Override density: *\([0-9]*\).*/\1/p' | tail -1)"
+    agora="$(otm_num "$agora")"
+    if [ "$agora" = "$valor" ]; then
+        otm_v_inc apply; otm_v_inc changed
+        # guarda o PERFIL escolhido (não o número) para o painel marcar qual
+        # opção está em uso — o número muda de aparelho para aparelho.
+        mkdir -p "$ST" 2>/dev/null
+        printf '%s\n' "$alvo" > "$ST/dpi_profile" 2>/dev/null
+        printf '   %bOK%b DPI %s (físico %s)\n' "$C_G" "$C_R" "$valor" "$base"
+        say "pronto — a interface muda na hora; REINICIE o jogo"
+    else
+        otm_v_inc apply; otm_v_inc failed
+        printf '   %bX%b DPI não mudou (lido: %s)\n' "$C_RD" "$C_R" "${agora:-vazio}"
+        return 1
+    fi
+}
+
+resetar_dpi() {
+    say "Voltando a densidade ao padrão do aparelho"
+    sh_run "wm density reset" >/dev/null 2>&1
+    rm -f "$ST/dpi_profile" 2>/dev/null
+    base="$(DPI_FISICA)"
+    say "DPI restaurado (${base})"
+}
+
 # --- execução ----------------------------------------------------------------
 [ $# -eq 0 ] && { listar; exit 0; }
 
@@ -197,8 +278,10 @@ case "$acao" in
     apply)     aplicar "$1" "$2" ;;
     custom)    aplicar_custom "$1" "$2" "$3" ;;
     mode)      modo "$1" "$2" ;;
-    reset)     resetar "$1" ;;
-    reset-all) resetar_tudo ;;
+    dpi)       aplicar_dpi "$1" ;;
+    dpi-reset) resetar_dpi ;;
+    reset)     resetar "$1"; resetar_dpi ;;
+    reset-all) resetar_tudo; resetar_dpi ;;
     *)         err "ação desconhecida: $acao"; listar; exit 1 ;;
 esac
 

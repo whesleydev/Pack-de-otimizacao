@@ -134,6 +134,12 @@ function otm_choices(): array {
             'risk'  => 'careful',
             'app'   => true,
         ],
+        'dpi' => [
+            'title' => 'DPI na partida (densidade da tela)',
+            'desc'  => 'Muda a densidade lógica da tela durante o jogo. "Compacto" deixa HUD e botões menores: sobra mais campo de visão e o aparelho compõe menos pixels (mais FPS em celular fraco). "Grande" faz o contrário, para tela pequena. Muda na hora — reinicie o jogo. Volte em "Padrão".',
+            'state' => 'dpi_override',
+            'risk'  => 'careful',
+        ],
         'effects' => [
             'title' => 'Desfoque e transparência (efeitos visuais)',
             'desc'  => 'O "vidro fosco" atrás do teclado, da barra de navegação e das notificações, e o efeito de transparência do sistema. As otimizações de desempenho (performance, GPU, fluidez, clean, otimizador inteligente e o pack recomendado) desligam os dois para sobrar GPU/CPU — é por isso que depois de aplicar o pack a interface fica "seca" e o teclado parece diferente. Aqui você escolhe: mantenha ligado para o visual completo, ou desligue se preferir mais fluidez. O painel lê o estado real do aparelho.',
@@ -857,6 +863,32 @@ function otm_actions(): array {
           'help' => 'Desfaz tudo o que foi aplicado só nesse app (ANGLE, resolução, modo de jogo), voltando ao normal.',
           'argv' => ['game-per-app.sh', 'reset', '{pkg}'],
           'params' => [['name' => 'pkg', 'type' => 'pkg', 'label' => 'App/jogo']]]);
+
+    // ----- DPI (densidade) durante o jogo -----
+    $add(['id' => 'dpi.compacto', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: compacto',
+          'desc' => 'HUD e botões menores: mais campo de visão e menos pixels para compor.',
+          'help' => 'Diminui ~15% a densidade lógica da tela durante o jogo. Tudo fica um pouco menor: sobra mais tela útil (você vê mais do mapa/HUD) e o aparelho compõe menos pixels, o que ajuda no FPS em celular fraco. Muda na hora — REINICIE o jogo. Volte com "DPI: padrão".',
+          'choice' => 'dpi', 'option' => 'Compacto', 'state_value' => 'compacto',
+          'argv' => ['game-per-app.sh', 'dpi', 'compacto'],
+          'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'dpi.padrao', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: padrão',
+          'desc' => 'Volta a densidade de fábrica do aparelho.',
+          'help' => 'Remove o override de densidade e devolve a tela ao DPI físico de fábrica. Use quando terminar de jogar ou se a interface ficou estranha.',
+          'choice' => 'dpi', 'option' => 'Padrão', 'state_value' => '',
+          'argv' => ['game-per-app.sh', 'dpi', 'padrao'],
+          'risk' => 'safe']);
+    $add(['id' => 'dpi.grande', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: grande',
+          'desc' => 'Tudo ~15% maior: bom em tela pequena ou vista cansada.',
+          'help' => 'Aumenta ~15% a densidade lógica: ícones, HUD e texto ficam maiores e mais fáceis de acertar em tela pequena. Custa um pouco de FPS (mais pixels para compor). Muda na hora — REINICIE o jogo.',
+          'choice' => 'dpi', 'option' => 'Grande', 'state_value' => 'grande',
+          'argv' => ['game-per-app.sh', 'dpi', 'grande'],
+          'risk' => 'careful', 'confirm' => true]);
+    $add(['id' => 'dpi.custom', 'group' => 'Apps e jogos', 'label' => 'DPI na partida: personalizado',
+          'desc' => 'Escolha a densidade exata (80 a 600).',
+          'help' => 'Define a densidade lógica exata da tela. Valores comuns: 360-480 em celulares. Menor = mais campo de visão e mais FPS; maior = tudo maior. Fora da faixa 80-600 o aparelho recusa. Volte com "DPI: padrão".',
+          'argv' => ['game-per-app.sh', 'dpi', '{dpi}'],
+          'params' => [['name' => 'dpi', 'type' => 'int', 'label' => 'DPI', 'min' => 80, 'max' => 600, 'default' => 400]],
+          'risk' => 'careful', 'confirm' => true]);
 
     // ----- Game Clean (deixa o jogo limpo e otimizado) -----
     $add(['id' => 'clean.normal', 'group' => 'Apps e jogos', 'label' => 'Game Clean: limpeza normal',

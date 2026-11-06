@@ -55,6 +55,13 @@ printf ',"touch_slop":"%s"' "$(_clean "$(_g system touch_slop)")"
 printf ',"multi_press_timeout":"%s"' "$(_clean "$(_g system multi_press_timeout)")"
 printf ',"refresh_min":"%s"' "$(_clean "$(_g system min_refresh_rate)")"
 printf ',"refresh_peak":"%s"' "$(_clean "$(_g system peak_refresh_rate)")"
+# DPI lógico em vigor: o `wm density` mostra "Override density" só quando há
+# override; sem ele, vale a densidade física. O painel usa isto para marcar
+# qual perfil de DPI está em uso (e "" = padrão de fábrica).
+_wmd="$(sh_get 'wm density' 2>/dev/null)"
+_dpi_ov="$(otm_echo "$_wmd" | sed -n 's/.*Override density: *\([0-9]*\).*/\1/p' | tail -1)"
+printf ',"dpi_override":"%s"' "$(_clean "$(otm_num "$_dpi_ov")")"
+printf ',"dpi_profile":"%s"' "$(_clean "$(cat "$ST/dpi_profile" 2>/dev/null | head -1)")"
 printf ',"device":"%s"' "$(_clean "$(_p ro.product.model)")"
 printf ',"android":"%s"' "$(_clean "$(_p ro.build.version.sdk)")"
 printf ',"gpu_driver":"%s"' "$(_clean "$(_p ro.gfx.driver.0)")"

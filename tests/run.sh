@@ -150,8 +150,12 @@ case "$1" in
        *)     printf '%s' "$2" > "$TMP_STORE/wm.size" ;;
      esac ;;
   density)
-     echo "Physical density: ${WM_DENSITY:-400}"
-     [ -f "$TMP_STORE/wm.density" ] && echo "Override density: $(cat "$TMP_STORE/wm.density")" ;;
+     case "$2" in
+       reset) rm -f "$TMP_STORE/wm.density" ;;
+       '')    echo "Physical density: ${WM_DENSITY:-400}"
+              [ -f "$TMP_STORE/wm.density" ] && echo "Override density: $(cat "$TMP_STORE/wm.density")" ;;
+       *)     printf '%s' "$2" > "$TMP_STORE/wm.density" ;;
+     esac ;;
 esac
 exit 0
 EOF
@@ -2310,14 +2314,12 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 12 ] && ok "renderiza 12 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos, barras, ícones da barra, bateria)" \
-            || bad "grupos de escolha: $n_choice (esperado 12)"
+        [ "$n_choice" -eq 13 ] && ok "renderiza 13 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, DPI, RAM, limite de processos, efeitos, barras, ícones da barra, bateria)" \
+            || bad "grupos de escolha: $n_choice (esperado 13)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        # 43 = 37 opções de grupo (6 renderizadores + 1 app + 4 refresh + 7 DNS + 5
-        # toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones
-        # + 2 bateria) + os 2 botões do card de Perfil de Desempenho.
-        [ "$n_opts" -eq 43 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones + 2 bateria ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 43)"
+        # 46 = 43 anteriores + 3 opções do grupo DPI (compacto/padrão/grande).
+        [ "$n_opts" -eq 46 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 3 DPI + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones + 2 bateria ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 46)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # barras do sistema: cada bloco é um card de ligar/desligar (não botões soltos)
         assert_contains "$TMP/web_html" 'data-choice="sysbars_icons"' \
@@ -3177,19 +3179,27 @@ t_clean() {
 }
 
 t_resolution() {
-    printf '\n  # resolução do aparelho: REMOVIDA (não se mexe mais no wm size/density)\n'
-    # O usuário pediu para tirar tudo que alterava a resolução da tela. O script
+    printf '\n  # resolução da tela: `wm size` NUNCA; DPI (`wm density`) só no game-per-app\n'
+    # O usuário pediu para tirar tudo que alterava a RESOLUÇÃO da tela. O script
     # que aplicava `wm size`/`wm density` saiu do repo, da allowlist e do bundle.
+    # Depois ele pediu o DPI durante o jogo: `wm density` volta, mas SÓ no
+    # game-per-app.sh (com reversão); `wm size` continua proibido em todo lugar.
     [ ! -f "$ROOT/scripts/resolution.sh" ] \
         && ok "scripts/resolution.sh removido" || bad "resolution.sh ainda existe"
     [ ! -f "$ROOT/app/src/main/assets/pack/scripts/resolution.sh" ] \
         && ok "espelho: resolution.sh removido" || bad "espelho: resolution.sh ainda existe"
-    # nenhum script do pack pode aplicar a resolução da tela
+    # nenhum script do pack pode mexer na RESOLUÇÃO (wm size)
     local hits
-    hits="$(grep -rlE "wm size [0-9]|wm size reset|wm density [0-9]|wm density reset" \
+    hits="$(grep -rlE "wm size [0-9]|wm size reset" \
         "$ROOT/scripts" "$ROOT/app/src/main/assets/pack/scripts" 2>/dev/null)"
-    [ -z "$hits" ] && ok "nenhum script aplica wm size/density" \
+    [ -z "$hits" ] && ok "nenhum script mexe na resolução (wm size)" \
         || bad "script ainda mexe na resolução: $hits"
+    # `wm density` é permitido APENAS no game-per-app.sh (o DPI por jogo)
+    hits="$(grep -rlE "wm density [0-9]|wm density reset" \
+        "$ROOT/scripts" "$ROOT/app/src/main/assets/pack/scripts" 2>/dev/null \
+        | grep -v 'game-per-app\.sh$')"
+    [ -z "$hits" ] && ok "wm density só no game-per-app.sh (DPI por jogo)" \
+        || bad "wm density fora do game-per-app: $hits"
     # fora da allowlist e fora do catálogo
     php -r 'require "'"$ROOT"'/web/lib.php";
              $ok = !in_array("resolution.sh", otm_allowed_scripts(), true);
@@ -3202,6 +3212,40 @@ t_resolution() {
     # nenhuma ação do painel chama o script removido
     ! grep -q 'resolution.sh' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "catálogo do app sem resolution.sh" || bad "catálogo ainda chama resolution.sh"
+}
+
+t_dpi() {
+    printf '\n  # DPI na partida (densidade por jogo) — reversível\n'
+    local f="$ROOT/scripts/game-per-app.sh"
+    rm -rf "$HOME/.packotm"
+    rm -f "$TMP_STORE/wm.density"
+    export WM_DENSITY=400
+    # "compacto" = 15% MENOR que a densidade física (400 -> 340)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi compacto > "$TMP/dpi1" 2>&1
+    assert_eq "340" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi compacto = 85% da densidade física"
+    grep -q 'compacto' "$HOME/.packotm/dpi_profile" 2>/dev/null \
+        && ok "dpi guarda o perfil escolhido (para o painel marcar)" || bad "dpi não guardou o perfil"
+    grep -q 'wm density reset' "$HOME/.packotm/undo/game-per-app.sh" 2>/dev/null \
+        && ok "dpi é reversível (wm density reset no undo)" || bad "dpi sem reversão"
+    # "grande" = 15% MAIOR (400 -> 460)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi grande > /dev/null 2>&1
+    assert_eq "460" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi grande = 115% da densidade física"
+    # número explícito dentro da faixa
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 360 > /dev/null 2>&1
+    assert_eq "360" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi aceita valor exato"
+    # fora da faixa segura é recusado
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 40 > "$TMP/dpi_bad" 2>&1
+    assert_contains "$TMP/dpi_bad" "faixa segura" "dpi recusa valor fora de 80-600"
+    # "padrão" remove o override (volta à densidade física)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi padrao > /dev/null 2>&1
+    [ ! -f "$TMP_STORE/wm.density" ] && ok "dpi padrão remove o override" \
+        || bad "dpi padrão não removeu o override"
+    # dpi-reset também volta ao padrão
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 320 > /dev/null 2>&1
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi-reset > /dev/null 2>&1
+    [ ! -f "$TMP_STORE/wm.density" ] && ok "dpi-reset volta à densidade de fábrica" \
+        || bad "dpi-reset não voltou ao padrão"
+    unset WM_DENSITY
 }
 
 t_smart_clean_protect() {
@@ -4527,6 +4571,7 @@ t_keepalive
 t_gameclean
 t_ramboost
 t_resolution
+t_dpi
 t_smart_opt
 t_smart_bigdump
 t_smart_learning
