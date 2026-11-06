@@ -19,7 +19,7 @@ LISTA=$(ls -1 *.apk 2>/dev/null | while read -r f; do
     v=$(printf '%s' "$f" | sed -n 's/.*-v\([0-9][0-9.]*\)[^0-9].*/\1/p')
     [ -z "$v" ] && v=$(printf '%s' "$f" | sed -n 's/.*-v\([0-9][0-9.]*\)\.apk/\1/p')
     printf '%s %s\n' "${v:-0.0.0}" "$f"
-done | sort -k1,1V -r)
+done | sort -rV)
 
 [ -z "$LISTA" ] && { echo "nenhum .apk em serve/" >&2; exit 1; }
 
@@ -41,8 +41,6 @@ EOF
     if [ "$destaque" = "1" ]; then
         cat <<'EOF'
   <div class="cred">
-    <b>Entrada por usuario e senha</b> (a chave saiu de vez):<br>
-    usuario <code>00deUdia</code> &middot; senha <code>159951</code><br>
     A venda oficial e <b>so</b> no servidor do dono. Comprou em outro lugar? Voce tomou um golpe.<br>
     <a href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener">Servidor do dono</a>
   </div>

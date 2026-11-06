@@ -4710,6 +4710,34 @@ t_app_creditos() {
 }
 
 # --- interruptores (liga/desliga) e o painel de saude dentro de Geral ---------
+# --- pagina de downloads: o RECOMENDADO tem de ser a versao mais nova --------
+t_serve_index() {
+    printf '\n  # serve/index.html: download aponta para a versao mais nova\n'
+    local s="$ROOT/serve"
+    [ -f "$s/index.html" ] && ok "pagina de downloads existe" || { bad "sem serve/index.html"; return; }
+    # a versao marcada RECOMENDADO precisa ser a maior entre os .apk presentes
+    python3 - "$s" <<'PY' > "$TMP/srv" 2>&1
+import glob, os, re, sys
+s = sys.argv[1]
+def ver(p):
+    m = re.search(r'-v(\d[\d.]*)', os.path.basename(p))
+    return [int(x) for x in m.group(1).rstrip('.').split('.')] if m else [0]
+apks = glob.glob(os.path.join(s, '*.apk'))
+if not apks:
+    print('sem apk'); raise SystemExit
+newest = os.path.basename(max(apks, key=ver))
+doc = open(os.path.join(s, 'index.html'), encoding='utf-8').read()
+m = re.search(r'class="card best"[\s\S]*?<strong>([^<]+)</strong>', doc)
+rec = m.group(1) if m else '(sem card best)'
+print('OK' if rec == newest else 'recomendado=%s novo=%s' % (rec, newest))
+PY
+    assert_contains "$TMP/srv" "OK" "a versao mais nova e a RECOMENDADA"
+    # o aviso de golpe e o servidor do dono aparecem na pagina
+    grep -qi 'tomou um golpe' "$s/index.html" && ok "download avisa sobre golpe" || bad "download sem aviso"
+    grep -q 'discord.gg/w9hFBeVKw8' "$s/index.html" && ok "download aponta o servidor do dono" \
+        || bad "download sem o servidor"
+}
+
 t_toggles_registry() {
     printf '\n  # interruptores: registro, estado real e paridade web/app\n'
     local panel="$ROOT/app/src/main/assets/panel/index.html"
@@ -4786,6 +4814,7 @@ t_toggles_registry() {
 
 t_app_remocao_key
 t_app_creditos
+t_serve_index
 t_toggles_registry
 t_new_toggles
 t_undo_scope
