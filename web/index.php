@@ -801,6 +801,14 @@ body.drawer .scrim{opacity:1;visibility:visible}
   .stat .m > i{transition:none}
   .live .dot{animation:none}
 }
+/* Modo leve: aparelho fraco (pouca RAM/núcleos) NÃO aguenta o desfoque do
+   backdrop-filter — é uma das causas reais do painel "engasgado". Aqui o
+   desfoque vira cor sólida e as animações param, sem mudar o layout. */
+html.otm-lite{--blur:none}
+html.otm-lite *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html.otm-lite .home .hero,html.otm-lite .panelbox,html.otm-lite .card,
+html.otm-lite section[data-g] .head,html.otm-lite .modal{animation:none!important}
+html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{animation:none!important;transition:none!important}
 </style>
 </head>
 <body>
@@ -1454,6 +1462,12 @@ body.drawer .scrim{opacity:1;visibility:visible}
       <div class="set-hint">Se o volume de mídia do aparelho estiver no mínimo, não dá para ouvir.</div>
     </div>
 
+    <div class="set-group">
+      <div class="set-label">Desempenho do painel</div>
+      <label class="switch"><input type="checkbox" id="setLite"><span>Modo leve (sem desfoque e animações)</span></label>
+      <div class="set-hint" id="setLiteHint">Ligado sozinho em aparelhos com pouca RAM. Desligue para voltar ao visual completo.</div>
+    </div>
+
     <div class="row">
       <button class="btn" id="gearReset" type="button">Restaurar padrão</button>
       <button class="btn primary" id="gearDone" type="button">Pronto</button>
@@ -1612,6 +1626,8 @@ function syncGear(){
   const scEl = document.getElementById("setScale"); if (scEl) scEl.value = sc;
   const scVal = document.getElementById("setScaleVal"); if (scVal) scVal.textContent = sc + "%";
   const s = document.getElementById("setSound"); if (s) s.checked = localStorage.getItem("otm-sound") !== "0";
+  const lite = document.getElementById("setLite");
+  if (lite) lite.checked = document.documentElement.classList.contains("otm-lite");
   const sg = document.getElementById("setSoundGroup"); if (sg && !window.OTM) sg.style.display = "none";
   const pl = document.getElementById("setPermHint");
   if (pl && !window.OTM) pl.textContent = "No site (PC) não dá para mexer no aparelho — isso funciona no app do celular.";
@@ -1622,6 +1638,13 @@ function setScale(pct){ setScaleQuiet(pct); localStorage.setItem("otm-scale", St
 function setSound(on){
   localStorage.setItem("otm-sound", on ? "1" : "0");
   try { if (window.OTM) window.OTM.call("sound", on ? "test" : "off", "snd"); } catch(e){}
+  syncGear();
+}
+/* Modo leve manual: grava a escolha ("1"/"0") e aplica na hora. Depois disso a
+   escolha do usuário vence o automático (applyLiteMode só decide se não houver). */
+function setLite(on){
+  localStorage.setItem("otm-lite", on ? "1" : "0");
+  applyLiteMode();
   syncGear();
 }
 /* Permissões/segundo plano: manda a ação de registro pelo mesmo caminho das
@@ -1646,8 +1669,24 @@ function askPermission(id, label){
   const sc = localStorage.getItem("otm-scale"); if (sc) setScaleQuiet(parseInt(sc, 10));
   if (localStorage.getItem("otm-sound") === "0" && window.OTM)
     try { window.OTM.call("sound", "off", "init"); } catch(e){}
+  applyLiteMode();
   pushUiPrefs();
 })();
+/* Modo leve: liga o CSS "otm-lite" (sem desfoque/animacao) em aparelho fraco.
+   Escolha do usuario em "otm-lite" manda ("1" liga, "0" desliga); sem escolha,
+   decide pela memoria (deviceMemory) e pelos nucleos. É o que evita o painel
+   "engasgado" em celular de entrada, sem mexer em aparelho forte. */
+function applyLiteMode(){
+  const pref = localStorage.getItem("otm-lite");
+  let on = pref === "1";
+  if (pref === null){
+    const mem = navigator.deviceMemory || 0;
+    const cores = navigator.hardwareConcurrency || 0;
+    on = (mem && mem <= 4) || (cores && cores <= 4);
+  }
+  document.documentElement.classList.toggle("otm-lite", on);
+  return on;
+}
 $("#btnGear").onclick = () => { syncGear(); $("#gearMask").classList.add("open"); };
 $("#gearDone").onclick = () => $("#gearMask").classList.remove("open");
 $("#gearMask").onclick = e => { if (e.target.id === "gearMask") $("#gearMask").classList.remove("open"); };
@@ -1668,6 +1707,7 @@ if (ccApply) ccApply.onclick = applyCustomAccent;
 if (ccHex) ccHex.onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); applyCustomAccent(); } };
 document.getElementById("setScale").oninput = e => setScale(parseInt(e.target.value, 10));
 document.getElementById("setSound").onchange = e => setSound(e.target.checked);
+document.getElementById("setLite").onchange = e => setLite(e.target.checked);
 const PERM_ACTION = { setPermApp: "perm.app" };
 const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(PERM_ACTION[id], label); };
 permBtn("setPermApp", "Permissões do app do pack");
@@ -1681,8 +1721,9 @@ function openUsageSettings(){
 }
 const gearReset = document.getElementById("gearReset");
 if (gearReset) gearReset.onclick = () => {
-  ["otm-accent","otm-accent-hex","otm-font","otm-scale"].forEach(k => localStorage.removeItem(k));
+  ["otm-accent","otm-accent-hex","otm-font","otm-scale","otm-lite"].forEach(k => localStorage.removeItem(k));
   setAccentQuiet("prata"); setFontQuiet("sistema"); setScaleQuiet(100);
+  applyLiteMode();
   pushUiPrefs(); syncGear(); toast("Aparência restaurada ao padrão.", "ok");
 };
 

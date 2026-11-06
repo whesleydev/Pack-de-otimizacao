@@ -1631,6 +1631,22 @@ t_personalization() {
     # banner: frase de venda pedida pelo autor
     grep -q 'liso que nem sabão' "$app" && grep -q 'liso que nem sabão' "$web" \
         && ok "banner: frase de venda no app e no web" || bad "banner: frase de venda ausente"
+    # Modo leve: aparelho fraco não aguenta o backdrop-filter (desfoque) — a
+    # causa real do painel "engasgado". Tem de existir nos dois painéis, com o
+    # CSS que tira o desfoque/animacao, o controle nas Configuracoes e a escolha
+    # do usuario vencendo o automatico.
+    for f in "$app" "$web"; do
+        grep -q 'html.otm-lite' "$f" && grep -q 'backdrop-filter:none!important' "$f" \
+            && ok "$(basename "$f"): modo leve tira o desfoque" || bad "$(basename "$f"): modo leve sem CSS"
+        grep -q 'id="setLite"' "$f" && ok "$(basename "$f"): controle de modo leve" \
+            || bad "$(basename "$f"): sem controle de modo leve"
+        grep -q 'function applyLiteMode' "$f" && grep -q 'deviceMemory' "$f" \
+            && ok "$(basename "$f"): modo leve automatico por RAM" || bad "$(basename "$f"): sem deteccao de RAM"
+        grep -q 'localStorage.getItem("otm-lite")' "$f" \
+            && ok "$(basename "$f"): escolha do usuario em otm-lite" || bad "$(basename "$f"): sem chave otm-lite"
+        grep -q 'otm-lite' "$f" && grep -q 'applyLiteMode();' "$f" \
+            && ok "$(basename "$f"): modo leve aplicado na inicializacao" || bad "$(basename "$f"): modo leve nao aplicado"
+    done
 }
 
 
