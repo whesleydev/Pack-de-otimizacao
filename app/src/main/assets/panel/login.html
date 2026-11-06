@@ -42,9 +42,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper
 label{display:block; font-size:12px; font-weight:700; color:var(--muted); margin:0 0 5px 3px}
 .field{margin-bottom:14px}
 input{ width:100%; padding:12px 14px; border-radius:var(--r-sm); border:1px solid var(--line-strong);
-  background:var(--glass-2); color:var(--ink); font-size:16px; letter-spacing:.14em; font-weight:700;
-  text-transform:uppercase; text-align:center; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  transition:border-color .15s, box-shadow .15s; }
+  background:var(--glass-2); color:var(--ink); font-size:16px; font-weight:700;
+  font-family:inherit; transition:border-color .15s, box-shadow .15s; }
 input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring)}
 .btn{ width:100%; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
   border-radius:var(--r-sm); padding:12px 16px; font-size:15px; font-weight:800; cursor:pointer; transition:transform .12s, filter .15s; }
@@ -55,8 +54,15 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   background:var(--glass-2); animation:otmShake .4s both; }
 .erro b{color:var(--danger)}
 .erro svg{width:16px;height:16px;flex:none;color:var(--danger);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.hint{margin:14px 0 0; font-size:12px; color:var(--muted); text-align:center}
+.srv{display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:14px; padding-top:14px;
+  border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); text-align:center}
+.srv a{display:inline-flex; align-items:center; gap:7px; text-decoration:none; color:var(--ink);
+  border:1px solid var(--line-strong); background:var(--glass-2); border-radius:999px; padding:9px 15px;
+  font-weight:700; font-size:12.5px; transition:.15s}
+.srv a:hover{border-color:var(--accent); transform:translateY(-1px)}
+.srv svg{width:16px;height:16px;fill:currentColor;flex:none}
 .foot{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); animation:otmFade .7s .2s both}
+.foot b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -64,52 +70,37 @@ input:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3
   <div class="brand">
     <div class="mark" aria-hidden="true">TX</div>
     <h1>Trix</h1>
-    <p>Entre com a sua chave de acesso</p>
+    <p>Entre para acessar o painel</p>
   </div>
   <form class="card" id="form" autocomplete="off">
     <div class="erro" id="erro" hidden role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
       <div><b>Não deu para entrar.</b><br><span id="erroTxt"></span></div></div>
     <div class="field">
-      <label for="key">Chave de acesso</label>
-      <input id="key" name="key" type="text" inputmode="text" spellcheck="false"
-             autocomplete="off" autocapitalize="characters" placeholder="00-XXXX-XXXX-XXXX ou TRIX-XXXX-XXXX-XXXX"
-             maxlength="20" required autofocus>
+      <label for="user">Usuário</label>
+      <input id="user" name="user" type="text" inputmode="text" spellcheck="false"
+             autocomplete="username" autocapitalize="none" required autofocus>
+    </div>
+    <div class="field">
+      <label for="pass">Senha</label>
+      <input id="pass" name="pass" type="password" autocomplete="current-password" required>
     </div>
     <button class="btn" id="entrar" type="submit">Entrar</button>
-    <p class="hint">Chave de admin começa com <b>00</b>; de usuário, com <b>TRIX</b>. Guarde-a: quem tem a chave entra.</p>
+    <div class="srv">
+      <span>Dúvidas? Fale no</span>
+      <a href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener" title="Servidor oficial do dono">
+        <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+        Servidor do dono
+      </a>
+    </div>
   </form>
-  <div class="foot">Painel local — sem root, via Shizuku ou ADB por Wi-Fi.</div>
+  <div class="foot">Feito por <b>00deUdia</b> (WS) · a venda oficial é só no servidor do dono.</div>
 </div>
 <script>
-/* Entrada por CHAVE. A validação é feita no nativo (contra o banco), não aqui:
-   o JS só mostra a resposta. Não há senha nem hash embutido no arquivo. */
+/* Entrada por usuário/senha. A conferência é feita no nativo (hash embutido no
+   aparelho), não aqui: o JS só mostra a resposta. Não há senha em texto no arquivo. */
 const SESSION_FLAG = "otm_session";
 
 const el = id => document.getElementById(id);
-const input = el("key");
-
-/* Máscara: mostra o prefixo (TRIX = usuário, 00 = admin) só quando ele já foi
-   digitado/colado, e agrupa o corpo de 4 em 4. Não injeta prefixo sozinha, senão
-   quem digita "TRIX..." veria um "00-" na frente e a chave sairia errada. */
-function mask(raw){
-  const str = String(raw);
-  let s = str.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  let p = "";
-  if (s.startsWith("TRIX")) { p = "TRIX"; s = s.slice(4); }
-  else if (s.startsWith("00")) { p = "00"; s = s.slice(2); }
-  s = s.slice(0, 12);
-  const g = [s.slice(0,4), s.slice(4,8), s.slice(8,12)].filter(Boolean);
-  let out = p + (g.length ? (p ? "-" : "") + g.join("-") : "");
-  // Se a última tecla foi um separador, mostra o traço em vez de engolir: sem
-  // isso, digitar "00-" volta a exibir "00" e o campo parece que não aceita hífen.
-  if (out && out.length < 19 && !out.endsWith("-") && /[^A-Za-z0-9]/.test(str.slice(-1))) out += "-";
-  return out;
-}
-input.addEventListener("input", () => {
-  const atEnd = input.selectionStart === input.value.length;
-  input.value = mask(input.value);
-  if (atEnd) input.setSelectionRange(input.value.length, input.value.length);
-});
 
 function showErro(msg){
   el("erroTxt").textContent = msg;
@@ -136,34 +127,26 @@ function otmCall(kind, payload){
 
 el("form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  // 17 = "00-XXXX-XXXX-XXXX"; 19 = "TRIX-XXXX-XXXX-XXXX". Só o corpo (12) vira
-  // chave de admin, que é o caso comum de quem cola sem o prefixo.
-  let key = mask(input.value);
-  if (key.length === 14) key = "00-" + key;
-  if (key.length !== 17 && key.length !== 19) {
-    showErro("A chave tem o formato 00-XXXX-XXXX-XXXX (admin) ou TRIX-XXXX-XXXX-XXXX (usuário)."); return;
-  }
-  entrar(key);
+  const user = el("user").value.trim();
+  const pass = el("pass").value;
+  if (!user || !pass) { showErro("Preencha usuário e senha."); return; }
+  await entrar(user, pass);
 });
 
-async function entrar(key){
+async function entrar(user, pass){
   el("erro").hidden = true;
   const btn = el("entrar"); btn.disabled = true; btn.textContent = "Verificando…";
-  const r = await otmCall("key_login", JSON.stringify({ key }));
+  const r = await otmCall("app_login", JSON.stringify({ user, pass }));
   btn.disabled = false; btn.textContent = "Entrar";
   if (r && r.ok) {
-    try {
-      localStorage.setItem(SESSION_FLAG, "1");
-      localStorage.setItem("otm_role", r.role || "user");
-      localStorage.setItem("otm_label", r.label || "");
-    } catch(e){}
+    try { localStorage.setItem(SESSION_FLAG, "1"); localStorage.setItem("otm_user", r.user || user); } catch(e){}
     location.replace("index.html");
   } else {
-    showErro((r && r.message) || "Chave não reconhecida.");
+    showErro((r && r.message) || "Usuário ou senha incorretos.");
   }
 }
 
-/* Já entrou antes: vai direto (o painel confirma o papel com o nativo). */
+/* Já entrou antes: vai direto (o painel confirma a sessão com o nativo). */
 try { if (localStorage.getItem(SESSION_FLAG)) location.replace("index.html"); } catch(e){}
 </script>
 </body>

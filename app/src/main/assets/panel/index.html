@@ -3,7 +3,7 @@
 <head>
 <script>
 /* Atalho: sem a bandeira local, já vai para o login sem piscar o painel. A
-   confirmação de verdade é no fim do script, com o nativo (key_status). */
+   confirmação de verdade é no fim do script, com o nativo (app_status). */
 try { if (!localStorage.getItem("otm_session")) location.replace("login.html"); } catch(e){}
 </script>
 
@@ -430,6 +430,8 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .credits .ctitle{margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700}
 .credits .who{font-size:13px; color:var(--muted); margin:0}
 .credits .who b{color:var(--ink)}
+.credits .who.aviso{margin-top:2px}
+.credits .who.aviso b{color:var(--danger)}
 .credits .who code{color:var(--accent); background:var(--glass-2); border:1px solid var(--line);
   border-radius:6px; padding:1px 6px}
 .credits .sp{flex:1}
@@ -476,123 +478,21 @@ body.drawer .scrim{opacity:1;visibility:visible}
 .logsrow .dur{color:var(--muted);font-size:11px;flex:none}
 .logsrow .sum{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
 
-/* ---- admin (só para o dono) ------------------------------------------------ */
-.adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px;margin-top:12px}
-.adm-stat{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--glass-2)}
-.adm-stat b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.adm-stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.adm-list{display:grid;gap:8px;margin-top:12px}
-.adm-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--glass-2)}
-.adm-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center}
-.adm-key{font-family:var(--mono);font-weight:800;font-size:13.5px;letter-spacing:.04em}
-.adm-item .nm{font-size:13px;margin-top:3px}
-.adm-item .meta{font-size:11.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
-.adm-item .acts{display:flex;gap:8px;margin-top:9px}
-.adm-item .acts .btn{width:auto;font-size:12.5px;padding:7px 12px}
-.adm-badge{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
-  padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);white-space:nowrap}
-.adm-badge.dono{color:var(--teal);border-color:color-mix(in srgb,var(--teal) 45%,var(--line))}
-.adm-badge.admin{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
-.adm-badge.user{color:var(--muted)}
-.adm-audit{display:grid;gap:2px;margin-top:10px;font-size:12.5px}
-.adm-ev{display:flex;gap:10px;justify-content:space-between;align-items:baseline;
-  padding:7px 0;border-bottom:1px solid var(--line)}
-.adm-ev:last-child{border-bottom:0}
-.adm-ev .pfx{font-family:var(--mono);font-weight:700;flex:none}
-.adm-ev .res{flex:1;min-width:0;word-break:break-word}
-.adm-ev .when{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-.adm-ev.no .res{color:var(--danger)}
-.adm-newkey{margin-top:12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
-.adm-newkey p{margin:0 0 6px;font-size:12px;color:var(--muted)}
-.adm-newkey code{font-family:var(--mono);font-weight:800;font-size:15px;letter-spacing:.08em}
-.adm-newkey .acts{display:flex;gap:8px;margin-top:10px}
-.adm-newkey .acts .btn{width:auto;font-size:12.5px;padding:7px 14px}
-.adm-empty{margin:10px 0 0;color:var(--muted);font-size:13px}
-.adm-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.adm-bar input,.adm-bar select{flex:1;min-width:130px;padding:9px 12px;border:1px solid var(--line-strong);
-  border-radius:var(--r-sm);background:var(--glass-2);color:var(--ink);font-size:13.5px;font-family:inherit}
-.adm-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.adm-chip{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;cursor:pointer;
-  border:1px solid var(--line-strong);background:var(--glass-2);color:var(--muted);font-family:inherit}
-.adm-chip.on{color:var(--ink);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
-.adm-chip b{font-variant-numeric:tabular-nums}
-.adm-plans{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.adm-plan{text-align:left;border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 12px;
-  background:var(--glass-2);cursor:pointer;font-family:inherit;color:var(--ink);font-size:12.5px}
-.adm-plan:hover{border-color:var(--accent)}
-.adm-plan b{display:block;font-size:13px}
-.adm-plan span{color:var(--muted);font-size:11px}
-.adm-dev{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:7px 0;
-  border-bottom:1px solid var(--line);font-size:12.5px}
-.adm-dev:last-child{border-bottom:0}
-.adm-dev .m{flex:1;min-width:0}
-.adm-dev .m b{display:block;font-weight:700;word-break:break-word}
-.adm-dev .m span{color:var(--muted);font-size:11px}
-.adm-dev .acts{display:flex;gap:6px;flex:none}
-.adm-dev .acts .btn{width:auto;font-size:11.5px;padding:5px 10px}
-.adm-dev.off .m b{color:var(--muted);text-decoration:line-through}
-.adm-field{margin-top:10px}
-.adm-field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin:0 0 4px 2px}
-.adm-field input,.adm-field textarea,.adm-field select{width:100%;padding:9px 12px;border:1px solid var(--line-strong);
-  border-radius:var(--r-sm);background:var(--glass-2);color:var(--ink);font-size:13.5px;font-family:inherit}
-.adm-field textarea{min-height:62px;resize:vertical}
-.adm-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.adm-owner-note{margin-top:10px;padding:9px 12px;border-left:3px solid var(--warn);
-  background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:12.5px;color:var(--muted)}
-
-/* ---- dashboard (só para o dono) -------------------------------------------- */
-.dash-chart{display:flex;align-items:flex-end;gap:8px;height:130px;margin-top:14px}
-.dash-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;min-width:0}
-.dash-col .bar{width:100%;border-radius:6px 6px 0 0;background:linear-gradient(180deg,
-  color-mix(in srgb,var(--accent) 85%,transparent),color-mix(in srgb,var(--accent) 35%,transparent));
-  min-height:3px;transition:height .3s ease}
-.dash-col .v{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
-.dash-col .d{font-size:10.5px;color:var(--muted);white-space:nowrap}
-.dash-bars{display:grid;gap:9px;margin-top:12px}
-.dash-bar{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;font-size:12.5px}
-.dash-bar .lbl{color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-size:11px}
-.dash-bar .trk{height:9px;border-radius:999px;background:var(--glass-2);border:1px solid var(--line);overflow:hidden}
-.dash-bar .fill{height:100%;border-radius:999px;background:var(--accent);min-width:2px}
-.dash-bar .n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
-.fb-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--glass-2)}
-.fb-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
-.fb-item .msg{font-size:13px;margin-top:7px;white-space:pre-wrap;word-break:break-word}
-.fb-item .meta{font-size:11.5px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
-.fb-item .acts{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
-.fb-item .acts .btn{width:auto;font-size:12.5px;padding:7px 12px}
-.fb-reply{margin-top:8px;padding:8px 11px;border-left:3px solid var(--accent);
-  background:var(--glass-2);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:12.5px}
-.fb-kind{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
-  padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);white-space:nowrap}
-.fb-kind.sugestao{color:var(--teal);border-color:color-mix(in srgb,var(--teal) 45%,var(--line))}
-.fb-kind.problema{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
-.fb-kind.elogio{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
-.fb-kind.duvida{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
-.fb-kind.outro{color:var(--muted)}
-
-/* ---- perfil (categoria própria, como app de verdade) ----------------------- */
-.pf-hero{display:flex;gap:14px;align-items:center;margin-top:12px}
-.pf-avatar{width:62px;height:62px;border-radius:20px;flex:none;display:grid;place-items:center;
-  font-size:24px;font-weight:800;background:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
-.pf-id{min-width:0;flex:1}
-.pf-id b{display:block;font-size:17px;font-weight:800;letter-spacing:-.01em;word-break:break-word}
-.pf-id span{color:var(--muted);font-size:12.5px}
-.pf-key{margin-top:12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
-.pf-key code{font-family:var(--mono);font-weight:800;font-size:15px;letter-spacing:.08em;word-break:break-all}
-.pf-key .acts{display:flex;gap:8px;margin-top:10px}
-.pf-key .acts .btn{width:auto;font-size:12.5px;padding:7px 14px}
-.pf-rows{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
-.pf-row{display:flex;gap:10px;justify-content:space-between;align-items:baseline;padding:10px 13px;
-  border-bottom:1px solid var(--line);font-size:13px}
-.pf-row:last-child{border-bottom:0}
-.pf-row .k{color:var(--muted)}
-.pf-row .v{font-weight:700;text-align:right;word-break:break-word;font-variant-numeric:tabular-nums}
-.pf-links{display:grid;gap:8px;margin-top:12px}
-.pf-link{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;
-  padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--glass-2);
-  color:var(--ink);font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left}
-.pf-link:hover{border-color:var(--accent)}
-.pf-link .arw{color:var(--muted);flex:none}
+/* ---- créditos e termos ----------------------------------------------------- */
+.cred-grid{display:grid;gap:10px;margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.cred-p{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--glass-2)}
+.cred-p b{display:block;font-size:14px}
+.cred-p span{font-size:12px;color:var(--muted)}
+.alerta{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px 14px;font-size:13.5px;
+  border:1px solid var(--danger);border-left-width:4px;border-radius:var(--r-sm);background:var(--glass-2)}
+.alerta b{color:var(--danger)}
+.alerta svg{width:18px;height:18px;flex:none;color:var(--danger);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+.termos{margin-top:10px}
+.termos h4{margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.termos h4:first-child{margin-top:6px}
+.termos p{margin:0 0 8px;font-size:13.5px}
+.termos ul{margin:0 0 8px;padding-left:20px;font-size:13.5px}
+.termos li{margin:0 0 5px}
 
 /* ---- terminal real -------------------------------------------------------- */
 /* ---- terminal amplo ------------------------------------------------------- */
@@ -822,10 +722,7 @@ body.drawer .scrim{opacity:1;visibility:visible}
             <span class="c"></span>Sistema            <span class="count">24</span>
           </a>
       <a href="#Terminal" data-g="Terminal" aria-current="false"><span class="c"></span>Terminal</a>
-      <a href="#Perfil" data-g="Perfil" id="navPerfil" aria-current="false"><span class="c"></span>Perfil</a>
-      <a href="#Feedback" data-g="Feedback" id="navFeedback" aria-current="false" hidden><span class="c"></span>Feedback<span class="count" id="navFeedbackCount" hidden></span></a>
-      <a href="#Dashboard" data-g="Dashboard" id="navDash" aria-current="false" hidden><span class="c"></span>Dashboard</a>
-      <a href="#Admin" data-g="Admin" id="navAdmin" aria-current="false" hidden><span class="c"></span>Admin<span class="count" id="navAdminCount" hidden></span></a>
+      <a href="#Cr%C3%A9ditos" data-g="Créditos" id="navCreditos" aria-current="false"><span class="c"></span>Créditos</a>
       </nav>
     </div>
   </aside>
@@ -4848,233 +4745,66 @@ body.drawer .scrim{opacity:1;visibility:visible}
         Toque num atalho para preencher o campo.</p>
       </div>
     </section>
-    <section id="g-Feedback" data-g="Feedback" hidden>
+    <section id="g-Cr%C3%A9ditos" data-g="Créditos" hidden>
       <div class="head">
-        <h2>Feedback</h2>
-        <p>Manda sua sugestão, problema ou elogio direto pra quem cuida do Trix.</p>
+        <h2>Créditos e termos</h2>
+        <p>Quem fez o Trix, quem testa, os termos de uso e o aviso contra golpe.</p>
       </div>
 
-      <article class="card" data-id="fb.form">
-        <div class="row"><h3>Falar com a equipe</h3></div>
-        <p class="adm-empty">Escreve o que quiser: ideia de função nova, bug, travamento, o que
-        tá faltando. Vai com o modelo do seu aparelho e a versão do app, e chega direto no Admin.</p>
-        <div class="adm-chips" id="fbKinds"></div>
-        <div class="adm-field">
-          <label for="fbMsg">Sua mensagem</label>
-          <textarea id="fbMsg" maxlength="2000" placeholder="ex.: o painel flutuante some quando eu abro o Free Fire…"></textarea>
-        </div>
-        <div class="adm-field">
-          <label for="fbContact">Contato (opcional — se quiser resposta)</label>
-          <input id="fbContact" type="text" placeholder="zap / discord / e-mail" autocomplete="off" maxlength="120">
-        </div>
-        <div class="go"><button class="btn primary" id="fbSend" type="button">Enviar</button></div>
-        <p class="adm-empty" id="fbStatus"></p>
-      </article>
-
-      <article class="card" data-id="fb.mine">
-        <div class="row"><h3>O que você já mandou</h3>
-          <button class="btn" id="fbRefresh" type="button" style="width:auto">Atualizar</button>
-        </div>
-        <div class="adm-list" id="fbList"></div>
-      </article>
-    </section>
-    <section id="g-Dashboard" data-g="Dashboard" hidden>
-      <div class="head">
-        <h2>Dashboard</h2>
-        <p>Os números do Trix num lugar só: chaves, aparelhos, uso e o que chegou de recado.</p>
-      </div>
-
-      <article class="card" data-id="dash.kpi">
-        <div class="row"><h3>Resumo</h3>
-          <button class="btn" id="dashRefresh" type="button" style="width:auto">Atualizar</button>
-        </div>
-        <div class="adm-stats">
-          <div class="adm-stat"><b id="dTotal">0</b><span>chaves</span></div>
-          <div class="adm-stat"><b id="dActive">0</b><span>ativas</span></div>
-          <div class="adm-stat"><b id="dDevices">0</b><span>aparelhos</span></div>
-          <div class="adm-stat"><b id="dUses">0</b><span>usos</span></div>
-          <div class="adm-stat"><b id="dOkDay">0</b><span>entradas hoje</span></div>
-          <div class="adm-stat"><b id="dOkWeek">0</b><span>entradas 7d</span></div>
-          <div class="adm-stat"><b id="dFailWeek">0</b><span>falhas 7d</span></div>
-          <div class="adm-stat"><b id="dNewWeek">0</b><span>chaves novas 7d</span></div>
-          <div class="adm-stat"><b id="dFbNew">0</b><span>recados novos</span></div>
+      <article class="card" data-id="cred.quem">
+        <div class="row"><h3>Quem fez</h3></div>
+        <div class="cred-grid">
+          <div class="cred-p"><b>00deUdia (WS)</b><span>Desenvolvedor e criador do projeto</span></div>
+          <div class="cred-p"><b>Nezuku</b><span>Testadora oficial</span></div>
         </div>
       </article>
 
-      <article class="card" data-id="dash.chart">
-        <div class="row"><h3>Entradas por dia (7 dias)</h3></div>
-        <div class="dash-chart" id="dashChart"></div>
-      </article>
-
-      <article class="card" data-id="dash.status">
-        <div class="row"><h3>Chaves por estado</h3></div>
-        <div class="dash-bars" id="dashStatus"></div>
-      </article>
-
-      <article class="card" data-id="dash.roles">
-        <div class="row"><h3>Quem é quem</h3></div>
-        <div class="dash-bars" id="dashRoles"></div>
-      </article>
-
-      <article class="card" data-id="dash.plans">
-        <div class="row"><h3>Planos mais usados</h3></div>
-        <div class="dash-bars" id="dashPlans"></div>
-      </article>
-    </section>
-    <section id="g-Admin" data-g="Admin" hidden>
-      <div class="head">
-        <h2>Admin</h2>
-        <p>Chaves de acesso e quem está usando. Esta categoria só aparece para o dono.</p>
-      </div>
-
-      <div class="note">
-        <span aria-hidden="true">ⓘ</span>
-        <div><b>Como funciona:</b> a chave é a identidade — quem tem a chave entra.
-        <b>TRIX-</b> é usuário comum; <b>00-</b> é admin. Só o dono vê esta aba, e a
-        permissão é conferida no app, não na tela.</div>
-      </div>
-
-      <article class="card" data-id="adm.session">
-        <div class="row"><h3>Sua sessão</h3><span class="adm-badge dono" id="admBadge">dono</span></div>
-        <div class="adm-stats">
-          <div class="adm-stat"><b id="admKeys">0</b><span>chaves</span></div>
-          <div class="adm-stat"><b id="admActive">0</b><span>ativas</span></div>
-          <div class="adm-stat"><b id="admDevs">0</b><span>aparelhos</span></div>
+      <article class="card" data-id="cred.golpe">
+        <div class="row"><h3>Aviso: cuidado com golpe</h3></div>
+        <div class="alerta">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
+          <div><b>Comprou em outro lugar? Você tomou um golpe.</b><br>
+          O Trix é vendido <b>só</b> no servidor oficial do dono. Qualquer outra venda não é
+          nossa, não dá suporte e não recebe atualizações.</div>
         </div>
-        <p class="adm-empty">Entrou como <b id="admLabel">—</b> · <span id="admDb">—</span></p>
-        <div class="go"><button class="btn" id="admLogout" type="button">Sair da conta</button></div>
+        <div class="go"><a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener" title="Servidor oficial do dono">
+          <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+          Servidor oficial do dono <span class="arw">↗</span></a></div>
       </article>
 
-      <article class="card" data-id="adm.create">
-        <div class="row"><h3>Criar uma chave</h3></div>
-        <div class="adm-plans" id="admPlans"></div>
-        <div class="fields">
-          <div class="field wide">
-            <label for="admName">Nome de quem vai receber</label>
-            <input id="admName" type="text" placeholder="ex.: João / cliente do zap" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="admDays">Dias de validade (0 = para sempre)</label>
-            <input id="admDays" type="number" min="0" value="30" inputmode="numeric">
-          </div>
-          <div class="field">
-            <label for="admDevices">Aparelhos (0 = ilimitado)</label>
-            <input id="admDevices" type="number" min="0" value="1" inputmode="numeric">
-          </div>
-          <div class="field">
-            <label for="admUses">Usos (0 = ilimitado)</label>
-            <input id="admUses" type="number" min="0" value="0" inputmode="numeric">
-          </div>
-          <div class="field">
-            <label for="admRoleSel">Papel</label>
-            <select id="admRoleSel">
-              <option value="user">Usuário comum (TRIX-)</option>
-              <option value="admin">Administrador (00-)</option>
-              <option value="owner">Dono (00-) — mexe nesta aba</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="admContact">Contato (opcional)</label>
-            <input id="admContact" type="text" placeholder="zap / discord / e-mail" autocomplete="off">
-          </div>
-        </div>
-        <div class="go"><button class="btn primary" id="admCreate" type="button">Criar chave</button></div>
-        <p class="adm-empty">A chave aparece uma vez. Copie e mande para a pessoa — depois só o prefixo fica visível.</p>
-        <div class="adm-newkey" id="admNewKey" hidden>
-          <p>Chave criada — copie agora, não mostramos de novo:</p>
-          <code id="admNewKeyVal"></code>
-          <div class="acts">
-            <button class="btn" id="admCopy" type="button">Copiar</button>
-            <button class="btn" id="admShare" type="button">Enviar</button>
-          </div>
+      <article class="card" data-id="cred.termos">
+        <div class="row"><h3>Termos de uso</h3></div>
+        <div class="termos">
+          <h4>O que o Trix é</h4>
+          <p>Pacote de otimização para Android. Ajusta configurações do seu próprio aparelho
+          (desempenho, rede, toque, vídeo) via Shizuku ou ADB por Wi-Fi. Não é root e não
+          modifica o jogo.</p>
+
+          <h4>Uso por sua conta e risco</h4>
+          <ul>
+            <li>Você é o único responsável pelo uso no seu aparelho.</li>
+            <li>Alguns ajustes podem ser agressivos — sempre faça um <b>snapshot</b> antes.</li>
+            <li>O autor não se responsabiliza por danos, perda de dados ou bloqueio de conta.</li>
+            <li>Respeite os termos dos jogos e das lojas. Uso indevido é por sua conta.</li>
+          </ul>
+
+          <h4>Venda oficial e golpes</h4>
+          <ul>
+            <li>A venda oficial — com suporte e atualizações — é feita <b>apenas</b> no servidor oficial do dono.</li>
+            <li>Comprou em outro servidor ou pegou com outra pessoa? <b>Você tomou um golpe.</b></li>
+            <li>Não revenda e não redistribua. Só o oficial recebe atualização e suporte.</li>
+          </ul>
+
+          <h4>Privacidade</h4>
+          <p>O app funciona no seu aparelho. Esta versão não tem licença, login em servidor
+          nem banco de chaves: nada de dados seus sai do telefone por causa dele.</p>
         </div>
       </article>
 
-      <article class="card" data-id="adm.list">
-        <div class="row">
-          <h3>Chaves</h3>
-          <button class="btn" id="admRefresh" type="button" style="width:auto">Atualizar</button>
-        </div>
-        <div class="adm-bar">
-          <input id="admSearch" type="search" placeholder="buscar por nome, prefixo, contato…" autocomplete="off">
-        </div>
-        <div class="adm-chips" id="admChips"></div>
-        <div class="adm-list" id="admList"></div>
-      </article>
-
-      <article class="card" data-id="adm.audit">
-        <div class="row"><h3>Auditoria</h3></div>
-        <p class="adm-empty">Tentativas de entrada recentes: quem tentou, de qual aparelho e o que aconteceu.</p>
-        <div class="adm-audit" id="admAudit"></div>
-      </article>
-
-      <article class="card" data-id="adm.feedback">
-        <div class="row"><h3>Recados dos usuários</h3>
-          <button class="btn" id="admFbRefresh" type="button" style="width:auto">Atualizar</button>
-        </div>
-        <p class="adm-empty">Sugestões, problemas e elogios enviados pelo app. Marque como lido ou
-        resolvido e escreva uma resposta para o histórico.</p>
-        <div class="adm-chips" id="admFbChips"></div>
-        <div class="adm-list" id="admFbList"></div>
-      </article>
-    </section>
-    <section id="g-Perfil" data-g="Perfil" hidden>
-      <div class="head">
-        <h2>Perfil</h2>
-        <p>Sua conta no Trix: quem você é, qual chave está usando e até quando ela vale.</p>
-      </div>
-
-      <article class="card" data-id="pf.hero">
-        <div class="pf-hero">
-          <div class="pf-avatar" id="pfAvatar" aria-hidden="true">?</div>
-          <div class="pf-id">
-            <b id="pfName">—</b>
-            <span id="pfRole">—</span>
-          </div>
-          <span class="adm-badge user" id="pfBadge">—</span>
-        </div>
-        <div class="adm-field">
-          <label for="pfNick">Seu apelido (só neste aparelho)</label>
-          <input id="pfNick" type="text" placeholder="ex.: Whesley" autocomplete="off" maxlength="40">
-        </div>
-        <div class="go"><button class="btn" id="pfSaveNick" type="button">Salvar apelido</button></div>
-      </article>
-
-      <article class="card" data-id="pf.key">
-        <div class="row"><h3>Sua chave</h3>
-          <button class="btn" id="pfReveal" type="button" style="width:auto">Mostrar</button>
-        </div>
-        <div class="pf-key" id="pfKeyBox" hidden>
-          <code id="pfKeyVal">—</code>
-          <div class="acts">
-            <button class="btn" id="pfCopy" type="button">Copiar</button>
-            <button class="btn" id="pfSend" type="button">Enviar</button>
-          </div>
-        </div>
-        <p class="adm-empty" id="pfKeyHint">A chave completa só é mostrada se você for o dono.
-        Usuário comum vê só o prefixo.</p>
-      </article>
-
-      <article class="card" data-id="pf.plan">
-        <div class="row"><h3>Seu plano</h3></div>
-        <div class="pf-rows">
-          <div class="pf-row"><span class="k">Papel</span><span class="v" id="pfRowRole">—</span></div>
-          <div class="pf-row"><span class="k">Chave</span><span class="v" id="pfRowPrefix">—</span></div>
-          <div class="pf-row"><span class="k">Validade</span><span class="v" id="pfRowExp">—</span></div>
-          <div class="pf-row"><span class="k">Aparelhos</span><span class="v" id="pfRowDev">—</span></div>
-          <div class="pf-row"><span class="k">Banco</span><span class="v" id="pfRowDb">—</span></div>
-        </div>
-      </article>
-
-      <article class="card" data-id="pf.links">
-        <div class="row"><h3>Atalhos</h3></div>
-        <div class="pf-links">
-          <button class="pf-link" type="button" id="pfGoConfigs">Configurações <span class="arw">›</span></button>
-          <button class="pf-link" type="button" id="pfGoFeedback">Mandar feedback <span class="arw">›</span></button>
-          <button class="pf-link" type="button" id="pfGoDash" hidden>Dashboard <span class="arw">›</span></button>
-          <button class="pf-link" type="button" id="pfGoAdmin" hidden>Gerenciar chaves (Admin) <span class="arw">›</span></button>
-          <button class="pf-link" type="button" id="pfLogout">Sair da conta <span class="arw">›</span></button>
-        </div>
+      <article class="card" data-id="cred.logout">
+        <div class="row"><h3>Sua sessão</h3></div>
+        <p class="set-hint">Entrou como <b>00deUdia</b> neste aparelho.</p>
+        <div class="go"><button class="btn" id="credLogout" type="button">Sair da conta</button></div>
       </article>
     </section>
     <section id="g-Lat%C3%AAncia%20e%20ping" data-g="Latência e ping" hidden>
@@ -5121,19 +4851,15 @@ body.drawer .scrim{opacity:1;visibility:visible}
   <div class="in">
     <div class="cwho">
       <p class="ctitle">Créditos</p>
-      <p class="who">Feito por <b>00deUdia</b> · Discord <code>cute_axolotl_51194</code></p>
+      <p class="who">Feito por <b>00deUdia</b> (WS) · testadora oficial <b>Nezuku</b></p>
+      <p class="who aviso">A venda oficial é <b>só</b> no servidor do dono. Comprou em outro lugar? Você tomou um golpe.</p>
     </div>
     <span class="sp"></span>
     <div class="clinks">
-      <a class="dcb" href="https://discord.com/users/cute_axolotl_51194" target="_blank" rel="noopener"
-         title="Abrir meu perfil no Discord">
-        <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-        Meu Discord <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
-      </a>
       <a class="dcb" href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener"
-         title="Entrar no meu servidor do Discord">
+         title="Entrar no servidor oficial do dono">
         <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-        Servidor <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+        Servidor oficial <span class="arw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
       </a>
     </div>
   </div>
@@ -5469,81 +5195,6 @@ body.drawer .scrim{opacity:1;visibility:visible}
     <div class="row" style="margin-top:8px">
       <button class="btn" id="profClose" type="button">Fechar</button>
       <button class="btn primary" id="profApply" type="button">Aplicar perfil</button>
-    </div>
-  </div>
-</div>
-
-<div class="mask" id="admMask" role="dialog" aria-modal="true" aria-labelledby="admTitle">
-  <div class="modal wide">
-    <h3 id="admTitle">Editar chave</h3>
-    <p id="admTitleSub">—</p>
-
-    <div class="adm-2col">
-      <div class="adm-field">
-        <label for="edLabel">Nome</label>
-        <input id="edLabel" type="text" maxlength="80" autocomplete="off">
-      </div>
-      <div class="adm-field">
-        <label for="edRole">Papel</label>
-        <select id="edRole">
-          <option value="user">Usuário (TRIX-)</option>
-          <option value="admin">Administrador (00-)</option>
-          <option value="owner">Dono (00-)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="adm-2col">
-      <div class="adm-field">
-        <label for="edDays">Validade (dias a partir de hoje; 0 = nunca)</label>
-        <input id="edDays" type="number" min="0" inputmode="numeric">
-      </div>
-      <div class="adm-field">
-        <label for="edExtend">Renovar + dias</label>
-        <input id="edExtend" type="number" min="0" value="0" inputmode="numeric">
-      </div>
-    </div>
-
-    <div class="adm-2col">
-      <div class="adm-field">
-        <label for="edDevices">Aparelhos (0 = ilimitado)</label>
-        <input id="edDevices" type="number" min="0" inputmode="numeric">
-      </div>
-      <div class="adm-field">
-        <label for="edUses">Usos (0 = ilimitado)</label>
-        <input id="edUses" type="number" min="0" inputmode="numeric">
-      </div>
-    </div>
-
-    <div class="adm-field">
-      <label for="edContact">Contato</label>
-      <input id="edContact" type="text" maxlength="120" autocomplete="off">
-    </div>
-    <div class="adm-field">
-      <label for="edNote">Observação</label>
-      <textarea id="edNote" maxlength="300"></textarea>
-    </div>
-
-    <div class="adm-field">
-      <label>A chave</label>
-      <div class="pf-key" id="edKeyBox">
-        <code id="edKeyVal">TRIX-····-····-····</code>
-        <div class="acts">
-          <button class="btn" id="edReveal" type="button">Mostrar</button>
-          <button class="btn" id="edCopy" type="button">Copiar</button>
-          <button class="btn" id="edSend" type="button">Enviar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="adm-field">
-      <label>Aparelhos que usaram esta chave</label>
-      <div id="edDevicesList"><p class="adm-empty">—</p></div>
-    </div>
-
-    <div class="row" style="margin-top:14px">
-      <button class="btn" id="edClose" type="button">Fechar</button>
-      <button class="btn primary" id="edSave" type="button">Salvar</button>
     </div>
   </div>
 </div>
@@ -5974,10 +5625,6 @@ function go(g, push){
   if (push !== false) history.replaceState(null, "", "#" + encodeURIComponent(g));
   window.scrollTo({top:0, behavior:"instant"});
   if (g === "Painel") startStats(); else stopStats();
-  // replaceState não dispara hashchange: recarrega o Perfil na mão.
-  if (g === "Perfil" && window.__otmProfileReload) window.__otmProfileReload();
-  if (g === "Dashboard" && window.__otmDashboardReload) window.__otmDashboardReload();
-  if (g === "Feedback" && window.__otmFeedbackReload) window.__otmFeedbackReload();
 }
 document.querySelectorAll("#nav a").forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.g); });
 const fromHash = () => { const g = decodeURIComponent(location.hash.slice(1)); go(g || "Painel", false); };
@@ -6930,677 +6577,30 @@ async function refreshMode(){
    conectado. */
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshMode(); });
 
-/* ===== categoria Admin (só para o dono) =====
-   A permissão é confirmada no nativo (key_status), não no localStorage: mexer
-   no HTML não abre a categoria, porque toda chamada admin_* é recusada lá. */
-(function initAdmin(){
-  const nav = document.getElementById("navAdmin");
-  const listEl = document.getElementById("admList");
-  const auditEl = document.getElementById("admAudit");
-  const fbListEl = document.getElementById("admFbList");
-  if (!nav || !listEl) return;
-
-  const esc = s => String(s == null ? "" : s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  /** Rótulo da chave com começo e fim: usa o `mask` do nativo, ou monta do prefixo+fim. */
-  const keyLabel = k => k.mask || ((k.prefix || "—") + "-····-" + (k.tail || "····"));
-  const call = (kind, payload) => new Promise(resolve => {
-    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
-    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
-  });
-  const fmtDt = s => { if (!s) return "—"; const d = new Date(String(s).replace(" ", "T") + "Z");
-    return isNaN(d) ? s : d.toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); };
-  const STATUS = { active:["ativa","var(--teal)"], scheduled:["agendada","var(--warn)"],
-    expired:["expirada","var(--muted)"], revoked:["revogada","var(--danger)"], exhausted:["esgotada","var(--danger)"] };
-  const PAPEL = { owner:["dono","dono"], admin:["admin","admin"], user:["usuário","user"] };
-
-  function item(k){
-    const st = STATUS[k.status] || [k.status, "var(--muted)"];
-    const [papel, cls] = PAPEL[k.role] || [k.role, "user"];
-    const meu = !!k.mine;
-    const dev = k.maxDevices > 0 ? (k.devices + "/" + k.maxDevices) : (k.devices + "/∞");
-    const ativa = k.status === "active" || k.status === "scheduled";
-    return '<div class="adm-item">'
-      + '<div class="top"><span class="adm-key">' + esc(keyLabel(k)) + "</span>"
-      +   '<span class="adm-badge ' + cls + '">' + esc(papel) + (k.mine ? " · você" : "") + "</span></div>"
-      + '<div class="nm">' + esc(k.label || "sem nome") + "</div>"
-      + '<div class="meta"><span class="adm-st" style="color:' + st[1] + '">' + esc(st[0]) + "</span>"
-      +   " · aparelhos " + esc(dev) + " · usos " + esc(k.uses) + (k.maxUses > 0 ? "/" + esc(k.maxUses) : "")
-      +   " · expira " + esc(k.expiresAt ? fmtDt(k.expiresAt) : "nunca") + "</div>"
-      + '<div class="acts">'
-      + '<button class="btn primary" data-adm-edit="' + k.id + '">Editar</button>'
-      + '<button class="btn" data-adm-reveal="' + k.id + '"' + (k.sealed ? "" : " disabled") + ">Ver chave</button>"
-      + (meu ? "" :
-          '<button class="btn" data-adm-toggle="' + k.id + '" data-adm-active="' + (ativa ? "0" : "1") + '">' + (ativa ? "Desativar" : "Reativar") + "</button>"
-          + '<button class="btn" data-adm-del="' + k.id + '">Excluir</button>')
-      + "</div></div>";
-  }
-
-  // ---- estado da tela (busca, filtro e cache da última lista) ----
-  let KEYS = [], FILTER = "all", SEARCH = "";
-
-  const CHIPS = [["all","todas"],["active","ativas"],["scheduled","agendadas"],
-    ["expired","expiradas"],["revoked","revogadas"],["exhausted","esgotadas"]];
-
-  function renderChips(summary, total){
-    const el = document.getElementById("admChips");
-    if (!el) return;
-    const s = summary || {};
-    const n = { all: total || 0 };
-    CHIPS.forEach(c => { if (c[0] !== "all") n[c[0]] = s[c[0]] || 0; });
-    el.innerHTML = CHIPS.map(c =>
-      '<button type="button" class="adm-chip' + (FILTER === c[0] ? " on" : "") + '" data-adm-filter="' + c[0] + '">'
-      + esc(c[1]) + ' <b>' + n[c[0]] + "</b></button>").join("");
-    el.querySelectorAll("[data-adm-filter]").forEach(b => b.onclick = () => {
-      FILTER = b.dataset.admFilter; drawList();
-    });
-  }
-
-  function drawList(){
-    const q = SEARCH.trim().toLowerCase();
-    const rows = KEYS.filter(k => {
-      if (FILTER !== "all" && k.status !== FILTER) return false;
-      if (!q) return true;
-      return (String(k.label || "") + " " + String(k.prefix || "") + " " + String(k.tail || "")
-        + " " + String(k.mask || "")).toLowerCase().indexOf(q) >= 0;
-    });
-    listEl.innerHTML = rows.length ? rows.map(item).join("")
-      : '<p class="adm-empty">' + (KEYS.length ? "Nada bate com esse filtro." : "Nenhuma chave ainda. Crie a primeira acima.") + "</p>";
-    wireRows();
-  }
-
-  function wireRows(){
-    listEl.querySelectorAll("[data-adm-edit]").forEach(b => b.onclick = () => openEdit(+b.dataset.admEdit));
-    listEl.querySelectorAll("[data-adm-reveal]").forEach(b => b.onclick = async () => {
-      b.disabled = true; b.textContent = "…";
-      const r = await call("admin_reveal", { id: +b.dataset.admReveal });
-      b.disabled = false; b.textContent = "Ver chave";
-      if (r && r.ok) { copyOrShow(r.key); } else { toast((r && r.error) || "não deu para abrir", "bad"); }
-    });
-    listEl.querySelectorAll("[data-adm-toggle]").forEach(b => b.onclick = async () => {
-      b.disabled = true;
-      await call("admin_toggle", { id: +b.dataset.admToggle, active: b.dataset.admActive === "1" });
-      refresh();
-    });
-    listEl.querySelectorAll("[data-adm-del]").forEach(b => b.onclick = async () => {
-      if (!confirm("Excluir esta chave? Não tem como voltar.")) return;
-      b.disabled = true;
-      await call("admin_delete", { id: +b.dataset.admDel });
-      refresh();
-    });
-  }
-
-  async function copyOrShow(chave){
-    if (confirm("Chave:\n\n" + chave + "\n\nCopiar para a área de transferência?")) {
-      try { await navigator.clipboard.writeText(chave); toast("Chave copiada", "ok"); return; }
-      catch (e) { toast("Não consegui copiar", "bad"); }
-    }
-  }
-
-  async function refresh(){
-    const r = await call("admin_list");
-    if (!r || !r.ok) { listEl.innerHTML = '<p class="adm-empty">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
-    KEYS = r.keys || [];
-    const ativas = KEYS.filter(k => k.status === "active" || k.status === "scheduled").length;
-    const devs = KEYS.reduce((n, k) => n + (+k.devices || 0), 0);
-    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    set("admKeys", KEYS.length); set("admActive", ativas); set("admDevs", devs);
-    renderChips(r.summary, r.total);
-    drawList();
-  }
-
-  async function refreshAudit(){
-    const r = await call("admin_audit");
-    if (!r || !r.ok) { auditEl.innerHTML = '<p class="adm-empty">—</p>'; return; }
-    const ev = r.events || [];
-    auditEl.innerHTML = ev.length ? ev.map(e =>
-      '<div class="adm-ev' + (e.result === "ok" ? "" : " no") + '">'
-      + '<span class="pfx">' + esc(e.prefix) + "</span>"
-      + '<span class="res">' + esc(e.result) + (e.detail ? " — " + esc(e.detail) : "")
-      +   (e.model ? ' <span style="color:var(--muted)">· ' + esc(e.model) + "</span>" : "") + "</span>"
-      + '<span class="when">' + esc(fmtDt(e.at)) + "</span></div>"
-    ).join("") : '<p class="adm-empty">Sem eventos ainda.</p>';
-  }
-
-  // ---- recados (feedback) ----
-  let FB_FILTER = "todos";
-  const FB_CHIPS = [["todos","todos"],["novo","novos"],["lido","lidos"],
-    ["resolvido","resolvidos"],["arquivado","arquivados"]];
-  const KINDNAME = { sugestao:"sugestão", problema:"problema", elogio:"elogio", duvida:"dúvida", outro:"outro" };
-  const FBSTATUS = { novo:["novo","var(--accent)"], lido:["lido","var(--warn)"],
-    resolvido:["resolvido","var(--teal)"], arquivado:["arquivado","var(--muted)"] };
-
-  function renderFbChips(novo){
-    const el = document.getElementById("admFbChips");
-    if (!el) return;
-    el.innerHTML = FB_CHIPS.map(c =>
-      '<button type="button" class="adm-chip' + (FB_FILTER === c[0] ? " on" : "") + '" data-fb-filter="' + c[0] + '">'
-      + esc(c[1]) + (c[0] === "novo" && novo ? " <b>" + novo + "</b>" : "") + "</button>").join("");
-    el.querySelectorAll("[data-fb-filter]").forEach(b => b.onclick = () => {
-      FB_FILTER = b.dataset.fbFilter; refreshFeedback();
-    });
-  }
-
-  function fbItem(f){
-    const [stName, stColor] = FBSTATUS[f.status] || [f.status, "var(--muted)"];
-    return '<div class="fb-item">'
-      + '<div class="top">'
-      +   '<span class="fb-kind ' + esc(f.kind) + '">' + esc(KINDNAME[f.kind] || f.kind) + "</span>"
-      +   '<span class="adm-st" style="color:' + stColor + ';font-size:11.5px">' + esc(stName) + "</span></div>"
-      + '<div class="msg">' + esc(f.message) + "</div>"
-      + '<div class="meta">' + esc(f.author || "sem nome") + " · " + esc(f.mask || "—")
-      +   (f.model ? " · " + esc(f.model) : "") + (f.app ? " · v" + esc(f.app) : "")
-      +   (f.contact ? " · contato: " + esc(f.contact) : "") + " · " + esc(fmtDt(f.at)) + "</div>"
-      + (f.reply ? '<div class="fb-reply"><b>Resposta:</b> ' + esc(f.reply) + "</div>" : "")
-      + '<div class="acts">'
-      + (f.status !== "lido" ? '<button class="btn" data-fb-set="lido" data-fb-id="' + f.id + '">Marcar lido</button>' : "")
-      + (f.status !== "resolvido" ? '<button class="btn primary" data-fb-set="resolvido" data-fb-id="' + f.id + '">Resolvido</button>' : "")
-      + '<button class="btn" data-fb-reply="' + f.id + '">Responder</button>'
-      + '<button class="btn" data-fb-del="' + f.id + '">Excluir</button>'
-      + "</div></div>";
-  }
-
-  async function refreshFeedback(){
-    if (!fbListEl) return;
-    const r = await call("feedback_list", FB_FILTER === "todos" ? "" : FB_FILTER);
-    if (!r || !r.ok) { fbListEl.innerHTML = '<p class="adm-empty">' + esc((r && r.error) || "não deu para carregar") + "</p>"; return; }
-    const rows = r.feedback || [];
-    renderFbChips(r.novo);
-    const cnt = document.getElementById("navAdminCount");
-    if (cnt) { if (r.novo > 0) { cnt.hidden = false; cnt.textContent = r.novo; } else { cnt.hidden = true; } }
-    fbListEl.innerHTML = rows.length ? rows.map(fbItem).join("")
-      : '<p class="adm-empty">Nenhum recado' + (FB_FILTER === "todos" ? " ainda." : " nesse filtro.") + "</p>";
-    wireFeedback();
-  }
-
-  function wireFeedback(){
-    fbListEl.querySelectorAll("[data-fb-set]").forEach(b => b.onclick = async () => {
-      b.disabled = true;
-      await call("feedback_update", { id: +b.dataset.fbId, status: b.dataset.fbSet });
-      refreshFeedback();
-    });
-    fbListEl.querySelectorAll("[data-fb-reply]").forEach(b => b.onclick = async () => {
-      const txt = prompt("Resposta (fica no histórico; o usuário vê na aba Feedback dele):");
-      if (txt == null) return;
-      b.disabled = true;
-      await call("feedback_update", { id: +b.dataset.fbReply, status: "resolvido", reply: txt.trim() });
-      refreshFeedback();
-    });
-    fbListEl.querySelectorAll("[data-fb-del]").forEach(b => b.onclick = async () => {
-      if (!confirm("Excluir este recado?")) return;
-      b.disabled = true;
-      await call("feedback_delete", { id: +b.dataset.fbDel });
-      refreshFeedback();
-    });
-  }
-
-  document.getElementById("admFbRefresh").onclick = refreshFeedback;
-
-  // ---- edição de uma chave (modal) ----
-  let EDIT_ID = 0;
-
-  function deviceRow(d){
-    const nome = d.model || "aparelho";
-    const sub = [d.android ? "Android " + d.android : "", d.app || "",
-      d.lastSeen ? "visto " + fmtDt(d.lastSeen) : ""].filter(Boolean).join(" · ");
-    return '<div class="adm-dev' + (d.blocked ? " off" : "") + '">'
-      + '<div class="m"><b>' + esc(nome) + "</b><span>" + esc(sub) + "</span></div>"
-      + '<div class="acts">'
-      + '<button class="btn" data-dev-block="' + d.id + '" data-dev-on="' + (d.blocked ? "0" : "1") + '">'
-      + (d.blocked ? "Liberar" : "Bloquear") + "</button>"
-      + '<button class="btn" data-dev-del="' + d.id + '">Remover</button>'
-      + "</div></div>";
-  }
-
-  async function openEdit(id){
-    EDIT_ID = id;
-    const r = await call("admin_detail", { id });
-    if (!r || !r.ok) { toast((r && r.error) || "não deu para abrir", "bad"); return; }
-    const k = r.key || {};
-    const g = (i) => document.getElementById(i);
-    g("admTitle").textContent = "Editar chave";
-    g("admTitleSub").textContent = keyLabel(k) + " · " + (k.label || "sem nome");
-    g("edLabel").value = k.label || "";
-    g("edRole").value = k.role || "user";
-    // A própria chave não pode ser rebaixada: você se trancaria fora do Admin.
-    g("edRole").disabled = !!k.mine;
-    g("edDays").value = "";
-    g("edDays").placeholder = k.expiresAt ? "atual: " + fmtDt(k.expiresAt) : "nunca expira";
-    g("edExtend").value = "0";
-    g("edDevices").value = k.maxDevices || 0;
-    g("edUses").value = k.maxUses || 0;
-    g("edContact").value = k.ownerContact || "";
-    g("edNote").value = k.note || "";
-    g("edKeyVal").textContent = keyLabel(k);
-    g("edReveal").disabled = !k.sealed;
-    g("edKeyBox").dataset.key = "";
-    const dl = g("edDevicesList");
-    const devs = r.devices || [];
-    dl.innerHTML = devs.length ? devs.map(deviceRow).join("")
-      : '<p class="adm-empty">Nenhum aparelho usou esta chave ainda.</p>';
-    dl.querySelectorAll("[data-dev-block]").forEach(b => b.onclick = async () => {
-      b.disabled = true;
-      await call("admin_device", { deviceId: +b.dataset.devBlock,
-        action: b.dataset.devOn === "1" ? "block" : "unblock" });
-      openEdit(EDIT_ID);
-    });
-    dl.querySelectorAll("[data-dev-del]").forEach(b => b.onclick = async () => {
-      if (!confirm("Remover este aparelho? Ele vai poder entrar de novo em outro.")) return;
-      b.disabled = true;
-      await call("admin_device", { deviceId: +b.dataset.devDel, action: "remove" });
-      openEdit(EDIT_ID);
-    });
-    document.getElementById("admMask").classList.add("open");
-  }
-
-  document.getElementById("edReveal").onclick = async () => {
-    const btn = document.getElementById("edReveal");
-    const box = document.getElementById("edKeyBox");
-    if (box.dataset.key) { copyOrShow(box.dataset.key); return; }
-    btn.disabled = true; btn.textContent = "…";
-    const r = await call("admin_reveal", { id: EDIT_ID });
-    btn.disabled = false; btn.textContent = "Mostrar";
-    if (r && r.ok) {
-      box.dataset.key = r.key;
-      document.getElementById("edKeyVal").textContent = r.key;
-    } else { toast((r && r.error) || "não deu para abrir", "bad"); }
-  };
-  document.getElementById("edCopy").onclick = async () => {
-    const key = document.getElementById("edKeyBox").dataset.key;
-    if (!key) { toast("Toque em Mostrar primeiro", "bad"); return; }
-    try { await navigator.clipboard.writeText(key); toast("Chave copiada", "ok"); }
-    catch (e) { toast("Não consegui copiar", "bad"); }
-  };
-  document.getElementById("edSend").onclick = async () => {
-    const key = document.getElementById("edKeyBox").dataset.key;
-    if (!key) { toast("Toque em Mostrar primeiro", "bad"); return; }
-    const txt = "Sua chave do Trix: " + key + "\n\nAbra o app, cole a chave e entre.";
-    if (navigator.share) { try { await navigator.share({ text: txt, title: "Chave do Trix" }); return; } catch (e) {} }
-    try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
-    catch (e) { toast("Não consegui copiar", "bad"); }
-  };
-  document.getElementById("edClose").onclick = () => document.getElementById("admMask").classList.remove("open");
-  document.getElementById("admMask").onclick = e => { if (e.target.id === "admMask") e.currentTarget.classList.remove("open"); };
-  document.getElementById("edSave").onclick = async () => {
-    const btn = document.getElementById("edSave");
-    const patch = { id: EDIT_ID };
-    const g = (i) => document.getElementById(i);
-    patch.label = g("edLabel").value.trim();
-    patch.role = g("edRole").value;
-    patch.maxDevices = +g("edDevices").value || 0;
-    patch.maxUses = +g("edUses").value || 0;
-    patch.ownerContact = g("edContact").value.trim();
-    patch.note = g("edNote").value.trim();
-    const daysRaw = g("edDays").value;
-    if (daysRaw !== "") patch.days = +daysRaw || 0;
-    const ext = +g("edExtend").value || 0;
-    if (ext > 0) patch.extendDays = ext;
-    btn.disabled = true; btn.textContent = "Salvando…";
-    const r = await call("admin_update", patch);
-    btn.disabled = false; btn.textContent = "Salvar";
-    if (r && r.ok) {
-      toast("Chave atualizada", "ok");
-      document.getElementById("admMask").classList.remove("open");
-      refresh();
-    } else { toast((r && r.error) || "não deu para salvar", "bad"); }
-  };
-
-  async function loadPlans(){
-    const box = document.getElementById("admPlans");
-    if (!box) return;
-    const r = await call("admin_plans");
-    const plans = (r && r.plans) || [];
-    if (!plans.length) { box.innerHTML = ""; return; }
-    box.innerHTML = '<span style="align-self:center;color:var(--muted);font-size:12px">plano:</span>'
-      + plans.map(p => '<button type="button" class="adm-plan" data-plan="' + p.id + '"><b>' + esc(p.name || p.slug)
-        + "</b><span>" + (p.days > 0 ? p.days + " dias" : "vitalício") + " · "
-        + (p.devices > 0 ? p.devices + " aparelho(s)" : "ilimitado") + "</span></button>").join("");
-    box.querySelectorAll("[data-plan]").forEach(b => b.onclick = () => {
-      const p = plans.find(x => String(x.id) === b.dataset.plan);
-      if (!p) return;
-      document.getElementById("admDays").value = p.days || 0;
-      document.getElementById("admDevices").value = p.devices || 0;
-      document.getElementById("admUses").value = p.uses || 0;
-      toast("Plano " + (p.name || p.slug) + " aplicado", "ok");
-    });
-  }
-
-  document.getElementById("admCreate").onclick = async () => {
-    const btn = document.getElementById("admCreate");
-    const label = document.getElementById("admName").value.trim();
-    const days = +document.getElementById("admDays").value || 0;
-    const devices = +document.getElementById("admDevices").value || 0;
-    const uses = +document.getElementById("admUses").value || 0;
-    const role = document.getElementById("admRoleSel").value;
-    const contact = document.getElementById("admContact").value.trim();
-    btn.disabled = true; btn.textContent = "Criando…";
-    const r = await call("admin_create", { label, days, devices, uses, role, contact });
-    btn.disabled = false; btn.textContent = "Criar chave";
-    if (r && r.ok) {
-      const box = document.getElementById("admNewKey");
-      document.getElementById("admNewKeyVal").textContent = r.key;
-      box.hidden = false;
-      document.getElementById("admName").value = "";
-      document.getElementById("admContact").value = "";
-      refresh();
-    } else {
-      alert("Não deu para criar: " + ((r && r.error) || "erro"));
-    }
-  };
-  const novaChave = () => document.getElementById("admNewKeyVal").textContent.trim();
-  document.getElementById("admCopy").onclick = async () => {
-    try { await navigator.clipboard.writeText(novaChave()); toast("Chave copiada", "ok"); }
-    catch (e) { toast("Não consegui copiar", "bad"); }
-  };
-  document.getElementById("admShare").onclick = async () => {
-    const chave = novaChave();
-    const txt = "Sua chave do Trix: " + chave
-      + "\n\nAbra o app, cole a chave e entre. Ela vale para "
-      + (document.getElementById("admDevices").value || "1") + " aparelho(s).";
-    if (navigator.share) {
-      try { await navigator.share({ text: txt, title: "Chave do Trix" }); return; } catch (e) {}
-    }
-    try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
-    catch (e) { toast("Não consegui copiar", "bad"); }
-  };
-  document.getElementById("admRefresh").onclick = () => { refresh(); refreshAudit(); refreshFeedback(); };
-  const searchEl = document.getElementById("admSearch");
-  if (searchEl) searchEl.oninput = () => { SEARCH = searchEl.value || ""; drawList(); };
-  document.getElementById("admLogout").onclick = async () => {
-    await call("key_logout");
-    try { localStorage.removeItem("otm_session"); localStorage.removeItem("otm_role"); localStorage.removeItem("otm_label"); } catch(e){}
-    location.replace("login.html");
-  };
-
-  (async () => {
-    const st = await call("key_status");
-    document.getElementById("admLabel").textContent = (st && st.label) || "—";
-    document.getElementById("admDb").textContent = st && st.db ? "banco conectado" : "banco não configurado";
-    const badge = document.getElementById("admBadge");
-    if (badge) badge.textContent = (st && st.role) || "—";
-    if (st && st.owner) {
-      nav.hidden = false;
-      document.getElementById("admCreate").hidden = !st.db;
-      loadPlans();
-      refresh(); refreshAudit(); refreshFeedback();
-    }
-  })();
-})();
-
-/* ===== categoria Feedback (qualquer usuário logado) =====
-   Manda recado pra equipe e mostra o que já mandou. Não precisa ser dono. */
-(function initFeedback(){
-  const nav = document.getElementById("navFeedback");
-  const sendBtn = document.getElementById("fbSend");
-  const listEl = document.getElementById("fbList");
-  if (!nav || !sendBtn || !listEl) return;
-
-  const call = (kind, payload) => new Promise(resolve => {
-    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
-    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
-  });
-  const esc = s => String(s == null ? "" : s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  const fmtDt = s => { if (!s) return "—"; const d = new Date(String(s).replace(" ", "T") + "Z");
-    return isNaN(d) ? s : d.toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); };
-
-  const KINDS = [["sugestao","sugestão"],["problema","problema"],["elogio","elogio"],["duvida","dúvida"],["outro","outro"]];
-  const KINDNAME = Object.fromEntries(KINDS);
-  const FBSTATUS = { novo:["novo","var(--accent)"], lido:["lido","var(--warn)"],
-    resolvido:["resolvido","var(--teal)"], arquivado:["arquivado","var(--muted)"] };
-  let KIND = "sugestao";
-
-  function drawKinds(){
-    const el = document.getElementById("fbKinds");
-    if (!el) return;
-    el.innerHTML = KINDS.map(k =>
-      '<button type="button" class="adm-chip' + (KIND === k[0] ? " on" : "") + '" data-fb-kind="' + k[0] + '">'
-      + esc(k[1]) + "</button>").join("");
-    el.querySelectorAll("[data-fb-kind]").forEach(b => b.onclick = () => { KIND = b.dataset.fbKind; drawKinds(); });
-  }
-
-  function item(f){
-    const [stName, stColor] = FBSTATUS[f.status] || [f.status, "var(--muted)"];
-    return '<div class="fb-item">'
-      + '<div class="top"><span class="fb-kind ' + esc(f.kind) + '">' + esc(KINDNAME[f.kind] || f.kind) + "</span>"
-      +   '<span class="adm-st" style="color:' + stColor + ';font-size:11.5px">' + esc(stName) + "</span></div>"
-      + '<div class="msg">' + esc(f.message) + "</div>"
-      + (f.reply ? '<div class="fb-reply"><b>Resposta:</b> ' + esc(f.reply) + "</div>" : "")
-      + '<div class="meta">' + esc(f.at ? fmtDt(f.at) : "") + "</div></div>";
-  }
-
-  async function load(){
-    const r = await call("feedback_mine");
-    const rows = (r && r.feedback) || [];
-    listEl.innerHTML = rows.length ? rows.map(item).join("")
-      : '<p class="adm-empty">Você ainda não mandou nada. Escreve aí em cima.</p>';
-  }
-
-  sendBtn.onclick = async () => {
-    const msg = document.getElementById("fbMsg").value.trim();
-    const status = document.getElementById("fbStatus");
-    if (msg.length < 3) { status.textContent = "Escreve um pouco mais."; status.style.color = "var(--danger)"; return; }
-    sendBtn.disabled = true; sendBtn.textContent = "Enviando…";
-    const r = await call("feedback_send", { kind: KIND, message: msg,
-      contact: document.getElementById("fbContact").value.trim() });
-    sendBtn.disabled = false; sendBtn.textContent = "Enviar";
-    if (r && r.ok) {
-      document.getElementById("fbMsg").value = "";
-      status.textContent = "Recebido! Obrigado pelo recado.";
-      status.style.color = "var(--teal)";
-      if (window.toast) toast("Feedback enviado", "ok");
-      load();
-    } else {
-      status.textContent = (r && r.error) || "não deu para enviar";
-      status.style.color = "var(--danger)";
-    }
-  };
-  document.getElementById("fbRefresh").onclick = load;
-
-  (async () => {
-    const st = await call("key_status");
-    if (st && st.logged) { nav.hidden = false; drawKinds(); load(); }
-  })();
-  window.__otmFeedbackReload = load;
-})();
-
-/* ===== categoria Dashboard (só para o dono) ===== */
-(function initDashboard(){
-  const nav = document.getElementById("navDash");
-  if (!nav) return;
-  const call = (kind, payload) => new Promise(resolve => {
-    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
-    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
-  });
-  const esc = s => String(s == null ? "" : s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  const fmtNum = n => Number(n || 0).toLocaleString("pt-BR");
-
-  function bars(el, rows){
-    if (!el) return;
-    const max = rows.reduce((m, r) => Math.max(m, r[1]), 0) || 1;
-    el.innerHTML = rows.map(r =>
-      '<div class="dash-bar"><span class="lbl">' + esc(r[0]) + "</span>"
-      + '<span class="trk"><span class="fill" style="width:' + Math.round(100 * r[1] / max) + "%;background:" + (r[2] || "var(--accent)") + '"></span></span>'
-      + '<span class="n">' + fmtNum(r[1]) + "</span></div>").join("");
-  }
-
-  async function load(){
-    const d = await call("admin_dashboard");
-    if (!d || !d.ok) return;
-    set("dTotal", fmtNum(d.total));
-    set("dActive", fmtNum(d.summary && d.summary.active));
-    set("dDevices", fmtNum(d.devices));
-    set("dUses", fmtNum(d.uses));
-    set("dOkDay", fmtNum(d.okDay));
-    set("dOkWeek", fmtNum(d.okWeek));
-    set("dFailWeek", fmtNum(d.failWeek));
-    set("dNewWeek", fmtNum(d.newKeysWeek));
-    set("dFbNew", fmtNum(d.feedbackNew));
-
-    const daily = d.daily || [];
-    const maxDay = daily.reduce((m, x) => Math.max(m, x.ok || 0), 0) || 1;
-    const chart = document.getElementById("dashChart");
-    if (chart) {
-      chart.innerHTML = daily.map(x => {
-        const h = Math.max(3, Math.round(96 * (x.ok || 0) / maxDay));
-        const lbl = String(x.day || "").slice(5);
-        return '<div class="dash-col"><span class="v">' + (x.ok || 0) + '</span>'
-          + '<span class="bar" style="height:' + h + 'px"></span>'
-          + '<span class="d">' + esc(lbl) + "</span></div>";
-      }).join("");
-    }
-
-    const s = d.summary || {};
-    bars(document.getElementById("dashStatus"), [
-      ["ativas", s.active || 0, "var(--teal)"],
-      ["agendadas", s.scheduled || 0, "var(--warn)"],
-      ["expiradas", s.expired || 0, "var(--muted)"],
-      ["esgotadas", s.exhausted || 0, "var(--danger)"],
-      ["revogadas", s.revoked || 0, "var(--danger)"],
-    ]);
-    const rl = d.roles || {};
-    bars(document.getElementById("dashRoles"), [
-      ["donos", rl.owner || 0, "var(--teal)"],
-      ["admins", rl.admin || 0, "var(--warn)"],
-      ["usuários", rl.user || 0, "var(--accent)"],
-    ]);
-    const pl = (d.plans || []).map(p => [p.name, p.count]);
-    bars(document.getElementById("dashPlans"), pl.length ? pl : [["sem planos", 0]]);
-  }
-
-  document.getElementById("dashRefresh").onclick = load;
-  (async () => {
-    const st = await call("key_status");
-    if (st && st.owner) { nav.hidden = false; load(); }
-  })();
-  window.__otmDashboardReload = load;
-})();
-
-/* ===== categoria Perfil =====
-   Mostra quem está logado usando a chave da sessão (não a lista de admin).
-   O apelido é só deste aparelho; a chave completa só abre se for a sua. */
-(function initProfile(){
-  const nav = document.getElementById("navPerfil");
-  if (!nav) return;
-  const call = (kind, payload) => new Promise(resolve => {
-    if (!window.__otm) { resolve({ok:false, error:"sem ponte"}); return; }
-    window.__otm(kind, payload ? JSON.stringify(payload) : "").then(r => r.json()).then(resolve).catch(() => resolve({ok:false}));
-  });
-  const fmtDt = s => { if (!s) return "—"; const d = new Date(String(s).replace(" ", "T") + "Z");
-    return isNaN(d) ? s : d.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit",year:"numeric"}); };
-  const PAPEL = { owner:["Dono","dono"], admin:["Administrador","admin"], user:["Usuário","user"] };
-  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-
-  let ME = {}, NICK = "";
-
-  function paint(){
-    const [papel, cls] = PAPEL[ME.role] || [ME.role || "—", "user"];
-    const nome = NICK || ME.label || "Sem apelido";
-    set("pfName", nome);
-    set("pfRole", (ME.label ? "chave: " + ME.label + " · " : "") + papel);
-    const av = document.getElementById("pfAvatar");
-    if (av) av.textContent = (nome.trim()[0] || "?").toUpperCase();
-    const badge = document.getElementById("pfBadge");
-    if (badge) { badge.textContent = papel; badge.className = "adm-badge " + cls; }
-    set("pfRowRole", papel);
-    set("pfRowPrefix", ME.mask || (ME.prefix ? ME.prefix + "-····-····" : "—"));
-    set("pfRowExp", ME.expiresAt ? fmtDt(ME.expiresAt) : "nunca");
-    set("pfRowDev", ME.maxDevices > 0 ? (ME.devices + "/" + ME.maxDevices) : (ME.devices + "/∞"));
-    set("pfRowDb", ME.db ? "conectado" : "não configurado");
-    const hint = document.getElementById("pfKeyHint");
-    const box = document.getElementById("pfKeyBox");
-    const rev = document.getElementById("pfReveal");
-    if (!ME.sealed) {
-      if (hint) hint.textContent = "Esta chave foi criada antes do cofre: só o prefixo ficou guardado.";
-      if (rev) rev.disabled = true;
-    } else if (hint) {
-      hint.textContent = "Toque em Mostrar para ver a chave completa e poder copiar.";
-      if (rev) rev.disabled = false;
-    }
-    const nick = document.getElementById("pfNick");
-    if (nick && document.activeElement !== nick) nick.value = NICK;
-    const goAdm = document.getElementById("pfGoAdmin");
-    if (goAdm) goAdm.hidden = !ME.owner;
-    const goDash = document.getElementById("pfGoDash");
-    if (goDash) goDash.hidden = !ME.owner;
-    if (box) box.hidden = true;
-  }
-
-  async function load(){
-    const st = await call("key_status");
-    const nick = await call("nick");
-    NICK = (nick && nick.nick) || "";
-    const me = await call("me");
-    if (!me || !me.ok) {
-      // sem banco/sem sessão ainda mostramos o que dá
-      ME = { role: (st && st.role) || "", owner: !!(st && st.owner), label: (st && st.label) || "",
-        prefix: (st && st.prefix) || "", expiresAt: (st && st.expires_at) || "", db: !!(st && st.db) };
-    } else { ME = me; }
-    paint();
-  }
-
-  document.getElementById("pfSaveNick").onclick = async () => {
-    const v = document.getElementById("pfNick").value.trim();
-    await call("nick", { nick: v });
-    NICK = v;
-    toast("Apelido salvo", "ok");
-    paint();
-  };
-  document.getElementById("pfReveal").onclick = async () => {
-    const btn = document.getElementById("pfReveal");
-    const box = document.getElementById("pfKeyBox");
-    btn.disabled = true; btn.textContent = "…";
-    const r = await call("my_key");
-    btn.disabled = false; btn.textContent = "Mostrar";
-    if (r && r.ok) {
-      document.getElementById("pfKeyVal").textContent = r.key;
-      box.hidden = false;
-    } else { toast((r && r.error) || "não deu para abrir", "bad"); }
-  };
-  const myKey = () => document.getElementById("pfKeyVal").textContent.trim();
-  document.getElementById("pfCopy").onclick = async () => {
-    try { await navigator.clipboard.writeText(myKey()); toast("Chave copiada", "ok"); }
-    catch (e) { toast("Não consegui copiar", "bad"); }
-  };
-  document.getElementById("pfSend").onclick = async () => {
-    const txt = "Minha chave do Trix: " + myKey();
-    if (navigator.share) { try { await navigator.share({ text: txt, title: "Chave do Trix" }); return; } catch (e) {} }
-    try { await navigator.clipboard.writeText(txt); toast("Mensagem copiada", "ok"); }
-    catch (e) { toast("Não consegui copiar", "bad"); }
-  };
-  document.getElementById("pfGoConfigs").onclick = () => { syncGear(); document.getElementById("gearMask").classList.add("open"); };
-  document.getElementById("pfGoFeedback").onclick = () => go("Feedback");
-  document.getElementById("pfGoDash").onclick = () => go("Dashboard");
-  document.getElementById("pfGoAdmin").onclick = () => go("Admin");
-  document.getElementById("pfLogout").onclick = async () => {
-    if (!confirm("Sair da conta neste aparelho?")) return;
-    await call("key_logout");
-    try { localStorage.removeItem("otm_session"); localStorage.removeItem("otm_role"); localStorage.removeItem("otm_label"); } catch(e){}
-    location.replace("login.html");
-  };
-
-  addEventListener("hashchange", () => { if (decodeURIComponent(location.hash.slice(1)) === "Perfil") load(); });
-  if (decodeURIComponent(location.hash.slice(1)) === "Perfil") load();
-  window.__otmProfileReload = load;
-})();
-
-/* ===== confirmação da sessão no nativo =====
-   A bandeira "otm_session" é do localStorage: um app antigo pode ter deixado
-   ela lá, e nesse caso o painel abria sem pedir chave nenhuma. Aqui a sessão é
-   confirmada com o nativo (que guarda o papel de quem entrou); se não houver
-   chave válida no aparelho, volta para o login. */
+/* ===== sessão local: confirma com o nativo e, sem sessão, volta pro login ===== */
 (function confirmarSessao(){
   const irParaLogin = () => { try { localStorage.removeItem("otm_session"); } catch(e){} location.replace("login.html"); };
   if (!window.__otm) { irParaLogin(); return; }
   let pronto = false;
   const espera = setTimeout(() => { if (!pronto) irParaLogin(); }, 4000);
-  window.__otm("key_status", "").then(r => r.json()).then(st => {
+  window.__otm("app_status", "").then(r => r.json()).then(st => {
     pronto = true; clearTimeout(espera);
     if (!st || !st.logged) { irParaLogin(); return; }
-    try { localStorage.setItem("otm_role", st.role || "user"); localStorage.setItem("otm_label", st.label || ""); } catch(e){}
+    // logado: se ainda não aceitou os termos, manda pra tela de termos.
+    if (!st.terms && !localStorage.getItem("otm_terms")) { location.replace("termos.html"); return; }
   }).catch(() => { pronto = true; clearTimeout(espera); irParaLogin(); });
+})();
+
+/* ===== Créditos: sair da conta ===== */
+(function initCreditos(){
+  const b = document.getElementById("credLogout");
+  if (!b) return;
+  b.addEventListener("click", () => {
+    if (!confirm("Sair da conta neste aparelho?")) return;
+    try { window.__otm("app_logout", ""); } catch(e){}
+    try { localStorage.removeItem("otm_session"); localStorage.removeItem("otm_user"); localStorage.removeItem("otm_terms"); } catch(e){}
+    location.replace("login.html");
+  });
 })();
 
 fromHash();

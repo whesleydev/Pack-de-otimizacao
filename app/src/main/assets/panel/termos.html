@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Termos de uso — Trix</title>
+<style>
+:root{ --paper:#f3efe7; --ink:#1a1713; --muted:#6b655b; --line:rgba(120,110,95,.22); --line-strong:rgba(120,110,95,.34);
+  --accent:#8d939e; --accent-ink:#fff; --danger:#bc332a; --warn:#a86a12;
+  --glass:rgba(255,255,255,.6); --glass-2:rgba(255,255,255,.34);
+  --blur:saturate(150%) blur(18px); --ring:rgba(141,147,158,.35);
+  --shadow:0 1px 2px rgba(25,22,18,.06),0 14px 34px -18px rgba(25,22,18,.35); --r:18px; --r-sm:11px;
+  --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif; }
+@media (prefers-color-scheme: dark){ :root{ --paper:#0d0c0a; --ink:#f3efe7; --muted:#a49d90;
+  --line:rgba(255,255,255,.12); --line-strong:rgba(255,255,255,.2); --accent:#c7ccd6; --accent-ink:#14161a;
+  --danger:#ff6b5e; --warn:#e0a94a; --glass:rgba(30,28,24,.55); --glass-2:rgba(30,28,24,.34);
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 16px 40px -20px rgba(0,0,0,.8); } }
+@keyframes otmRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes otmFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+html::before{content:"";position:fixed;inset:0;z-index:-3;background:url('assets/wallpaper.jpeg') center/cover no-repeat}
+body{ font-family:var(--font); color:var(--ink); line-height:1.6; min-height:100dvh;
+  display:grid; place-items:start center; padding:22px; background:var(--paper); overflow-x:clip; }
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--paper);opacity:.72}
+.wrap{width:100%; max-width:600px; margin:auto; animation:otmRise .5s cubic-bezier(.2,.7,.3,1) both}
+.brand{display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:16px; text-align:center}
+.mark{width:54px; height:54px; border-radius:16px; display:grid; place-items:center;
+  background:var(--accent); color:var(--accent-ink); font-weight:800; font-size:19px; box-shadow:var(--shadow)}
+.brand h1{margin:0; font-size:20px; font-weight:800; letter-spacing:-.02em}
+.brand p{margin:0; color:var(--muted); font-size:13px}
+.card{ background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--line); border-radius:var(--r); padding:22px; box-shadow:var(--shadow); }
+h2{margin:0 0 4px; font-size:17px; font-weight:800; letter-spacing:-.01em}
+.sub{margin:0 0 16px; color:var(--muted); font-size:12.5px}
+h3{margin:18px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:800}
+p{margin:0 0 10px; font-size:14px}
+ul{margin:0 0 10px; padding-left:20px; font-size:14px}
+li{margin:0 0 6px}
+.alerta{display:flex; gap:10px; align-items:flex-start; margin:0 0 14px; padding:12px 14px; font-size:13.5px;
+  border:1px solid var(--danger); border-left-width:4px; border-radius:var(--r-sm); background:var(--glass-2)}
+.alerta b{color:var(--danger)}
+.alerta svg{width:18px;height:18px;flex:none;color:var(--danger);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+.cred{display:flex; flex-wrap:wrap; gap:10px; margin:6px 0 0}
+.cred .p{flex:1; min-width:150px; border:1px solid var(--line); border-radius:var(--r-sm); padding:11px 13px; background:var(--glass-2)}
+.cred .p b{display:block; font-size:14px}
+.cred .p span{font-size:12px; color:var(--muted)}
+.aceite{display:flex; gap:10px; align-items:flex-start; margin:18px 0 14px; padding:13px 14px;
+  border:1px solid var(--line-strong); border-radius:var(--r-sm); background:var(--glass-2); font-size:13.5px}
+.aceite input{margin-top:3px; width:18px; height:18px; flex:none; accent-color:var(--accent)}
+.btns{display:grid; gap:10px; grid-template-columns:1fr 1fr}
+.btn{width:100%; border-radius:var(--r-sm); padding:13px 16px; font-size:15px; font-weight:800; cursor:pointer;
+  font-family:inherit; border:1px solid var(--line-strong); background:var(--glass-2); color:var(--ink); transition:.15s}
+.btn:hover{transform:translateY(-1px)}
+.btn.primary{border-color:var(--accent); background:var(--accent); color:var(--accent-ink)}
+.btn.ghost{color:var(--muted)}
+.btn[disabled]{opacity:.5; pointer-events:none}
+a{color:var(--ink)}
+.foot{margin-top:14px; text-align:center; font-size:11.5px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="mark" aria-hidden="true">TX</div>
+    <h1>Termos de uso</h1>
+    <p>Leia e aceite para usar o Trix</p>
+  </div>
+  <div class="card">
+    <div class="alerta">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>
+      <div><b>Comprou em outro lugar? Você tomou um golpe.</b><br>
+      O Trix é vendido <b>só</b> no servidor oficial do dono. Qualquer outra venda não é
+      nossa, não dá suporte e não recebe atualizações. O oficial:
+      <a href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener">discord.gg/w9hFBeVKw8</a>.</div>
+    </div>
+
+    <h2>Antes de começar</h2>
+    <p class="sub">Ao marcar "Li e aceito", você concorda com os termos abaixo.</p>
+
+    <h3>Créditos</h3>
+    <div class="cred">
+      <div class="p"><b>00deUdia (WS)</b><span>Desenvolvedor e criador do projeto</span></div>
+      <div class="p"><b>Nezuku</b><span>Testadora oficial</span></div>
+    </div>
+
+    <h3>O que o Trix é</h3>
+    <p>O Trix é um pacote de otimização para Android. Ele ajusta configurações do seu
+    próprio aparelho (desempenho, rede, toque, vídeo) por meio de Shizuku ou ADB por Wi-Fi.
+    Não é root e não modifica o jogo.</p>
+
+    <h3>Uso por sua conta e risco</h3>
+    <ul>
+      <li>Você é o único responsável pelo uso no seu aparelho.</li>
+      <li>Alguns ajustes podem ser agressivos. Sempre faça um <b>backup/snapshot</b> antes.</li>
+      <li>O autor não se responsabiliza por danos, perda de dados ou bloqueios de conta.</li>
+      <li>Respeite os termos dos jogos e das lojas. O uso indevido é por sua conta.</li>
+    </ul>
+
+    <h3>Venda oficial e golpes</h3>
+    <ul>
+      <li>A venda oficial — com suporte, atualizações e o servidor — é feita <b>apenas</b>
+      no servidor oficial do dono.</li>
+      <li>Se você recebeu este app de outra pessoa, de outro servidor ou comprou em
+      qualquer outro lugar, <b>você tomou um golpe</b>. Não temos relação com essa venda.</li>
+      <li>Não revenda, não redistribua e não venda cópias. O oficial é o único com
+      atualização e suporte.</li>
+    </ul>
+
+    <h3>Privacidade</h3>
+    <p>O app funciona no seu aparelho. Esta versão não tem licença, login em servidor nem
+    banco de chaves: nada de dados seus sai do telefone por causa dele.</p>
+
+    <label class="aceite" for="aceito">
+      <input type="checkbox" id="aceito">
+      <span>Li e aceito os termos de uso. Entendi que a venda oficial é só no servidor do
+      dono e que, se comprei em outro lugar, caí num golpe.</span>
+    </label>
+
+    <div class="btns">
+      <button class="btn ghost" id="recusar" type="button">Não aceito</button>
+      <button class="btn primary" id="aceitar" type="button" disabled>Aceitar e entrar</button>
+    </div>
+  </div>
+  <div class="foot">Feito por <b>00deUdia</b> (WS) · Trix</div>
+</div>
+<script>
+const el = id => document.getElementById(id);
+const chk = el("aceito"), bOk = el("aceitar"), bNo = el("recusar");
+
+chk.addEventListener("change", () => { bOk.disabled = !chk.checked; });
+
+function otmCall(kind, payload){
+  return new Promise(resolve => {
+    if (!window.OTM || !window.OTM.call) { resolve({ ok:false }); return; }
+    const cbId = "t" + Date.now() + Math.random().toString(16).slice(2);
+    window.__otmResolve = function(id, jsonStr){
+      if (id !== cbId) return;
+      let j = {}; try { j = JSON.parse(jsonStr); } catch(e){}
+      resolve(j);
+    };
+    try { window.OTM.call(kind, payload || "", cbId); }
+    catch(e){ resolve({ ok:false }); }
+  });
+}
+
+bOk.addEventListener("click", async () => {
+  bOk.disabled = true; bOk.textContent = "Entrando…";
+  await otmCall("terms_accept", "");
+  try { localStorage.setItem("otm_terms", "1"); } catch(e){}
+  location.replace("index.html");
+});
+
+/* Recusou: não entra. Encerra a sessão e volta para o login. */
+bNo.addEventListener("click", async () => {
+  bNo.disabled = true;
+  await otmCall("app_logout", "");
+  try { localStorage.removeItem("otm_session"); localStorage.removeItem("otm_terms"); } catch(e){}
+  location.replace("login.html");
+});
+
+/* Sem sessão (ou sem ponte), volta para o login. */
+(async () => {
+  if (!window.OTM || !window.OTM.call) { location.replace("login.html"); return; }
+  const st = await otmCall("app_status", "");
+  if (!st || !st.logged) location.replace("login.html");
+})();
+</script>
+</body>
+</html>
