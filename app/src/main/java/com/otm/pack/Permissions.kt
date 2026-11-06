@@ -143,44 +143,25 @@ object Permissions {
     }
 
     /**
-     * Pede, uma vez por versão, as permissões do próprio app. Não bloqueia o
-     * painel: se o usuário recusar, ele ainda consegue usar tudo (só perde som,
-     * notificações e a garantia de rodar em segundo plano).
+     * Pede, sob demanda, o acesso a dados de uso (métricas reais da Home). Não
+     * roda mais sozinho no início: o usuário pediu para o app só pedir o
+     * pareamento ao abrir e conceder o resto quando ele quiser, na área de
+     * permissões das Configurações.
      */
-    fun askOnce(activity: AppCompatActivity) {
-        val prefs = activity.getSharedPreferences("otm-perms", Context.MODE_PRIVATE)
-        val done = prefs.getBoolean("asked-${BuildConfig.VERSION_NAME}", false)
-        if (done) return
-
-        if (!hasNotif(activity)) {
-            askNotif(activity)
+    fun askUsage(activity: AppCompatActivity) {
+        if (Usage.granted(activity)) {
+            Usage.openSettings(activity)
+            return
         }
-        if (!ignoringBattery(activity)) {
-            AlertDialog.Builder(activity)
-                .setTitle("Deixar o pack sempre ativo")
-                .setMessage(
-                    "Para as otimizações não pararem sozinhas, libere o app da economia " +
-                        "de bateria. Você também pode fazer isso depois em Configurações."
-                )
-                .setPositiveButton("Liberar") { _, _ -> askBattery(activity) }
-                .setNegativeButton("Agora não", null)
-                .show()
-        }
-        // Acesso ao uso: é o que dá as métricas reais da Home (app em primeiro
-        // plano e tempo de uso). Sem isso a Home ainda funciona pelo shell, só
-        // fica sem esses dois números. O sistema exige que o usuário libere.
-        if (!Usage.granted(activity)) {
-            AlertDialog.Builder(activity)
-                .setTitle("Ver o uso real do aparelho")
-                .setMessage(
-                    "Autorize o Acesso a dados de uso para o painel mostrar qual app está " +
-                        "em primeiro plano e quanto você usou nas últimas 24 h — lido do " +
-                        "próprio sistema. É opcional e pode ser desligado quando quiser."
-                )
-                .setPositiveButton("Autorizar") { _, _ -> Usage.openSettings(activity) }
-                .setNegativeButton("Agora não", null)
-                .show()
-        }
-        prefs.edit().putBoolean("asked-${BuildConfig.VERSION_NAME}", true).apply()
+        AlertDialog.Builder(activity)
+            .setTitle("Ver o uso real do aparelho")
+            .setMessage(
+                "Autorize o Acesso a dados de uso para o painel mostrar qual app está " +
+                    "em primeiro plano e quanto você usou nas últimas 24 h — lido do " +
+                    "próprio sistema. É opcional e pode ser desligado quando quiser."
+            )
+            .setPositiveButton("Autorizar") { _, _ -> Usage.openSettings(activity) }
+            .setNegativeButton("Agora não", null)
+            .show()
     }
 }

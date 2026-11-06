@@ -1510,15 +1510,30 @@ t_perm_game() {
              echo $a ? ($a["argv"][1] . " " . ($a["params"][0]["type"] ?? "")) : "AUSENTE";' \
         > "$TMP/permg" 2>&1
     assert_contains "$TMP/permg" "perm_game pkg" "lib: ação perm.game com escolha de jogo"
-    # a engrenagem tem SÓ o botão do pack; os outros (FF, meu jogo, bateria,
-    # uso) saíram das configs a pedido — a ação em si continua no catálogo.
-    for b in setPermFF setPermGame setPermBattery setPermUsage; do
+    # a engrenagem tem o botão do pack E os pedidos sob demanda (notificação,
+    # bateria, uso): o app não pede nada ao abrir; o usuário libera aqui.
+    for b in setPermNotif setPermBattery setPermUsage; do
+        grep -q "id=\"$b\"" "$ROOT/app/src/main/assets/panel/index.html" \
+            && ok "engrenagem tem o botão $b" || bad "engrenagem sem o botão $b"
+    done
+    # esses botões chamam a ponte nativa "perm" (não o catálogo de scripts)
+    grep -q 'OTM.call("perm"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "engrenagem: permissões do app pela ponte nativa" || bad "permissões sem ponte nativa"
+    grep -q '"perm" ->' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "ponte: comando perm existe" || bad "ponte: comando perm ausente"
+    # e o app NÃO pede nada sozinho ao abrir (só o pareamento)
+    grep -q 'Permissions.askOnce' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
+        && bad "app ainda pede permissões ao abrir" \
+        || ok "app não pede permissões ao abrir (só pareamento)"
+    grep -q 'fun askUsage' "$ROOT/app/src/main/java/com/otm/pack/Permissions.kt" \
+        && ok "app: pedido de uso sob demanda existe" || bad "app: sem pedido de uso sob demanda"
+    # os botões de FF/jogo continuam fora das configs (a ação existe no catálogo)
+    for b in setPermFF setPermGame; do
         if grep -q "id=\"$b\"" "$ROOT/app/src/main/assets/panel/index.html" \
            || grep -q "id=\"$b\"" "$ROOT/web/index.php"; then
             bad "engrenagem ainda tem o botão $b"
         fi
     done
-    ok "engrenagem só com 'Conceder permissões ao pack'"
     grep -q '"perm.game"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: catálogo tem perm.game" || bad "app: catálogo sem perm.game"
     rm -rf "$HOME/.packotm"
@@ -1652,9 +1667,13 @@ t_usage_access() {
         && ok "app: atualizar fica no cabeçalho do painel" || bad "app: atualizar fora do cabeçalho"
     grep -q 'id="usageNeed"' "$app" && grep -q 'precisa do Acesso a dados de uso' "$app" \
         && ok "app: chip avisa que o grupo precisa da permissão" || bad "app: sem chip de aviso do grupo"
-    # o pedido uma vez por versão existe no app
-    grep -q 'Ver o uso real do aparelho' "$ROOT/app/src/main/java/com/otm/pack/Permissions.kt" \
-        && ok "app: pede a permissão na primeira abertura" || bad "app: não pede a permissão"
+    # o pedido do uso real agora é sob demanda (na área de permissões), não mais
+    # automático na primeira abertura
+    grep -q 'fun askUsage' "$ROOT/app/src/main/java/com/otm/pack/Permissions.kt" \
+        && ok "app: uso real é pedido sob demanda" || bad "app: sem pedido de uso sob demanda"
+    grep -q 'Permissions.askOnce' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
+        && bad "app: ainda pede tudo na primeira abertura" \
+        || ok "app: nada pedido na primeira abertura (só pareamento)"
 }
 
 

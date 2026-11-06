@@ -55,6 +55,8 @@ class PackBridge(
     private val onLoginFail: () -> Unit,
     private val onActionSound: (String) -> Unit,
     private val onRunDone: (String, Boolean) -> Unit,
+    /** Concede, sob demanda, uma permissão do próprio app (notificação, bateria, uso). */
+    private val onGrantPerm: (String) -> Unit = {},
     private val deliver: (cbId: String, json: String) -> Unit,
     /** Empurra um evento para o WebView sem pedido (usado pelo Terminal ao vivo). */
     private val push: (event: String, json: String) -> Unit = { _, _ -> },
@@ -96,6 +98,13 @@ class PackBridge(
                     "info" -> infoImpl()
                     "usage" -> {
                         withContext(Dispatchers.Main) { Usage.openSettings(context) }
+                        okJson()
+                    }
+                    // Permissões do próprio app, sob demanda (área de Configurações):
+                    // nada disso é pedido ao abrir o app.
+                    "perm" -> {
+                        val what = payload.trim().lowercase()
+                        withContext(Dispatchers.Main) { onGrantPerm(what) }
                         okJson()
                     }
                     "connect" -> { withContext(Dispatchers.Main) { onConnect() }; okJson() }

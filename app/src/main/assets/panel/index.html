@@ -5286,8 +5286,11 @@ body.drawer .scrim{opacity:1;visibility:visible}
       </div>
       <div class="set-actions">
         <button class="btn primary" id="setPermApp" type="button">Conceder permissões ao pack</button>
+        <button class="btn" id="setPermNotif" type="button">Liberar notificações</button>
+        <button class="btn" id="setPermBattery" type="button">Liberar da bateria</button>
+        <button class="btn" id="setPermUsage" type="button">Liberar uso real</button>
       </div>
-      <div class="set-hint" id="setPermHint">Precisa de Shizuku, ADB por Wi-Fi ou root. Dá para desfazer em "Reverter TUDO".</div>
+      <div class="set-hint" id="setPermHint">Nada disso é pedido ao abrir o app. Libere aqui quando quiser. O pack usa Shizuku, ADB por Wi-Fi ou root. Dá para desfazer em "Reverter TUDO".</div>
     </div>
 
     <div class="set-group">
@@ -5662,6 +5665,17 @@ document.getElementById("setSound").onchange = e => setSound(e.target.checked);
 const PERM_ACTION = { setPermApp: "perm.app" };
 const permBtn = (id, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askPermission(PERM_ACTION[id], label); };
 permBtn("setPermApp", "Permissões do app do pack");
+/* Permissões do próprio app, sob demanda: nada é pedido ao abrir; o usuário
+   libera aqui o que quiser. Vai pela ponte nativa (OTM.call "perm"). */
+function askNativePerm(what, label){
+  if (!window.OTM){ toast("Permissões: use o app no celular.", "bad"); return; }
+  toast(label + "…", "ok");
+  try { window.OTM.call("perm", what, "perm"); } catch(e){ toast("Erro", "bad"); }
+}
+const np = (id, what, label) => { const b = document.getElementById(id); if (b) b.onclick = () => askNativePerm(what, label); };
+np("setPermNotif", "notif", "Liberar notificações");
+np("setPermBattery", "battery", "Liberar da economia de bateria");
+np("setPermUsage", "usage", "Liberar o acesso a dados de uso");
 /* Acesso a dados de uso: não é um script, é uma tela do sistema. No app vira
    OTM.call("usage"); no site, avisa que só funciona no celular. */
 function openUsageSettings(){

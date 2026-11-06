@@ -81,8 +81,10 @@ class PanelActivity : AppCompatActivity() {
 
         setupWeb()
         web.loadUrl("file:///android_asset/panel/login.html")
+        // O app NÃO pede mais nada ao abrir: só o pareamento (Shizuku/ADB), que
+        // é o que dá poder de shell. Notificações, bateria e uso real o usuário
+        // concede quando quiser, na área de permissões das Configurações.
         Permissions.ensureChannel(applicationContext)
-        Permissions.askOnce(this)
     }
 
     override fun onDestroy() {
@@ -259,6 +261,7 @@ class PanelActivity : AppCompatActivity() {
                 if (ok) "$what concluído." else "$what terminou com avisos — veja o console.",
             )
         },
+        onGrantPerm = { what -> grantPerm(what) },
         deliver = { cbId, json ->
             runOnUiThread {
                 val js = "window.__otmResolve(" + jsString(cbId) + "," + jsString(json) + ");"
@@ -316,6 +319,26 @@ class PanelActivity : AppCompatActivity() {
     }
 
     private var overlayRunning = false
+
+    /**
+     * Concede, sob demanda, uma permissão do próprio app. É o que o usuário pediu:
+     * nada é pedido ao abrir; ele vai nas Configurações e libera o que quiser.
+     * [what] vem do painel: "notif", "battery" ou "usage".
+     */
+    private fun grantPerm(what: String) {
+        when (what) {
+            "notif" -> {
+                if (Permissions.hasNotif(this)) toast("Notificações já estão liberadas.")
+                else Permissions.askNotif(this)
+            }
+            "battery" -> {
+                if (Permissions.ignoringBattery(this)) toast("Já está fora da economia de bateria.")
+                else Permissions.askBattery(this)
+            }
+            "usage" -> Permissions.askUsage(this)
+            else -> toast("Permissão desconhecida.")
+        }
+    }
 
     // ---- conexão (Shizuku / ADB) ---------------------------------------------
 
