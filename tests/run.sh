@@ -4762,6 +4762,15 @@ t_app_creditos() {
     grep -qi 'Nezuku' "$p/termos.html" && grep -q '00deUdia' "$p/termos.html" \
         && ok "termos creditam dev e testadora" || bad "termos sem os creditos"
 
+    # creditos sao creditos: o card "Sua sessao / Sair da conta" saiu (o usuario
+    # reclamou que "nada com nada" ter logout no meio dos creditos)
+    grep -q 'id="credLogout"' "$p/index.html" && bad "creditos ainda tem 'Sair da conta'" \
+        || ok "creditos sem o card 'Sair da conta'"
+    # e o Discord nao aparece duas vezes: fica so no rodape
+    local ndc; ndc=$(grep -c 'discord.gg/w9hFBeVKw8' "$p/index.html")
+    [ "$ndc" -le 1 ] && ok "Discord nao esta duplicado no painel ($ndc)" \
+        || bad "Discord duplicado no painel ($ndc vezes)"
+
     # o web continua com os creditos do dono
     grep -q '00deUdia' "$web" && ok "painel web credita 00deUdia" || bad "web sem 00deUdia"
 }
