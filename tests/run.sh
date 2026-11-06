@@ -574,16 +574,6 @@ t_panel_db() {
         return 0
     fi
 
-    # nenhuma tabela do sistema de chaves deve existir
-    local tbl
-    tbl="$(OTM_LOCAL_DB="$dbf" php -r '
-             require $argv[1]."/src/bootstrap.php";
-             $q = "select name from sqlite_master where type = " . chr(39) . "table" . chr(39);
-             foreach (otm_db()->all($q) as $r)
-                 if (str_contains((string)$r["name"], "key")) echo $r["name"]." ";' \
-             "$ROOT/panel" 2>/dev/null)"
-    if [ -z "$tbl" ]; then ok "nenhuma tabela de chaves no banco"; else bad "sobrou tabela de chave: $tbl"; fi
-
     # admin do painel (usuário e senha)
     if OTM_LOCAL_DB="$dbf" OTM_PASSWORD=segredo123 php "$ROOT/panel/bin/admin.php" add whesley --role owner >/dev/null 2>&1; then
         ok "admin do painel criado"
@@ -620,125 +610,74 @@ t_panel_db() {
 
 # --- login do app Android (painel estático) ----------------------------------
 t_app_login() {
-    printf '\n  # login do app (chave de acesso)\n'
+    printf '\n  # login do app (usuario e senha, local) + termos\n'
     local p="$ROOT/app/src/main/assets/panel"
+    local src="$ROOT/app/src/main/java/com/otm/pack"
     [ -f "$p/index.html" ] && ok "painel do app existe" || bad "index.html do app ausente"
     [ -f "$p/login.html" ] && ok "tela de login do app existe" || bad "login.html do app ausente"
-    grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessão" \
-        || bad "painel do app sem guarda de sessão"
-    # entrada por chave: a tela pede a chave e valida no nativo, não com senha local
-    grep -q 'key_login' "$p/login.html" && ok "login valida a chave no nativo (key_login)" \
-        || bad "login sem validação de chave"
-    grep -q '00-XXXX-XXXX-XXXX' "$p/login.html" && ok "login mostra o formato da chave" \
-        || bad "login sem o formato da chave"
-    # dois prefixos: dono/admin usa "00", usuário comum usa "TRIX"
-    grep -q 'PREFIX_OWNER = "00"' "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" \
-        && ok "KeyGate: prefixo do dono é 00" || bad "KeyGate sem PREFIX_OWNER"
-    grep -q 'PREFIX_USER = "TRIX"' "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" \
-        && ok "KeyGate: prefixo do usuário é TRIX" || bad "KeyGate sem PREFIX_USER"
-    grep -q 'TRIX-XXXX-XXXX-XXXX' "$p/login.html" \
-        && ok "login mostra o formato TRIX (usuário)" || bad "login sem o formato TRIX"
-    grep -q 'KeyGate.generate(cleanRole)' "$ROOT/app/src/main/java/com/otm/pack/AdminService.kt" \
-        && ok "chave criada usa o prefixo do papel" || bad "AdminService não usa o papel no prefixo"
-    grep -q 'panel/login.html' "$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt" \
-        && ok "PanelActivity abre a tela de login" || bad "PanelActivity não abre login"
-    # o sistema de chaves voltou: KeyGate fala com o Turso e a categoria Admin
-    # é exclusiva do dono (papel 'owner').
-    [ -f "$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt" ] \
-        && ok "KeyGate presente (validação por chave)" || bad "KeyGate ausente"
-    [ -f "$ROOT/app/src/main/java/com/otm/pack/TursoClient.kt" ] \
-        && ok "TursoClient presente (banco de chaves)" || bad "TursoClient ausente"
-    grep -q 'admin_list' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
-        && ok "ponte expõe a categoria Admin (admin_list)" || bad "ponte sem admin_list"
-    grep -q 'id="navAdmin"' "$p/index.html" && ok "painel tem o link Admin (oculto por padrão)" \
-        || bad "painel sem o link Admin"
-    grep -q 'id="navAdmin" aria-current="false" hidden' "$p/index.html" \
-        && ok "link Admin começa oculto" || bad "link Admin não começa oculto"
-    grep -q 'key_status' "$p/index.html" && ok "painel confirma o papel no nativo (key_status)" \
-        || bad "painel não confirma o papel"
-    # sem confirmação no nativo, um app antigo deixava "otm_session" no localStorage
-    # e o painel abria sem pedir chave. Agora a sessão é confirmada com o nativo.
+    [ -f "$p/termos.html" ] && ok "tela de termos existe" || bad "termos.html ausente"
+    grep -q 'otm_session' "$p/index.html" && ok "painel do app tem guarda de sessao" \
+        || bad "painel do app sem guarda de sessao"
+    # entrada por usuario/senha, conferida no nativo (sem chave, sem banco)
+    grep -q 'app_login' "$p/login.html" && ok "login confere no nativo (app_login)" \
+        || bad "login sem app_login"
+    grep -q 'id="user"' "$p/login.html" && grep -q 'id="pass"' "$p/login.html" \
+        && ok "login pede usuario e senha" || bad "login sem usuario/senha"
+    grep -q 'app_status' "$p/index.html" && ok "painel confirma a sessao no nativo (app_status)" \
+        || bad "painel nao confirma a sessao"
     grep -q 'function confirmarSessao' "$p/index.html" \
-        && ok "painel confirma a sessão no nativo (não confia só no localStorage)" \
-        || bad "painel confia só no localStorage para a sessão"
-    # Coluna NULL lida como "null" (string) fazia toda chave parecer revogada: o
-    # optString do JSONObject do Android devolve "null" para JSONObject.NULL.
-    # A correção é omitir as colunas nulas no TursoClient, então o app inteiro
-    # depende disso — se voltar a gravar NULL no mapa, a chave é "revogada" de novo.
-    python3 - "$ROOT/app/src/main/java/com/otm/pack/TursoClient.kt" <<'PY' > "$TMP/nulldb" 2>&1
-import re, sys
-src = open(sys.argv[1], encoding="utf-8").read()
-m = re.search(r"private fun rows\(.*?\n    \}", src, re.S)
-if not m:
-    print("nao achei rows()"); raise SystemExit(1)
-if "if (value != JSONObject.NULL) row.put(" not in m.group(0):
-    print("rows() volta a gravar coluna NULL no mapa"); raise SystemExit(1)
-print("ok")
-PY
-    if grep -q '^ok$' "$TMP/nulldb"; then
-        ok "coluna NULL não vira a string 'null' (chave não é 'revogada' à toa)"
+        && ok "painel confirma a sessao (nao confia so no localStorage)" \
+        || bad "painel confia so no localStorage"
+    # primeiro acesso: aceitar os termos; recusar desloga e volta pro login
+    grep -q 'terms_accept' "$p/termos.html" && ok "termos grava o aceite (terms_accept)" \
+        || bad "termos sem terms_accept"
+    grep -q 'app_logout' "$p/termos.html" && ok "recusar os termos desloga (app_logout)" \
+        || bad "recusar termos nao desloga"
+    grep -q 'termos.html' "$p/index.html" && ok "painel manda para os termos quando falta aceite" \
+        || bad "painel nao checa o aceite"
+    grep -q 'object AppLogin' "$src/AppLogin.kt" && ok "AppLogin existe (login local)" \
+        || bad "AppLogin ausente"
+    # a senha nao fica em texto no codigo: so o SHA-256 de "usuario:senha"
+    if grep -qE 'const val (PASS|PASSWORD|SENHA)[A-Z_]* *= *"' "$src/AppLogin.kt"; then
+        bad "AppLogin guarda a senha em texto"
     else
-        bad "coluna NULL vira 'null' no mapa de linhas ($(head -1 "$TMP/nulldb"))"
+        ok "AppLogin nao guarda a senha em texto (so hash)"
     fi
-    # NÃO pode existir chave de dono fixa no APK: quem tem o APK entraria como
-    # dono, mesmo sem ter recebido chave nenhuma. Isso é backdoor, não recurso.
-    # O caminho do dono é a chave dele, criada por ele e guardada no banco.
-    local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
-    if grep -qE 'const val [A-Z_]*(BUILTIN|MASTER|DEFAULT)[A-Z_]*KEY *= *"00-' "$gate"; then
-        bad "KeyGate tem chave de dono fixa no código (backdoor)"
-    else
-        ok "KeyGate não embute chave de dono (sem backdoor)"
-    fi
-    grep -q 'isBuiltinOwner' "$gate" && bad "KeyGate ainda aceita chave embutida" \
-        || ok "KeyGate não tem atalho de chave embutida"
-    # o placeholder do formato ("00-XXXX-...") é ok; uma chave de verdade, não
-    if grep -oE '00-([A-Z0-9]{4}-){2}[A-Z0-9]{4}' "$p/login.html" \
-        | grep -qvE '^00-X{4}-X{4}-X{4}$'; then
-        bad "login.html expõe uma chave de dono pronta"
-    else
-        ok "login.html não expõe chave pronta (só o formato)"
-    fi
-    grep -q 'id="entrarDono"' "$p/login.html" && bad "login tem botão de dono embutido" \
-        || ok "login não tem botão de dono embutido"
-    # ...mas o dono precisa de um caminho legítimo: poder criar a própria chave.
-    grep -q 'value="owner"' "$p/index.html" \
-        && ok "painel deixa criar chave de dono" || bad "painel não deixa criar chave de dono"
-    # o hífen não pode sumir enquanto se digita: a máscara reagrupa a cada tecla e
-    # engolia o separador recém-digitado ("00-" voltava a exibir "00").
-    python3 - "$p/login.html" <<'PY' > "$TMP/hif" 2>&1
-import re, sys
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("function mask(raw){")
-m = src[i:src.find("\n}", i)+2]
-print("ok" if "str.slice(-1)" in m and "out += \"-\"" in m else "mascara engole o hifen")
-PY
-    grep -q '^ok$' "$TMP/hif" \
-        && ok "máscara do login mostra o hífen ao digitar" || bad "$(head -1 "$TMP/hif")"
-    # todo link do menu tem de ter a seção correspondente: o painel é gerado por
-    # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a seção,
-    # deixando um link que não abre nada.
+
+    # o sistema de chave foi removido de proposito e NAO pode voltar
+    for f in KeyGate.kt AdminService.kt TursoClient.kt; do
+        [ ! -f "$src/$f" ] && ok "sem $f (sistema de chave removido)" || bad "$f voltou"
+    done
+    ! grep -rq 'key_login\|admin_list\|my_key\|key_status' "$src" "$p" \
+        && ok "nenhuma referencia a key_*/admin_* no app" || bad "sobrou referencia a chave/admin"
+    # o "Servidor do dono" fica logo abaixo do login
+    grep -q 'discord.gg/w9hFBeVKw8' "$p/login.html" && ok "login mostra o link do servidor do dono" \
+        || bad "login sem o link do servidor"
+    grep -qi 'Servidor do dono' "$p/login.html" && ok "login rotula 'Servidor do dono'" \
+        || bad "login sem o rotulo 'Servidor do dono'"
+
+    # todo link do menu tem de ter a secao correspondente: o painel e gerado por
+    # script (sync_app_panel) e uma categoria nova pode entrar no nav sem a secao,
+    # deixando um link que nao abre nada.
     python3 - "$p/index.html" <<'PY' > "$TMP/navsec" 2>&1
 import re, sys, html as H, urllib.parse
 doc = open(sys.argv[1], encoding='utf-8').read()
 nav = re.search(r'<nav class="nav" id="nav">[\s\S]*?</nav>', doc).group(0)
-# cada link do menu aponta para a seção "g-<data-g>"; os ids vêm com o nome
-# URL-encoded e o data-g com entidade HTML (&amp;), então normalizo os dois.
 links = [H.unescape(m) for m in re.findall(r'data-g="([^"]+)"', nav)]
 secs = {urllib.parse.unquote(m) for m in re.findall(r'<section id="([^"]+)"', doc)}
 faltam = [g for g in links if 'g-' + g not in secs]
 print('OK' if not faltam else 'FALTAM:' + ','.join(faltam))
 PY
-    assert_contains "$TMP/navsec" "OK" "app: todo link do menu tem a sua seção"
+    assert_contains "$TMP/navsec" "OK" "app: todo link do menu tem a sua secao"
 
-    # o painel do app é montado por script (sync_app_panel); um card que ficou
-    # entre o fim de uma seção e o começo da próxima não pertence a grupo nenhum
-    # e aparece SEMPRE, empilhado no rodapé, fora das abas. Também denuncia
-    # <section> desbalanceada. Já aconteceu com os cards de permissão (v2.41.2).
+    # o painel do app e montado por script (sync_app_panel); um card que ficou
+    # entre o fim de uma secao e o comeco da proxima nao pertence a grupo nenhum
+    # e aparece SEMPRE, empilhado no rodape, fora das abas. Tambem denuncia
+    # <section> desbalanceada. Ja aconteceu com os cards de permissao (v2.41.2).
     python3 - "$p/index.html" <<'PY' > "$TMP/panstruct" 2>&1
 import re, sys
 from collections import Counter
 doc = open(sys.argv[1], encoding='utf-8').read()
-# só os cards de verdade (o texto do JS também cita data-id="apply")
 cards = re.findall(r'<article class="card"[^>]*?data-id="([^"]+)"', doc)
 dup = sorted(k for k, v in Counter(cards).items() if v > 1)
 orf = [m.group(1).strip()[:60] for m in
@@ -747,11 +686,11 @@ orf = [m.group(1).strip()[:60] for m in
 abre, fecha = len(re.findall(r'<section\b', doc)), doc.count('</section>')
 prob = []
 if dup: prob.append('cards duplicados: ' + ','.join(dup))
-if orf: prob.append('cards fora de seção: ' + ' | '.join(orf))
-if abre != fecha: prob.append('seções desbalanceadas: %d abre x %d fecha' % (abre, fecha))
+if orf: prob.append('cards fora de secao: ' + ' | '.join(orf))
+if abre != fecha: prob.append('secoes desbalanceadas: %d abre x %d fecha' % (abre, fecha))
 print('OK' if not prob else ' | '.join(prob))
 PY
-    assert_contains "$TMP/panstruct" "OK" "app: nenhum card duplicado nem fora de seção"
+    assert_contains "$TMP/panstruct" "OK" "app: nenhum card duplicado nem fora de secao"
 }
 
 # --- scripts rodam em /data/local/tmp (visível ao shell) ----------------------
@@ -875,7 +814,7 @@ t_app_fixes() {
     grep -q 'handler.removeCallbacks(autoStop)' "$src/SoundPlayer.kt" && ok "som: stop cancela o timer" || bad "som: stop não cancela"
     # 6) "login feito com sucesso" só toca quando o login dá certo
     local login="$ROOT/app/src/main/assets/panel/login.html"
-    grep -q 'key_login' "$login" && ok "login: a chave é validada no nativo" || bad "login: sem validação de chave"
+    grep -q 'app_login' "$login" && ok "login: a senha é conferida no nativo" || bad "login: sem app_login"
     grep -q 'onLogin = { sound.play("login_feito_com_sucesso.mp3") }' "$src/PanelActivity.kt" \
         && ok "som: sucesso ligado ao onLogin" || bad "som: sucesso não está no onLogin"
     if grep -n 'login_feito_com_sucesso' "$src/PanelActivity.kt" | grep -qv 'onLogin'; then
@@ -885,11 +824,9 @@ t_app_fixes() {
     fi
     grep -q 'if (on) sound.play("ativando.mp3")' "$src/PanelActivity.kt" \
         && ok "som: ligar som usa 'ativando'" || bad "som: ligar som com áudio errado"
-    # o sistema de chaves (KeyGate) voltou, agora falando direto com o Turso
-    [ -f "$src/KeyGate.kt" ] && ok "chave: KeyGate presente" || bad "chave: KeyGate ausente"
-    [ -f "$src/TursoClient.kt" ] && ok "chave: TursoClient presente" || bad "chave: TursoClient ausente"
-    grep -q 'object KeyGate' "$src/KeyGate.kt" && ok "chave: KeyGate é o guardião da sessão" \
-        || bad "chave: KeyGate sem estrutura esperada"
+    # o sistema de chaves (KeyGate/Turso) foi removido: o login agora é local
+    [ ! -f "$src/KeyGate.kt" ] && [ ! -f "$src/TursoClient.kt" ] \
+        && ok "chave: sistema de chave removido (login local)" || bad "chave: KeyGate/Turso ainda presentes"
     # 7) áudio de pareamento (conectar) continua valendo
     test -f "$ROOT/app/src/main/assets/audio/pareamento_feito_com_sucesso.mp3" \
         && ok "áudio: pareamento presente" || bad "áudio: falta pareamento"
@@ -4708,244 +4645,68 @@ t_profiles() {
 }
 
 # --- Admin no app: cofre da chave, edição, aparelhos, planos e Perfil --------
-t_app_admin_full() {
-    printf '\n  # Admin: chave guardada, edição, aparelhos, planos e Perfil\n'
+t_app_remocao_key() {
+    printf '\n  # Admin/Dashboard/Perfil/Feedback: REMOVIDOS do app\n'
     local p="$ROOT/app/src/main/assets/panel"
-    local svc="$ROOT/app/src/main/java/com/otm/pack/AdminService.kt"
-    local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
-    local br="$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt"
+    local src="$ROOT/app/src/main/java/com/otm/pack"
+    local br="$src/PackBridge.kt"
 
-    # 1) o cofre: sem guardar a chave, "Ver chave"/"Copiar" não teriam o que abrir
-    grep -q 'fun seal(' "$gate" && ok "KeyGate cifra a chave (cofre)" || bad "KeyGate sem seal()"
-    grep -q 'fun unseal(' "$gate" && ok "KeyGate abre o cofre (unseal)" || bad "KeyGate sem unseal()"
-    grep -q 'AES/GCM/NoPadding' "$gate" && ok "cofre usa AES-GCM" || bad "cofre sem AES-GCM"
-    grep -q 'key_sealed' "$svc" && ok "create grava a chave cifrada em key_sealed" \
-        || bad "create não grava key_sealed"
-    grep -q 'take(GLEN)' "$gate" && ok "prefixo mostra só o começo da chave" \
-        || bad "prefixo pode expor a chave inteira"
-
-    # 2) CRUD completo no serviço e na ponte
-    for fn in update reveal detail blockDevice removeDevice plans me revealMine; do
-        grep -q "fun $fn(" "$svc" && ok "AdminService.$fn()" || bad "AdminService sem $fn()"
+    # 1) os arquivos do sistema de chave sairam de vez
+    for f in KeyGate.kt AdminService.kt TursoClient.kt; do
+        [ ! -f "$src/$f" ] && ok "removido: $f" || bad "$f ainda existe"
     done
-    for k in admin_detail admin_reveal admin_update admin_device admin_plans me my_key; do
-        grep -q "\"$k\"" "$br" && ok "ponte expõe $k" || bad "ponte sem $k"
+    # 2) nenhuma chamada key_*/admin_*/feedback_* na ponte nem no painel
+    ! grep -qE '"key_|"admin_|"feedback_|"my_key"|"me"' "$br" \
+        && ok "ponte sem comandos de chave/admin" || bad "ponte ainda tem comandos de chave"
+    ! grep -rqE 'key_login|key_status|admin_list|admin_create|admin_dashboard|feedback_send|my_key' \
+        "$p" && ok "painel sem chamadas de chave/admin" || bad "painel ainda chama chave/admin"
+    # 3) as categorias nao existem mais (secao, link e JS)
+    for g in Admin Dashboard Perfil Feedback; do
+        ! grep -q "data-g=\"$g\"" "$p/index.html" && ok "sem categoria $g" || bad "categoria $g ainda existe"
+        ! grep -q "g-$g" "$p/index.html" && ok "sem secao g-$g" || bad "secao g-$g ainda existe"
     done
-
-    # 3) editar não pode mexer no texto da chave (invalidaria quem já entrou)
-    python3 - "$svc" <<'PY' > "$TMP/adm_no_keychange" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("fun update(")
-body = src[i:src.find("\n    /**", i)]
-bad = [c for c in ("key_hash =", "key_prefix =", "key_sealed =") if c in body]
-print("OK" if not bad else "mexe em " + ",".join(bad))
-PY
-    assert_contains "$TMP/adm_no_keychange" "OK" "editar não troca o texto da chave"
-
-    # 4) só o dono edita/exclui; o usuário comum só abre a própria chave
-    python3 - "$svc" <<'PY' > "$TMP/adm_guard" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-faltam = []
-for fn in ("update", "detail", "blockDevice", "removeDevice", "plans"):
-    i = src.find("fun " + fn + "(")
-    if i < 0 or "requireOwner" not in src[i:i+200]:
-        faltam.append(fn)
-print("OK" if not faltam else "sem requireOwner: " + ",".join(faltam))
-PY
-    assert_contains "$TMP/adm_guard" "OK" "só o dono edita/gerencia (requireOwner)"
-    grep -q 'enforceOwnership' "$svc" && ok "usuário comum só abre a própria chave" \
-        || bad "revealMine sem trava de posse"
-
-    # 5) a lista traz TUDO o que a tela precisa (era o 'não mostra toda')
-    python3 - "$svc" <<'PY' > "$TMP/adm_list" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("fun list(")
-body = src[i:src.find("\n    /**", i)]
-need = ["key_prefix", "label", "role", "max_devices", "max_uses", "uses_count",
-        "expires_at", "last_used_at", "tem_chave", "summary", "mine"]
-faltam = [n for n in need if n not in body]
-print("OK" if not faltam else "faltam: " + ",".join(faltam))
-PY
-    assert_contains "$TMP/adm_list" "OK" "lista traz todos os campos da tela + resumo"
-    grep -q 'LIMIT 500' "$svc" && ok "lista cobre até 500 chaves (não só as recentes)" \
-        || bad "lista limitada demais"
-
-    # 6) a tela: busca, filtros, edição e aparelhos
-    for id in admSearch admChips admPlans edSave edReveal edDevicesList; do
-        grep -q "id=\"$id\"" "$p/index.html" && ok "painel tem #$id" || bad "painel sem #$id"
-    done
-    for fn in openEdit drawList renderChips deviceRow loadPlans; do
-        grep -q "function $fn(" "$p/index.html" && ok "painel define $fn()" || bad "painel sem $fn()"
-    done
-    grep -q 'admin_update' "$p/index.html" && ok "painel salva edição (admin_update)" \
-        || bad "painel não salva edição"
-
-    # 7) o Perfil: categoria própria e integrada às configurações
-    grep -q 'id="navPerfil"' "$p/index.html" && ok "menu tem Perfil" || bad "menu sem Perfil"
-    grep -q 'id="g-Perfil"' "$p/index.html" && ok "seção do Perfil existe" || bad "sem seção Perfil"
-    for id in pfAvatar pfName pfNick pfReveal pfRowExp pfRowDev pfGoConfigs pfGoAdmin; do
-        grep -q "id=\"$id\"" "$p/index.html" && ok "perfil tem #$id" || bad "perfil sem #$id"
-    done
-    grep -q 'function initProfile(' "$p/index.html" && ok "perfil tem o próprio JS" \
-        || bad "perfil sem JS"
-    grep -q 'syncGear(); document.getElementById("gearMask")' "$p/index.html" \
-        && ok "perfil encaixa com as Configurações (abre a mesma gaveta)" \
-        || bad "perfil não encaixa com as Configurações"
-    grep -q '"nick"' "$br" && ok "ponte guarda o apelido do perfil (nick)" \
-        || bad "ponte sem nick"
-
-    # 8) a própria chave da sessão não pode ser rebaixada/desativada/excluída:
-    #    fazer isso trancaria o dono fora do próprio Admin.
-    grep -q 'isSelfKey' "$svc" && ok "serviço sabe qual é a chave da sessão" \
-        || bad "serviço não distingue a chave da sessão"
-    python3 - "$svc" <<'PY' > "$TMP/adm_self" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-faltam = []
-for fn in ("setActive", "delete", "update"):
-    i = src.find("fun " + fn + "(")
-    body = src[i:src.find("\n    /**", i)] if i >= 0 else ""
-    if i < 0 or "isSelfKey" not in body:
-        faltam.append(fn)
-print("OK" if not faltam else "sem trava de sessão: " + ",".join(faltam))
-PY
-    assert_contains "$TMP/adm_self" "OK" "não dá para desativar/excluir/rebaixar a própria chave"
-    grep -q 'edRole").disabled' "$p/index.html" && ok "painel trava o papel da própria chave" \
-        || bad "painel deixa rebaixar a própria chave"
-
-    # 9) entrar com uma chave antiga (sem cofre) preenche o cofre
-    grep -q 'SET key_sealed = ?' "$gate" && ok "login preenche o cofre da chave antiga" \
-        || bad "chave antiga nunca ganha cofre"
-}
-
-# --- Admin/Perfil exercitados de verdade num DOM (jsdom), sem celular --------
-# Depende de `jsdom` (devDependency). Sem ele, o teste é PULADO — não é falha.
-t_app_admin_dom() {
-    printf '\n  # Admin/Perfil: a tela rodando num DOM (jsdom)\n'
-    local t="$ROOT/tests/dom/admin_profile.mjs"
-    [ -f "$t" ] && ok "teste de DOM existe" || { bad "teste de DOM ausente"; return; }
-    if ! command -v node >/dev/null 2>&1; then
-        ok "node ausente: pulo o teste de DOM"
-        return
-    fi
-    if ! node -e 'import("jsdom")' >/dev/null 2>&1; then
-        ok "jsdom ausente: pulo o teste de DOM (npm i -D jsdom)"
-        return
-    fi
-    node "$t" > "$TMP/dom_admin" 2>&1
-    case $? in
-        0) ok "DOM: Admin e Perfil passaram (filtros, edição, revelar chave)" ;;
-        3) ok "jsdom ausente: pulo o teste de DOM" ;;
-        *) bad "DOM: falhou -> $(grep -m3 'FAIL' "$TMP/dom_admin" | tr '\n' ' ')" ;;
-    esac
-}
-
-# --- Dashboard, Feedback e a chave mostrada só pelo começo+fim ----------------
-t_app_dash_feedback() {
-    printf '\n  # Dashboard, Feedback e chave mascarada (início + fim)\n'
-    local p="$ROOT/app/src/main/assets/panel"
-    local svc="$ROOT/app/src/main/java/com/otm/pack/AdminService.kt"
-    local gate="$ROOT/app/src/main/java/com/otm/pack/KeyGate.kt"
-    local br="$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt"
-
-    # 1) a chave nunca é mostrada inteira: só começo e fim
-    grep -q 'fun maskOf(' "$gate" && ok "KeyGate.maskOf() monta o rótulo início+fim" \
-        || bad "KeyGate sem maskOf()"
-    grep -q 'fun tailOf(' "$gate" && ok "KeyGate.tailOf() extrai o fim da chave" \
-        || bad "KeyGate sem tailOf()"
-    grep -q 'PREF_TAIL' "$gate" && ok "a sessão guarda o fim da chave (PREF_TAIL)" \
-        || bad "sessão não guarda o fim da chave"
-    python3 - "$gate" <<'PY' > "$TMP/mask_label" 2>&1
-import sys, re
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("fun maskOf(")
-body = src[i:src.find("}", src.find("return", i)) + 1] if i >= 0 else ""
-# o rótulo tem que ter o miolo escondido (····) e nunca a chave crua
-print("OK" if ("····" in body or "\\u00b7" in body) else "sem miolo escondido")
-PY
-    assert_contains "$TMP/mask_label" "OK" "o rótulo esconde o miolo com ····"
-    grep -q '"mask"' "$svc" && ok "lista/detalhe/me expõem o rótulo mascarado" \
-        || bad "serviço não expõe o rótulo mascarado"
-    grep -q 'k.mask' "$p/index.html" && ok "painel usa o rótulo mascarado do nativo" \
-        || bad "painel não usa o rótulo mascarado"
-    python3 - "$p/index.html" <<'PY' > "$TMP/mask_js" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-# o HTML não pode montar a chave com o texto cru do prefixo sem esconder o miolo
-ruins = [m for m in ("esc(k.prefix)+\"-····-····\"", "k.prefix + \"-\"") if m in src]
-print("OK" if not ruins else "monta rótulo antigo: " + ",".join(ruins))
-PY
-    assert_contains "$TMP/mask_js" "OK" "não sobrou o rótulo antigo (só prefixo)"
-
-    # 2) Dashboard: agregados no serviço + tela
-    grep -q 'fun dashboard(' "$svc" && ok "AdminService.dashboard()" || bad "sem dashboard()"
-    grep -q 'admin_dashboard' "$br" && ok "ponte expõe admin_dashboard" || bad "ponte sem admin_dashboard"
-    python3 - "$svc" <<'PY' > "$TMP/dash_guard" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("fun dashboard(")
-print("OK" if i >= 0 and "requireOwner" in src[i:i+200] else "sem requireOwner")
-PY
-    assert_contains "$TMP/dash_guard" "OK" "dashboard só para o dono (requireOwner)"
-    for id in navDash g-Dashboard dTotal dActive dDevices dUses dashChart dashStatus dashRoles dashPlans; do
-        grep -q "id=\"$id\"" "$p/index.html" && ok "painel tem #$id" || bad "painel sem #$id"
-    done
-    grep -q 'function initDashboard(' "$p/index.html" && ok "dashboard tem o próprio JS" \
-        || bad "dashboard sem JS"
-    grep -q '__otmDashboardReload' "$p/index.html" && ok "dashboard recarrega ao abrir a aba" \
-        || bad "dashboard não recarrega"
-
-    # 3) Feedback: usuário manda, dono lê/respondе
-    grep -q 'fun sendFeedback(' "$svc" && ok "AdminService.sendFeedback()" || bad "sem sendFeedback()"
-    grep -q 'fun feedbackList(' "$svc" && ok "AdminService.feedbackList()" || bad "sem feedbackList()"
-    grep -q 'fun feedbackMine(' "$svc" && ok "AdminService.feedbackMine()" || bad "sem feedbackMine()"
-    grep -q 'fun feedbackUpdate(' "$svc" && ok "AdminService.feedbackUpdate()" || bad "sem feedbackUpdate()"
-    python3 - "$svc" <<'PY' > "$TMP/fb_send" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-i = src.find("fun sendFeedback(")
-body = src[i:src.find("\n    /**", i)] if i >= 0 else ""
-# mandar recado NÃO pode exigir dono (o usuário comum também fala)
-print("OK" if i >= 0 and "requireOwner" not in body and "isLogged" in body else "errado")
-PY
-    assert_contains "$TMP/fb_send" "OK" "qualquer usuário logado manda recado (não só o dono)"
-    python3 - "$svc" <<'PY' > "$TMP/fb_owner" 2>&1
-import sys
-src = open(sys.argv[1], encoding="utf-8").read()
-faltam = []
-for fn in ("feedbackList", "feedbackUpdate", "feedbackDelete"):
-    i = src.find("fun " + fn + "(")
-    if i < 0 or "requireOwner" not in src[i:i+200]:
-        faltam.append(fn)
-print("OK" if not faltam else "sem requireOwner: " + ",".join(faltam))
-PY
-    assert_contains "$TMP/fb_owner" "OK" "só o dono lê/gerencia os recados"
-    for k in feedback_send feedback_mine feedback_list feedback_update feedback_delete; do
-        grep -q "\"$k\"" "$br" && ok "ponte expõe $k" || bad "ponte sem $k"
-    done
-    for id in navFeedback g-Feedback fbKinds fbMsg fbContact fbSend fbList admFbList admFbChips navAdminCount; do
-        grep -q "id=\"$id\"" "$p/index.html" && ok "painel tem #$id" || bad "painel sem #$id"
-    done
-    grep -q 'function initFeedback(' "$p/index.html" && ok "feedback tem o próprio JS" \
-        || bad "feedback sem JS"
-    grep -q 'function refreshFeedback(' "$p/index.html" && ok "admin lista os recados (refreshFeedback)" \
-        || bad "admin não lista recados"
-    grep -q 'feedback_update' "$p/index.html" && ok "admin responde/marca recado (feedback_update)" \
-        || bad "admin não responde recado"
-
-    # 4) migrações do rótulo (key_tail) e do feedback existem e são idempotentes
+    ! grep -qE 'function init(Admin|Dashboard|Profile|Feedback)\(' "$p/index.html" \
+        && ok "sem JS de Admin/Dashboard/Perfil/Feedback" || bad "sobrou JS dessas categorias"
+    # 4) o modal de edicao de chave saiu junto
+    ! grep -q 'id="admMask"' "$p/index.html" && ok "sem modal de editar chave" || bad "modal de chave ainda existe"
+    # 5) as migracoes do banco de chaves sairam
     local migdir="$ROOT/panel/database/migrations"
-    grep -rlq 'key_tail' "$migdir" && ok "migração adiciona a coluna key_tail" \
-        || bad "sem migração de key_tail"
-    grep -rq 'CREATE TABLE IF NOT EXISTS otm_feedback' "$migdir" \
-        && ok "tabela otm_feedback criada com IF NOT EXISTS" || bad "otm_feedback sem IF NOT EXISTS"
-    for c in key_prefix key_tail kind message status reply; do
-        grep -rq "$c" "$migdir"/0010_feedback.sql && ok "otm_feedback tem $c" \
-            || bad "otm_feedback sem $c"
-    done
+    ! ls "$migdir"/*key* >/dev/null 2>&1 && ok "sem migracao de chave" || bad "sobrou migracao de chave"
+    ! grep -rlq 'otm_keys\|otm_feedback' "$migdir" && ok "sem tabela de chave/feedback nas migracoes" \
+        || bad "migracao ainda cria tabela de chave/feedback"
+}
+
+# --- Creditos: quem fez, aviso de golpe e termos ------------------------------
+t_app_creditos() {
+    printf '\n  # Creditos: 00deUdia (dev), Nezuku (testadora), aviso de golpe e termos\n'
+    local p="$ROOT/app/src/main/assets/panel"
+    local web="$ROOT/web/index.php"
+
+    # a categoria Creditos existe no app (secao + link)
+    grep -q 'data-g="Créditos"' "$p/index.html" && ok "menu tem Creditos" || bad "menu sem Creditos"
+    grep -q 'id="g-Cr%C3%A9ditos"' "$p/index.html" && ok "secao de Creditos existe" || bad "sem secao Creditos"
+
+    # credita o dev e a testadora
+    grep -q '00deUdia' "$p/index.html" && ok "app credita 00deUdia (dev/criador)" || bad "app sem 00deUdia"
+    grep -qi 'Nezuku' "$p/index.html" && ok "app credita Nezuku (testadora)" || bad "app sem Nezuku"
+    grep -qi 'testadora' "$p/index.html" && ok "app rotula Nezuku como testadora oficial" \
+        || bad "app nao rotula a testadora"
+    grep -qi 'criador\|desenvolvedor' "$p/index.html" && ok "app rotula 00deUdia como dev/criador" \
+        || bad "app nao rotula o dev"
+
+    # aviso de golpe + link do servidor oficial
+    grep -qi 'tomou um golpe\|tomou golpe' "$p/index.html" \
+        && ok "app avisa sobre golpe (comprou em outro lugar)" || bad "app sem o aviso de golpe"
+    grep -q 'discord.gg/w9hFBeVKw8' "$p/index.html" \
+        && ok "app mostra o link do servidor oficial" || bad "app sem o link oficial"
+
+    # a tela de termos tambem tem o aviso e os creditos
+    grep -qi 'tomou um golpe' "$p/termos.html" && ok "termos avisam sobre golpe" || bad "termos sem aviso"
+    grep -qi 'Nezuku' "$p/termos.html" && grep -q '00deUdia' "$p/termos.html" \
+        && ok "termos creditam dev e testadora" || bad "termos sem os creditos"
+
+    # o web continua com os creditos do dono
+    grep -q '00deUdia' "$web" && ok "painel web credita 00deUdia" || bad "web sem 00deUdia"
 }
 
 # --- interruptores (liga/desliga) e o painel de saude dentro de Geral ---------
@@ -5023,9 +4784,8 @@ t_toggles_registry() {
     fi
 }
 
-t_app_admin_full
-t_app_admin_dom
-t_app_dash_feedback
+t_app_remocao_key
+t_app_creditos
 t_toggles_registry
 t_new_toggles
 t_undo_scope

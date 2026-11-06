@@ -3,6 +3,27 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.57.0] - 2026-11-03
+
+### Removido
+- **O sistema de chaves/licença saiu do app.** O acesso agora é **usuário e senha**,
+  conferidos no próprio aparelho (`AppLogin`), sem servidor e sem banco. Saíram
+  `KeyGate`, `AdminService`, `TursoClient` e as credenciais do Turso do `build.gradle`.
+  Motivo: chave é revendável e dá suporte demais.
+- **Categorias Admin, Dashboard, Perfil e Feedback** saíram do painel do app (seções,
+  menu, CSS, JS e o modal de editar chave). O painel ficou enxuto: otimizações,
+  Terminal e Créditos.
+- As **migrações de chave/feedback** (`0007`–`0010`) saíram do `panel/`.
+
+### Adicionado
+- **Categoria Créditos** (no app e nos termos): **00deUdia (WS)** como desenvolvedor e
+  criador, **Nezuku** como testadora oficial, os termos de uso e o aviso contra golpe —
+  *"comprou em outro lugar? você tomou um golpe"* — com o link do servidor oficial.
+- **Tela de Termos de Uso** no primeiro acesso: aceitar entra (o aceite fica no
+  aparelho); recusar desloga e volta para o login.
+- **"Servidor do dono"** logo abaixo do login (nome e senha), com o link do Discord
+  oficial. Marca do dono no rodapé do painel.
+
 ## [2.56.0] - 2026-11-06
 
 ### Removido

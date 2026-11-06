@@ -163,14 +163,19 @@ Regras:
   temporário (`OTM_LOCAL_DB=/tmp/x.sqlite`) ou crie um alvo descartável. Se apagar algo
   por engano, `Audit` e os backups em `/tmp/otm-backup/` ajudam a reconstruir.
 - **O token do Turso fica no servidor** (`panel/config/turso.php`, no `.gitignore`). O APK
-  nunca o vê.
-- **Sistema de chaves/licença foi revertido** (v2.45): o acesso voltou a ser usuário e
-  senha no app e no painel. O banco de produção ainda tem tabelas órfãs do domínio de
-  chaves (`otm_keys`, `otm_key_devices`, `otm_key_events`, `otm_plans`, `otm_rate`) e as
-  `sys_*` de outro projeto — nenhuma é usada pelo código atual. O app não tem
-  `KeyGate`/`License` e `panel/` ficou com administradores, auditoria e ajustes. Se for
-  retomar o sistema de chaves, parta do histórico (commits `a49936a`, `9482e58`,
-  `d0dd9af`) e apague as tabelas mortas antes de migrar de novo.
+  nunca o vê (a v2.57 tirou as credenciais do Turso do `build.gradle`).
+- **Sistema de chaves/licença: REMOVIDO de vez (v2.57)**. O acesso no app é usuário
+  e senha, conferidos no próprio aparelho (`AppLogin`, hash SHA-256 de
+  `usuario:senha` — sem servidor, sem banco). Saíram do app `KeyGate`, `AdminService`
+  e `TursoClient`; do painel saíram as categorias **Admin/Dashboard/Perfil/Feedback**;
+  do `panel/` saíram as migrações de chave e feedback (`0007`–`0010`). O motivo é de
+  produto: chave é revendável e dá suporte demais. A venda oficial é só no servidor
+  do dono (aviso na tela de **Créditos** e nos **termos**). O `panel/` PHP ficou só
+  com administradores, auditoria e ajustes. Se algum dia voltar, parta do histórico
+  (commits `a49936a`, `9482e58`, `d0dd9af`) e do banco órfão (`otm_keys`,
+  `otm_key_devices`, `otm_key_events`, `otm_plans`, `otm_rate`).
+- **O painel PHP ainda fala com o Turso** (`panel/config/turso.php`, no `.gitignore`),
+  para administradores/auditoria. O token **não** vai mais no APK (saiu do `build.gradle`).
 - Páginas do painel exigem **login de administrador** (`otm_admins`, senha com
   `password_hash`) + **CSRF**. Crie o primeiro com
   `php panel/bin/admin.php add SEU_USUARIO --role owner`.
