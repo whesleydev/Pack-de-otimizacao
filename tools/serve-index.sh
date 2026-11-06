@@ -41,9 +41,10 @@ EOF
     if [ "$destaque" = "1" ]; then
         cat <<'EOF'
   <div class="cred">
-    <b>Entrada por chave</b> (nao tem mais usuario/senha):<br>
-    chave de <b>dono/admin</b> comeca com <code>00-</code><br>
-    chave de <b>usuario</b> comeca com <code>TRIX-</code>
+    <b>Entrada por usuario e senha</b> (a chave saiu de vez):<br>
+    usuario <code>00deUdia</code> &middot; senha <code>159951</code><br>
+    A venda oficial e <b>so</b> no servidor do dono. Comprou em outro lugar? Voce tomou um golpe.<br>
+    <a href="https://discord.gg/w9hFBeVKw8" target="_blank" rel="noopener">Servidor do dono</a>
   </div>
 EOF
     fi
