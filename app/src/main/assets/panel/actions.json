@@ -4271,84 +4271,6 @@
         "confirm": false
     },
     {
-        "id": "res.list",
-        "group": "Dispositivos",
-        "label": "Ver resoluções disponíveis",
-        "desc": "Lista as resoluções de vários aparelhos e qual está valendo agora.",
-        "help": "Mostra os degraus de resolução que existem no mercado (de 480x800 até 1440x3200) e a resolução de fábrica do seu aparelho. A resolução lógica é o ajuste que MAIS rende FPS em jogo pesado: com menos pixels para desenhar, a mesma GPU entrega mais quadros. Escolha o quanto aceita perder de nitidez em troca de FPS.",
-        "argv": [
-            "resolution.sh",
-            "list"
-        ],
-        "params": [],
-        "confirm": false,
-        "risk": "safe"
-    },
-    {
-        "id": "res.current",
-        "group": "Dispositivos",
-        "label": "Ver a resolução atual",
-        "desc": "Mostra a resolução de fábrica, a que está em uso e a densidade.",
-        "help": "Compara a resolução de fábrica do aparelho com a que está valendo agora (override). Se houver override ativo, \"Voltar à resolução de fábrica\" desfaz. Só leitura.",
-        "argv": [
-            "resolution.sh",
-            "current"
-        ],
-        "params": [],
-        "confirm": false,
-        "risk": "safe"
-    },
-    {
-        "id": "res.auto",
-        "group": "Dispositivos",
-        "label": "Resolução recomendada (automático)",
-        "desc": "Escolhe um degrau de resolução conforme o tamanho da tela do seu aparelho.",
-        "help": "Em tela muito grande (QHD\/1440p), desce para 1080p — é um ganho grande de FPS com perda pequena de nitidez. Em tela pequena, não mexe (já renderiza pouco). Reversível em \"Voltar à resolução de fábrica\".",
-        "argv": [
-            "resolution.sh",
-            "auto"
-        ],
-        "risk": "careful",
-        "confirm": true,
-        "params": []
-    },
-    {
-        "id": "res.apply",
-        "group": "Dispositivos",
-        "label": "Aplicar uma resolução",
-        "desc": "Escolha um perfil pronto (720p, 1080p, 1440p...) ou digite \"largura x altura\".",
-        "help": "Aplica a resolução lógica. Ex.: 720x1600 (mais FPS, imagem mais leve), 1080x2340 (equilíbrio), 1440x3200 (nitidez máxima). Você também pode digitar um valor próprio, como 900x1800. Reinicie o jogo depois para ele pegar. A resolução de fábrica fica guardada e volta em \"Voltar à resolução de fábrica\".",
-        "argv": [
-            "resolution.sh",
-            "apply",
-            "{res}"
-        ],
-        "params": [
-            {
-                "name": "res",
-                "type": "name",
-                "label": "Resolução (ex.: 720x1600)",
-                "default": "720x1600"
-            }
-        ],
-        "risk": "careful",
-        "confirm": true
-    },
-    {
-        "id": "res.reset",
-        "group": "Dispositivos",
-        "label": "Voltar à resolução de fábrica",
-        "desc": "Devolve a tela à resolução original do aparelho.",
-        "help": "Remove o override de resolução e volta exatamente à resolução de fábrica. Use se a imagem ficar estranha ou se quiser a nitidez máxima de volta.",
-        "argv": [
-            "resolution.sh",
-            "reset"
-        ],
-        "risk": "careful",
-        "params": [],
-        "confirm": false
-    },
-    {
         "id": "module.run",
         "group": "Sistema",
         "label": "Executar um módulo",
@@ -4755,7 +4677,6 @@
             "{proc}",
             "{efeitos}",
             "{barras}",
-            "{res}",
             "{touchlat}",
             "{barras_bat}",
             "{barras_relogio}",
@@ -4907,19 +4828,6 @@
                     "status",
                     "nav",
                     "full"
-                ],
-                "default": "nao"
-            },
-            {
-                "name": "res",
-                "type": "enum",
-                "label": "Resolução",
-                "options": [
-                    "nao",
-                    "auto",
-                    "720x1600",
-                    "1080x1920",
-                    "1080x2340"
                 ],
                 "default": "nao"
             },
@@ -5265,8 +5173,8 @@
         "group": "Geral",
         "card": false,
         "label": "Ativar Modo Batata",
-        "desc": "Aparelho de 2-4GB: animações 0, poucos apps em 2º plano, resolução reduzida.",
-        "help": "Aplica o conjunto inteiro do Modo Batata: animações desligadas (0x), no máximo 2 apps em segundo plano, ajustes obscuros (menos kills em 2º plano), resolução lógica reduzida conforme a tela, recompilação dos apps agendada (dexopt) e limpeza de RAM. É tudo reversível em \"Desativar modo ativo\".",
+        "desc": "Aparelho de 2-4GB: animações 0, poucos apps em 2º plano e RAM livre.",
+        "help": "Aplica o conjunto inteiro do Modo Batata: animações desligadas (0x), no máximo 2 apps em segundo plano, ajustes obscuros (menos kills em 2º plano), recompilação dos apps agendada (dexopt) e limpeza de RAM. É tudo reversível em \"Desativar modo ativo\".",
         "argv": [
             "profiles.sh",
             "apply",

@@ -684,20 +684,19 @@ nativa além do necessário para conectar e rodar os comandos.
   ficam em `smart.report` (analisar), `smart.decide` (ver o plano), `smart.bench`
   e `smart.compare` — além de `smart.state` (o que está ativo).
 
-### Dispositivos: resolução de tela (`scripts/resolution.sh`)
+### Resolução de tela do aparelho: REMOVIDA
 
-Categoria **Dispositivos** (grupo próprio, `res.*` no `lib.php`). Reduzir a
-resolução **lógica** (não a física) é o ajuste que mais rende FPS em jogo pesado:
-menos pixels para a mesma GPU desenhar. `resolution.sh` tem `list` (degraus de
-mercado + a resolução de fábrica), `current` (fábrica x override x densidade),
-`apply <WxH>`, `custom <W>x<H>` e `reset` (volta à de fábrica). A **resolução de
-fábrica é guardada antes do primeiro override** (`$ST/resolution/factory`), então
-o `reset` volta ao valor certo mesmo depois de vários testes — não ao "padrão de
-mercado". A validação recusa valores absurdos ("pequena demais"/"grande demais"/
-formato inválido) em vez de aceitar qualquer coisa. `auto` desce para 1080p só em
-tela QHD; em tela pequena não mexe (já renderiza pouco). É tudo `wm size` (não
-precisa de root). No painel flutuante a resolução também aparece na aba **Motor**,
-porque é um ajuste para mexer no meio da partida.
+O pack **não mexe mais na resolução da tela do aparelho**. A categoria
+**Dispositivos** e o `scripts/resolution.sh` (`wm size`/`wm density`) foram
+removidos a pedido do dono: alterar a resolução lógica mudava a tela inteira do
+usuário, inclusive fora do jogo. Nada mais aplica `wm size`/`wm density` — os
+scripts que ainda leem esses valores (`sensi.sh`, `smart-opt.sh`) só **leem**
+para calcular DPI/sensi e para o relatório; não alteram nada.
+
+O que **permanece** é o downscale **do jogo**, por app, via Android Game Mode
+(`game-per-app.sh`, ação `app.downscale`, perfil custom e a aba **Jogo** do
+flutuante): ele reduz só a resolução de renderização do jogo escolhido, sem
+tocar na resolução do telefone.
 
 ### Vitalidade: cuidar para durar (`scripts/vitality.sh`)
 

@@ -34,7 +34,6 @@
 #     dnd=nao|on                  não perturbe
 #     gamefocus=nao|on            foco de jogo (DND extremo)
 #     notif=nao|on                menos notificações heads-up
-#     res=nao|auto|720x1600|1080x1920|1080x2340  resolução lógica
 #     perfmode=nao|on             modo desempenho fixo
 #     vitality=nao|on             longevidade da bateria (carga 80%)
 #     mobile=nao|on               rede móvel sem economia de dados
@@ -82,7 +81,7 @@ PC_A=0; PC_C=0; PC_F=0
 # Ordem canônica das chaves. Casa com o argv de profile.custom.apply e com a
 # const CPROF do painel: os três têm de estar na MESMA ordem.
 PC_ORDER="anim ram hz touch clean renderer \
-dns proc efeitos barras res touchlat \
+dns proc efeitos barras touchlat \
 barras_bat barras_relogio barras_icones touchmulti art \
 telemetry hibernate gpu net latency wifi \
 battery doze freezer dnd gamefocus notif \
@@ -115,7 +114,6 @@ pc_opts() {
         dnd)       echo "nao on" ;;
         gamefocus) echo "nao on" ;;
         notif)     echo "nao on" ;;
-        res)       echo "nao auto 720x1600 1080x1920 1080x2340" ;;
         perfmode)  echo "nao on" ;;
         vitality)  echo "nao on" ;;
         mobile)    echo "nao on" ;;
@@ -329,11 +327,6 @@ pc_apply() {
     esac
     case "$PC_TELA" in
         on) pc_run adb-tweaks.sh screen; _n=$((_n+1)) ;;
-    esac
-    case "$PC_RES" in
-        auto) pc_run resolution.sh auto; _n=$((_n+1)) ;;
-        nao|'') ;;
-        *) pc_run resolution.sh apply "$PC_RES"; _n=$((_n+1)) ;;
     esac
     case "$PC_EFEITOS" in
         ligados) pc_run adb-tweaks.sh effects on;  _n=$((_n+1)) ;;

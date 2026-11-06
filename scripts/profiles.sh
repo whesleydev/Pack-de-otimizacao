@@ -4,7 +4,7 @@
 #
 #  Cada modo é um conjunto de ajustes que o pack JÁ sabe aplicar. Este script
 #  não reimplementa nada: ele chama os mesmos comandos das abas (adb-tweaks.sh,
-#  turbo.sh, resolution.sh, deep-tune.sh...) e faz os três trabalhos que faltavam:
+#  turbo.sh, deep-tune.sh...) e faz os três trabalhos que faltavam:
 #
 #    1) aplica o conjunto INTEIRO que o cartão promete (antes o botão do painel
 #       rodava só uma linha: "Modo Batata" era um clean, "Econômico" era só
@@ -95,12 +95,11 @@ pr_undo_scope() {
 # anti-relog não ser desfeito pelo congelador).
 
 pr_apply_batata() {
-    say "Modo Batata: animacoes 0, 1-2 apps em 2o plano, resolução/DPI reduzida"
+    say "Modo Batata: animacoes 0, 1-2 apps em 2o plano"
     pr_run adb-tweaks.sh perf_max          # animações 0 + GPU + blur off
     pr_run adb-tweaks.sh mem batata        # poucos apps em cache + libera RAM
     pr_run adb-tweaks.sh proc_limit 2      # no máximo 2 apps em 2º plano
     pr_run adb-tweaks.sh obscure           # menos kills, jogo fora do Doze
-    pr_run resolution.sh auto              # resolução lógica conforme a tela
     pr_run turbo.sh dexopt-bg              # agenda a recompilação (dexopt)
     pr_run clean.sh now suave              # libera o que sobrou
 }

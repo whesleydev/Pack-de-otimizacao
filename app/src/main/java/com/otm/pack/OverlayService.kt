@@ -302,8 +302,9 @@ class OverlayService : Service() {
             else pill(dp(11).toFloat(), C_GLASS, C_LINE)
             chip.setTypeface(bodyTypeface(), if (on) Typeface.BOLD else Typeface.NORMAL)
         }
-        // se a resolução mudou enquanto o painel estava minimizado/fechado, o
-        // reajuste pode não ter chegado: refazer na troca de aba é de graça.
+        // se as métricas da tela mudaram enquanto o painel estava minimizado/
+        // fechado, o reajuste pode não ter chegado: refazer na troca de aba é
+        // de graça.
         refitToScreen()
     }
 
@@ -601,29 +602,6 @@ class OverlayService : Service() {
                 runScript("adb-tweaks.sh", listOf("renderer", e.first), "Motor: ${e.second}")
             })
         }
-
-        // Resolução de tela: é o ajuste que MAIS rende FPS, então tem de estar
-        // no meio da partida, não só no painel principal. Os degraus vão do mais
-        // leve (mais FPS) ao mais nítido; "Fábrica" desfaz.
-        box.addView(sectionHeader("Resolução (mais FPS)"))
-        var rowRes: LinearLayout? = null
-        for ((i, r) in RESOLUTIONS.withIndex()) {
-            if (i % 2 == 0) {
-                rowRes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                box.addView(rowRes, matchWrap())
-            }
-            rowRes!!.addView(smallButton(r.second) {
-                runScript("resolution.sh", listOf("apply", r.first), "Resolução: ${r.second}")
-            })
-        }
-        val rowFab = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        rowFab.addView(smallButton("Automático") {
-            runScript("resolution.sh", listOf("auto"), "Resolução automática")
-        })
-        rowFab.addView(smallButton("Fábrica") {
-            runScript("resolution.sh", listOf("reset"), "Resolução de fábrica")
-        })
-        box.addView(rowFab, matchWrap())
         return box
     }
 
@@ -1151,11 +1129,10 @@ class OverlayService : Service() {
         (resources.displayMetrics.heightPixels * PANEL_H_FRAC).toInt().coerceAtLeast(dp(160))
 
     /**
-     * O `wm size` (aba Dispositivos / "Resolução") muda a resolução LÓGICA: a
-     * janela do overlay é posicionada em pixels absolutos, então ao reduzir a
-     * resolução o painel (calculado para a tela antiga) passava a ocupar mais do
-     * que a tela nova — ficava enorme, cortado. Recalcula o tamanho com as
-     * métricas novas, preservando o modo minimizado.
+     * A janela do overlay é posicionada em pixels absolutos; se as métricas da
+     * tela mudarem (rotação, mudança de densidade pelo usuário), o painel
+     * calculado para a tela antiga passaria a ocupar mais do que a tela nova —
+     * ficava enorme, cortado. Recalcula o tamanho, preservando o modo minimizado.
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -1360,19 +1337,6 @@ class OverlayService : Service() {
             "8" to "8 · meio",
             "32" to "32 · multitarefa",
             "padrao" to "Padrão",
-        )
-
-        /**
-         * Degraus de resolução aceitos por `resolution.sh apply <WxH>`, do mais
-         * leve (mais FPS) ao mais nítido. São os mesmos perfis que o módulo
-         * oferece, para o flutuante e o painel principal nunca divergirem.
-         */
-        private val RESOLUTIONS = listOf(
-            "540x960" to "540p",
-            "720x1280" to "720p",
-            "720x1600" to "720p+",
-            "1080x2340" to "1080p",
-            "1440x2560" to "1440p",
         )
 
         /** Um app rodando, lido das linhas `#OTM-PROC` do `proc-mgr.sh list`. */

@@ -73,7 +73,7 @@ function otm_allowed_scripts(): array {
         'turbo.sh', 'panel-state.sh', 'panel-stats.sh', 'proc-mgr.sh',
         'keep-alive.sh', 'game-clean.sh', 'ram-boost.sh', 'fps.sh',
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
-        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh', 'resolution.sh',
+        'profile-custom.sh', 'smart-opt.sh', 'vitality.sh',
         'profiles.sh', 'sensi.sh', 'hidden-tune.sh',
     ];
 }
@@ -334,8 +334,6 @@ function otm_custom_profile_opts(): array {
          'opts' => [['nao', 'Não mexer'], ['ligados', 'Ligados'], ['leves', 'Desligados (leve)']]],
         ['k' => 'barras',    't' => 'Barras do sistema', 's' => 'Modo imersivo: esconde a barra de cima, a de baixo ou as duas.',
          'opts' => [['nao', 'Não mexer'], ['visiveis', 'Visíveis'], ['status', 'Só a de baixo'], ['nav', 'Só a de cima'], ['full', 'Imersivo']]],
-        ['k' => 'res',       't' => 'Resolução',         's' => 'Resolução lógica: menos pixels, mais FPS.',
-         'opts' => [['nao', 'Não mexer'], ['auto', 'Recomendada'], ['720x1600', '720p'], ['1080x1920', '1080p'], ['1080x2340', '1080p+']]],
         ['k' => 'touchlat',  't' => 'Latência de toque', 's' => 'Responsividade e janelas de toque (só o que o aparelho aceita).',
          'opts' => [['nao', 'Não mexer'], ['leve', 'Leve'], ['forte', 'Forte']]],
 
@@ -1542,30 +1540,6 @@ function otm_actions(): array {
               ['name' => 'n', 'type' => 'name', 'label' => 'Rótulo', 'default' => 'abertura']],
           'risk' => 'careful']);
 
-    // ----- Dispositivos: resolução de tela (mesma de vários aparelhos) -----
-    $add(['id' => 'res.list', 'group' => 'Dispositivos', 'label' => 'Ver resoluções disponíveis',
-          'desc' => 'Lista as resoluções de vários aparelhos e qual está valendo agora.',
-          'help' => 'Mostra os degraus de resolução que existem no mercado (de 480x800 até 1440x3200) e a resolução de fábrica do seu aparelho. A resolução lógica é o ajuste que MAIS rende FPS em jogo pesado: com menos pixels para desenhar, a mesma GPU entrega mais quadros. Escolha o quanto aceita perder de nitidez em troca de FPS.',
-          'argv' => ['resolution.sh', 'list']]);
-    $add(['id' => 'res.current', 'group' => 'Dispositivos', 'label' => 'Ver a resolução atual',
-          'desc' => 'Mostra a resolução de fábrica, a que está em uso e a densidade.',
-          'help' => 'Compara a resolução de fábrica do aparelho com a que está valendo agora (override). Se houver override ativo, "Voltar à resolução de fábrica" desfaz. Só leitura.',
-          'argv' => ['resolution.sh', 'current']]);
-    $add(['id' => 'res.auto', 'group' => 'Dispositivos', 'label' => 'Resolução recomendada (automático)',
-          'desc' => 'Escolhe um degrau de resolução conforme o tamanho da tela do seu aparelho.',
-          'help' => 'Em tela muito grande (QHD/1440p), desce para 1080p — é um ganho grande de FPS com perda pequena de nitidez. Em tela pequena, não mexe (já renderiza pouco). Reversível em "Voltar à resolução de fábrica".',
-          'argv' => ['resolution.sh', 'auto'], 'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'res.apply', 'group' => 'Dispositivos', 'label' => 'Aplicar uma resolução',
-          'desc' => 'Escolha um perfil pronto (720p, 1080p, 1440p...) ou digite "largura x altura".',
-          'help' => 'Aplica a resolução lógica. Ex.: 720x1600 (mais FPS, imagem mais leve), 1080x2340 (equilíbrio), 1440x3200 (nitidez máxima). Você também pode digitar um valor próprio, como 900x1800. Reinicie o jogo depois para ele pegar. A resolução de fábrica fica guardada e volta em "Voltar à resolução de fábrica".',
-          'argv' => ['resolution.sh', 'apply', '{res}'],
-          'params' => [['name' => 'res', 'type' => 'name', 'label' => 'Resolução (ex.: 720x1600)', 'default' => '720x1600']],
-          'risk' => 'careful', 'confirm' => true]);
-    $add(['id' => 'res.reset', 'group' => 'Dispositivos', 'label' => 'Voltar à resolução de fábrica',
-          'desc' => 'Devolve a tela à resolução original do aparelho.',
-          'help' => 'Remove o override de resolução e volta exatamente à resolução de fábrica. Use se a imagem ficar estranha ou se quiser a nitidez máxima de volta.',
-          'argv' => ['resolution.sh', 'reset'], 'risk' => 'careful']);
-
     // ----- Módulos (plugins do pack) -----
     $add(['id' => 'module.run', 'group' => 'Sistema', 'label' => 'Executar um módulo',
           'desc' => 'Roda um dos módulos/plugins incluídos no pack.',
@@ -1712,8 +1686,8 @@ function otm_actions(): array {
     // desfazer SÓ aquele modo (mode.off), sem mexer no resto.
     $add(['id' => 'mode.batata', 'group' => 'Geral', 'card' => false,
           'label' => 'Ativar Modo Batata',
-          'desc' => 'Aparelho de 2-4GB: animações 0, poucos apps em 2º plano, resolução reduzida.',
-          'help' => 'Aplica o conjunto inteiro do Modo Batata: animações desligadas (0x), no máximo 2 apps em segundo plano, ajustes obscuros (menos kills em 2º plano), resolução lógica reduzida conforme a tela, recompilação dos apps agendada (dexopt) e limpeza de RAM. É tudo reversível em "Desativar modo ativo".',
+          'desc' => 'Aparelho de 2-4GB: animações 0, poucos apps em 2º plano e RAM livre.',
+          'help' => 'Aplica o conjunto inteiro do Modo Batata: animações desligadas (0x), no máximo 2 apps em segundo plano, ajustes obscuros (menos kills em 2º plano), recompilação dos apps agendada (dexopt) e limpeza de RAM. É tudo reversível em "Desativar modo ativo".',
           'argv' => ['profiles.sh', 'apply', 'batata'], 'confirm' => true, 'risk' => 'careful', 'timeout' => 900]);
     $add(['id' => 'mode.competitivo', 'group' => 'Geral', 'card' => false,
           'label' => 'Ativar Modo Competitivo',

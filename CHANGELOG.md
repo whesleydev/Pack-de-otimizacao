@@ -3,6 +3,20 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.56.0] - 2026-11-06
+
+### Removido
+- **A resolução da tela do aparelho saiu do pack.** O pack não mexe mais em
+  `wm size`/`wm density`: a categoria **Dispositivos** e o `scripts/resolution.sh`
+  foram removidos do painel web, do app, do flutuante (aba **Motor**), do perfil
+  personalizado e do Modo Batata. Alterar a resolução lógica mudava a tela
+  inteira do usuário, inclusive fora do jogo — e isso não volta mais. Os scripts
+  que ainda **leem** `wm size`/`wm density` (`sensi.sh`, `smart-opt.sh`) só usam
+  o valor para calcular DPI/sensi e montar o relatório; não alteram nada.
+- O que **permanece** é o downscale **do jogo**, por app (Android Game Mode,
+  `game-per-app.sh`): reduz só a resolução de renderização do jogo escolhido,
+  sem tocar na resolução do telefone.
+
 ## [2.54.0] - 2026-11-06
 
 ### Adicionado

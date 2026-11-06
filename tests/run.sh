@@ -1809,8 +1809,9 @@ t_site_html() {
     # a lista de comandos tem categorias de renderizador e congelar
     grep -q 'skiavk' "$f" && ok "inclui comando Vulkan (skiavk)" || bad "sem comando Vulkan"
     grep -q 'pm suspend' "$f" && ok "inclui congelar apps (pm suspend)" || bad "sem congelar apps"
-    # a resolução (wm size) está na área de comandos
-    grep -q 'wm size reset' "$f" && ok "inclui resolução (wm size)" || bad "sem comando de resolução"
+    # a resolução (wm size) saiu do guia: o pack não mexe mais na resolução
+    ! grep -q 'wm size' "$f" && ok "guia sem comandos de resolução (removido)" \
+        || bad "guia ainda ensina resolução (wm size)"
     # o site e a cópia publicada (public/guia.html) precisam ter a MESMA lista de
     # comandos: são dois arquivos, e uma edição só num deles passa despercebida.
     if [ -f "$ROOT/public/guia.html" ]; then
@@ -2331,8 +2332,8 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 13 ] && ok "index.php renderiza a home + 11 categorias + Terminal" || bad "seções: $n_sec (esperado 13)"
-        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "Dispositivos" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 12 ] && ok "index.php renderiza a home + 10 categorias + Terminal" || bad "seções: $n_sec (esperado 12)"
+        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
         # "Sensi e mira" virou "Flutuante" e ficou só com o botão do painel flutuante
@@ -3239,50 +3240,31 @@ t_clean() {
 }
 
 t_resolution() {
-    printf '\n  # resolução de tela: perfis de vários aparelhos + custom\n'
-    local f="$ROOT/scripts/resolution.sh"
-    [ -f "$f" ] && ok "scripts/resolution.sh existe" || { bad "resolution.sh ausente"; return; }
-    # a lista tem perfis de aparelhos reais e nomes legíveis
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" list > "$TMP/res_list" 2>&1
-    assert_contains "$TMP/res_list" "720x1600" "lista traz o 720p alto (celular comum)"
-    assert_contains "$TMP/res_list" "1080x2340" "lista traz o 1080p alto"
-    assert_contains "$TMP/res_list" "1440x3200" "lista traz o QHD alto"
-    assert_contains "$TMP/res_list" "RESOLUÇÕES DISPONÍVEIS" "lista se identifica"
-    # aplica um perfil pelo nome e confere que o wm size recebeu o valor
-    rm -rf "$HOME/.packotm"
-    : > "$TMP/res.log"; export TMP_CMD_LOG="$TMP/res.log"
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 720x1600 > "$TMP/res_ap" 2>&1
-    assert_contains "$TMP/res_ap" "720x1600" "apply aplica a resolução pedida"
-    grep -q 'wm size 720x1600' "$TMP/res.log" \
-        && ok "apply manda 'wm size' com o valor certo" || bad "apply não chamou wm size"
-    # resolução custom em WxH é aceita
-    : > "$TMP/res.log"
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 900x1800 > "$TMP/res_c" 2>&1
-    grep -q 'wm size 900x1800' "$TMP/res.log" \
-        && ok "apply aceita resolução personalizada" || bad "custom não passou"
-    # valores inválidos são recusados (nada de quebrar a tela)
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 99x99 > "$TMP/res_bad" 2>&1
-    assert_contains "$TMP/res_bad" "pequena demais" "apply recusa resolução minúscula"
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply 99999x99999 > "$TMP/res_bad2" 2>&1
-    assert_contains "$TMP/res_bad2" "grande demais" "apply recusa resolução absurda"
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" apply abc > "$TMP/res_bad3" 2>&1
-    assert_contains "$TMP/res_bad3" "desconhecido" "apply recusa nome inexistente"
-    # reset devolve a de fábrica
-    : > "$TMP/res.log"
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" reset > "$TMP/res_rst" 2>&1
-    grep -q 'wm size reset' "$TMP/res.log" \
-        && ok "reset devolve a resolução de fábrica" || bad "reset não chamou wm size reset"
-    # a resolução de fábrica fica guardada (o restore do pack depende disso)
-    grep -q 'ST/res/orig' "$f" && ok "guarda a resolução de fábrica" || bad "não guarda a original"
-    unset TMP_CMD_LOG
-    # whitelist do painel + catálogo
+    printf '\n  # resolução do aparelho: REMOVIDA (não se mexe mais no wm size/density)\n'
+    # O usuário pediu para tirar tudo que alterava a resolução da tela. O script
+    # que aplicava `wm size`/`wm density` saiu do repo, da allowlist e do bundle.
+    [ ! -f "$ROOT/scripts/resolution.sh" ] \
+        && ok "scripts/resolution.sh removido" || bad "resolution.sh ainda existe"
+    [ ! -f "$ROOT/app/src/main/assets/pack/scripts/resolution.sh" ] \
+        && ok "espelho: resolution.sh removido" || bad "espelho: resolution.sh ainda existe"
+    # nenhum script do pack pode aplicar a resolução da tela
+    local hits
+    hits="$(grep -rlE "wm size [0-9]|wm size reset|wm density [0-9]|wm density reset" \
+        "$ROOT/scripts" "$ROOT/app/src/main/assets/pack/scripts" 2>/dev/null)"
+    [ -z "$hits" ] && ok "nenhum script aplica wm size/density" \
+        || bad "script ainda mexe na resolução: $hits"
+    # fora da allowlist e fora do catálogo
     php -r 'require "'"$ROOT"'/web/lib.php";
-             echo in_array("resolution.sh", otm_allowed_scripts(), true) ? "ok" : "falta";' \
-        > "$TMP/res_lib" 2>&1
-    assert_contains "$TMP/res_lib" "ok" "resolution.sh na whitelist"
-    # espelho do app
-    [ -f "$ROOT/app/src/main/assets/pack/scripts/resolution.sh" ] \
-        && ok "espelho: resolution.sh presente" || bad "espelho: resolution.sh ausente"
+             $ok = !in_array("resolution.sh", otm_allowed_scripts(), true);
+             foreach (otm_actions() as $a) {
+               if (str_starts_with($a["id"], "res.")) $ok = false;
+               if (($a["argv"][0] ?? "") === "resolution.sh") $ok = false;
+             }
+             echo $ok ? "ok" : "falta";' > "$TMP/res_lib" 2>&1
+    assert_contains "$TMP/res_lib" "ok" "resolution.sh fora da allowlist e do catálogo"
+    # nenhuma ação do painel chama o script removido
+    ! grep -q 'resolution.sh' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "catálogo do app sem resolution.sh" || bad "catálogo ainda chama resolution.sh"
 }
 
 t_smart_clean_protect() {
