@@ -2050,8 +2050,10 @@ function applyState(){
         + (String(STATE.proc_limit) === "padrão" ? " (o sistema decide)" : " apps em segundo plano");
     } else if (key === "refresh_peak"){
       const rp = stateNum(STATE.refresh_peak), rc = stateNum(STATE.refresh_hz);
-      if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz";
-      else if (rc !== null) txt = "Em uso agora: " + rc + "Hz (o sistema decide)";
+      const rm = stateNum(STATE.refresh_max);
+      const teto = rm !== null ? " (painel vai até " + rm + "Hz)" : "";
+      if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz" + teto;
+      else if (rc !== null) txt = "Em uso agora: " + rc + "Hz (o sistema decide)" + teto;
     }
     now.textContent = txt;
     now.hidden = !txt;

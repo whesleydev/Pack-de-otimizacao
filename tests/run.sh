@@ -1253,6 +1253,21 @@ t_panel_stats() {
     grep -q '"refresh_peak":"90.0"' "$TMP/rp_lock" \
         && ok "stats: travado (90/90) reporta a taxa" || bad "stats: travado não reportado"
     rm -rf "$st2" "$b2"
+
+    # o "teto da tela" no rodapé do card de taxa e no monitor do flutuante é o
+    # MAIOR modo que o painel suporta (refresh_max), não a taxa travada: um
+    # aparelho de 90 Hz com 120 gravado nas settings aparecia com "teto 120".
+    grep -q '"refresh_max"' "$ROOT/scripts/panel-stats.sh" \
+        && ok "stats: emite o teto real do painel (refresh_max)" || bad "stats: sem refresh_max"
+    grep -q '"refresh_max"' "$ROOT/scripts/panel-state.sh" \
+        && ok "state: emite o teto real do painel (refresh_max)" || bad "state: sem refresh_max"
+    for f in "$ROOT/web/index.php" "$ROOT/app/src/main/assets/panel/index.html"; do
+        grep -q 'STATE.refresh_max' "$f" \
+            && ok "$(basename "$f"): rodapé do refresh mostra o teto do painel" \
+            || bad "$(basename "$f"): rodapé ignora o teto do painel"
+    done
+    grep -q 's\["refresh_max"\]' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && ok "overlay: o monitor usa o teto real (refresh_max)" || bad "overlay: monitor sem refresh_max"
 }
 
 t_fps_real() {
