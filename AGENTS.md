@@ -664,7 +664,7 @@ nativa além do necessário para conectar e rodar os comandos.
   faz parte do `auto`**: remover app de fábrica é decisão
   do usuário e tem categoria própria (ver abaixo).
 
-  **Perfil personalizado (42 recursos, uma fonte).** As opções vivem em
+  **Perfil personalizado (41 recursos, uma fonte).** As opções vivem em
   `otm_custom_profile_opts()` (`web/lib.php`), que é a **fonte única**: o `argv`
   de `profile.custom.apply` é montado com `array_map` dessa lista, então o painel
   não consegue pedir uma chave que o script não conhece. Só o `PC_ORDER` do
