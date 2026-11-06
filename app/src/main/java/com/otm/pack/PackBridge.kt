@@ -102,29 +102,11 @@ class PackBridge(
                     "overlay" -> { withContext(Dispatchers.Main) { onOverlay() }; okJson() }
                     "login" -> { withContext(Dispatchers.Main) { onLogin() }; okJson() }
                     "login_fail" -> { withContext(Dispatchers.Main) { onLoginFail() }; okJson() }
-                    // Chaves (licenças): o app fala direto com o Turso.
-                    "key_login" -> keyLoginImpl(payload)
-                    "key_logout" -> { KeyGate.logout(context); okJson() }
-                    "key_status" -> keyStatusImpl()
-                    "nick" -> nickImpl(payload)
-                    "admin_list" -> AdminService.list(context).toString()
-                    "admin_create" -> adminCreateImpl(payload)
-                    "admin_toggle" -> adminToggleImpl(payload)
-                    "admin_delete" -> adminDeleteImpl(payload)
-                    "admin_audit" -> AdminService.audit(context).toString()
-                    "admin_detail" -> AdminService.detail(context, idFrom(payload)).toString()
-                    "admin_reveal" -> AdminService.reveal(context, idFrom(payload)).toString()
-                    "admin_update" -> adminUpdateImpl(payload)
-                    "admin_device" -> adminDeviceImpl(payload)
-                    "admin_plans" -> AdminService.plans(context).toString()
-                    "admin_dashboard" -> AdminService.dashboard(context).toString()
-                    "feedback_send" -> feedbackSendImpl(payload)
-                    "feedback_mine" -> AdminService.feedbackMine(context).toString()
-                    "feedback_list" -> AdminService.feedbackList(context, statusFrom(payload)).toString()
-                    "feedback_update" -> feedbackUpdateImpl(payload)
-                    "feedback_delete" -> AdminService.feedbackDelete(context, idFrom(payload)).toString()
-                    "me" -> AdminService.me(context).toString()
-                    "my_key" -> AdminService.revealMine(context).toString()
+                    // Entrada local: confere usuário/senha no aparelho (sem banco).
+                    "app_login" -> appLoginImpl(payload)
+                    "app_logout" -> { AppLogin.logout(context); okJson() }
+                    "app_status" -> appStatusImpl()
+                    "terms_accept" -> { AppLogin.acceptTerms(context); okJson() }
                     "sound" -> {
                         val want = payload.trim().lowercase() != "off"
                         val muted = withContext(Dispatchers.Main) { onSoundSet(want) }
@@ -652,123 +634,37 @@ class PackBridge(
         return map
     }
 
-    // ---- chaves e admin ------------------------------------------------------
+    // ---- entrada local -------------------------------------------------------
 
-    /** Login por chave: valida no banco (ou no cache offline) e abre a sessão. */
-    private fun keyLoginImpl(payload: String): String {
+    /** Login por usuário/senha, conferido no aparelho. Abre a sessão local. */
+    private fun appLoginImpl(payload: String): String {
         val body = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        val key = body.optString("key").trim()
-        if (key.isEmpty()) {
-            return JSONObject().put("ok", false).put("result", "unknown")
-                .put("message", "Digite a sua chave.").toString()
+        val user = body.optString("user").trim()
+        val pass = body.optString("pass")
+        if (user.isEmpty() || pass.isEmpty()) {
+            return JSONObject().put("ok", false).put("message", "Preencha usuário e senha.").toString()
         }
-        val r = KeyGate.check(context, key)
-        if (r.ok) onLogin() else onLoginFail()
+        val ok = AppLogin.check(user, pass)
+        if (ok) {
+            AppLogin.login(context)
+            withContext(Dispatchers.Main) { onLogin() }
+        } else {
+            withContext(Dispatchers.Main) { onLoginFail() }
+        }
         return JSONObject()
-            .put("ok", r.ok).put("result", r.status).put("message", r.message)
-            .put("label", r.label).put("role", r.role)
-            .put("expires_at", r.expiresAt ?: JSONObject.NULL)
-            .put("offline", r.offline).toString()
+            .put("ok", ok)
+            .put("message", if (ok) "Bem-vindo." else "Usuário ou senha incorretos.")
+            .put("user", if (ok) user else "")
+            .toString()
     }
 
-    /** Estado da sessão atual (papel, rótulo, se o banco está configurado). */
-    private fun keyStatusImpl(): String = JSONObject()
+    /** Estado da sessão: logado e se os termos já foram aceitos neste aparelho. */
+    private fun appStatusImpl(): String = JSONObject()
         .put("ok", true)
-        .put("logged", KeyGate.isLogged(context))
-        .put("owner", KeyGate.isOwner(context))
-        .put("role", KeyGate.sessionRole(context))
-        .put("label", KeyGate.sessionLabel(context))
-        .put("prefix", KeyGate.sessionPrefix(context))
-        .put("expires_at", KeyGate.sessionExpires(context))
-        .put("db", KeyGate.dbConfigured())
+        .put("logged", AppLogin.isLogged(context))
+        .put("user", AppLogin.userName(context))
+        .put("terms", AppLogin.termsAccepted(context))
         .toString()
-
-    /** Apelido só deste aparelho (perfil). Não vai para o banco. */
-    private fun nickImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        if (b.has("nick")) KeyGate.setNick(context, b.optString("nick"))
-        return JSONObject().put("ok", true).put("nick", KeyGate.nick(context)).toString()
-    }
-
-    private fun adminCreateImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        return AdminService.create(
-            context,
-            label = b.optString("label"),
-            days = b.optLong("days", 30L),
-            maxDevices = b.optLong("devices", 1L),
-            role = b.optString("role", "user"),
-            maxUses = b.optLong("uses", 0L),
-            ownerContact = b.optString("contact"),
-            note = b.optString("note"),
-        ).toString()
-    }
-
-    private fun adminToggleImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        return AdminService.setActive(
-            context, id = b.optLong("id"), active = b.optBoolean("active", true),
-            reason = b.optString("reason"),
-        ).toString()
-    }
-
-    private fun adminDeleteImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        return AdminService.delete(context, b.optLong("id")).toString()
-    }
-
-    /** Id numérico solto no payload (para admin_detail/admin_reveal). */
-    private fun idFrom(payload: String): Long =
-        try { JSONObject(payload).optLong("id") } catch (e: Exception) { 0L }
-
-    /** Filtro de estado do feedback: aceita `novo`, `"novo"`, `{status:"novo"}` ou vazio. */
-    private fun statusFrom(payload: String): String {
-        val t = payload.trim()
-        if (t.isEmpty()) return ""
-        return try { JSONObject(t).optString("status") } catch (e: Exception) { t.trim('"', '\'', ' ') }
-    }
-
-    private fun adminUpdateImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        val id = b.optLong("id")
-        if (id <= 0L) return JSONObject().put("ok", false).put("error", "id inválido").toString()
-        // tudo além do id é o patch (o que veio muda; o que faltou fica como está)
-        val patch = JSONObject(b.toString())
-        patch.remove("id")
-        return AdminService.update(context, id, patch).toString()
-    }
-
-    private fun adminDeviceImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        val did = b.optLong("deviceId")
-        if (did <= 0L) return JSONObject().put("ok", false).put("error", "aparelho inválido").toString()
-        return when (b.optString("action", "block")) {
-            "remove" -> AdminService.removeDevice(context, did)
-            "unblock" -> AdminService.blockDevice(context, did, false)
-            else -> AdminService.blockDevice(context, did, true)
-        }.toString()
-    }
-
-    /** Envio de feedback: qualquer usuário logado pode mandar (não exige dono). */
-    private fun feedbackSendImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        return AdminService.sendFeedback(
-            context,
-            kind = b.optString("kind", "sugestao"),
-            message = b.optString("message"),
-            contact = b.optString("contact"),
-        ).toString()
-    }
-
-    /** Muda o estado de um feedback (lido/resolvido/arquivado) e guarda a resposta. */
-    private fun feedbackUpdateImpl(payload: String): String {
-        val b = try { JSONObject(payload) } catch (e: Exception) { JSONObject() }
-        val id = b.optLong("id")
-        if (id <= 0L) return JSONObject().put("ok", false).put("error", "id inválido").toString()
-        return AdminService.feedbackUpdate(
-            context, id, b.optString("status"), b.optString("reply"),
-        ).toString()
-    }
 
     private companion object {
         /** Quantas execuções o log guarda antes de podar as mais antigas. */
