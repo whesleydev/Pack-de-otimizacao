@@ -80,10 +80,9 @@ _ovy="$(otm_echo "$_wmsz" | sed -n 's/.*Override size: *\([0-9]*\)x\([0-9]*\).*/
 [ -n "$_ovx" ] && { _phx="$_ovx"; _phy="$_ovy"; }
 _lado="$(otm_num "$_phx")"
 if [ -n "$(otm_num "$_phy")" ] && [ "$(otm_num "$_phy")" -lt "$_lado" ] 2>/dev/null; then _lado="$(otm_num "$_phy")"; fi
-_dpi_dp=""
-if [ -n "$_lado" ] && [ -n "$_dpi_den" ]; then
+_dpi_dp="$(otm_dpi_atual_dp 2>/dev/null)"
+[ -z "$_dpi_dp" ] && [ -n "$_lado" ] && [ -n "$_dpi_den" ] && \
     _dpi_dp="$(awk -v p="$_lado" -v d="$_dpi_den" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }')"
-fi
 printf ',"dpi_dp":"%s"' "$(_clean "$_dpi_dp")"
 printf ',"dpi_padrao_dp":"%s"' "$(_clean "$(otm_dpi_padrao_dp 2>/dev/null)")"
 printf ',"dpi_override":"%s"' "$(_clean "$_dpi_den")"

@@ -20,6 +20,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.View.MeasureSpec
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -83,6 +84,9 @@ class OverlayService : Service() {
     private var content: LinearLayout? = null
     /** Onde a lista de "Rodando agora" é montada (aba Processos). */
     private var procListBox: LinearLayout? = null
+    /** Campo e rótulo da "Menor largura" (aba Atalhos) — relidos a cada troca. */
+    private var dpiCampo: EditText? = null
+    private var dpiAgora: TextView? = null
 
     /** Lista de TODOS os apps instalados (exceções do "não encerrar"). */
     private var procAllBox: LinearLayout? = null
@@ -292,6 +296,9 @@ class OverlayService : Service() {
 
     private fun selectTab(index: Int) {
         val box = content ?: return
+        // se o usuário estava digitando a largura, o teclado e o foco da janela
+        // têm de voltar ao normal ao trocar de aba
+        soltarFoco()
         box.removeAllViews()
         // a lista de processos é recriada a cada visita à aba: não segurar view removida
         procListBox = null
@@ -375,6 +382,65 @@ class OverlayService : Service() {
                 })
                 // enquanto a aba Monitor estiver aberta, se atualiza sozinha
                 postDelayed(4000) { if (monitorBox === box) loadMonitor() }
+            }
+        }
+    }
+
+    /**
+     * Dá foco ao campo e abre o teclado.
+     *
+     * A janela do overlay nasce com `FLAG_NOT_FOCUSABLE`, então um EditText
+     * nela NUNCA recebe foco de teclado — o toque não abria nada e o usuário
+     * não conseguia digitar a largura. Aqui removemos a flag só enquanto o
+     * campo está em uso e pedimos o teclado explicitamente; ao perder o foco,
+     * a flag volta (senão o painel passaria a roubar o toque do jogo).
+     */
+    private fun focusCampo(campo: EditText) {
+        val p = root?.layoutParams as? WindowManager.LayoutParams ?: return
+        if (p.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE != 0) {
+            p.flags = p.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+            runCatching { windowManager.updateViewLayout(root, p) }
+        }
+        campo.requestFocus()
+        campo.post {
+            val im = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            im?.showSoftInput(campo, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    /** Volta a janela a não-focável (o toque no jogo deixa de ir para o painel). */
+    private fun soltarFoco() {
+        val campo = dpiCampo
+        if (campo != null) {
+            val im = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            im?.hideSoftInputFromWindow(campo.windowToken, 0)
+            campo.clearFocus()
+        }
+        val p = root?.layoutParams as? WindowManager.LayoutParams ?: return
+        if (p.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE == 0) {
+            p.flags = p.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            runCatching { windowManager.updateViewLayout(root, p) }
+        }
+    }
+
+    /** Lê a "Menor largura" em uso no aparelho e preenche o campo e o rótulo. */
+    private fun loadDpi() {
+        if (shellRunner() == null) {
+            dpiAgora?.text = "conecte o Shizuku para ver a largura atual"
+            return
+        }
+        scope.launch {
+            val res = OtmExec.run(this@OverlayService, shellRunner(), "game-per-app.sh", listOf("dpi-atual"))
+            val atual = joinOutput(res.stdout, res.stderr).trim().lines()
+                .lastOrNull { it.trim().isNotEmpty() }?.trim()?.takeIf { it.all(Char::isDigit) }
+            post {
+                if (atual != null) {
+                    dpiAgora?.text = "Em uso agora: $atual dp"
+                    // só preenche o campo se o usuário não estiver digitando
+                    if (dpiCampo?.hasFocus() != true) dpiCampo?.setText(atual)
+                } else {
+                    dpiAgora?.text = "não consegui ler a largura atual"
+                }
             }
         }
     }
@@ -913,8 +979,23 @@ class OverlayService : Service() {
             setPadding(0, 0, 0, dp(4))
         }
         box.addView(dpiAviso, matchWrap())
+
+        // largura EM USO agora (lida do aparelho, não do que foi pedido)
+        val dpiInfo = TextView(this).apply {
+            text = "lendo…"
+            textSize = 11.5f
+            setTextColor(col(accent()))
+            typeface = bodyTypeface()
+            setPadding(0, 0, 0, dp(6))
+        }
+        dpiAgora = dpiInfo
+        box.addView(dpiInfo, matchWrap())
+
         val dpiLinha = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        dpiLinha.addView(smallButton("Padrão do aparelho") { runScript("game-per-app.sh", listOf("dpi", "padrao"), "Menor largura padrão") })
+        dpiLinha.addView(smallButton("Padrão do aparelho") {
+            runScript("game-per-app.sh", listOf("dpi", "padrao"), "Menor largura padrão")
+            postDelayed(1500) { loadDpi() }
+        })
         box.addView(dpiLinha, matchWrap())
 
         // valor exato em dp (o overlay não tem slider, então o campo é o caminho
@@ -932,11 +1013,13 @@ class OverlayService : Service() {
             setTypeface(bodyTypeface())
             background = pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
             setPadding(dp(9), dp(6), dp(9), dp(6))
-            setText("400")
             setSelectAllOnFocus(true)
+            isFocusableInTouchMode = true
+            setOnTouchListener { _, ev -> if (ev.action == MotionEvent.ACTION_DOWN) focusCampo(this); false }
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 .apply { marginEnd = dp(4) }
         }
+        this.dpiCampo = dpiCampo
         dpiExato.addView(dpiCampo)
         dpiExato.addView(smallButton("Aplicar") {
             val v = dpiCampo.text.toString().trim().toIntOrNull()
@@ -944,9 +1027,11 @@ class OverlayService : Service() {
                 statusText?.text = "Menor largura: digite um número"
             } else {
                 runScript("game-per-app.sh", listOf("dpi", v.toString()), "Menor largura $v dp")
+                postDelayed(1500) { loadDpi() }
             }
         })
         box.addView(dpiExato, matchWrap())
+        loadDpi()
 
         box.addView(sectionHeader("Aparência e tela"))
         val visual = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }

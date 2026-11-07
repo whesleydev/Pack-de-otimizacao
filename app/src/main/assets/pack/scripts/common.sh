@@ -171,6 +171,27 @@ otm_dpi_padrao_dp() {
     awk -v p="$_px" -v d="$_d" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }'
 }
 
+# otm_dpi_atual_dp -> "Menor largura" EM USO agora, em dp (o mesmo número das
+# Opções do desenvolvedor): 160 * menor_lado_em_px / densidade_em_uso. Diferente
+# do otm_dpi_padrao_dp (que é o de fábrica), aqui vale o override aplicado —
+# é o valor que o overlay mostra para o usuário reconhecer o que está no
+# aparelho agora. Devolve vazio quando não dá para ler.
+otm_dpi_atual_dp() {
+    _sz="$(sh_get 'wm size' 2>/dev/null)"
+    _ph="$(otm_echo "$_sz" | sed -n 's/.*Physical size: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)"
+    _px="$(otm_num "$(echo "$_ph" | cut -d' ' -f1)")"
+    _py="$(otm_num "$(echo "$_ph" | cut -d' ' -f2)")"
+    # a resolução lógica em uso (override) manda sobre a física
+    _ov="$(otm_echo "$_sz" | sed -n 's/.*Override size: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)"
+    if [ -n "$_ov" ]; then _px="$(otm_num "$(echo "$_ov" | cut -d' ' -f1)")"; _py="$(otm_num "$(echo "$_ov" | cut -d' ' -f2)")"; fi
+    [ -z "$_px" ] && return 0
+    [ -n "$_py" ] && [ "$_py" -lt "$_px" ] 2>/dev/null && { _t="$_px"; _px="$_py"; _py="$_t"; }
+    _d="$(otm_num "$(sh_get 'wm density' 2>/dev/null | sed -n 's/.*Override density: *\([0-9]*\).*/\1/p' | tail -1)")"
+    [ -z "$_d" ] && _d="$(otm_num "$(sh_get 'wm density' 2>/dev/null | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)")"
+    [ -z "$_d" ] && return 0
+    awk -v p="$_px" -v d="$_d" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }'
+}
+
 # otm_refresh_now -> taxa de atualização EM USO agora (Hz), do modo ATIVO.
 #
 # NÃO é o teto: o `dumpsys display` lista o modo ativo e, logo depois, todos os

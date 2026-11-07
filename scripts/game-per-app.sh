@@ -309,6 +309,14 @@ resetar_dpi() {
     say "menor largura padrão ($(dpi_padrao_dp) dp)"
 }
 
+# dpi-atual: imprime SÓ o número da largura em uso agora (em dp). O overlay lê
+# esta saída para mostrar "Em uso agora: N dp" sem depender do painel web.
+dpi_atual() {
+    _v="$(otm_dpi_atual_dp 2>/dev/null)"
+    [ -z "$_v" ] && _v="$(dpi_padrao_dp)"
+    printf '%s\n' "$_v"
+}
+
 
 # --- execução ----------------------------------------------------------------
 [ $# -eq 0 ] && { listar; exit 0; }
@@ -321,6 +329,7 @@ case "$acao" in
     custom)    aplicar_custom "$1" "$2" "$3" ;;
     mode)      modo "$1" "$2" ;;
     dpi)       aplicar_dpi "$1" ;;
+    dpi-atual|dpi_atual) dpi_atual ;;
     dpi-reset) resetar_dpi ;;
     reset)     resetar "$1"; resetar_dpi ;;
     reset-all) resetar_tudo; resetar_dpi ;;
