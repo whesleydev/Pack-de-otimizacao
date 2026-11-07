@@ -2364,12 +2364,19 @@ t_web() {
             || ok "Rede/DNS não é mais seção separada (virou 'DNS e rede')"
         # grupos de escolha: opções lado a lado com botão "Selecionar"
         n_choice=$(grep -c 'card card-choice' "$TMP/web_html")
-        [ "$n_choice" -eq 13 ] && ok "renderiza 13 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, DPI, RAM, limite de processos, efeitos, barras, ícones da barra, bateria)" \
-            || bad "grupos de escolha: $n_choice (esperado 13)"
+        [ "$n_choice" -eq 12 ] && ok "renderiza 12 grupos de escolha (renderizador, app, refresh, DNS, toque, game clean, RAM, limite de processos, efeitos, barras, ícones da barra, bateria)" \
+            || bad "grupos de escolha: $n_choice (esperado 12)"
         n_opts=$(grep -c 'class="opt"' "$TMP/web_html")
-        # 46 = 43 anteriores + 3 opções do grupo DPI (compacto/padrão/grande).
-        [ "$n_opts" -eq 46 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 3 DPI + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones + 2 bateria ($n_opts)" \
-            || bad "opções lado a lado: $n_opts (esperado 46)"
+        # 43 = 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS +
+        # 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras +
+        # 2 ícones + 2 bateria. O DPI saiu dos presets: virou campo numérico.
+        [ "$n_opts" -eq 43 ] && ok "opções lado a lado: 6 renderizadores (com Automático) + 1 app + 4 refresh + 7 DNS + 5 toques + 2 game clean + 2 RAM + 4 limite + 2 efeitos + 4 barras + 2 ícones + 2 bateria ($n_opts)" \
+            || bad "opções lado a lado: $n_opts (esperado 43)"
+        # DPI virou campo numérico ("Menor largura"), não presets: o alvo é o dp
+        assert_contains "$TMP/web_html" 'data-id="dpi.custom"' "DPI é campo numérico (menor largura)"
+        grep -q 'data-opt="dpi.pequeno"\|data-opt="dpi.grande"' "$TMP/web_html" \
+            && bad "DPI ainda tem presets (pequeno/grande)" \
+            || ok "DPI sem presets inventados (só o valor real em dp)"
         assert_contains "$TMP/web_html" ">Selecionar<" "opções usam o rótulo Selecionar"
         # barras do sistema: cada bloco é um card de ligar/desligar (não botões soltos)
         assert_contains "$TMP/web_html" 'data-choice="sysbars_icons"' \
@@ -3265,41 +3272,51 @@ t_resolution() {
 }
 
 t_dpi() {
-    printf '\n  # DPI na partida (densidade por jogo) — reversível\n'
+    printf '\n  # Menor largura (DPI) — alvo é o dp, igual ao "Menor largura" do Android\n'
     local f="$ROOT/scripts/game-per-app.sh"
     rm -rf "$HOME/.packotm"
     rm -f "$TMP_STORE/wm.density"
-    export WM_DENSITY=400
-    # "compacto" = 15% MENOR que a densidade física (400 -> 340)
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi compacto > "$TMP/dpi1" 2>&1
-    assert_eq "340" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi compacto = 85% da densidade física"
-    grep -q 'compacto' "$HOME/.packotm/dpi_profile" 2>/dev/null \
-        && ok "dpi guarda o perfil escolhido (para o painel marcar)" || bad "dpi não guardou o perfil"
+    export WM_DENSITY=400 WM_PHYS=1080x2400
+    # padrão do aparelho = 160 * 1080 / 400 = 432 dp. Aplicar 432 -> densidade 400.
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 432 > "$TMP/dpi1" 2>&1
+    assert_eq "400" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi 432dp = densidade física (1080px/400dpi)"
+    grep -q '^432' "$HOME/.packotm/dpi_profile" 2>/dev/null \
+        && ok "dpi guarda a largura escolhida (para o painel marcar)" || bad "dpi não guardou a largura"
     grep -q 'wm density reset' "$HOME/.packotm/undo/game-per-app.sh" 2>/dev/null \
         && ok "dpi é reversível (wm density reset no undo)" || bad "dpi sem reversão"
-    # "grande" = 15% MAIOR (400 -> 460)
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi grande > /dev/null 2>&1
-    assert_eq "460" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi grande = 115% da densidade física"
-    # número explícito dentro da faixa
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 500 > /dev/null 2>&1
-    assert_eq "500" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi aceita valor exato (500 = médio)"
-    # abaixo do mínimo (300) é preso no mínimo, com aviso
+    # interface menor: 300 dp -> densidade maior (576)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 300 > /dev/null 2>&1
+    assert_eq "576" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi 300dp -> densidade 576 (interface menor)"
+    # interface maior: 540 dp -> densidade menor (320)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 540 > /dev/null 2>&1
+    assert_eq "320" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi 540dp -> densidade 320 (interface maior)"
+    # a faixa é relativa ao aparelho: metade (216) até o dobro (864) do padrão
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 40 > "$TMP/dpi_bad" 2>&1
-    assert_eq "300" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi abaixo de 300 sobe para 300"
+    assert_eq "800" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi 40dp sobe para o mínimo da faixa (216dp)"
     assert_contains "$TMP/dpi_bad" "fora da faixa" "dpi avisa que prendeu no limite"
-    # acima do máximo (600) é preso no máximo
-    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 1000 > /dev/null 2>&1
-    assert_eq "600" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi acima de 600 desce para 600"
-    # "padrão" remove o override (volta à densidade física)
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 2000 > /dev/null 2>&1
+    assert_eq "200" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi 2000dp desce para o máximo da faixa (864dp)"
+    # "padrão" remove o override (volta ao padrão do aparelho)
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi padrao > /dev/null 2>&1
     [ ! -f "$TMP_STORE/wm.density" ] && ok "dpi padrão remove o override" \
         || bad "dpi padrão não removeu o override"
     # dpi-reset também volta ao padrão
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 320 > /dev/null 2>&1
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi-reset > /dev/null 2>&1
-    [ ! -f "$TMP_STORE/wm.density" ] && ok "dpi-reset volta à densidade de fábrica" \
+    [ ! -f "$TMP_STORE/wm.density" ] && ok "dpi-reset volta ao padrão do aparelho" \
         || bad "dpi-reset não voltou ao padrão"
-    unset WM_DENSITY
+    # outro aparelho: 720x1280 com 320dpi -> padrão 360 dp (nada de número fixo)
+    rm -rf "$HOME/.packotm"; rm -f "$TMP_STORE/wm.density"
+    WM_DENSITY=320 WM_PHYS=720x1280 OTM_NO_COLOR=1 OTM_MODE=su sh "$f" dpi 360 > /dev/null 2>&1
+    assert_eq "320" "$(cat "$TMP_STORE/wm.density" 2>/dev/null)" "dpi padrão de 720p/320dpi = 360dp"
+    # o painel recebe a largura em uso e o padrão (para mostrar "Menor largura")
+    grep -q '"dpi_dp"' "$ROOT/scripts/panel-state.sh" \
+        && ok "state: emite a menor largura atual (dpi_dp)" || bad "state: sem dpi_dp"
+    grep -q '"dpi_padrao_dp"' "$ROOT/scripts/panel-state.sh" \
+        && ok "state: emite o padrão do aparelho (dpi_padrao_dp)" || bad "state: sem dpi_padrao_dp"
+    grep -q 'applyDpi' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "painel: preenche a menor largura com o valor real (applyDpi)" || bad "painel: sem applyDpi"
+    unset WM_DENSITY WM_PHYS
 }
 
 t_smart_clean_protect() {
@@ -3887,14 +3904,18 @@ PY
         || bad "overlay ignora o campo fps"
     grep -q 'private fun monitorTab' "$svc" && ok "overlay tem a aba Monitor" \
         || bad "overlay sem a aba Monitor"
-    # o painelzinho tem o controle de DPI (densidade do telefone)
-    grep -q 'sectionHeader("DPI da tela (densidade)")' "$svc" \
-        && ok "overlay tem a seção de DPI" || bad "overlay sem a seção de DPI"
+    # o painelzinho tem o controle de menor largura (DPI do telefone)
+    grep -q 'sectionHeader("Menor largura (DPI da tela)")' "$svc" \
+        && ok "overlay tem a seção de menor largura (DPI)" || bad "overlay sem a seção de DPI"
     grep -q 'game-per-app.sh", listOf("dpi", "padrao")' "$svc" \
         && ok "overlay aplica DPI padrão (reverte)" || bad "overlay sem DPI padrão"
     grep -q 'EditText' "$svc" && grep -q 'listOf("dpi", v.toString())' "$svc" \
-        && ok "overlay aceita DPI personalizado (campo numérico)" \
-        || bad "overlay sem campo de DPI personalizado"
+        && ok "overlay aceita menor largura personalizada (campo numérico)" \
+        || bad "overlay sem campo de menor largura"
+    # o painel não usa mais os presets inventados (pequeno/grande)
+    grep -q 'listOf("dpi", "pequeno")\|listOf("dpi", "grande")' "$svc" \
+        && bad "overlay ainda usa presets de DPI (pequeno/grande)" \
+        || ok "overlay sem presets de DPI (só o valor em dp)"
     # o monitor não inventa: campo ausente vira "—"
     grep -q 'monitorRow' "$svc" && grep -q '?: "—"' "$svc" \
         && ok "overlay mostra '—' no que o aparelho não informou" || bad "overlay sem fallback do monitor"

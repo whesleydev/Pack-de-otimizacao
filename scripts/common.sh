@@ -153,6 +153,56 @@ otm_max_refresh() {
     printf '%s' "$_hz"
 }
 
+# otm_dpi_padrao_dp -> menor largura de fábrica do aparelho, em dp
+# (o mesmo "Menor largura" das Opções do desenvolvedor):
+#     menor_largura_dp = 160 * menor_lado_em_px / densidade_fisica
+# Compartilhado entre o game-per-app.sh (aplicar) e o panel-state.sh (mostrar).
+otm_dpi_padrao_dp() {
+    _sz="$(sh_get 'wm size' 2>/dev/null)"
+    _ph="$(otm_echo "$_sz" | sed -n 's/.*Physical size: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)"
+    _px="$(otm_num "$(echo "$_ph" | cut -d' ' -f1)")"
+    _py="$(otm_num "$(echo "$_ph" | cut -d' ' -f2)")"
+    [ -z "$_px" ] && _px=1080
+    [ -z "$_py" ] && _py=2400
+    [ "$_py" -lt "$_px" ] 2>/dev/null && { _t="$_px"; _px="$_py"; _py="$_t"; }
+    _d="$(otm_num "$(sh_get 'wm density' 2>/dev/null | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)")"
+    [ -z "$_d" ] && _d="$(otm_num "$(sh_get 'getprop ro.sf.lcd_density' 2>/dev/null)")"
+    [ -z "$_d" ] && _d=420
+    awk -v p="$_px" -v d="$_d" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }'
+}
+
+# otm_refresh_now -> taxa de atualização EM USO agora (Hz), do modo ATIVO.
+#
+# NÃO é o teto: o `dumpsys display` lista o modo ativo e, logo depois, todos os
+# `supportedModes`. Pegar o primeiro `fps=` (ou o maior) devolvia o teto do
+# painel e o monitor mentia — um aparelho de 90 Hz mostrando 120. Aqui vamos
+# pelo modo ativo de verdade, em camadas:
+#   1) `renderFrameRate` do DisplayDeviceInfo (é a taxa ativa, direto);
+#   2) o `@X`/`fps=X` do modo cujo id casa com o `modeId` do cabeçalho;
+#   3) a taxa ativa que o SurfaceFlinger reporta.
+otm_refresh_now() {
+    _out="$(sh_get 'dumpsys display' 2>/dev/null)"
+    if [ -n "$_out" ]; then
+        _r="$(otm_echo "$_out" | grep -m1 -oE 'renderFrameRate[ =:]+[0-9]+(\.[0-9]+)?' | grep -oE '[0-9]+(\.[0-9]+)?$')"
+        case "$_r" in 0|0.0) _r="" ;; esac
+        if [ -z "$_r" ]; then
+            _id="$(otm_echo "$_out" | grep -m1 -oE 'modeId[ =:]+[0-9]+' | grep -oE '[0-9]+$')"
+            if [ -n "$_id" ]; then
+                _r="$(otm_echo "$_out" | awk -v id="$_id" '
+                    $0 ~ ("modeId[ =:]+" id "([^0-9]|$)") {
+                        if (match($0, /@[0-9.]+/))        { print substr($0, RSTART+1, RLENGTH-1); exit }
+                        if (match($0, /fps=[0-9.]+/))      { print substr($0, RSTART+4, RLENGTH-4); exit }
+                    }')"
+            fi
+        fi
+    fi
+    if [ -z "$_r" ]; then
+        _r="$(sh_get 'dumpsys SurfaceFlinger' 2>/dev/null | grep -m1 -oE '[0-9]+(\.[0-9]+)? *fps' | grep -oE '^[0-9]+(\.[0-9]+)?')"
+    fi
+    case "$_r" in ''|null|0|0.0) return 0 ;; esac
+    printf '%s' "$_r"
+}
+
 # otm_clamp_hz <hz> -> devolve <hz> se o painel suporta; senão o teto real da
 # tela; e <hz> de novo se nem der para ler (melhor tentar do que recusar).
 otm_clamp_hz() {

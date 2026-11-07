@@ -1826,65 +1826,11 @@
         "risk": "safe"
     },
     {
-        "id": "dpi.pequeno",
-        "group": "Apps e jogos",
-        "label": "DPI da tela: pequeno",
-        "desc": "Interface menor: cabe mais coisa e o HUD\/botões ficam menores.",
-        "help": "Diminui ~15% a densidade lógica da tela (o mesmo \"Menor largura\" das Opções do desenvolvedor). Vale para o telefone inteiro: ícones, texto e botões ficam menores, então cabe mais coisa na tela e você vê mais do jogo. Muda na hora. Volte com \"DPI: padrão\".",
-        "choice": "dpi",
-        "option": "Pequeno",
-        "state_value": "pequeno",
-        "argv": [
-            "game-per-app.sh",
-            "dpi",
-            "pequeno"
-        ],
-        "risk": "careful",
-        "confirm": true,
-        "params": []
-    },
-    {
-        "id": "dpi.padrao",
-        "group": "Apps e jogos",
-        "label": "DPI da tela: padrão",
-        "desc": "Volta a densidade de fábrica do aparelho.",
-        "help": "Remove o override de densidade e devolve a tela ao DPI físico de fábrica. Use quando terminar de jogar ou se a interface ficou estranha.",
-        "choice": "dpi",
-        "option": "Padrão",
-        "state_value": "",
-        "argv": [
-            "game-per-app.sh",
-            "dpi",
-            "padrao"
-        ],
-        "risk": "safe",
-        "params": [],
-        "confirm": false
-    },
-    {
-        "id": "dpi.grande",
-        "group": "Apps e jogos",
-        "label": "DPI da tela: grande",
-        "desc": "Interface ~15% maior: bom em tela pequena ou vista cansada.",
-        "help": "Aumenta ~15% a densidade lógica: ícones, texto e botões ficam maiores e mais fáceis de acertar em tela pequena. Vale para o telefone inteiro. Muda na hora.",
-        "choice": "dpi",
-        "option": "Grande",
-        "state_value": "grande",
-        "argv": [
-            "game-per-app.sh",
-            "dpi",
-            "grande"
-        ],
-        "risk": "careful",
-        "confirm": true,
-        "params": []
-    },
-    {
         "id": "dpi.custom",
         "group": "Apps e jogos",
-        "label": "DPI da tela: personalizado",
-        "desc": "Escolha a densidade exata (300 a 600).",
-        "help": "Define a densidade lógica exata da tela, como o \"Menor largura\" das Opções do desenvolvedor. Faixa segura: 300 (pequeno) a 600 (grande). 400-500 é o meio-termo na maioria dos celulares. Vale para o telefone inteiro e muda na hora. Volte com \"DPI: padrão\".",
+        "label": "Menor largura (DPI da tela)",
+        "desc": "Ajusta a largura da interface — o mesmo \"Menor largura\" do Android.",
+        "help": "Muda a largura lógica da tela: o mesmo número que aparece em \"Menor largura\" nas Opções do desenvolvedor do seu Android. Menor valor = tudo menor (cabe mais coisa, HUD e botões menores, mais campo de visão); maior valor = tudo maior (bom em tela pequena ou vista cansada). Vale para o telefone inteiro e muda na hora. O painel mostra a largura em uso agora e o padrão do seu aparelho; digite o valor que quiser. Para voltar ao normal, use \"Menor largura: padrão\".",
         "argv": [
             "game-per-app.sh",
             "dpi",
@@ -1894,14 +1840,29 @@
             {
                 "name": "dpi",
                 "type": "int",
-                "label": "DPI",
-                "min": 300,
-                "max": 600,
-                "default": 450
+                "label": "Menor largura (dp)",
+                "min": 200,
+                "max": 1000,
+                "default": 400
             }
         ],
         "risk": "careful",
         "confirm": true
+    },
+    {
+        "id": "dpi.padrao",
+        "group": "Apps e jogos",
+        "label": "Menor largura: padrão",
+        "desc": "Volta a largura da interface ao padrão do aparelho.",
+        "help": "Remove o ajuste e devolve a largura da tela ao padrão de fábrica do seu aparelho. Use quando terminar de jogar ou se a interface ficou estranha.",
+        "argv": [
+            "game-per-app.sh",
+            "dpi",
+            "padrao"
+        ],
+        "risk": "safe",
+        "params": [],
+        "confirm": false
     },
     {
         "id": "clean.normal",

@@ -81,8 +81,9 @@ case "$bat_status" in
 esac
 
 # --- refresh atual ------------------------------------------------------------
-refresh_hz="$(sh_get 'dumpsys display' 2>/dev/null | grep -m1 -oE 'fps=[0-9.]+' | cut -d= -f2)"
-[ -z "$refresh_hz" ] && refresh_hz="$(sh_get 'dumpsys SurfaceFlinger' 2>/dev/null | grep -m1 -oE '[0-9.]+ fps' | cut -d' ' -f1)"
+# Taxa EM USO agora, do modo ATIVO (não o primeiro `fps=` do dump, que era o
+# teto do painel e fazia o monitor mentir). Ver otm_refresh_now() em common.sh.
+refresh_hz="$(otm_refresh_now 2>/dev/null)"
 # Taxa travada: só conta como "fixa" quando peak == min. O Android deixa o
 # peak_refresh_rate preenchido no modo adaptativo (min 60 / peak 120), e usar
 # isso como "travada" faria o painel mentir. O pack sempre grava os dois iguais.

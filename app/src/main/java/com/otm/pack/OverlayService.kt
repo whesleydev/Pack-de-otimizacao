@@ -100,6 +100,8 @@ class OverlayService : Service() {
         startForeground(NOTIF_ID, buildNotification())
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         OtmUi.load(this)
+        // densidade atual (para detectar troca de DPI em onConfigurationChanged)
+        densidadeAtual = resources.configuration.densityDpi
         // o painel avisa quando o usuário troca a cor/fonte: o flutuante se redesenha
         OtmUi.onChanged = { post { rebuild() } }
         registerShizukuRecovery()
@@ -353,7 +355,7 @@ class OverlayService : Service() {
             val m = LinkedHashMap<String, String>()
             val keys = bat.keys()
             while (keys.hasNext()) { val k = keys.next(); m[k] = bat.optString(k) }
-            for (linha in monitorRows(m)) box.addView(linha)
+            for (linha in monitorRows(m, semShell = true)) box.addView(linha)
             box.addView(procNote("conecte o Shizuku para ver CPU, RAM e FPS"))
             return
         }
@@ -400,7 +402,7 @@ class OverlayService : Service() {
     }
 
     /** Monta as linhas do monitor com o que o aparelho realmente informou. */
-    private fun monitorRows(s: Map<String, String>): List<View> {
+    private fun monitorRows(s: Map<String, String>, semShell: Boolean = false): List<View> {
         val linhas = ArrayList<View>()
         val fps = s["fps"]?.takeIf { it.isNotEmpty() }
         // "Teto da tela" é o MAIOR modo que o PAINEL suporta (refresh_max, do
@@ -411,12 +413,15 @@ class OverlayService : Service() {
         val travado = s["refresh_peak"]?.takeIf { it.isNotEmpty() }
         val atual = s["refresh_hz"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("FPS do jogo", fps ?: "—", destaque = true))
-        linhas.add(monitorRow("Teto da tela", if (teto != null) "$teto Hz" else "—"))
-        val agora = travado ?: atual
+        // "Taxa agora" é o Hz EM USO (modo ativo da tela), não o teto do painel.
+        // Só marcamos "(travada)" quando o pack fixou min == peak.
+        val agora = atual ?: travado
         linhas.add(monitorRow(
             "Taxa agora",
-            if (agora != null) "$agora Hz" + (if (travado != null) " (travada)" else "") else "—",
+            if (agora != null) "$agora Hz" + (if (travado != null && atual == null) " (travada)" else "") else "—",
+            destaque = true,
         ))
+        linhas.add(monitorRow("Teto da tela", if (teto != null) "$teto Hz" else "—"))
         fun pct(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it%" } ?: "—"
         fun mb(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it MB" } ?: "—"
         linhas.add(monitorRow("RAM em uso", pct("ram_uso_pct")))
@@ -447,7 +452,10 @@ class OverlayService : Service() {
             if (storLivre != null) "$storLivre${if (storTotal != null) "/$storTotal" else ""} MB" else "—",
         ))
         if (fps == null) {
-            linhas.add(procNote("sem FPS: abra o jogo (o painel precisa dele na tela)"))
+            linhas.add(procNote(
+                if (semShell) "FPS: conecte o Shizuku para medir (o jogo tem de estar na tela)"
+                else "sem FPS: abra o jogo (o painel precisa dele na tela)"
+            ))
         }
         return linhas
     }
@@ -896,9 +904,9 @@ class OverlayService : Service() {
         avisos2.addView(smallButton("Telemetria off") { runScript("turbo.sh", listOf("telemetry", "off"), "Telemetria desligada") })
         box.addView(avisos2, matchWrap())
 
-        box.addView(sectionHeader("DPI da tela (densidade)"))
+        box.addView(sectionHeader("Menor largura (DPI da tela)"))
         val dpiAviso = TextView(this).apply {
-            text = "Muda o tamanho da interface no telefone inteiro (300 a 600). Igual ao \"Menor largura\" das Opções do desenvolvedor."
+            text = "O mesmo \"Menor largura\" das Opções do desenvolvedor. Menor = interface menor; maior = interface maior. Vale para o telefone inteiro."
             textSize = 10f
             setTextColor(col(C_MUTED))
             setTypeface(bodyTypeface())
@@ -906,13 +914,11 @@ class OverlayService : Service() {
         }
         box.addView(dpiAviso, matchWrap())
         val dpiLinha = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        dpiLinha.addView(smallButton("Pequeno") { runScript("game-per-app.sh", listOf("dpi", "pequeno"), "DPI pequeno") })
-        dpiLinha.addView(smallButton("Padrão") { runScript("game-per-app.sh", listOf("dpi", "padrao"), "DPI padrão") })
-        dpiLinha.addView(smallButton("Grande") { runScript("game-per-app.sh", listOf("dpi", "grande"), "DPI grande") })
+        dpiLinha.addView(smallButton("Padrão do aparelho") { runScript("game-per-app.sh", listOf("dpi", "padrao"), "Menor largura padrão") })
         box.addView(dpiLinha, matchWrap())
 
-        // valor exato: caixa de número + Aplicar (o overlay não tem slider, então
-        // o campo é o caminho para quem quer 500, 350 etc.)
+        // valor exato em dp (o overlay não tem slider, então o campo é o caminho
+        // para quem quer 360, 420 etc.)
         val dpiExato = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -920,13 +926,13 @@ class OverlayService : Service() {
         val dpiCampo = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER
             textSize = 12f
-            hint = "DPI"
+            hint = "largura (dp)"
             setTextColor(col(C_TEXT))
             setHintTextColor(col(C_MUTED))
             setTypeface(bodyTypeface())
             background = pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
             setPadding(dp(9), dp(6), dp(9), dp(6))
-            setText("500")
+            setText("400")
             setSelectAllOnFocus(true)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 .apply { marginEnd = dp(4) }
@@ -935,9 +941,9 @@ class OverlayService : Service() {
         dpiExato.addView(smallButton("Aplicar") {
             val v = dpiCampo.text.toString().trim().toIntOrNull()
             if (v == null) {
-                statusText?.text = "DPI: digite um número"
+                statusText?.text = "Menor largura: digite um número"
             } else {
-                runScript("game-per-app.sh", listOf("dpi", v.toString()), "DPI $v")
+                runScript("game-per-app.sh", listOf("dpi", v.toString()), "Menor largura $v dp")
             }
         })
         box.addView(dpiExato, matchWrap())
@@ -1047,6 +1053,9 @@ class OverlayService : Service() {
     }
 
     private var minimized = false
+
+    /** densidade (dpi) da última configuração vista; detecta troca de DPI. */
+    private var densidadeAtual = 0
 
     /**
      * Minimiza/maximiza trocando a janela: minimizado sobra só o ícone do app
@@ -1187,7 +1196,11 @@ class OverlayService : Service() {
         // o teto também não pode passar da tela: um valor fixo em dp (320) ficava
         // MAIOR que a tela num aparelho estreito e o painel saía cortado na borda.
         val teto = minOf(dp(320), tela - dp(16))
-        return (tela * PANEL_W_FRAC).toInt().coerceIn(dp(200), teto)
+        // dp(200) pode passar do teto quando a densidade está muito alta (DPI
+        // "pequeno"): aí `coerceIn(min, max)` estoura com min > max e a janela
+        // fica com largura inválida — o painel some. O piso tem de caber no teto.
+        val piso = minOf(dp(200), teto)
+        return (tela * PANEL_W_FRAC).toInt().coerceIn(piso, teto)
     }
 
     /** Teto de altura do conteúdo: o resto da tela fica livre para o jogo. */
@@ -1202,7 +1215,16 @@ class OverlayService : Service() {
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        refitToScreen()
+        val novaDens = newConfig.densityDpi
+        val velhaDens = densidadeAtual
+        densidadeAtual = novaDens
+        if (velhaDens != 0 && novaDens != velhaDens) {
+            // a densidade mudou (DPI do pack ou opções do desenvolvedor): remonta
+            // o conteúdo em dp para ele não ficar no tamanho antigo
+            onDensityChanged()
+        } else {
+            refitToScreen()
+        }
     }
 
     private fun refitToScreen() {
@@ -1215,6 +1237,20 @@ class OverlayService : Service() {
         p.x = p.x.coerceIn(0, (tela.widthPixels - largura).coerceAtLeast(0))
         p.y = p.y.coerceIn(0, (tela.heightPixels - dp(48)).coerceAtLeast(0))
         runCatching { windowManager.updateViewLayout(atual, p) }
+    }
+
+    /**
+     * A densidade (DPI) pode mudar com o painel aberto — inclusive pela própria
+     * aba de DPI. O conteúdo é construído em dp, então precisa ser REMONTADO
+     * com a nova densidade, senão os textos e paddings ficam no tamanho antigo.
+     * Preserva a posição e o modo minimizado (o rebuild já faz isso).
+     */
+    private fun onDensityChanged() {
+        if (root == null) return
+        post {
+            rebuild()
+            loadMonitor()
+        }
     }
 
     /** Arrasta a janela; um toque curto (sem mover) não consome o clique. */
