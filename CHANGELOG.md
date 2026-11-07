@@ -3,6 +3,26 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.57.1] - 2026-11-07
+
+### Corrigido
+- **"Menor largura" agora é o valor real do Android.** O card de DPI mexia na
+  *densidade* com presets inventados (Pequeno/Padrão/Grande), então o número que
+  o usuário via em *Opções do desenvolvedor → Menor largura* (em dp) não batia
+  com o que o pack aplicava. Agora o campo mostra a largura **em uso** no
+  aparelho e aplica exatamente o dp pedido (densidade = 160 × menor lado ÷ dp),
+  conferindo lendo o override de volta. A faixa deixou de ser 300–600 fixo e
+  passou a ser relativa ao aparelho (metade até o dobro do padrão).
+- **O monitor mostrava a taxa errada.** A taxa de atualização em uso era lida do
+  primeiro `fps=` do dump, que costuma ser o **teto do painel** (ex.: 120Hz),
+  não a taxa em que o aparelho está de fato rodando. Passou a usar a taxa do
+  **modo ativo** (60/90/120 ou "o sistema decide").
+- **O painel flutuante sumia com densidade alta.** Com a densidade muito alta
+  (interface pequena), o piso de largura em dp ficava **maior** que o teto e o
+  `coerceIn` estourava com min > max — a janela ficava inválida e o painel
+  desaparecia. O piso agora cabe no teto, e o conteúdo é remontado quando a
+  densidade muda (senão textos e paddings ficavam no tamanho antigo).
+
 ## [2.57.0] - 2026-11-03
 
 ### Removido
