@@ -953,11 +953,12 @@ selecionado é o `aria-pressed="true"` (não existe CSS para `.active`). Botão 
 Build local (sem Android Studio):
 
 ```sh
-# toolchain em /workspace/project/.toolchain (JDK + SDK 34 + Gradle 8.7)
-# o wrapper é o da RAIZ do repo (android/gradlew não tem o jar do wrapper)
-export JAVA_HOME=/workspace/project/.toolchain/jdk
-export ANDROID_HOME=/workspace/android-sdk          # ver local.properties (sdk.dir)
-export GRADLE_USER_HOME=/workspace/project/.toolchain/gradle-home
+# JDK: /usr/lib/jvm/java-21-openjdk-amd64 (apt: openjdk-21-jdk-headless).
+# O SDK do Android fica em /workspace/android-sdk (ver local.properties, sdk.dir).
+# O wrapper é o da RAIZ do repo (android/gradlew não tem o jar do wrapper).
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export ANDROID_HOME=/workspace/android-sdk
+export GRADLE_USER_HOME=/workspace/gradle-home       # cache baixado na 1ª vez
 ./gradlew :app:assembleRelease --no-daemon
 # saída: app/build/outputs/apk/release/app-release.apk (já assinado)
 ```
