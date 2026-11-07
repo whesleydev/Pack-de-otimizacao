@@ -54,15 +54,39 @@ printf ',"pointer_speed":"%s"' "$(_clean "$(_g system pointer_speed)")"
 printf ',"touch_slop":"%s"' "$(_clean "$(_g system touch_slop)")"
 printf ',"multi_press_timeout":"%s"' "$(_clean "$(_g system multi_press_timeout)")"
 printf ',"refresh_min":"%s"' "$(_clean "$(_g system min_refresh_rate)")"
-printf ',"refresh_peak":"%s"' "$(_clean "$(_g system peak_refresh_rate)")"
+# Taxa travada: só quando peak == min. O Android deixa o peak preenchido no modo
+# adaptativo (min 60 / peak 120); sem esta regra o card dizia "travada em 120"
+# num aparelho que estava só alternando. (Mesma regra do panel-stats.sh.)
+_rmin="$(_g system min_refresh_rate)"; _rpeak="$(_g system peak_refresh_rate)"
+[ -n "$_rpeak" ] && [ "$_rpeak" != "$_rmin" ] && _rpeak=""
+printf ',"refresh_peak":"%s"' "$(_clean "$_rpeak")"
+# taxa EM USO agora (modo ativo), para o card mostrar o valor real
+printf ',"refresh_hz":"%s"' "$(_clean "$(otm_refresh_now 2>/dev/null)")"
 # teto real do painel (maior modo que a tela suporta) — separado do travado
 printf ',"refresh_max":"%s"' "$(_clean "$(otm_max_refresh 2>/dev/null)")"
-# DPI lógico em vigor: o `wm density` mostra "Override density" só quando há
-# override; sem ele, vale a densidade física. O painel usa isto para marcar
-# qual perfil de DPI está em uso (e "" = padrão de fábrica).
+# Menor largura (o mesmo "Menor largura" das Opções do desenvolvedor), em dp:
+#   160 * menor_lado_em_px / densidade
+# O painel mostra este número para o usuário reconhecer o que está no aparelho.
+# `dpi_padrao_dp` é o valor de fábrica (densidade física) — o alvo do "padrão".
 _wmd="$(sh_get 'wm density' 2>/dev/null)"
 _dpi_ov="$(otm_echo "$_wmd" | sed -n 's/.*Override density: *\([0-9]*\).*/\1/p' | tail -1)"
-printf ',"dpi_override":"%s"' "$(_clean "$(otm_num "$_dpi_ov")")"
+_dpi_den="$(otm_num "$_dpi_ov")"
+[ -z "$_dpi_den" ] && _dpi_den="$(otm_num "$(otm_echo "$_wmd" | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)")"
+_wmsz="$(sh_get 'wm size' 2>/dev/null)"
+_phx="$(otm_echo "$_wmsz" | sed -n 's/.*Physical size: *\([0-9]*\)x\([0-9]*\).*/\1/p' | tail -1)"
+_phy="$(otm_echo "$_wmsz" | sed -n 's/.*Physical size: *\([0-9]*\)x\([0-9]*\).*/\2/p' | tail -1)"
+_ovx="$(otm_echo "$_wmsz" | sed -n 's/.*Override size: *\([0-9]*\)x\([0-9]*\).*/\1/p' | tail -1)"
+_ovy="$(otm_echo "$_wmsz" | sed -n 's/.*Override size: *\([0-9]*\)x\([0-9]*\).*/\2/p' | tail -1)"
+[ -n "$_ovx" ] && { _phx="$_ovx"; _phy="$_ovy"; }
+_lado="$(otm_num "$_phx")"
+if [ -n "$(otm_num "$_phy")" ] && [ "$(otm_num "$_phy")" -lt "$_lado" ] 2>/dev/null; then _lado="$(otm_num "$_phy")"; fi
+_dpi_dp=""
+if [ -n "$_lado" ] && [ -n "$_dpi_den" ]; then
+    _dpi_dp="$(awk -v p="$_lado" -v d="$_dpi_den" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }')"
+fi
+printf ',"dpi_dp":"%s"' "$(_clean "$_dpi_dp")"
+printf ',"dpi_padrao_dp":"%s"' "$(_clean "$(otm_dpi_padrao_dp 2>/dev/null)")"
+printf ',"dpi_override":"%s"' "$(_clean "$_dpi_den")"
 printf ',"dpi_profile":"%s"' "$(_clean "$(cat "$ST/dpi_profile" 2>/dev/null | head -1)")"
 printf ',"device":"%s"' "$(_clean "$(_p ro.product.model)")"
 printf ',"android":"%s"' "$(_clean "$(_p ro.build.version.sdk)")"
