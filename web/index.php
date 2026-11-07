@@ -2049,11 +2049,7 @@ function applyState(){
       txt = "No aparelho: " + STATE.proc_limit
         + (String(STATE.proc_limit) === "padrão" ? " (o sistema decide)" : " apps em segundo plano");
     } else if (key === "refresh_peak"){
-      const rp = stateNum(STATE.refresh_peak), rc = stateNum(STATE.refresh_hz);
-      const rm = stateNum(STATE.refresh_max);
-      const teto = rm !== null ? " (painel vai até " + rm + "Hz)" : "";
-      if (rp !== null) txt = "Em uso agora: taxa travada em " + rp + "Hz" + teto;
-      else if (rc !== null) txt = "Em uso agora: " + rc + "Hz (o sistema decide)" + teto;
+      txt = refreshNowText();
     }
     now.textContent = txt;
     now.hidden = !txt;
@@ -2071,6 +2067,33 @@ function setSliderValue(range, val){
   const card = range.closest(".card");
   const fv = card && card.querySelector('.field-val[data-for="' + range.dataset.p + '"]');
   if (fv) fv.textContent = val;
+}
+/* Taxa de atualização (Hz): texto da taxa EM USO agora. O valor vem do bloco
+   "stats" (atualizado sozinho a cada 4 s), então o rodapé acompanha quando o
+   sistema troca a taxa por conta própria — sem precisar reabrir o painel.
+   Prefere a taxa travada (refresh_peak); sem trava, mostra a ativa. */
+function refreshNowText(){
+  // o bloco "stats" é reconsultado a cada 4 s; o STATE só no loadState. Depois
+  // do primeiro poll, o STATS é a fonte (mesmo quando vem vazio = "sem trava"):
+  // usar o STATE como reserva prenderia o rodapé no valor da abertura.
+  const src = statsAt > 0 ? STATS : STATE;
+  const rp = stateNum(src.refresh_peak);
+  const rc = stateNum(src.refresh_hz);
+  const rm = stateNum(src.refresh_max) !== null ? stateNum(src.refresh_max)
+           : stateNum(STATE.refresh_max);
+  const teto = rm !== null ? " (painel vai até " + rm + "Hz)" : "";
+  if (rp !== null) return "Em uso agora: taxa travada em " + rp + "Hz" + teto;
+  if (rc !== null) return "Em uso agora: " + rc + "Hz (o sistema decide)" + teto;
+  return "";
+}
+function paintRefreshNow(){
+  const card = document.querySelector('.card[data-choice="refresh"]');
+  if (!card) return;
+  const now = card.querySelector("[data-now]");
+  if (!now) return;
+  const txt = refreshNowText();
+  now.textContent = txt;
+  now.hidden = !txt;
 }
 document.querySelectorAll(".slider").forEach(sl => {
   const range = sl.querySelector('input[type="range"]');
@@ -2507,7 +2530,7 @@ async function loadStats(){
   if (statsBusy) return; statsBusy = true;
   try{ const j = await apiGet("stats"); STATS = (j && j.stats) || {}; statsAt = Date.now(); }
   catch(e){ /* mantém o último valor real */ }
-  statsBusy = false; renderStats(); renderVital();
+  statsBusy = false; renderStats(); renderVital(); paintRefreshNow();
 }
 function startStats(){
   loadStats();
