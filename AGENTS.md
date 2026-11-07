@@ -692,16 +692,28 @@ nativa além do necessário para conectar e rodar os comandos.
 ### Resolução de tela do aparelho: REMOVIDA
 
 O pack **não mexe mais na resolução da tela do aparelho**. A categoria
-**Dispositivos** e o `scripts/resolution.sh` (`wm size`/`wm density`) foram
+**Dispositivos** e o `scripts/resolution.sh` (`wm size`) foram
 removidos a pedido do dono: alterar a resolução lógica mudava a tela inteira do
-usuário, inclusive fora do jogo. Nada mais aplica `wm size`/`wm density` — os
-scripts que ainda leem esses valores (`sensi.sh`, `smart-opt.sh`) só **leem**
-para calcular DPI/sensi e para o relatório; não alteram nada.
+usuário, inclusive fora do jogo. Nada mais aplica `wm size` — os scripts que
+ainda leem esse valor (`sensi.sh`, `smart-opt.sh`) só **leem** para calcular
+DPI/sensi e para o relatório; não alteram nada.
 
 O que **permanece** é o downscale **do jogo**, por app, via Android Game Mode
 (`game-per-app.sh`, ação `app.downscale`, perfil custom e a aba **Jogo** do
 flutuante): ele reduz só a resolução de renderização do jogo escolhido, sem
 tocar na resolução do telefone.
+
+### "Menor largura": o DPI como o Android mostra (`game-per-app.sh dpi`)
+
+A ação de DPI usa a **largura em dp** como alvo — é o número que aparece em
+*Opções do desenvolvedor → Menor largura* no Android, então o que o usuário
+escolhe no pack bate com o que ele vê no sistema. A densidade aplicada sai da
+conta `160 × menor_lado_px ÷ dp` (por isso o número de densidade muda de
+aparelho para aparelho) e é conferida lendo o override de volta. A faixa é
+**relativa ao aparelho** (metade até o dobro da largura padrão), não um
+300–600 fixo; `dpi padrao` não escreve nada e devolve a decisão ao sistema.
+`panel-state.sh` publica `dpi_dp` (largura em uso) e `dpi_padrao_dp` (padrão do
+aparelho) para o painel preencher o campo com o valor real.
 
 ### Vitalidade: cuidar para durar (`scripts/vitality.sh`)
 
