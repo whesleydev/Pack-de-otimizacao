@@ -33,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import rikka.shizuku.Shizuku
 
 /**
@@ -92,6 +93,16 @@ class OverlayService : Service() {
     private var procAllBox: LinearLayout? = null
     /** Onde a grade do monitor é montada (aba Monitor). */
     private var monitorBox: LinearLayout? = null
+    /** Onde a lista de Logs é montada (aba Logs). */
+    private var logBox: LinearLayout? = null
+    /** Filtro de texto dos Logs (aba Logs) — relido a cada redesenho. */
+    private var logFilter: EditText? = null
+    /** Só os erros? (aba Logs) */
+    private var logOnlyErrors = false
+    /** "limpar" pede um segundo toque antes de apagar (sem diálogo no overlay). */
+    private var logClearArmed = false
+    /** Histórico já lido do disco: o filtro roda em memória, sem reler o arquivo. */
+    private var logCache: List<JSONObject> = emptyList()
     private val tabChips = mutableListOf<TextView>()
     /** Fontes já carregadas do asset: não reler o .ttf a cada texto criado. */
     private val fontCache = HashMap<String, Typeface>()
@@ -253,9 +264,9 @@ class OverlayService : Service() {
     /**
      * Abas: cada categoria mostra só o seu bloco, sem lista corrida.
      *
-     * Em DUAS linhas (3 + 2). Cinco rótulos numa linha só, dentro de um painel
-     * estreito, ficariam ilegíveis ou cortados; em duas linhas cada chip tem
-     * largura de sobra e a barra fica sempre do mesmo tamanho.
+     * Em LINHAS de [TAB_COLS]: com 7 rótulos, 3 por linha (3 + 3 + 1) cada chip
+     * tem largura de sobra dentro do painel estreito. Numa linha só os rótulos
+     * ficariam ilegíveis ou cortados.
      */
     private fun tabBar(): View {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -305,6 +316,8 @@ class OverlayService : Service() {
         procAllBox = null
         // idem para o monitor: parar o auto-refresh da aba que saiu de cena
         monitorBox = null
+        logBox = null
+        logFilter = null
         box.addView(tabView(index), matchWrap())
         for ((i, chip) in tabChips.withIndex()) {
             val on = i == index
@@ -330,6 +343,7 @@ class OverlayService : Service() {
         2 -> touchTab()
         3 -> engineTab()
         4 -> procTab()
+        5 -> logTab()
         else -> shortcutsTab()
     }
 
@@ -410,11 +424,13 @@ class OverlayService : Service() {
 
     /** Volta a janela a não-focável (o toque no jogo deixa de ir para o painel). */
     private fun soltarFoco() {
-        val campo = dpiCampo
-        if (campo != null) {
-            val im = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            im?.hideSoftInputFromWindow(campo.windowToken, 0)
-            campo.clearFocus()
+        val im = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        // qualquer campo de texto da aba atual (largura ou filtro de logs)
+        for (campo in listOfNotNull(dpiCampo, logFilter)) {
+            if (campo.hasFocus()) {
+                im?.hideSoftInputFromWindow(campo.windowToken, 0)
+                campo.clearFocus()
+            }
         }
         val p = root?.layoutParams as? WindowManager.LayoutParams ?: return
         if (p.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE == 0) {
@@ -893,6 +909,261 @@ class OverlayService : Service() {
         pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
     } catch (_: Throwable) {
         pkg
+    }
+
+    // ---- aba Logs ------------------------------------------------------------
+
+    /**
+     * Aba Logs: o histórico de execuções (o MESMO `state/log.jsonl` do painel),
+     * com filtro e detalhe por toque.
+     *
+     * O flutuante não tem WebView, então a lista é montada em views nativas.
+     * Traz o que o painel mostra em "Logs" (ok/erro, duração, razões e saída),
+     * resumido: aqui é para conferir no meio da partida o que pegou e o que não
+     * pegou, sem sair do jogo. A lista é lida UMA vez e filtrada em memória —
+     * não relê o arquivo a cada tecla.
+     */
+    private fun logTab(): View {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        val acoes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val soErros = logChip("Só erros", logOnlyErrors)
+        soErros.setOnClickListener {
+            logOnlyErrors = !logOnlyErrors
+            pintarLogChip(soErros, logOnlyErrors)
+            renderLogs()
+        }
+        acoes.addView(soErros)
+        acoes.addView(logChip("Atualizar", false).apply { setOnClickListener { refreshLogs() } })
+        acoes.addView(logChip("Limpar", false).apply { setOnClickListener { pedirLimparLogs() } })
+        box.addView(acoes, matchWrap())
+
+        val campo = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            textSize = 11.5f
+            hint = "filtrar (nome, comando, erro…)"
+            setTextColor(col(C_TEXT))
+            setHintTextColor(col(C_MUTED))
+            setTypeface(bodyTypeface())
+            background = pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+            isFocusableInTouchMode = true
+            setOnTouchListener { _, ev -> if (ev.action == MotionEvent.ACTION_DOWN) focusCampo(this); false }
+        }
+        logFilter = campo
+        // filtra enquanto digita: a lista já está em memória
+        campo.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) = renderLogs()
+        })
+        box.addView(campo, matchWrap())
+
+        val lista = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(lista, matchWrap())
+        logBox = lista
+        refreshLogs()
+        return box
+    }
+
+    /** Chip de ação da aba Logs; o visual "aceso" marca o estado ligado. */
+    private fun logChip(label: String, on: Boolean): TextView =
+        TextView(this).apply {
+            text = label
+        }.also {
+            pintarLogChip(it, on)
+            it.layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            ).apply { marginEnd = dp(4) }
+        }
+
+    private fun pintarLogChip(chip: TextView, on: Boolean) {
+        chip.textSize = 11f
+        chip.gravity = Gravity.CENTER
+        chip.typeface = bodyTypeface()
+        chip.setTextColor(col(if (on) accentInk() else accent()))
+        chip.background = if (on) pill(dp(10).toFloat(), accent())
+        else pill(dp(10).toFloat(), C_GLASS, accentA(0x66))
+        chip.setPadding(dp(8), dp(6), dp(8), dp(6))
+    }
+
+    /** Lê o histórico do disco (fora da thread da UI) e redesenha. */
+    private fun refreshLogs() {
+        val box = logBox ?: return
+        box.removeAllViews()
+        box.addView(procNote("lendo…"))
+        scope.launch {
+            val lidos = OtmLog.read(this@OverlayService)
+            post {
+                if (logBox !== box) return@post
+                logCache = lidos
+                renderLogs()
+            }
+        }
+    }
+
+    /** Desenha a lista já lida (filtro em memória, sem tocar no disco). */
+    private fun renderLogs() {
+        val box = logBox ?: return
+        val q = logFilter?.text?.toString()?.trim()?.lowercase() ?: ""
+        val linhas = logCache.filter { casaLog(it, q) }
+        box.removeAllViews()
+        if (linhas.isEmpty()) {
+            box.addView(procNote(
+                if (logCache.isEmpty()) "nada registrado ainda" else "nada bate com o filtro",
+            ))
+            return
+        }
+        val erros = logCache.count { !it.optBoolean("ok", true) }
+        box.addView(procNote("${linhas.size} de ${logCache.size} · $erros erro(s)"))
+        for (l in linhas) box.addView(logRow(l))
+    }
+
+    private fun casaLog(o: JSONObject, q: String): Boolean {
+        if (logOnlyErrors && o.optBoolean("ok", true)) return false
+        if (q.isEmpty()) return true
+        val hay = buildString {
+            append(o.optString("label")); append(' ')
+            append(o.optString("id")); append(' ')
+            append(o.optString("cmd")); append(' ')
+            append(o.optString("out"))
+            val r = o.optJSONArray("reasons")
+            if (r != null) for (i in 0 until r.length()) { append(' '); append(r.optString(i)) }
+        }.lowercase()
+        return hay.contains(q)
+    }
+
+    /**
+     * Uma execução: status, hora, o que foi e o resumo do resultado. No toque,
+     * abre o detalhe (comando, razões da falha e saída) — montado só ao abrir,
+     * para não criar dezenas de blocos de texto grandes à toa.
+     */
+    private fun logRow(o: JSONObject): View {
+        val ok = o.optBoolean("ok", true)
+        val coluna = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        val topo = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        topo.addView(TextView(this).apply {
+            text = if (ok) "[ok]" else "[erro]"
+            textSize = 11f
+            typeface = bodyTypeface()
+            setTextColor(col(if (ok) C_OK else C_ERR))
+        })
+        topo.addView(TextView(this).apply {
+            text = horaLog(o.optString("ts"))
+            textSize = 11f
+            typeface = bodyTypeface()
+            setTextColor(col(C_MUTED))
+            setPadding(dp(6), 0, dp(6), 0)
+        })
+        topo.addView(TextView(this).apply {
+            text = o.optString("label").ifEmpty { o.optString("id") }
+            textSize = 11.5f
+            typeface = bodyTypeface()
+            setTextColor(col(C_TEXT))
+            maxLines = 2
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val chev = TextView(this).apply {
+            text = "▾"
+            textSize = 11f
+            setTextColor(col(C_MUTED))
+            typeface = bodyTypeface()
+        }
+        topo.addView(chev)
+        coluna.addView(topo, matchWrap())
+
+        val resumo = logSummary(o)
+        if (resumo.isNotEmpty()) coluna.addView(TextView(this).apply {
+            text = resumo
+            textSize = 11f
+            typeface = bodyTypeface()
+            setTextColor(col(C_MUTED))
+        })
+
+        val det = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
+        coluna.addView(det, matchWrap())
+
+        // toque na CABEÇA (status/hora/rótulo) abre o detalhe; tocar no detalhe
+        // aberto não fecha sem querer (dá para rolar/selecionar a saída)
+        var montado = false
+        val toggle = View.OnClickListener {
+            val abrir = det.visibility != View.VISIBLE
+            if (abrir && !montado) { montarLogDetalhe(det, o); montado = true }
+            det.visibility = if (abrir) View.VISIBLE else View.GONE
+            chev.text = if (abrir) "▴" else "▾"
+        }
+        topo.setOnClickListener(toggle)
+        return coluna
+    }
+
+    /** Preenche o detalhe da linha (chamado só quando ela é aberta). */
+    private fun montarLogDetalhe(box: LinearLayout, o: JSONObject) {
+        box.setPadding(dp(8), dp(6), dp(8), dp(6))
+        box.background = pill(dp(8).toFloat(), C_GLASS, C_LINE)
+        val cmd = o.optString("cmd")
+        if (cmd.isNotEmpty()) box.addView(logDetTexto("$ $cmd", C_MUTED))
+        val r = o.optJSONArray("reasons")
+        if (r != null) for (i in 0 until r.length()) box.addView(logDetTexto("! " + r.optString(i), C_ERR))
+        val out = o.optString("out").trim()
+        if (out.isNotEmpty()) {
+            val mostra = if (out.length > 2000) out.take(2000) + "\n…(resto no painel)" else out
+            box.addView(logDetTexto(mostra, C_TEXT))
+        }
+        if (box.childCount == 0) box.addView(logDetTexto("(sem detalhe)", C_MUTED))
+    }
+
+    private fun logDetTexto(txt: String, cor: String): TextView =
+        TextView(this).apply {
+            text = txt
+            textSize = 10.5f
+            typeface = Typeface.MONOSPACE
+            setTextColor(col(cor))
+            setPadding(0, dp(1), 0, dp(1))
+        }
+
+    /** Resumo curto do resultado (o que aplicou, o que não pegou, a duração). */
+    private fun logSummary(o: JSONObject): String {
+        val p = mutableListOf<String>()
+        val applies = o.optInt("applies", 0)
+        val changed = o.optInt("changed", 0)
+        val failed = o.optInt("failed", 0)
+        if (applies > 0) p.add("$changed/$applies aplicada(s)")
+        else if (changed > 0) p.add("$changed aplicada(s)")
+        if (failed > 0) p.add("$failed não pegou")
+        val dur = o.optLong("dur_ms", 0)
+        if (dur > 0) p.add(if (dur >= 1000) "${dur / 1000}s" else "${dur}ms")
+        val code = o.optInt("code", 0)
+        if (!o.optBoolean("ok", true) && code != 0) p.add("código $code")
+        return p.joinToString(" · ")
+    }
+
+    /** "2026-11-03T22:19:04-03:00" → "22:19:04" (a data quase sempre é hoje). */
+    private fun horaLog(ts: String): String =
+        Regex("T(\\d{2}:\\d{2}:\\d{2})").find(ts)?.groupValues?.getOrNull(1) ?: "--:--"
+
+    /**
+     * Limpar pede DOIS toques. O flutuante não abre diálogo (a janela é
+     * não-focável), então o segundo toque é a confirmação; sem ele, o pedido
+     * "desarma" sozinho depois de alguns segundos.
+     */
+    private fun pedirLimparLogs() {
+        if (!logClearArmed) {
+            logClearArmed = true
+            statusText?.text = "Limpar: toque de novo para confirmar"
+            postDelayed(4000) { logClearArmed = false }
+            return
+        }
+        logClearArmed = false
+        OtmLog.clear(this)
+        logCache = emptyList()
+        renderLogs()
+        statusText?.text = "Logs apagados"
     }
 
     /**
@@ -1477,6 +1748,9 @@ class OverlayService : Service() {
         private const val C_LINE = "#33FFFFFF"
         private const val C_TEXT = "#F3EFE7"
         private const val C_MUTED = "#B9B2A6"
+        /** Mesmas cores de estado do painel (--teal/--danger). */
+        private const val C_OK = "#31C0A5"
+        private const val C_ERR = "#FF6B5E"
 
         /**
          * Largura do painel: fração da tela, com piso/teto em dp ([panelWidth]).
@@ -1513,7 +1787,7 @@ class OverlayService : Service() {
          * Categorias do painel, na ordem das abas (casa com [tabView]).
          * O FPS fica na PRIMEIRA: é o que se abre no meio da partida.
          */
-        private val TABS = listOf("Monitor", "Jogo", "Toque", "Motor", "Processos", "Atalhos")
+        private val TABS = listOf("Monitor", "Jogo", "Toque", "Motor", "Processos", "Logs", "Atalhos")
         /** Abas por linha: 6 rótulos numa linha só não cabem no painel. */
         private const val TAB_COLS = 3
 

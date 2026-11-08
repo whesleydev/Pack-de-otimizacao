@@ -3875,7 +3875,7 @@ t_overlay() {
         || ok "overlay não usa mais o título antigo"
     # organizado em CATEGORIAS (abas), não numa lista única
     grep -q 'TABS' "$svc" && ok "overlay tem categorias (abas)" || bad "overlay sem categorias"
-    for t in Monitor Jogo Toque Motor Processos Atalhos; do
+    for t in Monitor Jogo Toque Motor Processos Logs Atalhos; do
         grep -q "\"$t\"" "$svc" && ok "overlay tem a aba '$t'" || bad "overlay sem a aba '$t'"
     done
     # a ORDEM do `when` do tabView tem de casar com a ordem de TABS: um índice
@@ -3891,7 +3891,7 @@ if not (tabs and tv):
     sys.exit(1)
 nomes = re.findall(r'"([^"]+)"', tabs.group(1))
 # cada aba tem de ter uma função própria, na MESMA ordem dos rótulos
-esperado = ["monitorTab", "gameTab", "touchTab", "engineTab", "procTab", "shortcutsTab"]
+esperado = ["monitorTab", "gameTab", "touchTab", "engineTab", "procTab", "logTab", "shortcutsTab"]
 achado = re.findall(r'(\w+Tab)\(\)', tv.group(1))
 sys.exit(0 if achado == esperado and len(nomes) == len(esperado) else 1)
 PY
@@ -4097,6 +4097,28 @@ PY
         ok "overlay sem a aba Sensi"
     fi
     grep -q 'sectionHeader(' "$svc" && ok "overlay tem cabeçalhos de seção" || bad "overlay sem seções"
+    # ---- aba Logs do flutuante: histórico real, filtro e detalhe -------------
+    grep -q 'private fun logTab' "$svc" && ok "overlay tem a aba Logs" || bad "overlay sem a aba Logs"
+    grep -q 'OtmLog.read' "$svc" && ok "aba Logs lê o histórico compartilhado" \
+        || bad "aba Logs não lê o log"
+    grep -q 'private fun renderLogs' "$svc" && ok "aba Logs desenha a lista" || bad "aba Logs sem lista"
+    grep -q 'private fun logRow' "$svc" && ok "aba Logs monta uma linha por execução" \
+        || bad "aba Logs sem linhas"
+    grep -q 'private fun montarLogDetalhe' "$svc" && ok "aba Logs abre o detalhe no toque" \
+        || bad "aba Logs sem detalhe"
+    grep -q 'private fun casaLog' "$svc" && ok "aba Logs filtra por texto" || bad "aba Logs sem filtro"
+    grep -q 'private fun pedirLimparLogs' "$svc" && grep -q 'OtmLog.clear' "$svc" \
+        && ok "aba Logs pode limpar o histórico" || bad "aba Logs não limpa"
+    grep -q 'logOnlyErrors' "$svc" && ok "aba Logs tem o filtro 'só erros'" || bad "aba Logs sem filtro de erro"
+    # o detalhe só é montado quando a linha é aberta (não cria tudo de uma vez)
+    grep -q 'if (abrir && !montado)' "$svc" && ok "aba Logs monta o detalhe sob demanda" \
+        || bad "aba Logs monta todo o detalhe de uma vez"
+    # o filtro roda em memória: lê o arquivo UMA vez e redesenha sem reler
+    grep -q 'logCache' "$svc" && grep -q 'private fun refreshLogs' "$svc" \
+        && ok "aba Logs lê o arquivo uma vez (filtra em memória)" || bad "aba Logs relê a cada tecla"
+    # a limpeza pede confirmação (o overlay não abre diálogo)
+    grep -q 'logClearArmed' "$svc" && ok "aba Logs confirma antes de limpar" \
+        || bad "aba Logs limpa sem confirmar"
     # o botão de escolher o MOTOR de renderização está no painel flutuante
     grep -q 'RENDERERS' "$svc" && ok "overlay tem o seletor de motor de renderização" \
         || bad "overlay sem o seletor de motor"

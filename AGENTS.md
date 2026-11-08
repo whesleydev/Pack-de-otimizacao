@@ -428,9 +428,9 @@ nativa além do necessário para conectar e rodar os comandos.
 - **Painel flutuante (overlay sobre o jogo).** `OverlayService` (janela
   `TYPE_APPLICATION_OVERLAY`, precisa de `SYSTEM_ALERT_WINDOW`) mostra o painel
   por cima do Free Fire. O título é só **"00"** e o conteúdo é organizado em
-  **abas** por categoria — `TABS` = `Monitor`, `Toque`, `Motor`, `Processos`,
-  `Atalhos` (a aba **Sensi saiu**: o overlay aplica o headshot da sensi, mas não
-  lê mais o `sensi.sh`).
+  **abas** por categoria — `TABS` = `Monitor`, `Jogo`, `Toque`, `Motor`,
+  `Processos`, `Logs`, `Atalhos` (a aba **Sensi saiu**: o overlay aplica o
+  headshot da sensi, mas não lê mais o `sensi.sh`).
   A aba **Monitor** lê o `panel-stats.sh` e se atualiza sozinha a cada 4 s
   (enquanto estiver aberta: `monitorBox` é zerado no `selectTab` para o
   `postDelayed` parar). O FPS mostrado é **real**, do `SurfaceFlinger`
@@ -443,6 +443,17 @@ nativa além do necessário para conectar e rodar os comandos.
   índice do rótulo, então fora de sincronia o conteúdo sai na aba errada (foi
   assim que o FPS ficou escondido em "Processos" e "Monitor" abria o toque). O
   `tests/run.sh` compara as duas ordens justamente por isso.
+  A aba **Logs** mostra o histórico do **mesmo** `state/log.jsonl` do painel
+  (lido por `OtmLog.read`), em views nativas — o overlay não tem WebView. Cada
+  linha traz `[ok]`/`[erro]`, a hora, o rótulo e um resumo (aplicadas, falhas,
+  duração); **tocar** na linha abre o detalhe com o comando, as `reasons` e a
+  saída. O detalhe é montado **sob demanda** (só ao abrir a linha) e a saída é
+  cortada em 2000 caracteres: dezenas de blocos de texto grandes de uma vez
+  travariam a janela. Tem filtro por texto (label/id/cmd/out/reasons), o botão
+  **Só erros** e **Atualizar**. O filtro roda em **memória** (`logCache`, lido
+  uma vez por `refreshLogs`), não relê o arquivo a cada tecla. **Limpar** pede
+  dois toques (o overlay não abre diálogo, a janela é não-focável) e chama
+  `OtmLog.clear`.
   **Tamanho**: largura **fixa** (`panelWidth`, ~46% da tela com piso/teto em dp)
   — com `WRAP_CONTENT` cada aba media um tamanho e o painel pulava ao trocar de
   aba. Altura acompanha o conteúdo até `panelMaxHeight` (~50% da tela). A bolha
