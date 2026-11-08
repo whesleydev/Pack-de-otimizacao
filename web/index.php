@@ -1819,7 +1819,7 @@ function selectOption(btn, confirmed){
 function runPending(){
   const p = pending; if (!p) return;
   if (p.dataset.vitalGo) doRun(ACTIONS[p.dataset.vitalId], {}, true, p);
-  else if (p.classList.contains("card-toggle")) doRun(ACTIONS[p._subId], {}, true, p.querySelector(".cpsw"));
+  else if (p.classList.contains("card-toggle")) toggleApply(p, p._subId, true);
   else if (p._subId) doRun(ACTIONS[p._subId], p._subParams || {}, true, p);
   else if (p.classList.contains("opt")) doRun(ACTIONS[p.dataset.opt], collectChoice(p.closest(".card-choice")), true, p);
   else doRun(ACTIONS[p.dataset.id], collect(p), true, p.querySelector("[data-run]"));
@@ -1846,8 +1846,9 @@ async function doRun(a, params, confirmed, btn){
     else if (j.applied && !j.real) toast("Nada mudou de verdade — veja Configs", "bad");
     else toast("Falhou: " + a.label, "bad");
     if (j.ok && btn && btn.classList.contains("opt")) loadState();
-  }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); }
-  setBusy(false, btn);
+    return j;
+  }catch(e){ openConsole(a.label, "erro: " + e); toast("Erro de rede", "bad"); return null; }
+  finally { setBusy(false, btn); }
 }
 document.querySelectorAll("[data-run]").forEach(b => tapOnly(b, () => run(b.closest(".card"))));
 /* só opções de grupo de escolha: um .opt fora de .card-choice tem handler próprio */
@@ -1944,6 +1945,16 @@ document.querySelectorAll("[data-vital-go]").forEach(b => tapOnly(b, async () =>
 
 
 /* ---- interruptores: ligar/desligar com estado real -------------------------- */
+/* pinta o interruptor sem tocar no estado real (usado no otimista e no apply) */
+function pintarToggle(card, on, estado){
+  card.dataset.onState = on ? "1" : "0";
+  const sw = card.querySelector(".cpsw");
+  if (sw) sw.setAttribute("aria-checked", on ? "true" : "false");
+  const lb = card.querySelector("[data-tg-label]"); if (lb) lb.textContent = on ? "Ligado" : "Desligado";
+  if (estado !== undefined){
+    const st = card.querySelector("[data-tg-state]"); if (st) st.textContent = estado;
+  }
+}
 function applyToggles(){
   document.querySelectorAll(".card-toggle").forEach(card => {
     const key = card.dataset.state || "";
@@ -1951,22 +1962,36 @@ function applyToggles(){
     const raw = key && STATE[key] !== undefined ? String(STATE[key]).trim().toLowerCase() : null;
     const known = raw !== null && raw !== "";
     const on = known && vals.includes(raw);
-    card.dataset.onState = on ? "1" : "0";
-    const sw = card.querySelector(".cpsw");
-    if (sw) sw.setAttribute("aria-checked", on ? "true" : "false");
-    const lb = card.querySelector("[data-tg-label]"); if (lb) lb.textContent = on ? "Ligado" : "Desligado";
-    const st = card.querySelector("[data-tg-state]");
-    if (st) st.textContent = !key ? "sempre ativo" : (!known ? "estado desconhecido" : (on ? "ativo" : "inativo"));
+    pintarToggle(card, on, !key ? "sempre ativo" : (!known ? "estado desconhecido" : (on ? "ativo" : "inativo")));
   });
+}
+/* Aplica o interruptor de forma otimista e depois confere o estado REAL.
+   Se o aparelho não mudou (ação recusada, sem acesso, já estava assim), o
+   interruptor volta sozinho para o estado verdadeiro e o motivo vai no aviso —
+   a chave nunca fica mentindo. */
+async function toggleApply(card, id, confirmed){
+  const a = ACTIONS[id]; if (!a){ toast("Ação indisponível", "bad"); return; }
+  const sw = card.querySelector(".cpsw");
+  const alvo = id === card.dataset.on;
+  pintarToggle(card, alvo, "aplicando…");
+  const j = await doRun(a, {}, !!confirmed, sw || card);
+  await loadState();
+  // loadState já repintou com o estado real; se não bateu com o alvo, avisa
+  if (card.dataset.onState === (alvo ? "1" : "0")){
+    const st = card.querySelector("[data-tg-state]");
+    if (st) st.textContent = alvo ? "ativo" : "inativo";
+    return;
+  }
+  const st = card.querySelector("[data-tg-state]");
+  if (st) st.textContent = "não mudou";
+  toast((j && j.ok) ? "O aparelho não mudou — veja o console" : "Falhou: " + a.label, "bad");
 }
 async function toggleRun(card){
   const onNow = card.dataset.onState === "1";
   const id = onNow ? card.dataset.off : card.dataset.on;
   const a = ACTIONS[id]; if (!a){ toast("Ação indisponível", "bad"); return; }
-  const sw = card.querySelector(".cpsw");
   if (a.confirm){ card._subId = id; askConfirm(card, a); return; }
-  await doRun(a, {}, false, sw || card);
-  await loadState();
+  await toggleApply(card, id);
 }
 document.querySelectorAll(".card-toggle").forEach(card => {
   const sw = card.querySelector(".cpsw");
