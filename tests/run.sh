@@ -719,15 +719,15 @@ t_app_exec() {
         && ok "executor compartilhado usa a pasta do shell" || bad "OtmExec sem ensureShellCopy"
     # o histórico não pode morar dentro da pasta extraída: ensureExtracted faz
     # deleteRecursively() a cada mudança de assets, e o log/terminal zerava.
-    grep -q 'File(stateDir(), "log.jsonl")' "$src/PackBridge.kt" \
+    grep -q 'File(stateDir(context), "log.jsonl")' "$src/OtmLog.kt" \
         && ok "log fora da pasta extraída (sobrevive à atualização)" \
         || bad "log ainda em packDir()/state (some ao atualizar)"
     grep -q 'File(stateDir(), "term.jsonl")' "$src/PackBridge.kt" \
         && ok "histórico do terminal fora da pasta extraída" \
         || bad "histórico do terminal ainda em packDir()/state"
-    grep -qE 'File\(packDir\(\), "state/(log|term)\.jsonl"\)' "$src/PackBridge.kt" \
-        && bad "ainda há estado gravado dentro da pasta extraída" \
-        || ok "nada de estado dentro da pasta extraída"
+    ! grep -qE 'File\([^)]*ensureExtracted[^)]*, "state/(log|term)\.jsonl"\)' "$src/OtmLog.kt" "$src/PackBridge.kt" \
+        && ok "nada de estado dentro da pasta extraída" \
+        || bad "ainda há estado gravado dentro da pasta extraída"
     grep -q 'fun stateDir(context: Context): File = File(context.filesDir' "$src/PackAssets.kt" \
         && ok "stateDir fica no filesDir (não é apagado)" || bad "stateDir dentro do pack"
     # o HOME dos scripts também apontava para a pasta que o rm -rf apaga
@@ -2524,18 +2524,21 @@ t_panel_v219() {
     grep -q 'function otm_fail_reasons' "$lib" && ok "lib.php: extrai as razões da falha" || bad "log sem razões"
     grep -q "'reasons' =>" "$lib" && ok "lib.php: grava as razões no log" || bad "log sem campo reasons"
     grep -q "'out' => otm_clip" "$lib" && ok "lib.php: grava a saída crua (limitada)" || bad "log sem saída crua"
-    grep -q 'function otm_log_trim' "$lib" && grep -q 'private fun trimLog' "$src/PackBridge.kt" \
+    grep -q 'function otm_log_trim' "$lib" && grep -q 'private fun trimLog' "$src/OtmLog.kt" \
         && ok "log: podado dos dois lados (não cresce sem fim)" || bad "log sem poda"
-    grep -q 'private fun failReasons' "$src/PackBridge.kt" && ok "bridge: extrai as razões da falha" || bad "bridge sem razões"
-    grep -q '.put("reasons", JSONArray(failReasons(out)))' "$src/PackBridge.kt" \
-        && ok "bridge: grava as razões no log" || bad "bridge log sem reasons"
+    grep -q 'private fun failReasons' "$src/OtmLog.kt" && ok "log: extrai as razões da falha" || bad "log sem razões"
+    grep -q '.put("reasons", JSONArray(failReasons(out)))' "$src/OtmLog.kt" \
+        && ok "log: grava as razões" || bad "log sem reasons"
+    # o log é compartilhado: o painel flutuante também registra (antes só o WebView)
+    grep -q 'OtmLog.append' "$src/OverlayService.kt" \
+        && ok "flutuante: registra as ações no log do painel" || bad "flutuante não registra no log"
     grep -q 'has-det' "$app" && grep -q 'has-det' "$ROOT/web/index.php" \
         && ok "app+web: log abre os detalhes no toque" || bad "log sem detalhes"
     grep -q 'class="why"' "$app" && grep -q 'class="why"' "$ROOT/web/index.php" \
         && ok "app+web: log mostra a lista de razões" || bad "log sem lista de razões"
     # as duas pontes (PHP e Kotlin) gravam o MESMO formato de log
     for k in applies changed failed reasons out; do
-        grep -q "'$k' =>" "$lib" && grep -q ".put(\"$k\"" "$src/PackBridge.kt" \
+        grep -q "'$k' =>" "$lib" && grep -q ".put(\"$k\"" "$src/OtmLog.kt" \
             || bad "log: campo $k não está nos dois lados"
     done
     ok "log: mesmo formato no PHP e no Kotlin"
@@ -2571,7 +2574,7 @@ t_panel_v219() {
     grep -q 'termBufSave' "$app" && ok "app: buffer do terminal persiste" || bad "app sem buffer persistente"
     grep -q 'term_stream' "$api" && grep -q "'streamed' => false" "$api" && ok "api.php: term_stream (fallback web)" || bad "api.php sem term_stream"
     # Logs: duracao + resumo do que aplicou/nao aplicou + filtro + exportar
-    grep -q "'dur_ms' =>" "$lib" && grep -q 'put("dur_ms", durMs)' "$src/PackBridge.kt" \
+    grep -q "'dur_ms' =>" "$lib" && grep -q 'put("dur_ms", durMs)' "$src/OtmLog.kt" \
         && ok "log: duracao nos dois lados" || bad "log sem duracao"
     grep -q 'logSummary' "$app" && grep -q 'logSummary' "$ROOT/web/index.php" \
         && ok "app+web: resumo do log (aplicado/nao)" || bad "log sem resumo"

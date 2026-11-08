@@ -1390,11 +1390,14 @@ class OverlayService : Service() {
     private fun runScript(script: String, args: List<String>, label: String) {
         post { statusText?.text = "$label: aplicando…" }
         scope.launch {
+            val t0 = System.currentTimeMillis()
             val res = OtmExec.run(this@OverlayService, shellRunner(), script, args)
+            val durMs = System.currentTimeMillis() - t0
             val out = joinOutput(res.stdout, res.stderr)
             val v = OtmExec.parseResult(out)
             val changed = v["changed"]?.toIntOrNull() ?: 0
             val failed = v["failed"]?.toIntOrNull() ?: 0
+            val applies = v["applies"]?.toIntOrNull() ?: 0
             val ok = v["ok"]?.toIntOrNull()
             val msg = when {
                 // sem permissão de shell é o caso mais comum de "erro em tudo":
@@ -1409,12 +1412,25 @@ class OverlayService : Service() {
                 failed > 0 -> "$label: nada mudou ($failed falha(s))"
                 else -> "$label: sem mudança"
             }
+            // Registra no MESMO histórico do painel (Logs): o que se mexe no
+            // flutuante antes não aparecia em lugar nenhum. [ok] segue a mesma
+            // regra do PackBridge: falhou, ou tentou aplicar e nada mudou.
+            OtmLog.append(
+                this@OverlayService, script, label, cmdLine(script, args),
+                ok = res.ok && !(applies > 0 && changed == 0),
+                code = res.code, out = out,
+                applies = applies, changed = changed, failed = failed, durMs = durMs,
+            )
             post {
                 statusText?.text = msg
                 Toast.makeText(this@OverlayService, msg, Toast.LENGTH_SHORT).show()
             }
         }
     }
+
+    /** Linha de comando como aparece no log (mesma ideia do `cmd` do painel). */
+    private fun cmdLine(script: String, args: List<String>): String =
+        (listOf(script) + args).joinToString(" ")
 
     private fun post(block: () -> Unit) = android.os.Handler(mainLooper).post(block)
 

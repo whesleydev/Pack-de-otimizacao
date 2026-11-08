@@ -414,11 +414,17 @@ nativa além do necessário para conectar e rodar os comandos.
   script que explicam a falha — `✕`/`X` com o valor lido) e a saída crua
   (`out`, cortada em 6000 caracteres). A linha com detalhe é clicável
   (`.logsrow.has-det`) e abre as razões + a saída. O mesmo formato é gravado
-  pelo PHP (`otm_log`) e pelo Kotlin (`logAppend`), e o teste `t_logs` falha se
-  os dois lados divergirem.
+  pelo PHP (`otm_log`) e pelo Kotlin (`OtmLog.append`), e o teste `t_logs` falha
+  se os dois lados divergirem.
   Como a saída crua entra no log, o arquivo é **podado**: acima de ~1,5 MB
-  ficam as últimas 800 execuções (`otm_log_trim`/`trimLog`, `LOG_MAX`), no
+  ficam as últimas 800 execuções (`otm_log_trim`/`trimLog`, `OtmLog.MAX`), no
   mesmo limite dos dois lados.
+  O log **não** mora mais dentro do `PackBridge`: fica em `OtmLog`, um objeto
+  único, porque **duas origens** escrevem nele — o painel WebView (via
+  `PackBridge.logAppend`, que só delega) e o **painel flutuante**
+  (`OverlayService.runScript`). Antes só o WebView gravava, então tudo que o
+  usuário mexia no flutuante sumia dos Logs. `OtmLog.stateDir()` também guarda
+  o resgate do histórico da versão antiga (`pack/state` → `otm-state`).
 - **Painel flutuante (overlay sobre o jogo).** `OverlayService` (janela
   `TYPE_APPLICATION_OVERLAY`, precisa de `SYSTEM_ALERT_WINDOW`) mostra o painel
   por cima do Free Fire. O título é só **"00"** e o conteúdo é organizado em
