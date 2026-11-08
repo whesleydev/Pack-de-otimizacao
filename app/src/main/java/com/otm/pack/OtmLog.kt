@@ -66,6 +66,30 @@ object OtmLog {
         } catch (_: Throwable) {}
     }
 
+    /**
+     * Últimas [limit] execuções, da mais nova para a mais antiga. Linha
+     * corrompida (jsonl pela metade) é ignorada em vez de derrubar a lista.
+     * O teto existe para o painel flutuante não montar centenas de views.
+     */
+    fun read(context: Context, limit: Int = 120): List<JSONObject> {
+        val f = File(stateDir(context), "log.jsonl")
+        if (!f.isFile) return emptyList()
+        return try {
+            f.readLines()
+                .filter { it.isNotBlank() }
+                .takeLast(limit)
+                .reversed()
+                .mapNotNull { runCatching { JSONObject(it) }.getOrNull() }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    /** Apaga o histórico (o arquivo é recriado na próxima execução). */
+    fun clear(context: Context) {
+        runCatching { File(stateDir(context), "log.jsonl").delete() }
+    }
+
     private fun ts(): String =
         java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US)
             .format(java.util.Date())
