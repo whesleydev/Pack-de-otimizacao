@@ -176,6 +176,11 @@ Regras:
   `otm_key_devices`, `otm_key_events`, `otm_plans`, `otm_rate`).
 - **O painel PHP ainda fala com o Turso** (`panel/config/turso.php`, no `.gitignore`),
   para administradores/auditoria. O token **não** vai mais no APK (saiu do `build.gradle`).
+- **O cliente do Turso é `Turso.php` (HTTP/cURL)**: o painel em produção **exige a
+  extensão `curl` do PHP** (`php -m | grep curl`). Sem ela o `Turso.php` morre em
+  `curl_init()` (o `Db`/SQLite não usa curl e por isso os testes locais passam mesmo
+  sem a extensão). No Debian/Ubuntu: `apt-get install -y php8.4-curl`. Só a suíte de
+  testes do painel usa SQLite (`OTM_LOCAL_DB`), então ela **não** pega essa falta.
 - Páginas do painel exigem **login de administrador** (`otm_admins`, senha com
   `password_hash`) + **CSRF**. Crie o primeiro com
   `php panel/bin/admin.php add SEU_USUARIO --role owner`.
