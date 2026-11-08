@@ -440,68 +440,12 @@ class PackBridge(
         } catch (_: Throwable) {}
     }
 
-    /**
-     * Registra a execução no histórico (`state/log.jsonl`) — é o que o painel
-     * mostra em "Logs". Mesmo formato do lado PHP (`otm_log`), para os dois
-     * painéis lerem igual: além de ok/erro, guarda o que o script tentou
-     * (applies/changed/failed), as linhas que explicam a falha e a saída crua.
-     */
+    /** Registra a execução no histórico compartilhado (ver [OtmLog]). */
     private fun logAppend(
         id: String, label: String, cmd: String, ok: Boolean, code: Int,
         out: String = "", applies: Int = 0, changed: Int = 0, failed: Int = 0,
         durMs: Long = 0,
-    ) {
-        try {
-            val f = File(stateDir(), "log.jsonl")
-            f.parentFile?.mkdirs()
-            val rec = JSONObject()
-                .put("ts", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date()))
-                .put("id", id).put("label", label).put("cmd", cmd)
-                .put("ok", ok).put("code", code)
-                .put("applies", applies).put("changed", changed).put("failed", failed)
-                .put("dur_ms", durMs)
-                .put("reasons", JSONArray(failReasons(out)))
-                .put("out", out.take(6000))
-                .toString()
-            f.appendText(rec + "\n")
-            trimLog(f)
-        } catch (_: Throwable) {}
-    }
-
-    /**
-     * O log agora guarda a saída crua de cada ação, então cresce rápido. Mantém
-     * as últimas [LOG_MAX] linhas: o histórico continua completo para o usuário
-     * e o arquivo não vira um peso morto no aparelho.
-     */
-    private fun trimLog(f: File) {
-        try {
-            if (f.length() < 1_500_000) return
-            val keep = f.readLines().filter { it.isNotBlank() }.takeLast(LOG_MAX)
-            f.writeText(keep.joinToString("\n") + "\n")
-        } catch (_: Throwable) {}
-    }
-
-    /**
-     * Linhas que explicam POR QUE falhou. Os scripts marcam a falha com "✕"/"X"
-     * e dizem o valor lido de volta (ex.: "X tcp_congestion_control nao mudou
-     * (lido: cubic)"). Sem isso o log só dizia "erro".
-     */
-    private fun failReasons(out: String): List<String> {
-        if (out.isBlank()) return emptyList()
-        val clean = out.replace(Regex("\u001B\\[[0-9;]*m"), "")
-        val hit = Regex(
-            "^[✕X]|(n[ãa]o (mudou|pegou|consegui|aceitou|encontrei|dispon[íi]vel|existe|permitido)" +
-                "|falhou|falha\\(s\\)|sem acesso|denied|denial|not found)",
-            RegexOption.IGNORE_CASE,
-        )
-        return clean.lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && hit.containsMatchIn(it) }
-            .map { it.replace(Regex("^[✕X]\\s*"), "") }
-            .distinct()
-            .take(12)
-            .toList()
-    }
+    ) = OtmLog.append(context, id, label, cmd, ok, code, out, applies, changed, failed, durMs)
 
     private fun actionsImpl(): String {
         val out = JSONArray()
@@ -553,22 +497,9 @@ class PackBridge(
     /**
      * Onde vive o histórico. Antes era `packDir()/state`, dentro da pasta que o
      * app apaga a cada atualização — instalar uma versão nova zerava o histórico.
+     * O log em si mora em [OtmLog] (o flutuante também escreve lá).
      */
-    private fun stateDir(): File {
-        val dir = PackAssets.stateDir(context)
-        // Resgata o histórico da versão anterior (morava dentro do `pack`).
-        try {
-            val antigo = File(packDir(), "state")
-            if (antigo.isDirectory) {
-                for (nome in listOf("log.jsonl", "term.jsonl")) {
-                    val de = File(antigo, nome)
-                    val para = File(dir, nome)
-                    if (de.isFile && !para.exists()) de.copyTo(para, overwrite = false)
-                }
-            }
-        } catch (_: Throwable) {}
-        return dir
-    }
+    private fun stateDir(): File = OtmLog.stateDir(context)
 
     private fun parseResult(out: String): Map<String, String> = OtmExec.parseResult(out)
 
@@ -685,8 +616,6 @@ class PackBridge(
         .toString()
 
     private companion object {
-        /** Quantas execuções o log guarda antes de podar as mais antigas. */
-        const val LOG_MAX = 800
         val PKG = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$")
         val HOST = Regex("^[A-Za-z0-9]([A-Za-z0-9.-]{0,61}[A-Za-z0-9])?$")
         val INT = Regex("^-?\\d+$")
