@@ -696,7 +696,31 @@ class OverlayService : Service() {
                 runScript("adb-tweaks.sh", listOf("renderer", e.first), "Motor: ${e.second}")
             })
         }
+        box.addView(procNote("SkiaGL multithread e Skia Vulkan multithread só valem após reiniciar"))
+        box.addView(sectionHeader("Driver gráfico"))
+        box.addView(driverRow("ANGLE em todos os apps", "angle_all"))
+        box.addView(driverRow("Driver de jogo (todos)", "gamedriver"))
+        val upd = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        upd.addView(smallButton("Driver pré-lançamento") {
+            runScript("deep-tune.sh", listOf("gfxdriver", "updatable", "pre"), "Driver pré-lançamento")
+        })
+        upd.addView(smallButton("Driver estável") {
+            runScript("deep-tune.sh", listOf("gfxdriver", "updatable", "producao"), "Driver do sistema")
+        })
+        box.addView(upd, matchWrap())
         return box
+    }
+
+    /** Par liga/desliga de driver: `deep-tune.sh gfxdriver <sub> on|off`. */
+    private fun driverRow(label: String, sub: String): View {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row.addView(smallButton("$label: ligar") {
+            runScript("deep-tune.sh", listOf("gfxdriver", sub, "on"), "$label ligado")
+        })
+        row.addView(smallButton("desligar") {
+            runScript("deep-tune.sh", listOf("gfxdriver", sub, "off"), "$label desligado")
+        })
+        return row
     }
 
     /**
