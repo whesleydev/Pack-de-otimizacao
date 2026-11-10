@@ -52,6 +52,17 @@ android {
     packaging {
         resources.excludes += setOf("META-INF/*.kotlin_module")
     }
+
+    // Núcleo nativo (C) do pack: telemetria sem abrir processo. O NDK é opcional
+    // para quem só quer compilar o app: se `ndkVersion` não estiver instalada, o
+    // build falha com recado claro em vez de gerar APK sem a lib.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+    ndkVersion = "27.0.12077973"
 }
 
 // Os scripts do pack são a fonte da verdade em <repo>/scripts. O app embarca

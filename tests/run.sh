@@ -3150,6 +3150,50 @@ EOF
     rm -rf "$HOME/.packotm"
 }
 
+t_native_core() {
+    printf '\n  # núcleo nativo (C/NDK): telemetria sem abrir processo\n'
+    local cm="$ROOT/app/src/main/cpp/CMakeLists.txt"
+    local c="$ROOT/app/src/main/cpp/otm_native.c"
+    local kt="$ROOT/app/src/main/java/com/otm/pack/OtmNative.kt"
+    [ -f "$cm" ] && ok "CMakeLists.txt existe" || bad "sem CMakeLists.txt"
+    [ -f "$c" ] && ok "otm_native.c existe" || bad "sem otm_native.c"
+    [ -f "$kt" ] && ok "ponte OtmNative.kt existe" || bad "sem OtmNative.kt"
+    # o build liga o CMake e fixa o NDK (reprodutível)
+    grep -q 'externalNativeBuild' "$ROOT/app/build.gradle.kts" && ok "build.gradle liga o CMake" \
+        || bad "build.gradle sem externalNativeBuild"
+    grep -q 'ndkVersion' "$ROOT/app/build.gradle.kts" && ok "NDK fixado no build" \
+        || bad "sem ndkVersion"
+    # 16 KB: exigência do Android 15+
+    grep -q 'max-page-size=16384' "$cm" && ok "alinhado a 16 KB (Android 15+)" \
+        || bad "sem alinhamento 16 KB"
+    # o C nunca inventa: arquivo ausente devolve -1
+    grep -q 'return -1' "$c" && ok "C devolve -1 quando não lê (nunca inventa)" \
+        || bad "C não trata ausência"
+    # cada função do C tem a contraparte JNI com o nome do pacote+classe
+    for fn in ramAvailableKb ramTotalKb maxThermalMilliC currentCpuFreqKhz cpuUsagePercent uptimeSeconds cpuCores; do
+        grep -q "Java_com_otm_pack_OtmNative_$fn" "$c" && ok "JNI: $fn" || bad "JNI: falta $fn"
+        grep -q "external fun $fn(" "$kt" && ok "Kotlin: $fn" || bad "Kotlin: falta $fn"
+    done
+    # a lib carrega com degradação graciosa (não derruba o app se faltar)
+    grep -q 'System.loadLibrary("otmcore")' "$kt" && ok "carrega libotmcore" || bad "não carrega a lib"
+    grep -q 'available' "$kt" && ok "degrada sem a lib (available=false)" || bad "sem degradação"
+    # e é USADA (não é código morto): o monitor se completa com ela
+    grep -q 'nativeStats()' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && ok "monitor usa o núcleo nativo (nativeStats)" || bad "núcleo nativo não é usado"
+    # a lib compilada tem de existir para as ABIs de aparelho (se já foi compilada)
+    local so
+    so="$(find "$ROOT/app/build" -name libotmcore.so 2>/dev/null | head -1)"
+    if [ -n "$so" ]; then
+        ok "libotmcore.so compilada"
+        for abi in arm64-v8a armeabi-v7a; do
+            find "$ROOT/app/build" -path "*$abi*" -name libotmcore.so 2>/dev/null | grep -q . \
+                && ok "so para $abi" || bad "falta so para $abi"
+        done
+    else
+        ok "lib ainda não compilada (o build faz isso)"
+    fi
+}
+
 t_backup_crypto() {
     printf '\n  # backup: arquivo cifrado que devolve as configurações\n'
     local f="$ROOT/scripts/backup.sh"
@@ -4855,6 +4899,7 @@ t_smart_opt
 t_smart_bigdump
 t_smart_learning
 t_red_motor
+t_native_core
 t_backup_crypto
 t_smart_card_single
 t_clean

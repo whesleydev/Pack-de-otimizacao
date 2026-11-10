@@ -365,6 +365,33 @@ class OverlayService : Service() {
         return box
     }
 
+    /**
+     * Telemetria pelo núcleo nativo (C) — MESMOS campos do `panel-stats.sh`, só
+     * os que dá para ler sem processo. Devolve vazio quando a lib não carregou
+     * (aparelho/ABI sem suporte), e aí nada muda no comportamento antigo.
+     */
+    private fun nativeStats(): Map<String, String> {
+        val m = LinkedHashMap<String, String>()
+        if (!OtmNative.available) return m
+        OtmNative.ramAvailableMb()?.let { livre ->
+            m["ram_livre_mb"] = livre.toString()
+            OtmNative.ramTotalKb().takeIf { it > 0 }?.let { totKb ->
+                val totMb = totKb / 1024
+                if (totMb > 0) {
+                    val uso = ((totMb - livre) * 100 / totMb).coerceIn(0, 100)
+                    m["ram_uso_pct"] = uso.toString()
+                }
+            }
+        }
+        OtmNative.cpuFreqMhz()?.let { m["cpu_cur_mhz"] = it.toString() }
+        OtmNative.cpuPct()?.let { m["cpu_uso_pct"] = it.toString() }
+        OtmNative.cpuCores().takeIf { it > 0 }?.let { m["ncores"] = it.toString() }
+        OtmNative.thermalC()?.let {
+            m["temp_c"] = String.format(java.util.Locale.US, "%.1f", it)
+        }
+        return m
+    }
+
     /** Lê o consumo real e monta a grade do monitor (atualiza a cada 4 s). */
     private fun loadMonitor() {
         val box = monitorBox ?: return
@@ -372,17 +399,23 @@ class OverlayService : Service() {
             // Sem shell ainda dá para mostrar a bateria: o próprio Android
             // entrega nível/temperatura/estado. Melhor do que uma tela vazia.
             box.removeAllViews()
-            val bat = OtmBattery.snapshot(this)
             val m = LinkedHashMap<String, String>()
+            m.putAll(nativeStats())   // RAM/CPU/frequência/núcleos pelo núcleo C
+            val bat = OtmBattery.snapshot(this)
             val keys = bat.keys()
-            while (keys.hasNext()) { val k = keys.next(); m[k] = bat.optString(k) }
+            while (keys.hasNext()) { val k = keys.next(); if (!m.containsKey(k)) m[k] = bat.optString(k) }
             for (linha in monitorRows(m, semShell = true)) box.addView(linha)
-            box.addView(procNote("conecte o Shizuku para ver CPU, RAM e FPS"))
+            box.addView(procNote("conecte o Shizuku para ver FPS e o resto"))
             return
         }
         scope.launch {
             val res = OtmExec.run(this@OverlayService, shellRunner(), "panel-stats.sh", emptyList())
-            val s = parseStats(joinOutput(res.stdout, res.stderr))
+            val s = HashMap(parseStats(joinOutput(res.stdout, res.stderr)))
+            // O núcleo nativo completa o que o shell não trouxe (e nunca
+            // sobrescreve o shell, que lê mais). Sem Shizuku, é o que sustenta
+            // RAM, CPU, frequência e temperatura.
+            val nat = nativeStats()
+            for ((k, v) in nat) if (!s.containsKey(k) || s[k].isNullOrEmpty()) s[k] = v
             post {
                 box.removeAllViews()
                 for (linha in monitorRows(s)) box.addView(linha)
@@ -528,7 +561,10 @@ class OverlayService : Service() {
         linhas.add(monitorRow("Núcleos", if (cores != null) cores else "—"))
         val gov = s["cpu_gov"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Governador", if (gov != null) gov else "—"))
-        val temp = s["bat_temp_c"]?.takeIf { it.isNotEmpty() }
+        // temperatura do sistema (núcleo nativo, SoC) tem prioridade; sem ela, a
+        // da bateria (Android) — as duas são reais, nunca estimativa
+        val temp = s["temp_c"]?.takeIf { it.isNotEmpty() }
+            ?: s["bat_temp_c"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Temperatura", if (temp != null) "$temp °C" else "—"))
         val bat = s["bat_level"]?.takeIf { it.isNotEmpty() }
         val st = s["bat_status"]?.takeIf { it.isNotEmpty() }
