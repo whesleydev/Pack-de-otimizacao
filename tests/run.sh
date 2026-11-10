@@ -1268,6 +1268,41 @@ t_panel_stats() {
     done
     grep -q 's\["refresh_max"\]' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
         && ok "overlay: o monitor usa o teto real (refresh_max)" || bad "overlay: monitor sem refresh_max"
+
+    # "Taxa agora" é o Hz do modo ATIVO. O modo 0 costuma ser 60 e o ativo
+    # pode ser 120: casar a LINHA inteira do DisplayDeviceInfo pegava o primeiro
+    # `fps=` (o do modo 0) e o monitor mostrava 60 num aparelho rodando a 120.
+    _hz_case() {  # $1 = conteúdo do dumpsys display; $2 = esperado
+        _d="$(mktemp)"
+        printf '%s\n' "$1" > "$_d"
+        _got="$(OTM_NO_COLOR=1 sh -c "
+            . '$ROOT/scripts/common.sh' 2>/dev/null
+            sh_get() { cat '$_d'; }
+            otm_refresh_now" 2>/dev/null)"
+        rm -f "$_d"
+        [ "$_got" = "$2" ] && ok "hz: $3 (=$_got)" || bad "hz: $3 (esperado $2, obtido $_got)"
+    }
+    _hz_case '    DisplayDeviceInfo{"Built-in Screen": uniqueId="local:1", 1080 x 2400, modeId 1, defaultModeId 0, supportedModes [{id=0, width=1080, height=2400, fps=60.0}, {id=1, width=1080, height=2400, fps=120.0}], density 420}' \
+        "120.0" "modo ativo 120 (não o modo 0/60)"
+    _hz_case '    DisplayDeviceInfo{"Built-in Screen": uniqueId="local:1", 1080 x 2400, modeId 0, defaultModeId 0, supportedModes [{id=0, width=1080, height=2400, fps=60.0}, {id=1, width=1080, height=2400, fps=90.0}, {id=2, width=1080, height=2400, fps=120.0}], density 420}' \
+        "60.0" "modo ativo 60 com teto 120"
+    _hz_case '    DisplayDeviceInfo{"Built-in Screen": uniqueId="local:1", 1080 x 2400, modeId 1, renderFrameRate 0.0, defaultModeId 1, supportedModes [{id=0, width=1080, height=2400, fps=60.0}, {id=1, width=1080, height=2400, fps=120.0}], density 420}' \
+        "120.0" "renderFrameRate 0 (ocioso) cai no modeId ativo"
+    _hz_case '    DisplayDeviceInfo{"Built-in Screen": uniqueId="local:1", 1080 x 2400, modeId 1, renderFrameRate 90.0, defaultModeId 1, supportedModes [{id=0, width=1080, height=2400, fps=60.0}, {id=1, width=1080, height=2400, fps=120.0}], density 420}' \
+        "90.0" "renderFrameRate manda quando existe"
+    _hz_case '    DisplayDeviceInfo{"Built-in Screen": uniqueId="local:1", 1080 x 2400, modeId 2, defaultModeId 0, supportedModes [{id=0, width=1080, height=2400, fps=60.0}, {id=1, width=1080, height=2400, fps=90.0}, {id=2, width=1080, height=2400, fps=144.0}], density 420}' \
+        "144.0" "modo ativo 144 (último da lista)"
+
+    # o flutuante mostra a taxa sem a casa decimal (120.0 → "120 Hz") e marca
+    # "(travada)" quando o pack fixou min == peak (refresh_peak preenchido).
+    grep -q 'private fun hzTxt' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && ok "overlay: formata o Hz (sem .0)" || bad "overlay: sem formatação do Hz"
+    grep -q 'hzTxt(agora)' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && ok "overlay: 'Taxa agora' usa a formatação" || bad "overlay: taxa crua"
+    # a marca "(travada)" não pode exigir atual == null (senão nunca aparece)
+    grep -q 'travado != null && atual == null' "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+        && bad "overlay: '(travada)' só apareceria sem refresh_hz" \
+        || ok "overlay: '(travada)' aparece com a taxa travada"
 }
 
 t_fps_real() {

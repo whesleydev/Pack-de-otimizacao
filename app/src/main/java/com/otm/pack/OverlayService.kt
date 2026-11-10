@@ -483,6 +483,16 @@ class OverlayService : Service() {
         return row
     }
 
+    /**
+     * "120.0" → "120 Hz"; "59.94" → "59.94 Hz". O `dumpsys` devolve a taxa com
+     * casa decimal (120.0) e mostrar "120.0 Hz" soava como número cru de debug.
+     */
+    private fun hzTxt(hz: String): String {
+        val t = hz.trim()
+        val inteiro = t.endsWith(".0") || Regex("^\\d+$").matches(t)
+        return if (inteiro) "${t.removeSuffix(".0")} Hz" else "$t Hz"
+    }
+
     /** Monta as linhas do monitor com o que o aparelho realmente informou. */
     private fun monitorRows(s: Map<String, String>, semShell: Boolean = false): List<View> {
         val linhas = ArrayList<View>()
@@ -496,14 +506,16 @@ class OverlayService : Service() {
         val atual = s["refresh_hz"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("FPS do jogo", fps ?: "—", destaque = true))
         // "Taxa agora" é o Hz EM USO (modo ativo da tela), não o teto do painel.
-        // Só marcamos "(travada)" quando o pack fixou min == peak.
+        // Marcamos "(travada)" quando o pack fixou min == peak (é o que faz o
+        // refresh_peak vir preenchido) — antes a condição exigia `atual == null`
+        // e, como o refresh_hz quase sempre existe, o rótulo nunca aparecia.
         val agora = atual ?: travado
         linhas.add(monitorRow(
             "Taxa agora",
-            if (agora != null) "$agora Hz" + (if (travado != null && atual == null) " (travada)" else "") else "—",
+            if (agora != null) hzTxt(agora) + (if (travado != null) " (travada)" else "") else "—",
             destaque = true,
         ))
-        linhas.add(monitorRow("Teto da tela", if (teto != null) "$teto Hz" else "—"))
+        linhas.add(monitorRow("Teto da tela", if (teto != null) hzTxt(teto) else "—"))
         fun pct(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it%" } ?: "—"
         fun mb(k: String) = s[k]?.takeIf { it.isNotEmpty() }?.let { "$it MB" } ?: "—"
         linhas.add(monitorRow("RAM em uso", pct("ram_uso_pct")))
