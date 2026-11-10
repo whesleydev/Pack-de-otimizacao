@@ -834,6 +834,39 @@ so_io_set() {
     done
 }
 
+# so_file_set <glob> <valor> -> escreve um valor em arquivo cujo conteúdo é a
+# PRÓPRIA leitura (ex.: scaling_governor, scheduler). Só grava se for gravável e
+# confere lendo de volta; registra a reversão. É o helper que faltava: o
+# so_io_set só servia para arquivos numéricos (iostats), não para nomes.
+so_file_set() {
+    padrao="$1"; valor="$2"
+    for q in $padrao; do
+        [ -e "$q" ] || continue
+        [ -w "$q" ] || continue
+        old="$(sh_get "cat $q" 2>/dev/null)"
+        [ -n "$old" ] && bkp_raw "echo '$old' > '$q' 2>/dev/null"
+        sh_run "echo '$valor' > '$q' 2>/dev/null" >/dev/null
+        now="$(sh_get "cat $q" 2>/dev/null)"
+        case "$now" in
+            *"$valor"*) otm_v_inc apply; otm_v_inc changed ;;
+            *) : ;;   # kernel recusou/reescreveu: não conta (não inventa)
+        esac
+    done
+}
+
+# so_sched_set <valor> -> escolhe o escalonador de I/O, mas só se o kernel
+# oferecer o valor na lista (senão o `echo` escreve lixo). Sem invenção.
+so_sched_set() {
+    valor="$1"
+    for q in /sys/block/*/queue/scheduler; do
+        [ -e "$q" ] || continue
+        [ -w "$q" ] || continue
+        lista="$(sh_get "cat $q" 2>/dev/null)"
+        case "$lista" in *"[$valor]"*|*"$valor"*) ;; *) continue ;; esac
+        so_file_set "$q" "$valor"
+    done
+}
+
 # nome amigável da família de ROM (para o relatório)
 so_family_label() {
     case "$(so_family)" in
@@ -903,16 +936,24 @@ so_red_vm() {
     otm_sysctl vm.laptop_mode 0
     otm_sysctl vm.dirty_expire_centisecs 20
     otm_sysctl vm.dirty_writeback_centisecs 5
-    # limpeza pontual de cache (uma vez; o restore não tem o que devolver)
+    otm_sysctl vm.dirty_ratio 15
+    otm_sysctl vm.dirty_background_ratio 5
+    # limpeza pontual de cache + desfragmentação de memória (uma vez; o restore
+    # não tem o que devolver — são ações sem estado)
     otm_v_inc apply; otm_v_inc changed
     sh_run "sync; echo 3 > /proc/sys/vm/drop_caches" >/dev/null 2>&1
+    sh_run "echo 1 > /proc/sys/vm/compact_memory" >/dev/null 2>&1
 }
 
-# --- I/O do armazenamento: leitura antecipada e menos overhead ---------------
+# --- I/O do armazenamento: leitura antecipada, fila e escalonador ------------
 so_red_io() {
     so_step "armazenamento (I/O)"
     so_io_set '/sys/block/*/queue/read_ahead_kb' 2048
     so_io_set '/sys/block/*/queue/iostats' 0
+    so_io_set '/sys/block/*/queue/nr_requests' 128
+    # escalonador: 'none' (NVMe/UFS rápido) ou mq-deadline — só se o kernel oferecer
+    so_sched_set none
+    so_sched_set mq-deadline
 }
 
 # --- composição gráfica: força a GPU a montar a tela (menos trabalho da CPU) --
@@ -924,6 +965,49 @@ so_red_gpu() {
     prop_set debug.hwui.use_partial_updates true
     prop_set debug.hwui.skip_empty_damage true
     prop_set debug.gr.numframebuffers 3
+    prop_set debug.egl.profiler 0
+}
+
+# --- CPU: governador, núcleos ligados e boost de clock -----------------------
+# O pack só LIA o governador (panel-stats); o Red era quem APLICAVA. Aqui ele
+# escolhe pelo contexto: em jogo/desempenho e com o aparelho frio, 'performance';
+# em bateria ou aparelho quente (>=42 °C), 'schedutil' — que reage rápido sem
+# esquentar. Só grava se o kernel oferecer o governador na lista.
+so_red_cpu() {
+    so_step "CPU (governador e núcleos)"
+    hot=0
+    case "${TEMP:-0}" in '' | *[!0-9]*) ;; *) [ "$TEMP" -ge 42 ] 2>/dev/null && hot=1 ;; esac
+    # Só força 'performance' em jogo/desempenho e com o aparelho frio; em bateria
+    # ou aparelho quente, 'schedutil' (reage rápido sem esquentar/gastar).
+    if [ "$hot" = 0 ] && { [ "${D_PROF:-}" = jogo ] || [ "${D_PROF:-}" = desempenho ]; }; then
+        gov=performance
+    else
+        gov=schedutil
+    fi
+    # só aplica se o governador estiver disponível neste kernel
+    disp="$(sh_get 'cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors')"
+    case "$disp" in
+        *"$gov"*) so_file_set '/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor' "$gov" ;;
+        *) say "governador $gov indisponível neste kernel — mantido o atual" ;;
+    esac
+    # liga todos os núcleos (o Red fazia; ajuda em aparelho que dorme núcleo)
+    so_file_set '/sys/devices/system/cpu/cpu*/online' 1
+    # piso de frequência: evita a CPU cair a 300 MHz no meio do jogo (só no
+    # jogo/desempenho, com o aparelho frio — senão seguraria o clock à toa)
+    if [ "$hot" = 0 ] && { [ "${D_PROF:-}" = jogo ] || [ "${D_PROF:-}" = desempenho ]; }; then
+        for c in /sys/devices/system/cpu/cpu*/cpufreq/scaling_min_freq; do
+            [ -w "$c" ] || continue
+            maxf="$(sh_get "cat ${c%scaling_min_freq}cpuinfo_max_freq" 2>/dev/null)"
+            case "$maxf" in '' | *[!0-9]*) continue ;; esac
+            piso=$((maxf / 2))
+            old="$(sh_get "cat $c" 2>/dev/null)"
+            [ -n "$old" ] && bkp_raw "echo '$old' > '$c' 2>/dev/null"
+            sh_run "echo '$piso' > '$c' 2>/dev/null" >/dev/null
+            now="$(sh_get "cat $c" 2>/dev/null)"
+            otm_v_inc apply
+            [ "$now" = "$piso" ] && otm_v_inc changed || otm_v_inc failed
+        done
+    fi
 }
 
 # --- segredos do Android (estilo SetEdit) que o pack ainda não mexia ---------
@@ -940,14 +1024,27 @@ so_red_escondidas() {
     bkp_set global enable_gpu_debug_layers 0
     bkp_set global wifi_display_on 0
     bkp_set global ble_scan_always_enabled 0
+    bkp_set global wifi_scan_always_enabled 0
+    bkp_set global mobile_data_always_on 0
+    bkp_set global network_avoid_bad_wifi 0
+    bkp_set global development_settings_enabled 1
     bkp_set secure screensaver_enabled 0
     bkp_set secure immersive_mode_confirmations confirmed
+    bkp_set secure multi_press_timeout 300
+    # GPS: modo alto (3) = mais preciso; o Red preferia assim em aparelho forte
+    case "$TIER" in topo | alto) bkp_set secure location_mode 3 ;; esac
     # Android 10+: coleta de lixo geracional (pausa menor em jogo/app pesado)
     [ "${API:-0}" -ge 29 ] 2>/dev/null && \
         so_dc runtime_native_boot use_generational_gc true
+    # Android 11+: congelador de apps em cache (volta na hora, em vez de reabrir)
+    [ "${API:-0}" -ge 30 ] 2>/dev/null && \
+        so_dc runtime_native_boot disable_freezer false
+    # Android 12+: limite de processos em cache, por classe de RAM
+    [ "${API:-0}" -ge 31 ] 2>/dev/null && \
+        so_dc activity_manager max_cached_processes "$D_RAM"
 }
 
-# --- kernel novo (Linux 6+): Multi-Gen LRU -----------------------------------
+# --- kernel novo (Linux 6+): Multi-Gen LRU + ajustes de escalonador ----------
 so_red_kernel_novo() {
     [ "${KERNEL_MAJOR:-0}" -ge 6 ] 2>/dev/null || return 0
     [ -n "$MGLRU_PATH" ] || return 0
@@ -960,6 +1057,51 @@ so_red_kernel_novo() {
     otm_v_inc apply
     [ "$now" = "$old" ] || otm_v_inc changed
     say "MGLRU afinado (menos engasgo sob pressão de memória)"
+}
+
+# --- escalonador do kernel: agrupa tarefas e reduz latência de migração ------
+so_red_kernel_sched() {
+    [ "${KERNEL_MAJOR:-0}" -ge 5 ] 2>/dev/null || return 0
+    so_step "escalonador do kernel"
+    otm_sysctl kernel.sched_autogroup_enabled 1
+    otm_sysctl kernel.sched_migration_cost_ns 500000
+    otm_sysctl kernel.sched_min_granularity_ns 1000000
+    otm_sysctl kernel.sched_wakeup_granularity_ns 2000000
+}
+
+# --- rede: latência baixa e fila de pacotes ----------------------------------
+so_red_rede_extra() {
+    so_step "rede: latência baixa"
+    otm_sysctl net.ipv4.tcp_low_latency 1
+    otm_sysctl net.ipv4.tcp_timestamps 0
+    otm_sysctl net.ipv4.tcp_fastopen 3
+    # impede que apps gastem dados em segundo plano (o Red usava o netpolicy)
+    sh_run "cmd netpolicy set restrict-background true" >/dev/null 2>&1
+    otm_v_inc apply
+    if [ "$(sh_get 'cmd netpolicy get restrict-background' | grep -c true)" = 1 ]; then
+        bkp_raw "cmd netpolicy set restrict-background false"
+        otm_v_inc changed
+    fi
+}
+
+# --- logs e armazenamento: menos escrita em disco ----------------------------
+so_red_logs() {
+    so_step "logs e armazenamento"
+    # log persistente já é tratado no turbo.sh; aqui o tamanho e o nível
+    prop_set logd.logpersistd.size 32
+    prop_set persist.log.tag W
+    # deixa folga antes de o sistema reclamar de pouco espaço
+    bkp_set global sys_storage_threshold_max_bytes 10485760
+    # descarrega o slab (memória do kernel) — ação sem estado
+    otm_v_inc apply; otm_v_inc changed
+    sh_run "sync; echo 2 > /proc/sys/vm/drop_caches" >/dev/null 2>&1
+}
+
+# --- touch: resposta mais rápida do toque ------------------------------------
+so_red_touch() {
+    so_step "resposta do toque"
+    bkp_set secure touch_blocking_period 0
+    bkp_set global debug.hwui.use_buffer_age 1
 }
 
 # --- ajustes por marca/ROM (desligar os gerentes de 2º plano do fabricante) ---
@@ -1017,14 +1159,21 @@ so_red_termico() {
     fi
 }
 
-# roda o motor Red inteiro, na ordem (rede → VM → I/O → GPU → segredos → marca → extras)
+# roda o motor Red inteiro, na ordem (rede → VM → I/O → CPU → GPU → segredos →
+# logs → touch → kernel → marca → extras). Cada sub-passo é idempotente e
+# reversível; o que não se aplica ao aparelho é pulado em silêncio.
 so_red_apply() {
     so_red_rede
     so_red_vm
     so_red_io
+    so_red_cpu
     so_red_gpu
     so_red_escondidas
+    so_red_logs
+    so_red_touch
     so_red_kernel_novo
+    so_red_kernel_sched
+    so_red_rede_extra
     so_red_marca
     so_red_termico
 }

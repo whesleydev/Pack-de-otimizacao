@@ -3055,8 +3055,14 @@ t_red_motor() {
     local f="$ROOT/scripts/smart-opt.sh"
     # as chaves novas existem e são as do Red (não inventadas)
     grep -q 'so_red_apply()' "$f" && ok "motor Red existe (so_red_apply)" || bad "sem motor Red"
-    for fn in so_red_rede so_red_vm so_red_io so_red_gpu so_red_escondidas so_red_kernel_novo so_red_marca so_red_termico; do
+    for fn in so_red_rede so_red_vm so_red_io so_red_cpu so_red_gpu so_red_escondidas \
+              so_red_logs so_red_touch so_red_kernel_novo so_red_kernel_sched \
+              so_red_rede_extra so_red_marca so_red_termico; do
         grep -q "^$fn()" "$f" && ok "motor Red: $fn" || bad "motor Red: falta $fn"
+    done
+    # as funções novas estão LIGADAS no apply (não são código morto)
+    for fn in so_red_cpu so_red_logs so_red_touch so_red_kernel_sched so_red_rede_extra; do
+        grep -q "^ *$fn\$" "$f" && ok "apply chama $fn" || bad "$fn não é chamado"
     done
     # o motor Red é chamado pelo apply (é o passo 8/8)
     grep -q '8/8  Motor Red' "$f" && grep -q 'so_red_apply' "$f" \
@@ -3068,6 +3074,35 @@ t_red_motor() {
     # memória do kernel: as chaves VM que o Red afinava
     for k in min_free_kbytes oom_kill_allocating_task 'page-cluster' laptop_mode dirty_expire_centisecs; do
         grep -q "$k" "$f" && ok "vm: $k" || bad "vm: falta $k"
+    done
+    # CPU: governador (o pack só lia), núcleos online, piso de frequência
+    grep -q 'scaling_governor' "$f" && grep -q 'so_file_set' "$f" \
+        && ok "cpu: aplica o governador (não só lê)" || bad "cpu: não aplica governador"
+    grep -q 'scaling_available_governors' "$f" && ok "cpu: só usa governador disponível" \
+        || bad "cpu: aplicaria governador inexistente"
+    grep -q 'cpu\*/online' "$f" && ok "cpu: liga todos os núcleos" || bad "cpu: sem núcleos online"
+    grep -q 'scaling_min_freq' "$f" && ok "cpu: piso de frequência" || bad "cpu: sem piso"
+    # I/O: nr_requests e escalonador (só se o kernel oferecer)
+    grep -q 'nr_requests' "$f" && ok "io: nr_requests" || bad "io: falta nr_requests"
+    grep -q 'so_sched_set' "$f" && ok "io: escalonador (so_sched_set)" || bad "io: sem escalonador"
+    grep -q 'queue/scheduler' "$f" && ok "io: mexe no scheduler" || bad "io: sem scheduler"
+    # kernel novo: escalonador (autogroup/PELT)
+    for k in sched_autogroup_enabled sched_migration_cost_ns sched_min_granularity_ns sched_wakeup_granularity_ns; do
+        grep -q "$k" "$f" && ok "kernel sched: $k" || bad "kernel sched: falta $k"
+    done
+    # rede extra: latência baixa, timestamps, fastopen, dados em 2º plano
+    for k in tcp_low_latency tcp_timestamps tcp_fastopen 'restrict-background'; do
+        grep -q "$k" "$f" && ok "rede extra: $k" || bad "rede extra: falta $k"
+    done
+    # logs/armazenamento e toque
+    grep -q 'persist.log.tag' "$f" && ok "logs: nível de log" || bad "logs: sem nível"
+    grep -q 'sys_storage_threshold_max_bytes' "$f" && ok "storage: limiar de espaço" || bad "storage: sem limiar"
+    grep -q 'touch_blocking_period' "$f" && ok "touch: resposta do toque" || bad "touch: sem resposta"
+    grep -q 'use_buffer_age' "$f" && ok "touch: buffer age (fluidez)" || bad "touch: sem buffer age"
+    # segredos que faltavam (rede/sistema)
+    for k in wifi_scan_always_enabled mobile_data_always_on network_avoid_bad_wifi \
+             development_settings_enabled multi_press_timeout location_mode; do
+        grep -q "$k" "$f" && ok "segredo novo: $k" || bad "segredo novo: falta $k"
     done
     # segredos do Android estilo SetEdit (o que o pack não tinha)
     for k in captive_portal_mode network_recommendations_enabled hide_error_dialogs \
@@ -3136,6 +3171,21 @@ EOF
         || bad "não gravou o ajuste MIUI"
     [ "$(cat "$st/sys.net.ipv4.tcp_sack" 2>/dev/null)" = "1" ] \
         && ok "gravou tcp_sack (rede profunda)" || bad "não gravou tcp_sack"
+    # as chaves NOVAS (que faltavam) também gravam no aparelho
+    assert_contains "$TMP/red_apply" "CPU (governador" "apply roda o passo de CPU"
+    assert_contains "$TMP/red_apply" "resposta do toque" "apply roda o passo de toque"
+    [ "$(cat "$st/global.sys_storage_threshold_max_bytes" 2>/dev/null)" = "10485760" ] \
+        && ok "gravou sys_storage_threshold_max_bytes" || bad "não gravou o limiar de espaço"
+    [ "$(cat "$st/secure.touch_blocking_period" 2>/dev/null)" = "0" ] \
+        && ok "gravou touch_blocking_period (toque mais rápido)" \
+        || bad "não gravou touch_blocking_period"
+    [ "$(cat "$st/global.debug.hwui.use_buffer_age" 2>/dev/null)" = "1" ] \
+        && ok "gravou debug.hwui.use_buffer_age (fluidez)" || bad "não gravou use_buffer_age"
+    [ "$(cat "$st/global.wifi_scan_always_enabled" 2>/dev/null)" = "0" ] \
+        && ok "gravou wifi_scan_always_enabled (menos varredura)" \
+        || bad "não gravou wifi_scan_always_enabled"
+    [ "$(cat "$st/sys.net.ipv4.tcp_low_latency" 2>/dev/null)" = "1" ] \
+        && ok "gravou tcp_low_latency (rede extra)" || bad "não gravou tcp_low_latency"
     # e o undo registrou a reversão de tudo isso
     grep -q 'captive_portal_mode' "$HOME/.packotm/undo/smart-opt.sh" 2>/dev/null \
         && ok "reversão registrada para os segredos do Red" || bad "sem reversão dos segredos"
