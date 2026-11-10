@@ -4948,6 +4948,88 @@ pc_opts_of() {
         "$ROOT/scripts/profile-custom.sh" | awk '{print $NF}'
 }
 
+t_thermal_predict() {
+    printf '\n  # thermal-guard: laço térmico PREDITIVO (age antes do throttling)\n'
+    local f="$ROOT/scripts/thermal-guard.sh"
+    [ -f "$f" ] && ok "thermal-guard.sh existe" || { bad "thermal-guard.sh ausente"; return; }
+    sh -n "$f" 2>/dev/null && ok "thermal-guard tem sintaxe válida" || bad "thermal-guard com erro de sintaxe"
+    grep -q 'tg_slope' "$f" && ok "calcula a inclinação (subida por segundo)" || bad "sem inclinação"
+    grep -q 'tg_eta' "$f" && ok "projeta o tempo até o limite (tg_eta)" || bad "sem projeção"
+    grep -q 'TG_LEAD' "$f" && ok "age com antecedência (TG_LEAD)" || bad "sem antecedência"
+    grep -q 'TG_RELEASE' "$f" && grep -q 'esfri' "$f" \
+        && ok "histerese: só solta depois de esfriar" || bad "sem histerese"
+    grep -q 'trip_point' "$f" && ok "usa o trip point do kernel como limite" || bad "não lê trip point"
+    grep -q 'bkp_raw' "$f" && ok "registra a reversão (teto original)" || bad "não registra reversão"
+    grep -q 'scaling_max_freq' "$f" && ok "mexe no teto de frequência (scaling_max_freq)" \
+        || bad "não mexe no teto"
+
+    # --- comportamento REAL com um /sys falso (a conta e o laço, de verdade) ---
+    local home="$TMP/tp_home" sys="$TMP/tp_sys" cpu="$TMP/tp_cpu"
+    rm -rf "$home" "$sys" "$cpu"; mkdir -p "$home" "$sys/thermal_zone0" "$sys/thermal_zone1" "$cpu/cpu0/cpufreq"
+    echo 40000 > "$sys/thermal_zone0/temp"; echo "cpu-0-0" > "$sys/thermal_zone0/type"
+    echo 42000 > "$sys/thermal_zone1/temp"; echo "battery" > "$sys/thermal_zone1/type"
+    echo 45000 > "$sys/thermal_zone0/trip_point_0_temp"
+    echo 2000000 > "$cpu/cpu0/cpufreq/cpuinfo_max_freq"
+    echo 2000000 > "$cpu/cpu0/cpufreq/scaling_max_freq"
+
+    local lib="$TMP/tp_drive.sh"
+    cat > "$lib" <<'EOF'
+DIR="$ROOT/scripts"
+TG_LIB=1 TG_SYS="$TG_SYS" TG_CPU="$TG_CPU" HOME="$TG_HOME"
+export TG_LIB TG_SYS TG_CPU HOME
+. "$DIR/common.sh"
+. "$DIR/thermal-guard.sh"
+echo "max=$(tg_max_mc)"
+echo "trip=$(tg_trip_mc)"
+echo "limit=$(tg_limit_mc)"
+echo "eta10=$(tg_eta 40000 500 45000)"
+echo "eta0=$(tg_eta 46000 500 45000)"
+echo "etaneg=$(tg_eta 40000 -5 45000)"
+echo "etazero=$(tg_eta 40000 0 45000)"
+echo "etax=$(tg_eta x 500 45000)"
+EOF
+    out="$(ROOT="$ROOT" TG_SYS="$sys" TG_CPU="$cpu" TG_HOME="$home" sh "$lib" 2>&1)"
+    printf '%s\n' "$out" > "$TMP/tp_out"
+    assert_contains "$TMP/tp_out" "max=42000" "lê a MAIOR zona (42 °C)"
+    assert_contains "$TMP/tp_out" "trip=45000" "lê o trip point do kernel (45 °C)"
+    assert_contains "$TMP/tp_out" "limit=45000" "limite de trabalho = trip point"
+    assert_contains "$TMP/tp_out" "eta10=10" "projeção: 40→45 °C a 500 mC/s = 10 s"
+    assert_contains "$TMP/tp_out" "eta0=0" "já no limite => 0 s"
+    assert_contains "$TMP/tp_out" "etaneg=-1" "temperatura caindo => -1 (não projeta)"
+    assert_contains "$TMP/tp_out" "etazero=-1" "sem subida (0 mC/s) => -1"
+    assert_contains "$TMP/tp_out" "etax=-1" "dado inválido => -1 (nunca chuta)"
+
+    # --- laço completo: ameaça -> baixa o teto -> esfria -> devolve ----------
+    local loop="$TMP/tp_loop.sh"
+    cat > "$loop" <<'EOF'
+DIR="$ROOT/scripts"
+TG_LIB=1 TG_SYS="$TG_SYS" TG_CPU="$TG_CPU" HOME="$TG_HOME"
+export TG_LIB TG_SYS TG_CPU HOME
+. "$DIR/common.sh"
+. "$DIR/thermal-guard.sh"
+echo 44500 > "$TG_SYS/thermal_zone1/temp"
+now=$(date +%s)
+printf '%s 43000\n%s 44000\n' "$((now-2))" "$((now-1))" > "$HIST"
+echo "acao1=$(tg_once)"
+echo "throttled=$([ -f "$THROTTLED" ] && echo sim || echo nao)"
+echo "teto=$(cat "$TG_CPU/cpu0/cpufreq/scaling_max_freq")"
+echo 38000 > "$TG_SYS/thermal_zone1/temp"; echo 38000 > "$TG_SYS/thermal_zone0/temp"
+echo "acao2=$(tg_once)"
+echo "teto2=$(cat "$TG_CPU/cpu0/cpufreq/scaling_max_freq")"
+EOF
+    out2="$(ROOT="$ROOT" TG_SYS="$sys" TG_CPU="$cpu" TG_HOME="$home" sh "$loop" 2>&1)"
+    printf '%s\n' "$out2" > "$TMP/tp_loop_out"
+    assert_contains "$TMP/tp_loop_out" "throttled=sim" "ameaça detectada: entra em contenção"
+    assert_contains "$TMP/tp_loop_out" "teto=1400000" "baixa o teto para 70% ANTES do limite"
+    assert_contains "$TMP/tp_loop_out" "teto2=2000000" "ao esfriar, devolve o teto original"
+    grep -q 'acao1=teto da CPU' "$TMP/tp_loop_out" \
+        && ok "a ação explica o que fez (e quando faltava)" || bad "ação sem explicação"
+    grep -q 'scaling_max_freq' "$home/.packotm/undo/thermal-guard.sh" 2>/dev/null \
+        && ok "reversão geral solta o teto da CPU" || bad "reversão geral sem o teto"
+    rm -rf "$home" "$sys" "$cpu"
+}
+
+t_thermal_predict
 t_thermal_gate
 t_secret_scanner
 t_site_html
