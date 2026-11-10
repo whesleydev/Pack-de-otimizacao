@@ -75,4 +75,85 @@ object OtmNative {
 
     /** "0.0" quando a lib não está disponível (para o rodapé do painel). */
     fun versionTag(): String = if (available) "c-ndk" else "shell"
+
+    // ---------------------------------------------------------------------
+    //  Telemetria estendida do painel flutuante.
+    //  Tudo devolve -1/null quando o aparelho não expõe o dado — nunca um
+    //  valor "plausível". Quem chama decide mostrar "—".
+    // ---------------------------------------------------------------------
+
+    /** Maior temperatura (mC) entre as zonas cujo tipo contém [type]. -1 se nenhuma. */
+    external fun thermalZoneMilliC(type: String): Long
+
+    /** Corrente da bateria em µA (sinal preservado), ou -1. */
+    external fun batteryCurrentUa(): Long
+
+    /** Tensão da bateria em µV, ou -1. */
+    external fun batteryVoltageUv(): Long
+
+    /** Carga da bateria em % (0..100), ou -1. */
+    external fun batteryCapacityPct(): Int
+
+    /** Pressão de memória (PSI some avg10) em centésimos de %, ou -1. */
+    external fun memPressureSome(): Int
+
+    /** Swap/zram em uso, em kB, ou -1. */
+    external fun swapUsedKb(): Long
+
+    /** Bytes recebidos desde o boot (todas as interfaces menos loopback), ou -1. */
+    external fun netRxBytes(): Long
+
+    /** Bytes enviados desde o boot, ou -1. */
+    external fun netTxBytes(): Long
+
+    /** Carga da GPU em % (Adreno/Mali), ou -1 quando não exposta. */
+    external fun gpuLoadPct(): Int
+
+    /** Frequência máxima do núcleo [core] em kHz, ou -1. */
+    external fun cpuMaxFreqKhz(core: Int): Long
+
+    /** Governador atual da CPU (ex.: "schedutil"), ou null. */
+    external fun cpuGovernor(): String?
+
+    /** Temperatura de um tipo de zona em °C, ou null. */
+    fun thermalZoneC(type: String): Double? {
+        if (!available) return null
+        val m = thermalZoneMilliC(type)
+        return if (m <= 0) null else m / 1000.0
+    }
+
+    /** Corrente da bateria em mA (positivo = carregando), ou null. */
+    fun batteryCurrentMa(): Double? {
+        if (!available) return null
+        val ua = batteryCurrentUa()
+        return if (ua == Long.MIN_VALUE) null else ua / 1000.0
+    }
+
+    /** Tensão da bateria em V, ou null. */
+    fun batteryVoltageV(): Double? {
+        if (!available) return null
+        val uv = batteryVoltageUv()
+        return if (uv <= 0) null else uv / 1_000_000.0
+    }
+
+    /** Carga da GPU em % (ou null). */
+    fun gpuPct(): Int? {
+        if (!available) return null
+        val p = gpuLoadPct()
+        return if (p < 0) null else p
+    }
+
+    /** Pressão de memória em % (ou null). */
+    fun memPressurePct(): Double? {
+        if (!available) return null
+        val v = memPressureSome()
+        return if (v < 0) null else v / 100.0
+    }
+
+    /** Swap em uso, em MB, ou null. */
+    fun swapUsedMb(): Long? {
+        if (!available) return null
+        val kb = swapUsedKb()
+        return if (kb < 0) null else kb / 1024
+    }
 }

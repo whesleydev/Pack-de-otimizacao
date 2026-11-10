@@ -389,7 +389,45 @@ class OverlayService : Service() {
         OtmNative.thermalC()?.let {
             m["temp_c"] = String.format(java.util.Locale.US, "%.1f", it)
         }
+        // --- telemetria estendida (o que o shell só trazia com fork+binder) ---
+        // Térmico por TIPO: separa bateria quente de SoC quente. Cada tipo é uma
+        // zona diferente e o painel mostra só o que o aparelho realmente expõe.
+        for ((tipo, chave) in THERM_KEYS) {
+            OtmNative.thermalZoneC(tipo)?.let {
+                m[chave] = String.format(java.util.Locale.US, "%.1f", it)
+            }
+        }
+        // GPU: carga real quando o driver expõe (Adreno/Mali). Sem isso, some.
+        OtmNative.gpuPct()?.let { m["gpu_pct"] = it.toString() }
+        // Bateria: corrente (sinal indica carga/descarga), tensão e carga.
+        OtmNative.batteryCurrentMa()?.let {
+            m["bat_ma"] = String.format(java.util.Locale.US, "%.0f", it)
+        }
+        OtmNative.batteryVoltageV()?.let {
+            m["bat_v"] = String.format(java.util.Locale.US, "%.2f", it)
+        }
+        OtmNative.batteryCapacityPct().takeIf { it in 0..100 }?.let { m["bat_pct"] = it.toString() }
+        // Pressão de memória (PSI): melhor sinal de aperto do que "RAM livre".
+        OtmNative.memPressurePct()?.let {
+            m["mem_press"] = String.format(java.util.Locale.US, "%.1f", it)
+        }
+        OtmNative.swapUsedMb()?.let { m["swap_mb"] = it.toString() }
+        // Rede: total desde o boot. O painel calcula a taxa entre leituras.
+        OtmNative.netRxBytes().takeIf { it >= 0 }?.let { m["net_rx"] = it.toString() }
+        OtmNative.netTxBytes().takeIf { it >= 0 }?.let { m["net_tx"] = it.toString() }
+        OtmNative.cpuGovernor()?.let { m["cpu_gov"] = it }
         return m
+    }
+
+    private companion object NativeTherm {
+        // tipo na zona térmica -> chave no monitor (mesmos nomes do panel-stats,
+        // para o nativo e o shell preencherem o MESMO campo). Só aparece o que existir.
+        val THERM_KEYS = listOf(
+            "battery" to "bat_temp_c",
+            "gpu" to "temp_gpu_c",
+            "skin" to "temp_skin_c",
+            "soc" to "temp_soc_c",
+        )
     }
 
     /** Lê o consumo real e monta a grade do monitor (atualiza a cada 4 s). */
@@ -566,7 +604,40 @@ class OverlayService : Service() {
         val temp = s["temp_c"]?.takeIf { it.isNotEmpty() }
             ?: s["bat_temp_c"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Temperatura", if (temp != null) "$temp °C" else "—"))
-        val bat = s["bat_level"]?.takeIf { it.isNotEmpty() }
+        // partes quentes separadas: SoC x GPU x pele (o que o térmico do jogo vê).
+        // Só entra a linha do tipo que o aparelho realmente expõe.
+        for ((chave, rotulo) in listOf(
+            "temp_soc_c" to "Temp. do SoC",
+            "temp_gpu_c" to "Temp. da GPU",
+            "temp_skin_c" to "Temp. da carcaça",
+        )) {
+            s[chave]?.takeIf { it.isNotEmpty() }?.let {
+                linhas.add(monitorRow(rotulo, "$it °C"))
+            }
+        }
+        // GPU: carga real do driver (Adreno/Mali), quando exposta
+        s["gpu_pct"]?.takeIf { it.isNotEmpty() }?.let { linhas.add(monitorRow("GPU", "$it%")) }
+        // pressão de memória (PSI): o melhor sinal de aperto — melhor que "RAM livre"
+        s["mem_press"]?.takeIf { it.isNotEmpty() }?.let {
+            linhas.add(monitorRow("Pressão de RAM", "$it%"))
+        }
+        s["swap_mb"]?.takeIf { it.isNotEmpty() }?.let {
+            linhas.add(monitorRow("zram/swap em uso", "$it MB"))
+        }
+        // bateria: corrente (sinal indica carga/descarga) e tensão
+        val ma = s["bat_ma"]?.takeIf { it.isNotEmpty() }
+        if (ma != null) {
+            val f = ma.toDoubleOrNull()
+            val txt = when {
+                f == null -> "$ma mA"
+                f < -1 -> "${ma} mA (descarga)"
+                f > 1 -> "$ma mA (carregando)"
+                else -> "$ma mA"
+            }
+            linhas.add(monitorRow("Corrente", txt))
+        }
+        s["bat_v"]?.takeIf { it.isNotEmpty() }?.let { linhas.add(monitorRow("Tensão", "$it V")) }
+        val bat = s["bat_level"]?.takeIf { it.isNotEmpty() } ?: s["bat_pct"]?.takeIf { it.isNotEmpty() }
         val st = s["bat_status"]?.takeIf { it.isNotEmpty() }
         linhas.add(monitorRow("Bateria", if (bat != null) "$bat%${if (st != null) " · $st" else ""}" else "—"))
         val saude = s["vital_health"]?.takeIf { it.isNotEmpty() }

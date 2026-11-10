@@ -3227,6 +3227,25 @@ t_native_core() {
         grep -q "Java_com_otm_pack_OtmNative_$fn" "$c" && ok "JNI: $fn" || bad "JNI: falta $fn"
         grep -q "external fun $fn(" "$kt" && ok "Kotlin: $fn" || bad "Kotlin: falta $fn"
     done
+    # telemetria estendida do painel flutuante: bateria, GPU, PSI, rede, zonas
+    for fn in thermalZoneMilliC batteryCurrentUa batteryVoltageUv batteryCapacityPct \
+              memPressureSome swapUsedKb netRxBytes netTxBytes gpuLoadPct cpuMaxFreqKhz cpuGovernor; do
+        grep -q "Java_com_otm_pack_OtmNative_$fn" "$c" && ok "JNI estendido: $fn" || bad "JNI estendido: falta $fn"
+        grep -q "external fun $fn(" "$kt" && ok "Kotlin estendido: $fn" || bad "Kotlin estendido: falta $fn"
+    done
+    # o térmico por TIPO casa pela string do type (não pelo índice da zona)
+    grep -q 'thermal_zone' "$c" && grep -q 'strstr(type, want)' "$c" \
+        && ok "térmico por tipo de zona (casa o type)" || bad "térmico sem casar o tipo"
+    # a GPU não é estimada: só devolve se o driver expuser
+    grep -q 'gpu_busy_percentage' "$c" && grep -q 'utilization' "$c" \
+        && ok "GPU: lê Adreno e Mali (não estima)" || bad "GPU sem nós reais"
+    # PSI: pressão de memória (o sinal certo de aperto)
+    grep -q '/proc/pressure/memory' "$c" && ok "pressão de memória via PSI" || bad "sem PSI"
+    # o monitor mostra as chaves novas
+    for k in temp_soc_c temp_gpu_c temp_skin_c gpu_pct mem_press swap_mb bat_ma; do
+        grep -q "$k" "$ROOT/app/src/main/java/com/otm/pack/OverlayService.kt" \
+            && ok "monitor mostra $k" || bad "monitor não mostra $k"
+    done
     # a lib carrega com degradação graciosa (não derruba o app se faltar)
     grep -q 'System.loadLibrary("otmcore")' "$kt" && ok "carrega libotmcore" || bad "não carrega a lib"
     grep -q 'available' "$kt" && ok "degrada sem a lib (available=false)" || bad "sem degradação"
