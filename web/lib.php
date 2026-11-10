@@ -75,6 +75,7 @@ function otm_allowed_scripts(): array {
         'clean.sh', 'bench.sh', 'device-profile.sh', 'config.sh',
         'profile-custom.sh', 'smart-opt.sh', 'vitality.sh',
         'profiles.sh', 'sensi.sh', 'hidden-tune.sh',
+        'thermal-guard.sh', 'ai-opt.sh',
     ];
 }
 
@@ -457,6 +458,54 @@ function otm_actions(): array {
           'help' => 'Um botão só — o resto acontece por dentro, sem você escolher nada. Ele LÊ o aparelho inteiro (modelo, processador, GPU, núcleos e frequências, RAM, taxa de tela, armazenamento, térmico, bateria, zram, MGLRU, rede, governador e pressão de memória), calcula a nota e a classe, salva um snapshot de segurança, decide item por item o que faz sentido para AQUELE modelo e aplica. Depois MEDE antes x depois e ainda TESTA as combinações plausíveis (ex.: Vulkan x GL, a maior taxa x 90Hz) para ficar com a que der o melhor resultado. Cada teste fica guardado numa memória por aparelho: da próxima vez ele já começa pela combinação que venceu aqui e vai melhorando a cada execução. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Pode demorar alguns minutos — é o tempo de medir e comparar no seu aparelho. Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog. No fim mostra UM resultado. É tudo reversível em "Reverter TUDO".',
           'argv' => ['smart-opt.sh', 'auto'], 'risk' => 'careful', 'confirm' => true,
           'timeout' => 1800]);
+    // --- IA local (script ai-opt.sh): o 3º caminho do card da Home ------------
+    // O "otimizador que aprende" roda 100% no aparelho (bandit contextual): mede,
+    // decide, aplica, mede de novo e guarda o que venceu. Nada sai do celular.
+    $add(['id' => 'ai.apply', 'group' => 'Geral', 'card' => false,
+          'label' => 'IA local: aplicar agora (1 ciclo)',
+          'desc' => 'Um ciclo: mede, escolhe a ação, aplica e aprende com o resultado.',
+          'help' => 'Roda UM ciclo do otimizador que aprende: lê o estado (bateria, temperatura, carga), escolhe uma ação entre os modos do pack (Competitivo, Fluido, Econômico ou "não mexer"), aplica, espera assentar, mede de novo e guarda o ganho medido. O que "melhor" quer dizer aqui é explícito: mais RAM livre e mais taxa de tela CONTAM A FAVOR; temperatura e carga do sistema CONTAM CONTRA. Assim ele não troca fluidez por calor. Tudo roda no seu aparelho — não baixa modelo e não manda nada para fora. Reversível em "Reverter TUDO".',
+          'argv' => ['ai-opt.sh', 'apply'], 'risk' => 'careful', 'confirm' => true,
+          'timeout' => 300]);
+    $add(['id' => 'ai.train', 'group' => 'Geral', 'card' => false,
+          'label' => 'IA local: treinar (3 ciclos)',
+          'desc' => 'Roda 3 ciclos seguidos para o modelo começar a convergir.',
+          'help' => 'Roda 3 ciclos do otimizador que aprende, um atrás do outro. Cada ciclo testa uma ação, mede o ganho e atualiza o modelo. Com poucos ciclos ele já para de testar o que não funciona e passa a repetir o que vence neste aparelho. É o mesmo `ai-opt.sh train`. Reversível em "Reverter TUDO".',
+          'argv' => ['ai-opt.sh', 'train', '3'], 'risk' => 'careful', 'confirm' => true,
+          'timeout' => 900]);
+    $add(['id' => 'ai.status', 'group' => 'Geral', 'card' => false,
+          'label' => 'IA local: ver o que aprendeu',
+          'desc' => 'Mostra, por contexto, qual ação tem a melhor média neste aparelho.',
+          'help' => 'Mostra o modelo aprendido: quantos ciclos já rodaram, quantos contextos distintos foram vistos e, para cada contexto (bateria/temperatura/carga), qual ação tem a melhor média de recompensa. É a transparência do aprendizado — você vê exatamente por que ele escolhe o que escolhe.',
+          'argv' => ['ai-opt.sh', 'status']]);
+    $add(['id' => 'ai.predict', 'group' => 'Geral', 'card' => false,
+          'label' => 'IA local: qual ação agora',
+          'desc' => 'Diz a ação que ele escolheria neste momento, sem aplicar nada.',
+          'help' => 'Lê o estado atual, calcula o contexto e mostra qual ação o modelo escolheria agora — sem aplicar. Serve para conferir a decisão antes de deixar ele mexer.',
+          'argv' => ['ai-opt.sh', 'predict']]);
+    $add(['id' => 'ai.reset', 'group' => 'Geral', 'card' => false,
+          'label' => 'IA local: esquecer o aprendizado',
+          'desc' => 'Apaga o modelo local; o aparelho volta a aprender do zero.',
+          'help' => 'Apaga o modelo aprendido neste aparelho. Útil depois de trocar de uso (ex.: parou de jogar) para ele não repetir uma escolha antiga que já não faz sentido. Não desfaz nenhuma otimização aplicada.',
+          'argv' => ['ai-opt.sh', 'reset']]);
+    // --- trava térmica preditiva (script thermal-guard.sh) --------------------
+    // Age ANTES do throttling do kernel: projeta a subida da temperatura e baixa
+    // o teto da CPU com antecedência. Reversível (devolve o teto original).
+    $add(['id' => 'thermal.predict_on', 'group' => 'Desempenho', 'card' => false,
+          'label' => 'Trava térmica preditiva: ligar (1 avaliação)',
+          'desc' => 'Lê as zonas, projeta a subida e baixa o teto da CPU antes de esquentar.',
+          'help' => 'A trava térmica que AGE ANTES. Em vez de esperar cruzar o limite do kernel (quando o jogo já engasga), ele lê a temperatura das zonas, calcula a inclinação (quanto sobe por segundo), projeta em quantos segundos vai cruzar o limite e, se faltar pouco, baixa o teto de frequência da CPU já. Quando esfria, devolve o teto. O limite vem do trip point do PRÓPRIO kernel quando existe. Reversível: o teto original é guardado.',
+          'argv' => ['thermal-guard.sh', 'once'], 'risk' => 'careful', 'timeout' => 120]);
+    $add(['id' => 'thermal.predict_status', 'group' => 'Desempenho', 'card' => false,
+          'label' => 'Trava térmica preditiva: ver o estado',
+          'desc' => 'Mostra zonas, limite, inclinação e a projeção de quando cruza o limite.',
+          'help' => 'Mostra o que a trava térmica preditiva está vendo: a temperatura agora, o limite (do trip point do kernel), a inclinação em °C por segundo, a projeção de quantos segundos faltam para cruzar o limite e se o teto da CPU está contido no momento.',
+          'argv' => ['thermal-guard.sh', 'status']]);
+    $add(['id' => 'thermal.predict_off', 'group' => 'Desempenho', 'card' => false,
+          'label' => 'Trava térmica preditiva: desligar',
+          'desc' => 'Devolve o teto original de frequência da CPU.',
+          'help' => 'Devolve o teto original de frequência de cada núcleo e encerra a contenção. Também é alcançado pelo "Reverter TUDO".',
+          'argv' => ['thermal-guard.sh', 'off'], 'risk' => 'safe', 'timeout' => 60]);
     $add(['id' => 'smart.report', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador: analisar o aparelho',
           'desc' => 'Relatório completo do aparelho, sem alterar nada.',
           'help' => 'Lê o aparelho de ponta a ponta e mostra tudo: SoC, GPU, clusters de CPU com as frequências, RAM (total e livre), pressão de memória do kernel, taxa de tela, resolução lógica, armazenamento, térmico, bateria, zram em uso, governador, entropia, I/O e renderizador atual. Termina com a nota (0-100), a classe e a lista do que está segurando a nota. Não altera NADA — é só leitura.',

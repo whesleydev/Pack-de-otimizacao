@@ -420,6 +420,47 @@ section[data-g] .head{animation:otmFade .3s both}
 .now{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
 .now b{color:var(--ink)}
 
+/* ---- três caminhos de otimização (card da Home) --------------------------- */
+.trio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:14px}
+.trio-card{position:relative;display:flex;flex-direction:column;gap:9px;padding:16px;
+  border-radius:var(--r);border:1px solid var(--line-strong);background:var(--glass-2)}
+.trio-card h4{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;display:flex;
+  align-items:center;gap:7px;flex-wrap:wrap}
+.trio-card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45}
+.trio-ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--accent) 12%,var(--glass-2));
+  border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));color:var(--accent)}
+.trio-ico svg{width:21px;height:21px}
+.trio-list{margin:0;padding-left:16px;font-size:11.8px;color:var(--muted);line-height:1.5}
+.trio-list li{margin:1px 0}
+.trio-btn{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:2px;
+  width:100%;border:0;cursor:pointer;border-radius:13px;padding:12px 14px;
+  background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 62%,#000));
+  color:#fff;font-weight:800;transition:transform .12s ease,filter .15s ease}
+.trio-btn:hover{filter:brightness(1.06)}
+.trio-btn:active{transform:translateY(1px) scale(.995)}
+.trio-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.trio-btn[disabled]{opacity:.72;cursor:progress}
+.trio-btn .tb-t{font-size:13.5px}
+.trio-btn .tb-s{font-size:10.5px;font-weight:700;opacity:.86;letter-spacing:.02em}
+.trio-card--ia{border-color:color-mix(in srgb,var(--accent) 42%,var(--line));
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 8%,var(--glass-2)),var(--glass-2))}
+.trio-badge{position:absolute;top:-9px;right:14px;font-size:9.5px;font-weight:900;letter-spacing:.08em;
+  padding:3px 9px;border-radius:999px;color:#fff;
+  background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#000))}
+.trio-tag{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 7px;border-radius:999px;color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));
+  background:color-mix(in srgb,var(--accent) 10%,var(--glass-2))}
+.trio-ia-row{display:flex;flex-direction:column;gap:7px;margin-top:auto}
+.trio-ia-row .trio-btn{margin-top:0}
+.trio-mini{border:1px solid var(--line-strong);background:var(--glass-2);color:var(--ink);
+  border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;cursor:pointer;
+  transition:border-color .15s ease,transform .12s ease}
+.trio-mini:hover{border-color:var(--accent)}
+.trio-mini:active{transform:scale(.98)}
+@media (prefers-reduced-motion:reduce){.trio-btn,.trio-mini{transition:none}}
+
 /* ---- vitalidade: cockpit de longevidade ---------------------------------- */
 .vital-gauge{position:relative;height:10px;border-radius:999px;background:var(--glass-2);
   border:1px solid var(--line);overflow:hidden;margin:12px 0 6px}
@@ -882,6 +923,70 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
           </button>
           <p class="hero-note">Nada é encerrado sem necessidade — o pack ajusta só o que está pesando.</p>
         </div>
+      </section>
+
+      <!-- Três caminhos de otimização (um card só): inteligente / recomendado / IA -->
+      <section class="panelbox otm-trio" style="margin-top:16px;" aria-label="Escolha como otimizar">
+        <h3>Como você quer otimizar?</h3>
+        <p class="sub">Três caminhos, do mais simples ao que aprende sozinho. Todos reversíveis.</p>
+        <div class="trio-grid" role="group" aria-label="Caminhos de otimização">
+          <article class="trio-card" data-trio="smart">
+            <span class="trio-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+            <h4>Otimização Inteligente</h4>
+            <p>Analisa o seu aparelho, decide item por item e testa combinações para achar o melhor.</p>
+            <ul class="trio-list">
+              <li>Lê o hardware inteiro e calcula a nota</li>
+              <li>Mede antes x depois e testa o que é melhor</li>
+              <li>Guarda o que venceu neste aparelho</li>
+            </ul>
+            <button class="trio-btn" type="button" data-trio-go="smart.auto">
+              <span class="tb-t">Rodar Otimização Inteligente</span>
+              <span class="tb-s">pode demorar alguns minutos</span>
+            </button>
+          </article>
+
+          <article class="trio-card" data-trio="rec">
+            <span class="trio-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6.5v4.8c0 4.3 2.9 7.9 7 9.2 4.1-1.3 7-4.9 7-9.2V6.5L12 3Z"/><path d="M9.2 12.1l2 2 3.6-4"/></svg>
+            </span>
+            <h4>Pack Recomendado</h4>
+            <p>O "faz tudo" para quem quer resultado agora, sem escolher nada: aplica tudo o que é seguro.</p>
+            <ul class="trio-list">
+              <li>Performance, RAM, GPU, rede e latência</li>
+              <li>Jogo, bateria, toque e limpeza de cache</li>
+              <li>Sem root — só o que é seguro</li>
+            </ul>
+            <button class="trio-btn" type="button" data-trio-go="apply">
+              <span class="tb-t">Aplicar o Pack Recomendado</span>
+              <span class="tb-s">rápido · sem root</span>
+            </button>
+          </article>
+
+          <article class="trio-card trio-card--ia" data-trio="ia">
+            <span class="trio-badge">NOVO</span>
+            <span class="trio-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1 0 8v1a4 4 0 0 1-8 0v-1a4 4 0 0 1 0-8V7a4 4 0 0 1 4-4Z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+            </span>
+            <h4>IA no aparelho <span class="trio-tag">aprende</span></h4>
+            <p>Um modelo que roda no seu celular: mede, escolhe a ação, aplica e aprende com o resultado. Nada sai do aparelho.</p>
+            <ul class="trio-list">
+              <li>Aprende com o SEU uso, sem nuvem</li>
+              <li>Mais RAM e fluidez contam a favor; calor e carga, contra</li>
+              <li>Melhora a cada execução neste aparelho</li>
+            </ul>
+            <div class="trio-ia-row">
+              <button class="trio-btn" type="button" data-trio-go="ai.apply">
+                <span class="tb-t">Rodar a IA agora</span>
+                <span class="tb-s">1 ciclo: mede, aplica e aprende</span>
+              </button>
+              <button class="trio-mini" type="button" data-trio-go="ai.status">ver o que aprendeu</button>
+              <button class="trio-mini" type="button" data-trio-go="ai.train">treinar (3 ciclos)</button>
+            </div>
+          </article>
+        </div>
+        <p class="hero-note" style="margin-top:12px">Os três são reversíveis em <b>Reverter TUDO</b>. A IA local guarda o que aprendeu só neste aparelho.</p>
       </section>
 
       <!-- Perfil de desempenho fixo (Desempenho x Equilibrado) -->
@@ -2608,6 +2713,15 @@ document.querySelectorAll("[data-hub]").forEach(b => tapOnly(b, () => {
   if (!a) return;
   // guarda a sub-ação no próprio botão: o askConfirm põe o botão em `pending`,
   // e o runPending precisa saber o que reexecutar depois do "ok".
+  b._subId = a.id; b._subParams = {};
+  if (a.confirm) askConfirm(b, a);
+  else doRun(a, b._subParams, false, b);
+}));
+
+/* botões do card dos três caminhos (Home): rodam a ação pelo id, como o hub. */
+document.querySelectorAll("[data-trio-go]").forEach(b => tapOnly(b, () => {
+  const a = ACTIONS[b.dataset.trioGo];
+  if (!a){ toast("Ação indisponível", "bad"); return; }
   b._subId = a.id; b._subParams = {};
   if (a.confirm) askConfirm(b, a);
   else doRun(a, b._subParams, false, b);

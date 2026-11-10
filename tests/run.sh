@@ -1852,6 +1852,58 @@ t_site_html() {
     fi
 }
 
+t_trio_home() {
+    printf '\n  # Home: card com os 3 caminhos (inteligente / recomendado / IA)\n'
+    local w="$ROOT/web/index.php" a="$ROOT/app/src/main/assets/panel/index.html"
+    # o card existe no web e no painel do app, com os três caminhos
+    for f in "$w" "$a"; do
+        grep -q 'class="panelbox otm-trio"' "$f" && ok "${f#$ROOT/}: card dos 3 caminhos presente" \
+            || bad "${f#$ROOT/}: sem o card dos 3 caminhos"
+        grep -q 'data-trio-go="smart.auto"' "$f" && grep -q 'data-trio-go="apply"' "$f" \
+            && grep -q 'data-trio-go="ai.apply"' "$f" \
+            && ok "${f#$ROOT/}: os 3 botões (inteligente/recomendado/IA)" \
+            || bad "${f#$ROOT/}: faltam botões dos caminhos"
+        # a IA se identifica como local (é o diferencial, não pode sumir do texto)
+        grep -qi 'no aparelho\|local' "$f" && ok "${f#$ROOT/}: deixa claro que a IA é local" \
+            || bad "${f#$ROOT/}: não diz que a IA roda no aparelho"
+    done
+    # o JS liga os botões às ações reais (mesmo mecanismo do hub)
+    grep -q 'querySelectorAll("\[data-trio-go\]")' "$w" \
+        && ok "index.php: JS liga os botões às ações" || bad "index.php: botões do card sem JS"
+    grep -q 'data-trio-go' "$a" && grep -q 'otm-trio' "$a" \
+        && ok "painel do app tem o card e o gancho do JS" || bad "painel do app sem o card"
+    # CSS do card presente nos dois
+    grep -q '\.trio-grid{' "$w" && grep -q '\.trio-grid{' "$a" \
+        && ok "CSS dos 3 caminhos nos dois painéis" || bad "falta o CSS dos 3 caminhos"
+
+    # as ações que os botões chamam existem de verdade no catálogo
+    php -r 'require "'"$ROOT"'/web/lib.php"; $A = otm_actions();
+             $need = ["smart.auto","apply","ai.apply","ai.status","ai.train"];
+             $miss = array_values(array_filter($need, fn($id) => !isset($A[$id])));
+             echo $miss ? "FALTAM: " . implode(", ", $miss) . "\n" : "OK\n";' > "$TMP/trio_ids" 2>&1
+    assert_contains "$TMP/trio_ids" "OK" "as 3 ações do card existem no catálogo"
+    # cada ação da IA aponta para o script ai-opt.sh e para um subcomando válido
+    php -r 'require "'"$ROOT"'/web/lib.php"; $A = otm_actions();
+             foreach (["ai.apply","ai.train","ai.status","ai.predict","ai.reset"] as $id) {
+                 $s = $A[$id]["argv"][0] ?? "";
+                 echo ($s === "ai-opt.sh" ? "ok" : "errado($id=$s)"), " ";
+             } echo "\n";' > "$TMP/trio_ai" 2>&1
+    assert_contains "$TMP/trio_ai" "ok ok ok ok ok" "as ações da IA chamam ai-opt.sh"
+    # a IA está liberada na whitelist de scripts (senão o api.php recusa)
+    grep -q "'ai-opt.sh'" "$ROOT/web/lib.php" && ok "ai-opt.sh na whitelist" \
+        || bad "ai-opt.sh fora da whitelist"
+    grep -q "'thermal-guard.sh'" "$ROOT/web/lib.php" && ok "thermal-guard.sh na whitelist" \
+        || bad "thermal-guard.sh fora da whitelist"
+
+    # a trava térmica preditiva tem as 3 ações registradas (on/status/off)
+    php -r 'require "'"$ROOT"'/web/lib.php"; $A = otm_actions();
+             foreach (["thermal.predict_on","thermal.predict_status","thermal.predict_off"] as $id) {
+                 $s = $A[$id]["argv"][0] ?? "";
+                 echo ($s === "thermal-guard.sh" ? "ok" : "errado($id=$s)"), " ";
+             } echo "\n";' > "$TMP/trio_th" 2>&1
+    assert_contains "$TMP/trio_th" "ok ok ok" "trava térmica preditiva registrada"
+}
+
 t_marca_trix() {
     printf '\n  # marca: nome Trix, cor padrao prata e icones da logo\n'
     # nome do app (recurso do Android) e titulo do painel/logins
@@ -5106,6 +5158,7 @@ t_ai_opt
 t_thermal_gate
 t_secret_scanner
 t_site_html
+t_trio_home
 t_marca_trix
 t_build_plugins
 t_build_modules
