@@ -782,6 +782,10 @@ cmd_plan() {
     [ "$KERNEL_MAJOR" -ge 6 ] 2>/dev/null && \
         printf '   %skernel%s      %s   %s\n' "$C_A" "$C_R" "$KERNEL" \
             "afina o MGLRU (menos engasgo sob pressão)"
+    printf '   %sCPU%s         governador, núcleos e piso de clock %s\n' "$C_A" "$C_R" \
+        "$([ "${D_PROF:-}" = jogo ] || [ "${D_PROF:-}" = desempenho ] && echo '(performance)' || echo '(econômico)')"
+    printf '   %srede rápida%s latência baixa, timestamps e dados em 2º plano\n' "$C_A" "$C_R"
+    printf '   %slogs/toque%s menos escrita em disco e toque mais direto\n' "$C_A" "$C_R"
     echo
     printf '  %saplicar:%s smart-opt.sh apply %s\n' "$C_A" "$C_R" "$D_PROF"
 }

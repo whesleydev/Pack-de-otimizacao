@@ -2777,6 +2777,9 @@ t_smart_opt() {
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" plan jogo > "$TMP/so_jogo" 2>&1
     assert_contains "$TMP/so_jogo" "4 apps" "perfil jogo limita a 4 apps em cache"
     assert_contains "$TMP/so_jogo" "anti-relog" "perfil jogo menciona o anti-relog"
+    assert_contains "$TMP/so_jogo" "rede profunda" "plan lista a rede profunda (motor Red)"
+    assert_contains "$TMP/so_jogo" "CPU" "plan lista o ajuste de CPU (motor Red)"
+    assert_contains "$TMP/so_jogo" "logs/toque" "plan lista logs e toque (motor Red)"
     rm -rf "$HOME/.packotm/game"
     # apply: aplica de verdade (delega aos módulos) e confirma mudança
     rm -rf "$HOME/.packotm"
