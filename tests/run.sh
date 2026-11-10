@@ -5029,7 +5029,80 @@ EOF
     rm -rf "$home" "$sys" "$cpu"
 }
 
+t_ai_opt() {
+    printf '\n  # IA local: otimizador que APRENDE no aparelho (bandit contextual)\n'
+    local f="$ROOT/scripts/ai-opt.sh"
+    [ -f "$f" ] && ok "ai-opt.sh existe" || { bad "ai-opt.sh ausente"; return; }
+    sh -n "$f" 2>/dev/null && ok "ai-opt tem sintaxe válida" || bad "ai-opt com erro de sintaxe"
+    # é aprendizado REAL: contexto, ação, recompensa, atualização do modelo
+    grep -q 'ai_ctx' "$f" && ok "reduz o estado a um contexto" || bad "sem contexto"
+    grep -q 'ai_pick' "$f" && ok "escolhe a ação (política)" || bad "sem escolha de ação"
+    grep -q 'ai_reward' "$f" && ok "calcula recompensa (ganho medido)" || bad "sem recompensa"
+    grep -q 'ai_update' "$f" && ok "atualiza o modelo (fecha o ciclo)" || bad "não atualiza o modelo"
+    # a função-objetivo penaliza calor e load: não é "ficou rápido e fervendo"
+    grep -q 'tmp \* 10' "$f" && grep -q 'load \* 100' "$f" \
+        && ok "recompensa pune temperatura e load" || bad "recompensa ignora calor/load"
+    # explora o que não conhece (UCB), sem depender de nuvem
+    grep -q 'sqrt(log' "$f" && ok "exploração UCB (testa o desconhecido)" || bad "sem exploração"
+    grep -q 'nunca tentada' "$f" && ok "ação nunca tentada é explorada primeiro" || bad "sem prioridade de exploração"
+    # mede DE VERDADE antes e depois (não inventa ganho)
+    grep -q 'ai_measure' "$f" && grep -q 'bench.sh" save' "$f" \
+        && ok "mede o antes e o depois de verdade (bench.sh)" || bad "não mede de verdade"
+    # roda no aparelho: nada de rede/nuvem
+    grep -qiE 'curl|wget|http://|https://|nc -' "$f" \
+        && bad "IA tenta acessar a rede (deveria ser local)" || ok "roda 100% local (sem rede)"
+    grep -q 'AI_MODEL=' "$f" && ok "modelo guardado no aparelho" || bad "sem arquivo de modelo"
+
+    # --- comportamento REAL da política e da recompensa ----------------------
+    local home="$TMP/ai_home"
+    rm -rf "$home"; mkdir -p "$home/.packotm/ai"
+    # modelo: no MESMO contexto, "fluido" tem média melhor que as outras
+    printf 'bmid|tmid|llow competitivo 5 0\nbmid|tmid|llow fluido 5 500\n' > "$home/.packotm/ai/model"
+    printf 'bmid|tmid|llow economico 5 0\nbmid|tmid|llow nada 5 0\n' >> "$home/.packotm/ai/model"
+    cat > "$TMP/ai_drive.sh" <<'EOF'
+SRC="$ROOT/scripts"
+export AI_LIB=1 OTM_NO_COLOR=1
+. "$SRC/common.sh"
+. "$SRC/ai-opt.sh"
+echo "pick=$(ai_pick 'bmid|tmid|llow')"
+echo "novo=$(ai_pick 'zzz')"
+echo "bandlow=$(ai_band 10 25 70)"
+echo "bandmid=$(ai_band 50 25 70)"
+echo "bandhigh=$(ai_band 90 25 70)"
+echo "bandvazio=$(ai_band '' 25 70)"
+printf 'ram_livre_mb=1000\nrefresh_hz=60\nbat_temp_c=40\nloadavg=1\n' > "$TMP/ai_a.txt"
+printf 'ram_livre_mb=1200\nrefresh_hz=60\nbat_temp_c=40\nloadavg=1\n' > "$TMP/ai_b.txt"
+echo "reward_ram=$(ai_reward "$TMP/ai_a.txt" "$TMP/ai_b.txt")"
+printf 'ram_livre_mb=1000\nrefresh_hz=60\nbat_temp_c=45\nloadavg=1\n' > "$TMP/ai_c.txt"
+echo "reward_quente=$(ai_reward "$TMP/ai_a.txt" "$TMP/ai_c.txt")"
+EOF
+    out="$(ROOT="$ROOT" HOME="$home" TMP="$TMP" sh "$TMP/ai_drive.sh" 2>&1)"
+    printf '%s\n' "$out" > "$TMP/ai_out"
+    assert_contains "$TMP/ai_out" "pick=fluido" "escolhe a ação com melhor média (fluido)"
+    assert_contains "$TMP/ai_out" "novo=competitivo" "contexto novo: explora a 1ª ação"
+    assert_contains "$TMP/ai_out" "bandlow=low" "faixa de bateria baixa"
+    assert_contains "$TMP/ai_out" "bandhigh=high" "faixa de bateria alta"
+    assert_contains "$TMP/ai_out" "bandvazio=mid" "sem leitura cai no meio (não chuta extremo)"
+    assert_contains "$TMP/ai_out" "reward_ram=200" "mais RAM livre = recompensa positiva"
+    assert_contains "$TMP/ai_out" "reward_quente=-50" "esquentar 5 °C custa 50 na recompensa"
+
+    # --- ciclo completo com stub de hardware: aprende e grava o modelo -------
+    rm -rf "$home"; mkdir -p "$home"
+    out2="$(HOME="$home" OTM_NO_COLOR=1 OTM_MODE=local AI_SETTLE=0 sh "$f" apply 2>&1)"
+    printf '%s\n' "$out2" > "$TMP/ai_cycle"
+    [ -s "$home/.packotm/ai/model" ] && ok "o ciclo grava o modelo aprendido" \
+        || bad "o ciclo não gravou o modelo"
+    grep -qE 'ganho|custo|neutro' "$TMP/ai_cycle" \
+        && ok "o ciclo informa o ganho medido" || bad "o ciclo não informa ganho"
+    HOME="$home" OTM_NO_COLOR=1 OTM_MODE=local sh "$f" status > "$TMP/ai_status" 2>&1
+    assert_contains "$TMP/ai_status" "melhor ação por contexto" "status mostra o que aprendeu"
+    HOME="$home" OTM_NO_COLOR=1 OTM_MODE=local sh "$f" reset >/dev/null 2>&1
+    [ -f "$home/.packotm/ai/model" ] && bad "reset não apagou o modelo" || ok "reset esquece tudo"
+    rm -rf "$home"
+}
+
 t_thermal_predict
+t_ai_opt
 t_thermal_gate
 t_secret_scanner
 t_site_html
