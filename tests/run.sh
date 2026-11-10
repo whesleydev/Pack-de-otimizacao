@@ -3050,6 +3050,106 @@ t_smart_learning() {
     rm -rf "$HOME/.packotm"
 }
 
+t_red_motor() {
+    printf '\n  # motor Red: o antigo app Red Optimization virou a parte funda do otimizador\n'
+    local f="$ROOT/scripts/smart-opt.sh"
+    # as chaves novas existem e são as do Red (não inventadas)
+    grep -q 'so_red_apply()' "$f" && ok "motor Red existe (so_red_apply)" || bad "sem motor Red"
+    for fn in so_red_rede so_red_vm so_red_io so_red_gpu so_red_escondidas so_red_kernel_novo so_red_marca so_red_termico; do
+        grep -q "^$fn()" "$f" && ok "motor Red: $fn" || bad "motor Red: falta $fn"
+    done
+    # o motor Red é chamado pelo apply (é o passo 8/8)
+    grep -q '8/8  Motor Red' "$f" && grep -q 'so_red_apply' "$f" \
+        && ok "apply roda o motor Red (passo 8/8)" || bad "apply não roda o motor Red"
+    # rede profunda: as chaves TCP que o Red afinava
+    for k in tcp_sack tcp_window_scaling tcp_moderate_rcvbuf tcp_no_metrics_save tcp_fin_timeout tcp_tw_reuse netdev_max_backlog; do
+        grep -q "$k" "$f" && ok "rede: $k" || bad "rede: falta $k"
+    done
+    # memória do kernel: as chaves VM que o Red afinava
+    for k in min_free_kbytes oom_kill_allocating_task 'page-cluster' laptop_mode dirty_expire_centisecs; do
+        grep -q "$k" "$f" && ok "vm: $k" || bad "vm: falta $k"
+    done
+    # segredos do Android estilo SetEdit (o que o pack não tinha)
+    for k in captive_portal_mode network_recommendations_enabled hide_error_dialogs \
+             show_first_crash_dialog anr_show_background always_finish_activities \
+             stay_on_while_plugged_in activity_starts_logging_enabled enable_gpu_debug_layers \
+             wifi_display_on screensaver_enabled immersive_mode_confirmations; do
+        grep -q "$k" "$f" && ok "segredo: $k" || bad "segredo: falta $k"
+    done
+    # marca/ROM: a família é detectada e cada marca tem o seu ajuste
+    grep -q 'so_family()' "$f" && grep -q 'so_family_label()' "$f" \
+        && ok "marca: detecção de família de ROM" || bad "marca: sem detecção"
+    grep -q 'power_check_max_cpu_1' "$f" && ok "marca: MIUI/HyperOS" || bad "marca: sem MIUI"
+    grep -q 'game_booster_enabled' "$f" && ok "marca: One UI (Samsung)" || bad "marca: sem One UI"
+    grep -q 'powergenie_enabled' "$f" && ok "marca: EMUI/HarmonyOS" || bad "marca: sem EMUI"
+    grep -q 'app_freeze_enabled' "$f" && ok "marca: ColorOS/Realme" || bad "marca: sem ColorOS"
+    # composição gráfica por GPU
+    grep -q 'debug.composition.type gpu' "$f" && ok "gpu: composição por GPU" || bad "gpu: sem composição"
+    # I/O do armazenamento (read_ahead/iostats), só em arquivo gravável
+    grep -q 'so_io_set' "$f" && grep -q 'read_ahead_kb' "$f" && grep -q 'iostats' "$f" \
+        && ok "io: read_ahead e iostats" || bad "io: sem read_ahead/iostats"
+    grep -q '\[ -w "\$q" \]' "$f" && ok "io: só escreve em arquivo gravável" \
+        || bad "io: escreveria em arquivo não gravável"
+    # nada do motor Red inventa: tudo passa por helper que lê de volta
+    grep -q 'so_dc()' "$f" && ok "device_config com leitura de volta (so_dc)" || bad "sem so_dc"
+    grep -q 'otm_sysctl' "$f" && ok "sysctl com leitura de volta" || bad "sem otm_sysctl no motor"
+    # parte quente: temperatura por TIPO de zona térmica
+    grep -q 'D_THERM_PART' "$f" && grep -q 'THERM_ZONES' "$f" \
+        && ok "térmico: parte quente por tipo de zona" || bad "térmico: sem parte quente"
+    grep -q 'bateria_quente' "$f" && ok "térmico: cuidado com bateria quente" || bad "térmico: sem bateria"
+    # kernel novo: MGLRU só em Linux 6+
+    grep -q 'MGLRU_PATH' "$f" && grep -q 'KERNEL_MAJOR' "$f" \
+        && ok "kernel: MGLRU só em Linux 6+" || bad "kernel: sem MGLRU/versão"
+
+    # comportamento REAL: apply com um aparelho Xiaomi grava as chaves do Red
+    rm -rf "$HOME/.packotm"
+    local bin="$TMP/bin_red" st="$TMP/store_red"
+    rm -rf "$bin" "$st"; mkdir -p "$bin" "$st"
+    # getprop de marca (Xiaomi) para o motor escolher a família MIUI
+    cat > "$bin/getprop" <<'EOF'
+#!/bin/sh
+case "$1" in
+  ro.product.manufacturer) echo "Xiaomi" ;;
+  ro.product.brand)        echo "Redmi" ;;
+  ro.build.version.sdk)    echo "34" ;;
+  ro.product.model)        echo "Redmi Note 12" ;;
+  *) cat "$TMP_STORE/prop.$1" 2>/dev/null ;;
+esac
+EOF
+    chmod +x "$bin/getprop"
+    export TMP_CMD_LOG="$TMP/red.log"; : > "$TMP_CMD_LOG"
+    out="$(TMP_STORE="$st" PATH="$bin:$PATH" OTM_NO_COLOR=1 OTM_MODE=su \
+        sh "$f" apply equilibrado 2>&1)"
+    printf '%s\n' "$out" > "$TMP/red_apply"
+    assert_contains "$TMP/red_apply" "Motor Red" "apply anuncia o motor Red"
+    assert_contains "$TMP/red_apply" "rede profunda" "apply roda a rede profunda"
+    assert_contains "$TMP/red_apply" "MIUI/HyperOS" "apply detecta a marca Xiaomi (MIUI)"
+    # as chaves do Red realmente foram gravadas no aparelho
+    [ "$(cat "$st/global.captive_portal_mode" 2>/dev/null)" = "0" ] \
+        && ok "gravou captive_portal_mode (Wi-Fi conecta mais rápido)" \
+        || bad "não gravou captive_portal_mode"
+    [ "$(cat "$st/global.hide_error_dialogs" 2>/dev/null)" = "1" ] \
+        && ok "gravou hide_error_dialogs (sem pop-ups de erro)" \
+        || bad "não gravou hide_error_dialogs"
+    [ "$(cat "$st/secure.power_check_max_cpu_1" 2>/dev/null)" = "0" ] \
+        && ok "gravou o ajuste MIUI (power_check_max_cpu_1)" \
+        || bad "não gravou o ajuste MIUI"
+    [ "$(cat "$st/sys.net.ipv4.tcp_sack" 2>/dev/null)" = "1" ] \
+        && ok "gravou tcp_sack (rede profunda)" || bad "não gravou tcp_sack"
+    # e o undo registrou a reversão de tudo isso
+    grep -q 'captive_portal_mode' "$HOME/.packotm/undo/smart-opt.sh" 2>/dev/null \
+        && ok "reversão registrada para os segredos do Red" || bad "sem reversão dos segredos"
+    grep -q 'tcp_sack' "$HOME/.packotm/undo/smart-opt.sh" 2>/dev/null \
+        && ok "reversão registrada para a rede profunda" || bad "sem reversão da rede"
+    # restore devolve os originais (nada fica preso)
+    TMP_STORE="$st" PATH="$bin:$PATH" OTM_NO_COLOR=1 OTM_MODE=su sh "$f" restore > "$TMP/red_rs" 2>&1
+    [ -f "$st/global.captive_portal_mode" ] && bad "restore não devolveu captive_portal_mode" \
+        || ok "restore devolve captive_portal_mode (padrão)"
+    rm -rf "$bin" "$st"
+    unset TMP_CMD_LOG
+    rm -rf "$HOME/.packotm"
+}
+
 t_backup_crypto() {
     printf '\n  # backup: arquivo cifrado que devolve as configurações\n'
     local f="$ROOT/scripts/backup.sh"
@@ -4754,6 +4854,7 @@ t_dpi
 t_smart_opt
 t_smart_bigdump
 t_smart_learning
+t_red_motor
 t_backup_crypto
 t_smart_card_single
 t_clean

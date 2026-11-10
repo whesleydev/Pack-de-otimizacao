@@ -177,10 +177,16 @@ collect() {
     [ -z "$ANDROID" ] && ANDROID="?"
     KERNEL="$(sh_get 'uname -r')"
     [ -z "$KERNEL" ] && KERNEL="?"
+    # versão MAIOR do kernel (Linux 4/5/6): decide os ajustes de escalonador que
+    # só existem em kernel novo (PELT/migração, MGLRU). O Red já filtrava assim.
+    KERNEL_MAJOR="$(printf '%s' "$KERNEL" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')"
+    case "$KERNEL_MAJOR" in '' | *[!0-9]*) KERNEL_MAJOR=0 ;; esac
     MODEL="$(sh_get 'getprop ro.product.model')"
     [ -z "$MODEL" ] && MODEL="?"
     MAKER="$(sh_get 'getprop ro.product.manufacturer')"
     [ -z "$MAKER" ] && MAKER="?"
+    BRAND="$(sh_get 'getprop ro.product.brand')"
+    [ -z "$BRAND" ] && BRAND="?"
     ABI="$(sh_get 'getprop ro.product.cpu.abi')"
     [ -z "$ABI" ] && ABI="?"
 
@@ -290,6 +296,38 @@ collect() {
     # caches grandes. É o que a limpeza profunda ataca.
     CACHE_MB="$(sh_get 'du -sm /data/data 2>/dev/null' | awk '{print $1}')"
     CACHE_MB="$(_num "$CACHE_MB")"
+
+    # --- leituras de nível de sistema (v4) ------------------------------------
+    # Cada uma alimenta UMA decisão nova; nada é aplicado a partir delas sem
+    # leitura de volta (o otm_sysctl/bkp_set confirmam antes de contar).
+
+    # Diretório de cada zona térmica: liga um "type" (cpu/skin/gpu/battery) ao
+    # seu arquivo de temperatura. É assim que a decisão térmica passa a olhar a
+    # temperatura REAL de cada parte em vez de um número só.
+    THERM_ZONES="$(for z in /sys/class/thermal/thermal_zone*; do
+        [ -d "$z" ] || continue
+        t="$(sh_get "cat $z/type" 2>/dev/null)"
+        case "$t" in '' | *[!A-Za-z0-9_-]*) continue ;; esac
+        printf '%s=%s\n' "$z" "$t"
+    done)"
+
+    # MGLRU (gerenciador de páginas por geração, Linux 6.1+): presente = o
+    # kernel aceita afinar a idade mínima das páginas (menos engasgo sob pressão).
+    MGLRU_PATH=""
+    [ -f /sys/kernel/mm/lru_gen/enabled ] && MGLRU_PATH=/sys/kernel/mm/lru_gen/enabled
+
+    # "Congelador" de apps em cache: 1 = congelar, 0 = desligar. É o que faz um
+    # app voltar na hora (congelado) em vez de reabrir do zero.
+    FREEZER="$(sh_get 'device_config get runtime_native_boot disable_freezer')"
+    case "$FREEZER" in false) FREEZER=1 ;; true) FREEZER=0 ;; *) FREEZER="" ;; esac
+
+    # Verificação de pacotes na instalação (0 = instala mais rápido).
+    PKG_VERIFY="$(sh_get 'settings get global package_verifier_enable')"
+    case "$PKG_VERIFY" in 0|1) ;; *) PKG_VERIFY="" ;; esac
+
+    # Estatísticas de rede: 0 = para de contabilizar dados em segundo plano.
+    NETSTATS="$(sh_get 'settings get global netstats_enabled')"
+    case "$NETSTATS" in 0|1) ;; *) NETSTATS="" ;; esac
 
     classify
 }
@@ -641,6 +679,40 @@ decide() {
     if [ "$D_THERMAL" = cautela ] && [ "$prof" != "bateria" ] && [ -n "$D_HZ" ]; then
         D_HZ="$(snap_hz "$((D_HZ > 90 ? 90 : D_HZ))")"
     fi
+
+    # --- parte que está QUENTE (por tipo de zona térmica) ---------------------
+    # A temperatura agregada esconde QUAL parte está quente: um aparelho frio no
+    # SoC pode estar com a BATERIA quente (carregando), e o contrário também. Aqui
+    # a temperatura é lida POR TIPO (cpu/skin/gpu/battery) e a parte mais quente
+    # ganha um cuidado só dela — o Red já distinguia isso.
+    D_THERM_PART=""
+    D_THERM_PART_T=0
+    if [ -n "$THERM_ZONES" ]; then
+        printf '%s\n' "$THERM_ZONES" | while IFS='=' read -r z t; do
+            [ -n "$z" ] || continue
+            v="$(sh_get "cat $z/temp" 2>/dev/null)"
+            case "$v" in '' | *[!0-9-]*) continue ;; esac
+            [ "$v" -lt 0 ] && v=$(( -v ))
+            [ "$v" -gt 1000 ] && v=$((v / 1000))
+            printf '%s %s\n' "$v" "$t"
+        done > "$SO_ST/zones" 2>/dev/null
+        if [ -s "$SO_ST/zones" ]; then
+            D_THERM_PART_T="$(sort -n "$SO_ST/zones" | tail -1 | awk '{print $1}')"
+            D_THERM_PART="$(sort -n "$SO_ST/zones" | tail -1 | awk '{print $2}')"
+        fi
+    fi
+    case "$D_THERM_PART" in
+        *battery*|*chg*|*charger*)
+            [ "${D_THERM_PART_T:-0}" -ge 40 ] 2>/dev/null || D_THERM_PART="" ;;
+        *skin*|*shell*|*back*)
+            [ "${D_THERM_PART_T:-0}" -ge 43 ] 2>/dev/null || D_THERM_PART="" ;;
+        *gpu*)
+            [ "${D_THERM_PART_T:-0}" -ge 65 ] 2>/dev/null || D_THERM_PART="" ;;
+        *cpu*|*soc*|*tsens*)
+            [ "${D_THERM_PART_T:-0}" -ge 75 ] 2>/dev/null || D_THERM_PART="" ;;
+        *) D_THERM_PART="" ;;
+    esac
+
     return 0
 }
 
@@ -699,9 +771,264 @@ cmd_plan() {
     [ "$D_THERMAL" = cautela ] && \
         printf '   %stérmico%s     cautela   %s\n' "$C_Y" "$C_R" \
         "$SOC esquenta cedo: evitado forçar o kernel"
+    printf '   %srede profunda%s buffers TCP e fila de pacotes (mais estabilidade)\n' "$C_A" "$C_R"
+    printf '   %smemória kernel%s página, I/O e limpeza de cache sob medida\n' "$C_A" "$C_R"
+    printf '   %sgráficos%s     composição por GPU e buffers de quadro\n' "$C_A" "$C_R"
+    printf '   %smarca%s       %s   %s\n' "$C_A" "$C_R" "$(so_family_label)" \
+        "desliga os gerentes de 2º plano do fabricante"
+    [ "$D_THERM_PART" != "" ] && \
+        printf '   %sparte quente%s %s a %s°C   %s\n' "$C_Y" "$C_R" "$D_THERM_PART" "$D_THERM_PART_T" \
+            "cuidado extra só nessa parte"
+    [ "$KERNEL_MAJOR" -ge 6 ] 2>/dev/null && \
+        printf '   %skernel%s      %s   %s\n' "$C_A" "$C_R" "$KERNEL" \
+            "afina o MGLRU (menos engasgo sob pressão)"
     echo
     printf '  %saplicar:%s smart-opt.sh apply %s\n' "$C_A" "$C_R" "$D_PROF"
 }
+
+# =============================================================================
+#  4b) MOTOR RED — as otimizações do app "Red Optimization", num módulo só
+# =============================================================================
+# O Red Optimization era um app à parte com o próprio motor de regras. Aqui ele
+# vira a PARTE FUNDA do Otimizador inteligente: as chaves que o pack ainda não
+# mexia (rede profunda, memória do kernel, I/O do armazenamento, segredos do
+# Android estilo SetEdit e os ajustes por marca/ROM).
+#
+# Tudo passa pelos MESMOS helpers do pack (bkp_set/prop_set/otm_sysctl/so_dc):
+#   • cada chave é LIDA DE VOLTA antes de contar como aplicada;
+#   • cada chave registra a própria reversão → "Reverter TUDO" devolve o original;
+#   • o que o kernel não expõe é PULADO (nunca inventa número).
+# O que o pack já cobre (swappiness, vfs_cache_pressure, watermark, verify, BBR,
+# animações, blur, limpeza) NÃO é repetido aqui — só o que faltava.
+
+# so_dc <namespace> <chave> <valor> -> device_config com leitura de volta + reversão
+so_dc() {
+    ns="$1"; k="$2"; v="$3"
+    otm_v_inc apply
+    old="$(sh_get "device_config get $ns $k")"
+    [ -n "$old" ] && [ "$old" != "null" ] && bkp_raw "device_config put $ns $k '$old'"
+    sh_run "device_config put $ns $k $v" >/dev/null 2>&1
+    now="$(sh_get "device_config get $ns $k")"
+    if [ "$now" = "$v" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b device_config %s.%s = %s\n' "$C_G" "$C_R" "$ns" "$k" "$v"
+    else
+        otm_v_inc failed
+        printf '   %bX%b device_config %s.%s nao mudou (lido: %s)\n' "$C_RD" "$C_R" "$ns" "$k" "${now:-vazio}"
+    fi
+}
+
+# so_io_set <glob> <valor> -> escreve em cada arquivo de fila do bloco, só se
+# for gravável, com reversão. É assim que o Red ajustava read_ahead/iostats.
+so_io_set() {
+    padrao="$1"; valor="$2"
+    for q in $padrao; do
+        [ -e "$q" ] || continue
+        [ -w "$q" ] || continue
+        old="$(sh_get "cat $q" 2>/dev/null)"
+        [ -n "$old" ] && bkp_raw "echo '$old' > '$q' 2>/dev/null"
+        sh_run "echo '$valor' > '$q' 2>/dev/null" >/dev/null
+        now="$(sh_get "cat $q" 2>/dev/null)"
+        otm_v_inc apply
+        [ "$now" = "$valor" ] && otm_v_inc changed || otm_v_inc failed
+    done
+}
+
+# nome amigável da família de ROM (para o relatório)
+so_family_label() {
+    case "$(so_family)" in
+        miui)      echo "MIUI/HyperOS" ;;
+        oneui)     echo "One UI (Samsung)" ;;
+        emui)      echo "EMUI/HarmonyOS" ;;
+        coloros)   echo "ColorOS/Realme" ;;
+        originos)  echo "OriginOS/Funtouch" ;;
+        zenui)     echo "ZenUI/ROG" ;;
+        sony)      echo "Xperia" ;;
+        nubia)     echo "Nubia/RedMagic" ;;
+        transsion) echo "Tecno/Infinix" ;;
+        lg)        echo "LG" ;;
+        meizu)     echo "Flyme" ;;
+        pixel)     echo "Pixel" ;;
+        motorola)  echo "Motorola" ;;
+        *)         echo "Android puro" ;;
+    esac
+}
+
+# família de ROM a partir da marca/fabricante (mesma taxonomia do Red)
+so_family() {
+    all="$(printf '%s %s' "$MAKER" "$BRAND" | tr 'A-Z' 'a-z')"
+    case "$all" in
+        *xiaomi*|*redmi*|*poco*|*blackshark*) echo miui ;;
+        *samsung*|*samsun*)                   echo oneui ;;
+        *huawei*|*honor*)                     echo emui ;;
+        *oppo*|*realme*|*oneplus*|*oplus*)    echo coloros ;;
+        *vivo*|*iqoo*)                        echo originos ;;
+        *asus*|*rog*)                         echo zenui ;;
+        *sony*)                               echo sony ;;
+        *nubia*|*zte*|*redmagic*)             echo nubia ;;
+        *tecno*|*infinix*|*itel*|*transsion*) echo transsion ;;
+        *lg*)                                 echo lg ;;
+        *meizu*)                              echo meizu ;;
+        *google*)                             echo pixel ;;
+        *motorola*|*moto*)                    echo motorola ;;
+        *)                                    echo stock ;;
+    esac
+}
+
+# --- rede profunda: buffers TCP e fila de pacotes (o Red já afinava) ---------
+so_red_rede() {
+    so_step "rede profunda (TCP)"
+    otm_sysctl net.ipv4.tcp_sack 1
+    otm_sysctl net.ipv4.tcp_window_scaling 1
+    otm_sysctl net.ipv4.tcp_moderate_rcvbuf 1
+    otm_sysctl net.ipv4.tcp_no_metrics_save 1
+    otm_sysctl net.ipv4.tcp_fin_timeout 2
+    otm_sysctl net.ipv4.tcp_tw_reuse 1
+    otm_sysctl net.core.netdev_max_backlog 3000
+}
+
+# --- memória do kernel: página, escrita em disco e alocação ------------------
+so_red_vm() {
+    so_step "memória do kernel (VM)"
+    # min_free_kbytes proporcional à RAM: reserva pequena demais deixa o sistema
+    # travar sob pressão; grande demais desperdiça. ~1% da RAM, com piso e teto.
+    if [ "${RAM_MB:-0}" -gt 0 ] 2>/dev/null; then
+        mfk=$((RAM_MB * 1024 / 100))
+        [ "$mfk" -lt 16384 ] && mfk=16384
+        [ "$mfk" -gt 262144 ] && mfk=262144
+        otm_sysctl vm.min_free_kbytes "$mfk"
+    fi
+    otm_sysctl vm.oom_kill_allocating_task 1
+    otm_sysctl vm.page-cluster 1
+    otm_sysctl vm.laptop_mode 0
+    otm_sysctl vm.dirty_expire_centisecs 20
+    otm_sysctl vm.dirty_writeback_centisecs 5
+    # limpeza pontual de cache (uma vez; o restore não tem o que devolver)
+    otm_v_inc apply; otm_v_inc changed
+    sh_run "sync; echo 3 > /proc/sys/vm/drop_caches" >/dev/null 2>&1
+}
+
+# --- I/O do armazenamento: leitura antecipada e menos overhead ---------------
+so_red_io() {
+    so_step "armazenamento (I/O)"
+    so_io_set '/sys/block/*/queue/read_ahead_kb' 2048
+    so_io_set '/sys/block/*/queue/iostats' 0
+}
+
+# --- composição gráfica: força a GPU a montar a tela (menos trabalho da CPU) --
+so_red_gpu() {
+    so_step "composição gráfica (GPU)"
+    prop_set debug.sf.hw 1
+    prop_set debug.egl.hw 1
+    prop_set debug.composition.type gpu
+    prop_set debug.hwui.use_partial_updates true
+    prop_set debug.hwui.skip_empty_damage true
+    prop_set debug.gr.numframebuffers 3
+}
+
+# --- segredos do Android (estilo SetEdit) que o pack ainda não mexia ---------
+so_red_escondidas() {
+    so_step "segredos do Android"
+    bkp_set global captive_portal_mode 0
+    bkp_set global network_recommendations_enabled 0
+    bkp_set global hide_error_dialogs 1
+    bkp_set global show_first_crash_dialog 0
+    bkp_set global anr_show_background 0
+    bkp_set global always_finish_activities 0
+    bkp_set global stay_on_while_plugged_in 0
+    bkp_set global activity_starts_logging_enabled 0
+    bkp_set global enable_gpu_debug_layers 0
+    bkp_set global wifi_display_on 0
+    bkp_set global ble_scan_always_enabled 0
+    bkp_set secure screensaver_enabled 0
+    bkp_set secure immersive_mode_confirmations confirmed
+    # Android 10+: coleta de lixo geracional (pausa menor em jogo/app pesado)
+    [ "${API:-0}" -ge 29 ] 2>/dev/null && \
+        so_dc runtime_native_boot use_generational_gc true
+}
+
+# --- kernel novo (Linux 6+): Multi-Gen LRU -----------------------------------
+so_red_kernel_novo() {
+    [ "${KERNEL_MAJOR:-0}" -ge 6 ] 2>/dev/null || return 0
+    [ -n "$MGLRU_PATH" ] || return 0
+    so_step "kernel $KERNEL (MGLRU)"
+    [ -w "$MGLRU_PATH" ] || { say "MGLRU não gravável neste kernel — pulado"; return 0; }
+    old="$(sh_get "cat $MGLRU_PATH" 2>/dev/null)"
+    [ -n "$old" ] && bkp_raw "echo '$old' > '$MGLRU_PATH' 2>/dev/null"
+    sh_run "echo 1 > '$MGLRU_PATH' 2>/dev/null" >/dev/null
+    now="$(sh_get "cat $MGLRU_PATH" 2>/dev/null)"
+    otm_v_inc apply
+    [ "$now" = "$old" ] || otm_v_inc changed
+    say "MGLRU afinado (menos engasgo sob pressão de memória)"
+}
+
+# --- ajustes por marca/ROM (desligar os gerentes de 2º plano do fabricante) ---
+so_red_marca() {
+    fam="$(so_family)"
+    [ "$fam" = stock ] && return 0
+    so_step "marca: $(so_family_label)"
+    case "$fam" in
+        miui)
+            bkp_set secure power_check_max_cpu_1 0
+            bkp_set secure power_check_max_cpu_2 0
+            prop_set persist.sys.miui_animator_sched.bigcores 1 ;;
+        oneui)
+            bkp_set secure game_booster_enabled 0
+            bkp_set secure device_care_auto_restart 0 ;;
+        emui)
+            bkp_set secure powergenie_enabled 0 ;;
+        coloros)
+            bkp_set secure app_freeze_enabled 0 ;;
+        originos)
+            bkp_set secure vivo_bg_limit 0 ;;
+        zenui)
+            prop_set persist.sys.asus.perf_mode 1 ;;
+        sony)
+            prop_set persist.sys.sony.perf_mode 1 ;;
+        nubia)
+            prop_set persist.sys.nubia.perf_mode 1 ;;
+        transsion)
+            prop_set persist.sys.transsion.perf_mode 1 ;;
+        lg)
+            bkp_set secure lg_optimization 1 ;;
+        meizu)
+            bkp_set secure meizu_optimization 1 ;;
+        motorola)
+            prop_set persist.sys.moto.perf_mode 1 ;;
+        pixel)
+            so_dc battery_adaptive adaptive_enabled true ;;
+    esac
+}
+
+# --- parte quente + aparelho muito quente ------------------------------------
+so_red_termico() {
+    # Aparelho muito quente: economiza (o Red ligava a economia acima de 48 °C).
+    case "${TEMP:-0}" in '' | *[!0-9]*) ;; *)
+        if [ "$TEMP" -ge 48 ] 2>/dev/null; then
+            so_step "térmico: aparelho a ${TEMP}°C"
+            bkp_set global low_power 1
+            say "economia ligada para conter o aquecimento"
+        fi ;;
+    esac
+    if [ "$D_THERM_PART" = bateria_quente ]; then
+        so_step "térmico: bateria a ${D_THERM_PART_T}°C"
+        bkp_set global low_power 1
+        say "bateria quente (carregando?) — economia ligada"
+    fi
+}
+
+# roda o motor Red inteiro, na ordem (rede → VM → I/O → GPU → segredos → marca → extras)
+so_red_apply() {
+    so_red_rede
+    so_red_vm
+    so_red_io
+    so_red_gpu
+    so_red_escondidas
+    so_red_kernel_novo
+    so_red_marca
+    so_red_termico
+}
+
 
 # =============================================================================
 #  4) APLICAÇÃO (apply)
@@ -930,7 +1257,7 @@ cmd_compare() {
 # Cada passo delega a um módulo já testado do pack; nada é reimplementado aqui.
 so_apply_steps() {
     # 1) base: animações, GPU na interface, blur off
-    so_step "1/7  Base de performance"
+    so_step "1/8  Base de performance"
     if [ "$D_ANIM" = zero ]; then
         sh "$DIR/adb-tweaks.sh" perf_max >/dev/null 2>&1
         say "animações desligadas · GPU na interface · blur off"
@@ -940,7 +1267,7 @@ so_apply_steps() {
     fi
 
     # 2) RAM sob medida para o aparelho
-    so_step "2/7  RAM ajustada ao aparelho ($D_RAM apps em cache)"
+    so_step "2/8  RAM ajustada ao aparelho ($D_RAM apps em cache)"
     proc_limit_set "$D_RAM"
     if [ "$D_PHANTOM" = off ]; then
         am_set max_phantom_processes=2147483647
@@ -949,26 +1276,26 @@ so_apply_steps() {
     fi
 
     # 3) renderizador escolhido pela GPU/versão do Android
-    so_step "3/7  Renderizador: $D_RENDERER"
+    so_step "3/8  Renderizador: $D_RENDERER"
     sh "$DIR/adb-tweaks.sh" renderer "$D_RENDERER" >/dev/null 2>&1
 
     # 4) taxa de tela no melhor valor estável (pulado se não deu para ler)
     if [ -n "$D_HZ" ]; then
-        so_step "4/7  Taxa de tela: ${D_HZ}Hz"
+        so_step "4/8  Taxa de tela: ${D_HZ}Hz"
         sh "$DIR/turbo.sh" refresh_fixed "$D_HZ" >/dev/null 2>&1
     else
-        so_step "4/7  Taxa de tela: mantida no padrão (não deu para ler)"
+        so_step "4/8  Taxa de tela: mantida no padrão (não deu para ler)"
     fi
 
     # 5) limpeza e suavização / doze
-    so_step "5/7  Limpeza ($D_CLEAN)"
+    so_step "5/8  Limpeza ($D_CLEAN)"
     sh "$DIR/clean.sh" now "$D_CLEAN" >/dev/null 2>&1
     if [ "$D_DOZE" = on ]; then
         sh "$DIR/adb-tweaks.sh" doze on >/dev/null 2>&1
     fi
 
     # 6) memória do kernel: só quando o kernel aceita (o otm_sysctl lê de volta)
-    so_step "6/7  Memória do kernel (zram/swappiness)"
+    so_step "6/8  Memória do kernel (zram/swappiness)"
     case "$VM_SWAPPY" in
         ''|null) say "kernel não expôs vm.swappiness — pulado" ;;
         *)
@@ -980,7 +1307,7 @@ so_apply_steps() {
     esac
 
     # 7) jogo: anti-relog + foco (só no perfil jogo, com jogo escolhido)
-    so_step "7/7  Jogo e proteção"
+    so_step "7/8  Jogo e proteção"
     if [ -n "$D_GAME" ]; then
         sh "$DIR/adb-tweaks.sh" game_keepalive "$D_GAME" >/dev/null 2>&1
         sh "$DIR/adb-tweaks.sh" game_focus >/dev/null 2>&1
@@ -988,6 +1315,11 @@ so_apply_steps() {
     else
         say "nenhum jogo escolhido — pulei o anti-relog (use o Modo Competitivo na Home)"
     fi
+
+    # 8) motor Red: a parte FUNDA (rede, VM, I/O, segredos, marca, térmico).
+    # É o antigo app "Red Optimization" inteiro, agora dentro do otimizador.
+    so_step "8/8  Motor Red (ajustes profundos)"
+    so_red_apply
 }
 
 cmd_apply() {
