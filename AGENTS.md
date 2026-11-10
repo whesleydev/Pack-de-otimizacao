@@ -1262,3 +1262,27 @@ script fora da lista (o app roda direto, sem allowlist). O teste `t_profiles`
 cobre isso varrendo todas as ações — foi assim que `sensi.sh` e
 `hidden-tune.sh` (30 ações) foram achados mortos só no web.
 
+## Lendo números do `dumpsys` (Hz, DPI)
+
+`otm_refresh_now` (`scripts/common.sh`) tem de casar o modo **ATIVO** da tela,
+não o primeiro `fps=` do dump: o modo 0 costuma ser 60, então casar a linha
+inteira do `DisplayDeviceInfo` mostrava 60 num aparelho rodando a 120. A ordem
+é (1) `renderFrameRate` do `DisplayDeviceInfo` (a taxa que o compositor está
+pedindo agora); (2) o `fps=` do modo cujo `id` casa com o `modeId` do cabeçalho
+(o `[^}]*` prende o `fps` ao MESMO modo); (3) leitura via SurfaceFlinger. Os 5
+casos vivem no `t_refresh` (`tests/run.sh::_hz_case`).
+
+O mesmo vale para DPI (`otm_dpi_atual_dp`): o override (`Override size`/
+`Override density`) manda sobre o físico — é o número que o usuário vê nas
+Opções do desenvolvedor.
+
+O flutuante formata Hz com `hzTxt` (`120.0` → `120 Hz`) e só marca "(travada)"
+quando o pack fixou a taxa (min == peak ⇒ `refresh_peak` preenchido); a
+condição NÃO pode exigir `refresh_hz` vazio, senão nunca aparece.
+
+**Ambiente de build:** `php` (php-cli) e o JDK 21 são necessários e NÃO vêm
+instalados por padrão — sem o `php` a suíte perde ~70 asserções com
+"php: not found" (parece regressão do código, mas é dependência faltando).
+Instale: `sudo apt-get install -y php-cli openjdk-21-jdk-headless`. O build
+usa `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64` e `ANDROID_HOME=/workspace/android-sdk`.
+
