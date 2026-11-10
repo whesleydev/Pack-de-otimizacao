@@ -419,17 +419,6 @@ class OverlayService : Service() {
         return m
     }
 
-    private companion object NativeTherm {
-        // tipo na zona térmica -> chave no monitor (mesmos nomes do panel-stats,
-        // para o nativo e o shell preencherem o MESMO campo). Só aparece o que existir.
-        val THERM_KEYS = listOf(
-            "battery" to "bat_temp_c",
-            "gpu" to "temp_gpu_c",
-            "skin" to "temp_skin_c",
-            "soc" to "temp_soc_c",
-        )
-    }
-
     /** Lê o consumo real e monta a grade do monitor (atualiza a cada 4 s). */
     private fun loadMonitor() {
         val box = monitorBox ?: return
@@ -1870,6 +1859,15 @@ class OverlayService : Service() {
         /** Mesmas cores de estado do painel (--teal/--danger). */
         private const val C_OK = "#31C0A5"
         private const val C_ERR = "#FF6B5E"
+
+        // tipo na zona térmica -> chave no monitor (mesmos nomes do panel-stats,
+        // para o nativo e o shell preencherem o MESMO campo). Só aparece o que existir.
+        private val THERM_KEYS = listOf(
+            "battery" to "bat_temp_c",
+            "gpu" to "temp_gpu_c",
+            "skin" to "temp_skin_c",
+            "soc" to "temp_soc_c",
+        )
 
         /**
          * Largura do painel: fração da tela, com piso/teto em dp ([panelWidth]).

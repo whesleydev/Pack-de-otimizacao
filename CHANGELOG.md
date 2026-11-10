@@ -3,6 +3,36 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.59.0] - 2026-11-10
+
+### Adicionado
+- **Card na Home com os três caminhos de otimização.** Um só cartão, logo abaixo
+  do "Otimizar agora", com a escolha explícita de como otimizar: **Otimização
+  Inteligente** (analisa, decide e testa combinações no seu aparelho),
+  **Pack Recomendado** (o "faz tudo" seguro, sem root) e **IA no aparelho** (o
+  otimizador que aprende, com atalhos para ver o que aprendeu e treinar).
+- **IA local que aprende no aparelho (`ai-opt.sh`).** Um otimizador por
+  aprendizado por reforço que roda 100% no celular: mede o estado (bateria,
+  temperatura, carga), reduz a um contexto, escolhe uma ação entre os modos do
+  pack (Competitivo, Fluido, Econômico ou não mexer), aplica, mede de novo e
+  guarda o ganho. A função-objetivo deixa claro o que é "melhor": mais RAM livre
+  e mais taxa de tela contam a favor; temperatura e carga do sistema contam
+  contra — assim ele não troca fluidez por calor. Nada sai do aparelho.
+- **Trava térmica preditiva (`thermal-guard.sh`).** Age ANTES do throttling do
+  kernel: lê as zonas térmicas, calcula a inclinação (quanto sobe por segundo),
+  projeta em quantos segundos cruza o limite e, se faltar pouco, baixa o teto de
+  frequência da CPU já. O limite vem do trip point do próprio kernel quando
+  existe. Reversível: o teto original de cada núcleo é guardado.
+- **Telemetria nativa real no painel flutuante.** O núcleo em C agora lê
+  bateria (corrente/voltagem), GPU, pressão de memória (PSI), zonas térmicas e
+  rede (RX/TX) direto do aparelho, e o monitor mostra esses campos.
+
+### Corrigido
+- **Build do app não compilava.** O serviço do painel flutuante tinha dois
+  `companion object` na mesma classe (um deles com a tabela das zonas térmicas),
+  o que quebrava a compilação do Kotlin. As duas tabelas foram fundidas num
+  único `companion object`.
+
 ## [2.57.1] - 2026-11-07
 
 ### Corrigido
