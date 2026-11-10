@@ -1286,3 +1286,30 @@ instalados por padrão — sem o `php` a suíte perde ~70 asserções com
 Instale: `sudo apt-get install -y php-cli openjdk-21-jdk-headless`. O build
 usa `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64` e `ANDROID_HOME=/workspace/android-sdk`.
 
+
+## Núcleo nativo (C/NDK) e motor Red
+
+O app tem DUAS camadas novas que são **aditivas** (nada foi removido):
+
+**Motor Red** (`scripts/smart-opt.sh`, passo 8/8 do `apply`): o antigo app "Red
+Optimization" virou a parte funda do Otimizador inteligente. São as funções
+`so_red_*` — rede profunda (TCP), memória do kernel (VM), I/O do armazenamento,
+composição gráfica, segredos do Android estilo SetEdit, ajustes por marca/ROM,
+MGLRU (kernel 6+) e a parte quente por tipo de zona térmica. Regras que valem
+para mexer nele: cada chave passa por `bkp_set`/`prop_set`/`otm_sysctl`/`so_dc`
+(que leem de volta antes de contar) e registra a própria reversão — por isso
+"Reverter TUDO" desfaz tudo. O que o pack JÁ cobria (swappiness, watermark, BBR,
+animações, blur, limpeza) **não** pode ser duplicado ali. O teste é `t_red_motor`.
+
+**Núcleo nativo** (`app/src/main/cpp/otm_native.c` + `OtmNative.kt`): telemetria
+por leitura de `/proc` e `/sys` sem abrir processo. Contrato igual ao dos
+scripts: dado ausente devolve `-1` e quem chamou mostra "—"; a lib carrega com
+degradação graciosa (`OtmNative.available`). O monitor (`OverlayService`) usa o
+nativo para COMPLETAR o que o shell não trouxe — nunca sobrescreve o shell.
+
+Build nativo: exige o NDK. Instale com
+`sdkmanager --sdk_root=/workspace/android-sdk "ndk;27.0.12077973"` (o CMake
+3.22.1 é baixado sozinho no primeiro build). `CMakeLists.txt` traz
+`-Wl,-z,max-page-size=16384` (16 KB, exigência do Android 15+). O cache
+`app/.cxx/` é gerado e está no `.gitignore`. Build: `./gradlew :app:assembleRelease`.
+Teste: `t_native_core`.
