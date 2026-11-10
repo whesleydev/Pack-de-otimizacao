@@ -2,10 +2,11 @@
 # =============================================================================
 #  common.sh - Biblioteca compartilhada do Pack de Otimização
 #  Detecta automaticamente como executar comandos privilegiados:
-#    1) adb shell   (PC -> celular, depuração USB ou sem fio)
-#    2) rish        (Shizuku, roda direto no celular)
-#    3) su -c       (root / Magisk / KernelSU / APatch)
-#    4) sh -c       (shell local, sem privilégio)
+#    1) direct      (o processo JÁ é shell/root: é o caso do app via Shizuku)
+#    2) adb shell   (PC -> celular, depuração USB ou sem fio)
+#    3) rish        (Shizuku, rodando de fora do app)
+#    4) su -c       (root / Magisk / KernelSU / APatch)
+#    5) sh -c       (shell local, sem privilégio)
 #  Todos os scripts fazem ". ./common.sh" e usam sh_run / sh_get.
 #  Variável de override: OTM_MODE=adb|usb|rish|su|local
 #  (usb = adb no 1º aparelho do cabo; adb = endereço fixo OTM_ADB_SERIAL)
@@ -32,12 +33,6 @@ _with_timeout() {
 }
 
 _otm_rish() { [ -n "$OTM_RISH" ] && printf '%s' "$OTM_RISH" || printf 'rish'; }
-
-_su_works() {
-    command -v su >/dev/null 2>&1 || return 1
-    [ "$(id -u 2>/dev/null)" = "0" ] && return 1        # já é root
-    [ "$(_with_timeout 3 su -c 'id -u' 2>/dev/null)" = "0" ] || return 1
-}
 
 _rish_works() {
     r="$(_otm_rish)"
@@ -73,41 +68,191 @@ _adb_works() {
 
 if [ -n "$OTM_MODE" ]; then
     RUN_MODE="$OTM_MODE"
+elif [ "$(id -u 2>/dev/null)" = "0" ]; then
+    # já somos root: nenhum wrapper é necessário, os comandos valem direto
+    RUN_MODE="direct"
+elif [ "$(id -u 2>/dev/null)" = "2000" ]; then
+    # já somos o usuário `shell` (o app roda os scripts pelo Shizuku/ADB, que
+    # abrem o processo JÁ privilegiado). Sem `rish`/`adb` no PATH o teste por
+    # binário daria "local" e o pack se recusaria a trabalhar sem motivo.
+    RUN_MODE="direct"
 elif _rish_works; then
     RUN_MODE="rish"
 elif _adb_works; then
     RUN_MODE="adb"
-elif _su_works; then
-    RUN_MODE="su"
 else
     RUN_MODE="local"
 fi
 
 # --- execução -----------------------------------------------------------------
 # _otm_shell "<cmd>" -> executa no alvo conforme o modo. Base de sh_run/sh_get.
+# `direct` = o próprio processo já tem o privilégio (Shizuku/ADB abriram o shell
+# como uid 2000, ou já somos root): roda sem wrapper.
 _otm_shell() {
     case "$RUN_MODE" in
-        adb)   if [ -n "$OTM_ADB_SERIAL" ]; then _with_timeout 20 adb -s "$OTM_ADB_SERIAL" shell "$1"
-               else _with_timeout 20 adb shell "$1"; fi ;;
-        usb)   _with_timeout 20 adb shell "$1" ;;
-        rish)  r="$(_otm_rish)"
-               if [ -x "$r" ]; then _with_timeout 20 "$r" -c "$1"
-               else _with_timeout 20 rish -c "$1"; fi ;;
-        su)    _with_timeout 20 su -c "$1" ;;
-        *)     sh -c "$1" ;;
+        adb)    if [ -n "$OTM_ADB_SERIAL" ]; then _with_timeout 20 adb -s "$OTM_ADB_SERIAL" shell "$1"
+                else _with_timeout 20 adb shell "$1"; fi ;;
+        usb)    _with_timeout 20 adb shell "$1" ;;
+        rish)   r="$(_otm_rish)"
+                if [ -x "$r" ]; then _with_timeout 20 "$r" -c "$1"
+                else _with_timeout 20 rish -c "$1"; fi ;;
+        su)     _with_timeout 20 su -c "$1" ;;
+        *)      sh -c "$1" ;;
     esac
 }
 
 sh_run() { _otm_shell "$1" 2>/dev/null; }
 sh_get() { _otm_shell "$1" 2>/dev/null | tr -d '\r'; }
 
+# otm_echo <texto> -> escreve o texto no stdout SEM passar por argv de um binário.
+# No Android o `printf`/`sed`/`grep` são binários do toybox (não são builtins do
+# shell): um argumento de centenas de KB estoura o limite do kernel e o comando
+# morre com "Argument list too long". Um dump grande (`dumpsys display` passa de
+# 400 KB num Samsung) tinha esse destino. O heredoc entrega o texto pelo stdin,
+# que não tem esse limite.
+otm_echo() {
+    cat <<OTM_ECHO_EOF
+$1
+OTM_ECHO_EOF
+}
+
+# otm_num <texto> -> só os dígitos (vazio se não houver nenhum). Vários scripts
+# já tinham um `_num` local; este fica no comum para quem não tem.
+otm_num() { printf '%s' "$1" | tr -cd '0-9' | cut -c1-9; }
+
+# otm_batt_field <texto do dumpsys battery> <chave> -> 1º valor numérico da linha
+# CANÔNICA "<chave>:" (ex.: "  level: 85"). O padrão é ancorado de propósito: o
+# dump tem dezenas de linhas que também contêm " level:" (uma por UID), e um
+# casamento solto pegava a errada — juntando todos os números num valor só.
+otm_batt_field() {
+    otm_echo "$1" | awk -F: -v k="$2" '
+        $1 ~ "^[[:space:]]*" k "$" { v = $2; gsub(/[^0-9]/, "", v); if (v != "") { print v; exit } }'
+}
+
+# otm_batt_get <chave> -> lê o dumpsys battery uma vez e devolve o valor da chave
+otm_batt_get() {
+    sh_get 'dumpsys battery' 2>/dev/null | awk -F: -v k="$1" '
+        $1 ~ "^[[:space:]]*" k "$" { v = $2; gsub(/[^0-9]/, "", v); if (v != "") { print v; exit } }'
+}
+
 sh_ok() { [ "$(sh_get 'id -u')" = "0" ]; }
+
+# otm_max_refresh -> maior taxa (Hz) que a TELA do aparelho suporta, lida do
+# `dumpsys display` (lista de modos suportados). Devolve vazio quando não dá
+# para ler. Serve para NUNCA travar a tela acima do que o painel aceita: antes
+# o "refresh máximo" gravava 120.0 na mão e num aparelho de 90 Hz a tela ficava
+# presa numa taxa inexistente (o sistema arredondava ou ignorava).
+otm_max_refresh() {
+    _out="$(sh_get 'dumpsys display' 2>/dev/null)"
+    [ -n "$_out" ] || return 0
+    _hz="$(otm_echo "$_out" | grep -oE 'fps=[0-9]+(\.[0-9]+)?' | cut -d= -f2 | sort -n | tail -1)"
+    if [ -z "$_hz" ]; then
+        _hz="$(otm_echo "$_out" | grep -oE '[0-9]+x[0-9]+@[0-9.]+' | sed 's/.*@//' | sort -n | tail -1)"
+    fi
+    case "$_hz" in ''|null) return 0 ;; esac
+    printf '%s' "$_hz"
+}
+
+# otm_dpi_padrao_dp -> menor largura de fábrica do aparelho, em dp
+# (o mesmo "Menor largura" das Opções do desenvolvedor):
+#     menor_largura_dp = 160 * menor_lado_em_px / densidade_fisica
+# Compartilhado entre o game-per-app.sh (aplicar) e o panel-state.sh (mostrar).
+otm_dpi_padrao_dp() {
+    _sz="$(sh_get 'wm size' 2>/dev/null)"
+    _ph="$(otm_echo "$_sz" | sed -n 's/.*Physical size: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)"
+    _px="$(otm_num "$(echo "$_ph" | cut -d' ' -f1)")"
+    _py="$(otm_num "$(echo "$_ph" | cut -d' ' -f2)")"
+    [ -z "$_px" ] && _px=1080
+    [ -z "$_py" ] && _py=2400
+    [ "$_py" -lt "$_px" ] 2>/dev/null && { _t="$_px"; _px="$_py"; _py="$_t"; }
+    _d="$(otm_num "$(sh_get 'wm density' 2>/dev/null | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)")"
+    [ -z "$_d" ] && _d="$(otm_num "$(sh_get 'getprop ro.sf.lcd_density' 2>/dev/null)")"
+    [ -z "$_d" ] && _d=420
+    awk -v p="$_px" -v d="$_d" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }'
+}
+
+# otm_dpi_atual_dp -> "Menor largura" EM USO agora, em dp (o mesmo número das
+# Opções do desenvolvedor): 160 * menor_lado_em_px / densidade_em_uso. Diferente
+# do otm_dpi_padrao_dp (que é o de fábrica), aqui vale o override aplicado —
+# é o valor que o overlay mostra para o usuário reconhecer o que está no
+# aparelho agora. Devolve vazio quando não dá para ler.
+otm_dpi_atual_dp() {
+    _sz="$(sh_get 'wm size' 2>/dev/null)"
+    _ph="$(otm_echo "$_sz" | sed -n 's/.*Physical size: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)"
+    _px="$(otm_num "$(echo "$_ph" | cut -d' ' -f1)")"
+    _py="$(otm_num "$(echo "$_ph" | cut -d' ' -f2)")"
+    # a resolução lógica em uso (override) manda sobre a física
+    _ov="$(otm_echo "$_sz" | sed -n 's/.*Override size: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)"
+    if [ -n "$_ov" ]; then _px="$(otm_num "$(echo "$_ov" | cut -d' ' -f1)")"; _py="$(otm_num "$(echo "$_ov" | cut -d' ' -f2)")"; fi
+    [ -z "$_px" ] && return 0
+    [ -n "$_py" ] && [ "$_py" -lt "$_px" ] 2>/dev/null && { _t="$_px"; _px="$_py"; _py="$_t"; }
+    _d="$(otm_num "$(sh_get 'wm density' 2>/dev/null | sed -n 's/.*Override density: *\([0-9]*\).*/\1/p' | tail -1)")"
+    [ -z "$_d" ] && _d="$(otm_num "$(sh_get 'wm density' 2>/dev/null | sed -n 's/.*Physical density: *\([0-9]*\).*/\1/p' | tail -1)")"
+    [ -z "$_d" ] && return 0
+    awk -v p="$_px" -v d="$_d" 'BEGIN{ if (d>0) printf "%d", 160*p/d + 0.5 }'
+}
+
+# otm_refresh_now -> taxa de atualização EM USO agora (Hz), do modo ATIVO.
+#
+# NÃO é o teto: o `dumpsys display` lista o modo ativo e, logo depois, todos os
+# `supportedModes`. Pegar o primeiro `fps=` (ou o maior) devolvia o teto do
+# painel e o monitor mentia — um aparelho de 90 Hz mostrando 120. Aqui vamos
+# pelo modo ativo de verdade, em camadas:
+#   1) `renderFrameRate` do DisplayDeviceInfo (é a taxa ativa, direto);
+#   2) o `@X`/`fps=X` do modo cujo id casa com o `modeId` do cabeçalho;
+#   3) a taxa ativa que o SurfaceFlinger reporta.
+otm_refresh_now() {
+    _out="$(sh_get 'dumpsys display' 2>/dev/null)"
+    if [ -n "$_out" ]; then
+        _r="$(otm_echo "$_out" | grep -m1 -oE 'renderFrameRate[ =:]+[0-9]+(\.[0-9]+)?' | grep -oE '[0-9]+(\.[0-9]+)?$')"
+        case "$_r" in 0|0.0) _r="" ;; esac
+        if [ -z "$_r" ]; then
+            _id="$(otm_echo "$_out" | grep -m1 -oE 'modeId[ =:]+[0-9]+' | grep -oE '[0-9]+$')"
+            if [ -n "$_id" ]; then
+                # Pega o fps do modo cujo id casa — e SÓ dele. Antes o awk casava
+                # a linha inteira do DisplayDeviceInfo e pegava o PRIMEIRO `fps=`
+                # (o modo 0, quase sempre 60), então num aparelho de 120 Hz com o
+                # modo ativo em 120 o monitor mostrava 60. O `[^}]*` prende o fps
+                # dentro do mesmo modo `{id=N, …, fps=X}`.
+                _r="$(otm_echo "$_out" \
+                    | grep -oE "id=$_id,[^}]*fps=[0-9.]+" \
+                    | grep -oE 'fps=[0-9.]+' | head -1 | cut -d= -f2)"
+                # formatos antigos: "1080x2400@120" no lugar de "fps=120"
+                if [ -z "$_r" ]; then
+                    _r="$(otm_echo "$_out" \
+                        | grep -oE "[0-9]+x[0-9]+@[0-9.]+[^}]*" \
+                        | grep -oE "@[0-9.]+" | head -1 | cut -c2-)"
+                fi
+            fi
+        fi
+    fi
+    if [ -z "$_r" ]; then
+        _r="$(sh_get 'dumpsys SurfaceFlinger' 2>/dev/null | grep -m1 -oE '[0-9]+(\.[0-9]+)? *fps' | grep -oE '^[0-9]+(\.[0-9]+)?')"
+    fi
+    case "$_r" in ''|null|0|0.0) return 0 ;; esac
+    printf '%s' "$_r"
+}
+
+# otm_clamp_hz <hz> -> devolve <hz> se o painel suporta; senão o teto real da
+# tela; e <hz> de novo se nem der para ler (melhor tentar do que recusar).
+otm_clamp_hz() {
+    _w="$1"; _m="$(otm_max_refresh)"
+    case "$_m" in ''|*[!0-9.]*) printf '%s' "$_w"; return 0 ;; esac
+    _r="$(awk -v w="$_w" -v m="$_m" 'BEGIN{printf "%d", (w+0 > m+0) ? m+0 : w+0}')"
+    printf '%s' "$_r"
+}
+
+
 have()  { command -v "$1" >/dev/null 2>&1; }
 
-# tem privilégio de shell (root OU Shizuku/ADB), não só shell local sem poder
+# tem privilégio de shell (root OU Shizuku/ADB), não só shell local sem poder.
+# `direct` cobre o caso em que o processo já nasceu privilegiado (Shizuku/ADB).
 have_shell() {
-    [ "$RUN_MODE" != "local" ] && return 0
-    sh_ok
+    case "$RUN_MODE" in
+        local) return 1 ;;
+        direct) return 0 ;;
+        *) return 0 ;;
+    esac
 }
 
 # Exige privilégio de shell. Sem ele, avisa como habilitar (painel > Configs).
@@ -134,19 +279,79 @@ warn() { printf '  %b!%b  %s\n' "$C_Y" "$C_R" "$1"; }
 err()  { printf '  %b✕%b  %s\n' "$C_RD" "$C_R" "$1"; }
 skip() { printf '  %b·%b  %s (off)\n' "$C_D" "$C_R" "$1"; }
 
-require_root() {
-    if sh_ok; then return 0; fi
-    warn "precisa de root ($RUN_MODE). pulando."
-    return 1
-}
-
 # --- backup / restauração -----------------------------------------------------
 ST="${HOME:-/data/data/com.termux/files/home}/.packotm"
-OFF_SH="$ST/off.sh"; MARK="$ST/on"
-mkdir -p "$ST" 2>/dev/null
+UNDO_DIR="$ST/undo"
+OFF_SH="$ST/off.sh"; MARK="$ST/on"     # escopo padrão (compartilhado)
+OTM_SCOPE=""                            # vazio = escopo padrão
+mkdir -p "$ST" "$UNDO_DIR" 2>/dev/null
+
+# scope_begin <nome> -> isola a reversão deste script num arquivo próprio.
+# Sem isso, um `off` de uma função desfaz e apaga a reversão das outras: o
+# "Clean: desfazer" apagava o 0.5x do "Performance" e a reversão geral ficava
+# pela metade. Cada escopo tem seu off.sh + marcador; `restore_all` percorre todos.
+#
+# OTM_SCOPE_OVERRIDE: um "modo" pronto (profiles.sh) fixa o escopo antes de
+# chamar os scripts, para TODOS eles escreverem no MESMO arquivo de reversão.
+# Assim `profiles.sh off <modo>` desfaz só o que aquele modo aplicou, sem mexer
+# no que outras ações deixaram — e o "Reverter TUDO" continua alcançando o modo,
+# porque o arquivo dele fica em $UNDO_DIR igual aos outros.
+scope_begin() {
+    if [ -n "$OTM_SCOPE_OVERRIDE" ]; then
+        OTM_SCOPE="$OTM_SCOPE_OVERRIDE"
+    else
+        OTM_SCOPE="$1"
+    fi
+    OFF_SH="$UNDO_DIR/$OTM_SCOPE.sh"
+    MARK="$UNDO_DIR/$OTM_SCOPE.on"
+}
+
+# otm_undo_files -> lista os arquivos de reversão existentes (todos os escopos)
+otm_undo_files() {
+    [ -s "$ST/off.sh" ] && echo "$ST/off.sh"
+    for f in "$UNDO_DIR"/*.sh; do
+        [ -s "$f" ] && echo "$f"
+    done
+}
+
+# otm_undo_run <arquivo> -> executa as linhas de reversão de um arquivo
+otm_undo_run() {
+    f="$1"; [ -s "$f" ] || return 0
+    while IFS= read -r c; do
+        [ -z "$c" ] && continue
+        case "$c" in '#'*) continue ;; esac
+        sh_run "$c" >/dev/null 2>&1
+    done < "$f"
+}
+
+# otm_undo_clear -> apaga TODAS as reversões (restauração geral)
+otm_undo_clear() {
+    rm -f "$ST/off.sh" "$ST/on" 2>/dev/null
+    rm -rf "$UNDO_DIR" 2>/dev/null
+    rm -f "$ST/origins" 2>/dev/null
+}
+
+# --- valores originais do aparelho -------------------------------------------
+# Guarda o valor que a chave tinha ANTES de qualquer ação mexer nela. Sem isso,
+# aplicar A e depois B fazia o "desfazer B" restaurar o valor que A tinha
+# deixado (o snapshot de B já nascia poluído por A).
+ORIG_FILE="$ST/origins"
+
+orig_get() {  # orig_get <tipo> <chave> -> valor original, ou __NONE__ se nunca visto
+    [ -f "$ORIG_FILE" ] || { printf '__NONE__'; return; }
+    awk -F'\t' -v t="$1" -v k="$2" '
+        $1==t && $2==k { sub(/^[^\t]*\t[^\t]*\t?/, ""); print; found=1; exit }
+        END { if (!found) printf "__NONE__" }' "$ORIG_FILE"
+}
+
+orig_set() {  # orig_set <tipo> <chave> <valor>   (vazio = não existia)
+    mkdir -p "$ST" 2>/dev/null
+    printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$ORIG_FILE"
+}
 
 bkp_begin() {
     [ -f "$MARK" ] && return 0
+    mkdir -p "$(dirname "$OFF_SH")" 2>/dev/null
     : > "$OFF_SH"
     printf '#!/system/bin/sh\n' >> "$OFF_SH"
     command touch "$MARK"
@@ -179,18 +384,49 @@ otm_v_report() {
 }
 
 
+# otm_undo_retarget <tipo> <chave> <novo_guard> -> atualiza a CONDIÇÃO da
+# reversão já registrada para esta chave, sem trocar o alvo (o valor original).
+# A reversão é 1 por chave e o guard nasce com o 1º valor escrito. Se a MESMA
+# ação escrever a chave de novo com outro valor (ex.: barras do sistema trocando
+# de "imersivo" para "só a de baixo"), o guard antigo ficava preso no valor
+# velho e o "Reverter TUDO" não devolvia nada (a barra ficava escondida).
+otm_undo_retarget() {
+    t="$1"; k="$2"; v="$3"
+    [ -s "$OFF_SH" ] || return 0
+    awk -v t="$t" -v k="$k" -v v="$v" '
+        $0 ~ ("settings (put|delete) " t " " k "( |$)") {
+            sub(/= "[^"]*"/, "= \"" v "\"")
+        }
+        { print }' "$OFF_SH" > "$OFF_SH.tmp" && mv "$OFF_SH.tmp" "$OFF_SH"
+}
+
 # bkp_set <tipo> <chave> <novo_valor> -> aplica e guarda o valor antigo
 bkp_set() {
     t="$1"; k="$2"; v="$3"
     otm_v_inc apply
     old=$(sh_get "settings get $t $k")
-    # guarda só a 1ª vez: reaplicar não pode empilhar backups obsoletos
-    if ! grep -qE "^settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
-        if [ -z "$old" ] || [ "$old" = "null" ]; then
-            echo "settings delete $t $k" >> "$OFF_SH"
+    # registra o valor ORIGINAL do aparelho na 1ª vez que mexemos nesta chave
+    orig="$(orig_get "$t" "$k")"
+    if [ "$orig" = "__NONE__" ]; then
+        [ -z "$old" ] || [ "$old" = "null" ] && orig="" || orig="$old"
+        orig_set "$t" "$k" "$orig"
+    fi
+    # guarda só a 1ª vez por escopo: reaplicar não pode empilhar backups obsoletos.
+    # A reversão é CONDICIONAL: só desfaz se o valor atual ainda for o que esta
+    # ação escreveu. Sem isso, desfazer uma ação antiga apagaria o que uma ação
+    # posterior aplicou na mesma chave (as otimizações "se atropelavam").
+    if ! grep -qE "settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -z "$orig" ]; then
+            printf '[ "$(settings get %s %s)" = "%s" ] && settings delete %s %s\n' \
+                "$t" "$k" "$v" "$t" "$k" >> "$OFF_SH"
         else
-            printf "settings put %s %s %s\n" "$t" "$k" "$old" >> "$OFF_SH"
+            printf '[ "$(settings get %s %s)" = "%s" ] && settings put %s %s %s\n' \
+                "$t" "$k" "$v" "$t" "$k" "$orig" >> "$OFF_SH"
         fi
+    else
+        # já havia reversão para esta chave: só move o guard para o valor atual,
+        # para o "desfazer" ainda reconhecer o que esta ação acabou de escrever
+        otm_undo_retarget "$t" "$k" "$v"
     fi
     sh_run "settings put $t $k $v" >/dev/null
     now=$(sh_get "settings get $t $k")
@@ -206,8 +442,13 @@ bkp_set() {
 prop_set() {
     p="$1"; v="$2"
     otm_v_inc apply
+    bkp_begin
     old=$(sh_get "getprop $p")
-    if [ -n "$old" ]; then bkp_raw "setprop $p $old"; else bkp_raw "setprop $p ''"; fi
+    # guarda a reversão só na 1ª vez por prop: reaplicar não pode empilhar backups
+    # obsoletos (sem isso, "renderer opengl" depois de "skiagl" restaurava o skiagl).
+    if ! grep -qE "setprop $p( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -n "$old" ]; then bkp_raw "setprop $p $old"; else bkp_raw "setprop $p ''"; fi
+    fi
     sh_run "setprop $p $v" >/dev/null
     now=$(sh_get "getprop $p")
     if [ "$now" = "$v" ]; then
@@ -219,57 +460,167 @@ prop_set() {
     fi
 }
 
+# prop_clear <prop> -> apaga o prop (setprop ''), com reversão
+prop_clear() {
+    p="$1"
+    otm_v_inc apply
+    bkp_begin
+    old=$(sh_get "getprop $p")
+    if ! grep -qE "setprop $p( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -n "$old" ]; then bkp_raw "setprop $p $old"; else bkp_raw "setprop $p ''"; fi
+    fi
+    sh_run "setprop $p ''" >/dev/null
+    now=$(sh_get "getprop $p")
+    if [ -z "$now" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b prop %s = (vazio)\n' "$C_G" "$C_R" "$p"
+    else
+        otm_v_inc failed
+        printf '   %bX%b prop %s nao limpou (lido: %s)\n' "$C_RD" "$C_R" "$p" "$now"
+    fi
+}
+
 # bkp_raw "comando de reversão" -> só registra para o restore
 bkp_raw() { echo "$1" >> "$OFF_SH"; }
 
-# --- persistência no boot -----------------------------------------------------
-# Alguns `settings`/`setprop` se perdem no reboot. Com root dá para reaplicar no
-# boot: os scripts registram a linha de aplicação em $BOOT_SH e instalamos um
-# wrapper em /data/adb/service.d (Magisk) ou /system/etc/init.d.
-BOOT_SH="$ST/boot.sh"
-
-# boot_add "comando de aplicação"  -> guarda (sem duplicar) para reaplicar no boot
-boot_add() {
-    mkdir -p "$ST" 2>/dev/null
-    touch "$BOOT_SH" 2>/dev/null
-    grep -qxF "$1" "$BOOT_SH" 2>/dev/null || echo "$1" >> "$BOOT_SH"
-}
-
-# boot_install -> instala o wrapper de boot (só com root). Reaplica $BOOT_SH.
-boot_install() {
-    require_root "persistência no boot" || return 1
-    [ -s "$BOOT_SH" ] || { warn "nada para persistir (aplique algo primeiro)"; return 1; }
-    wrapper="#!/system/bin/sh
-# gerado pelo Pack de Otimização — reaplica os ajustes no boot
-sleep 20
-[ -f '$BOOT_SH' ] && sh '$BOOT_SH' >/dev/null 2>&1"
-    svc="${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh"
-    initd="${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack"
-    if [ -d "${OTM_BOOT_DIR:-/data/adb/service.d}" ]; then
-        printf '%s\n' "$wrapper" > "$svc" 2>/dev/null && chmod 755 "$svc" 2>/dev/null
-        say "persistência no boot instalada ($svc)"
-    elif [ -d "${OTM_BOOT_INITD:-/system/etc/init.d}" ]; then
-        printf '%s\n' "$wrapper" > "$initd" 2>/dev/null && chmod 755 "$initd" 2>/dev/null
-        say "persistência no boot instalada ($initd)"
-    else
-        warn "sem /data/adb/service.d nem init.d — persistência indisponível nesta ROM"
-        return 1
+# bkp_del <tipo> <chave> -> APAGA a chave (settings delete) com reversão.
+# Diferente de bkp_set com valor vazio: `settings put <t> <k> ` não remove a
+# chave e em muitos aparelhos dá erro; o delete devolve o padrão de fábrica.
+bkp_del() {
+    t="$1"; k="$2"
+    otm_v_inc apply
+    old=$(sh_get "settings get $t $k")
+    orig="$(orig_get "$t" "$k")"
+    if [ "$orig" = "__NONE__" ]; then
+        [ -z "$old" ] || [ "$old" = "null" ] && orig="" || orig="$old"
+        orig_set "$t" "$k" "$orig"
     fi
-    say "no boot, ${BOOT_SH} é reaplicado. Remova em: turbo.sh boot off"
-}
-
-boot_uninstall() {
-    rm -f "${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh" "${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack" 2>/dev/null
-    say "persistência no boot removida"
-}
-
-boot_status() {
-    if [ -f "${OTM_BOOT_DIR:-/data/adb/service.d}/otm-pack.sh" ] || [ -f "${OTM_BOOT_INITD:-/system/etc/init.d}/99otm-pack" ]; then
-        printf '  %sboot:%s ATIVO\n' "$C_A" "$C_R"
+    if ! grep -qE "settings (put|delete) $t $k( |$)" "$OFF_SH" 2>/dev/null; then
+        if [ -z "$orig" ]; then
+            printf 'settings delete %s %s\n' "$t" "$k" >> "$OFF_SH"
+        else
+            printf '[ "$(settings get %s %s)" = "null" ] && settings put %s %s %s\n' \
+                "$t" "$k" "$t" "$k" "$orig" >> "$OFF_SH"
+        fi
     else
-        printf '  %sboot:%s inativo\n' "$C_A" "$C_R"
+        # já havia reversão: depois do delete o valor é nulo, então o guard da
+        # linha existente tem de casar com "null" (senão o restore não devolvia)
+        otm_undo_retarget "$t" "$k" null
     fi
-    printf '  %slinhas no perfil de boot:%s %s\n' "$C_A" "$C_R" "$(grep -c . "$BOOT_SH" 2>/dev/null || echo 0)"
+    sh_run "settings delete $t $k" >/dev/null
+    now=$(sh_get "settings get $t $k")
+    if [ -z "$now" ] || [ "$now" = "null" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b %s %s apagado (padrão)\n' "$C_G" "$C_R" "$t" "$k"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s %s nao apagou (lido: %s)\n' "$C_RD" "$C_R" "$t" "$k" "$now"
+    fi
+}
+
+# --- ActivityManager constants ------------------------------------------------
+# am_constants_merge <k=v> [k=v...] -> string de activity_manager_constants com as
+# chaves atualizadas, PRESERVANDO as que já estavam lá. O `settings put` nessa
+# chave substitui a string inteira: gravar só "max_cached_processes=4" apagava o
+# max_phantom_processes e qualquer outro ajuste já presente no aparelho.
+am_constants_merge() {
+    cur="$(sh_get 'settings get global activity_manager_constants')"
+    case "$cur" in '' | null) cur="" ;; esac
+    for kv in "$@"; do
+        k="${kv%%=*}"
+        rest="$(printf '%s' "$cur" | tr ',' '\n' | grep -v "^$k=" | tr '\n' ',' | sed 's/,$//')"
+        cur="${rest:+$rest,}$kv"
+    done
+    printf '%s' "$cur"
+}
+
+# am_set <k=v> [k=v...] -> aplica as constantes mesclando com o que já existe
+am_set() { bkp_set global activity_manager_constants "$(am_constants_merge "$@")"; }
+
+# --- limite de processos em segundo plano -------------------------------------
+# O "Limite de processos em segundo plano" das Opções do desenvolvedor NÃO lê o
+# setting global activity_manager_constants. No Android 10+ a plataforma lê
+# `device_config activity_manager max_cached_processes` (namespace
+# activity_manager) e o Dev Options lê um override interno
+# (IActivityManager.setProcessLimit). Era por isso que o pack gravava
+# max_cached_processes no setting e o painel do Android continuava em "Padrão":
+# a string era lida, mas a chave não era usada (MAX_CACHED_PROCESSES é um
+# recurso do sistema, não um campo do parser). Aqui escrevemos nos DOIS lugares
+# (o setting fica para Androids antigos e para não quebrar quem já lê de lá) e
+# lemos de volta o valor REAL.
+OTM_PROC_NS="activity_manager"
+OTM_PROC_KEY="max_cached_processes"
+
+# proc_limit_set <n>  -> n = 1..32 (0 ou "padrao" volta ao padrão de fábrica)
+proc_limit_set() {
+    n="$1"
+    bkp_begin
+    case "$n" in
+        padrao|default|0)
+            otm_v_inc apply
+            bkp_raw "device_config delete $OTM_PROC_NS $OTM_PROC_KEY"
+            sh_run "device_config delete $OTM_PROC_NS $OTM_PROC_KEY" >/dev/null 2>&1
+            am_set max_cached_processes=0
+            say "limite de processos: padrão do sistema"
+            ;;
+        *[!0-9]*|'')
+            err "uso: proc_limit <1..32|padrao>"; return 1 ;;
+        *)
+            [ "$n" -lt 1 ] && n=1
+            [ "$n" -gt 32 ] && n=32
+            otm_v_inc apply
+            bkp_raw "device_config delete $OTM_PROC_NS $OTM_PROC_KEY"
+            sh_run "device_config put $OTM_PROC_NS $OTM_PROC_KEY $n" >/dev/null 2>&1
+            # mantém o setting em sincronia (Androids antigos / quem lê de lá)
+            am_set "max_cached_processes=$n"
+            got="$(sh_get "device_config get $OTM_PROC_NS $OTM_PROC_KEY")"
+            if [ "$got" = "$n" ]; then
+                otm_v_inc changed
+                printf '   %bOK%b limite de processos em segundo plano = %s\n' "$C_G" "$C_R" "$n"
+            else
+                otm_v_inc failed
+                printf '   %bX%b limite não pegou (lido: %s)\n' "$C_RD" "$C_R" "${got:-vazio}"
+            fi
+            ;;
+    esac
+}
+
+# proc_limit_get -> valor REAL do limite (número, ou "padrão" se não houver)
+proc_limit_get() {
+    v="$(sh_get "device_config get $OTM_PROC_NS $OTM_PROC_KEY")"
+    case "$v" in
+        ''|null)
+            # cai para o setting (Androids antigos) e, por fim, para o dumpsys
+            s="$(sh_get 'settings get global activity_manager_constants' \
+                | tr ',' '\n' | grep "^$OTM_PROC_KEY=" | head -1 | cut -d= -f2)"
+            case "$s" in ''|0|null) v="$(sh_get 'dumpsys activity settings' \
+                | awk -F= '/^ *CUR_MAX_CACHED_PROCESSES=/{print $2; exit}' | tr -d ' ')";; *) v="$s" ;; esac
+            ;;
+    esac
+    case "$v" in ''|null|0) printf 'padrão' ;; *) printf '%s' "$v" ;; esac
+}
+
+# --- sysctl com verificação e reversão ----------------------------------------
+# otm_sysctl <chave> <valor> -> escreve, LÊ DE VOLTA e guarda o valor antigo.
+# Nem todo kernel aceita toda chave (BBR, ECN, low latency): sem ler de volta, o
+# script "aplicaria" no escuro. Espaços em valores de lista (tcp_rmem) contam
+# como iguais mesmo com tabulação/espaço diferente.
+otm_sysctl() {
+    k="$1"; v="$2"
+    otm_v_inc apply
+    old="$(sh_get "sysctl -n $k")"
+    [ -n "$old" ] && bkp_raw "sysctl -w $k='$old'"
+    sh_run "sysctl -w $k='$v'" >/dev/null
+    now="$(sh_get "sysctl -n $k")"
+    n_now="$(printf '%s' "$now" | tr -s ' \t' ' ' | sed 's/^ *//;s/ *$//')"
+    n_want="$(printf '%s' "$v" | tr -s ' \t' ' ' | sed 's/^ *//;s/ *$//')"
+    if [ "$n_now" = "$n_want" ]; then
+        otm_v_inc changed
+        printf '   %bOK%b %s = %s\n' "$C_G" "$C_R" "$k" "$v"
+    else
+        otm_v_inc failed
+        printf '   %bX%b %s nao mudou (lido: %s)\n' "$C_RD" "$C_R" "$k" "${now:-vazio}"
+    fi
 }
 
 # --- RAM: leitura e liberação real --------------------------------------------
@@ -285,6 +636,111 @@ otm_meminfo() {
 otm_ram_livre_mb() {
     v="$(otm_meminfo MemAvailable)"
     [ -n "$v" ] && echo $((v / 1024))
+}
+
+# otm_fg_pkg -> pacote do app em PRIMEIRO PLANO (o que está na tela agora).
+# Vazio quando não dá para ler. Usado para nunca fechar o que o usuário está
+# usando: o jogo aberto, o próprio painel, o app do pack.
+otm_fg_pkg() {
+    d="$(sh_get 'dumpsys activity activities' 2>/dev/null)"
+    [ -n "$d" ] || d="$(sh_get 'dumpsys window windows' 2>/dev/null)"
+    [ -n "$d" ] || d="$(sh_get 'dumpsys window' 2>/dev/null)"
+    p="$(otm_echo "$d" | sed -n 's/.*mResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*topResumedActivity.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mFocusedApp.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    # o formato da linha muda entre versões do Android (mCurrentFocus usa o
+    # ActivityRecord sem as chaves, ex.: "mCurrentFocus=Window{... u0 pkg/act}").
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mCurrentFocus.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    [ -z "$p" ] && p="$(otm_echo "$d" | sed -n 's/.*mFocusedWindow.*[ {]\([A-Za-z0-9_.]*\)\/.*/\1/p' | head -1)"
+    printf '%s' "$p"
+}
+
+# --- jogo escolhido (Modo Competitivo) ---------------------------------------
+# O painel manda o pacote; sem escolha salva, cai no Free Fire. Fica aqui (e não
+# no adb-tweaks.sh) porque o game-per-app.sh também precisa do padrão: era o
+# único lugar que definia isso e o "auto" do flutuante falhava sem escolha.
+GAME_ST="$ST/game"
+mkdir -p "$GAME_ST" 2>/dev/null
+GAME_PKG_FILE="$GAME_ST/pkg"
+GAME_PKG_DEFAULT="com.dts.freefireth"
+
+game_pkg_saved() { [ -f "$GAME_PKG_FILE" ] && head -1 "$GAME_PKG_FILE" 2>/dev/null; }
+game_pkg_save()  { printf '%s\n' "$1" > "$GAME_PKG_FILE" 2>/dev/null; }
+
+otm_valid_game_pkg() {
+    case "$1" in
+        ''|*[!A-Za-z0-9._]*) return 1 ;;
+        *.*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# otm_fps_layer [pkg] -> camada do SurfaceFlinger onde o app desenha.
+# Sem o pacote, usa o app em PRIMEIRO PLANO. Vazio quando não dá para saber.
+# O jogo desenha numa SurfaceView; ela vem primeiro na preferência porque é ali
+# que os frames do jogo são apresentados (a camada do app pode ter 0 frames).
+otm_fps_layer() {
+    _p="${1:-}"
+    [ -n "$_p" ] || _p="$(otm_fg_pkg)"
+    [ -n "$_p" ] || return 0
+    _ls="$(sh_get 'dumpsys SurfaceFlinger --list' 2>/dev/null | grep -v '^$')"
+    [ -n "$_ls" ] || return 0
+    _pick="$(otm_echo "$_ls" | grep -F "$_p" | grep -F 'SurfaceView[' | head -1)"
+    [ -z "$_pick" ] && _pick="$(otm_echo "$_ls" | grep -F "$_p" | grep -viE 'background|dim layer|cursor|scrim' | head -1)"
+    [ -z "$_pick" ] && _pick="$(otm_echo "$_ls" | grep -F "$_p" | head -1)"
+    printf '%s' "$_pick"
+}
+
+# otm_fps_measure <camada> -> "fps<TAB>frames<TAB>janela(s)".
+# O FPS sai do carimbo de apresentação REAL de cada frame (2ª coluna de
+# `dumpsys SurfaceFlinger --latency`): fps = (n-1) / (último - primeiro). O
+# buffer guarda os últimos ~127 frames, ou seja, ~1-2 s de jogo.
+# A 1ª linha da saída é o período de vsync, não um frame — por isso o filtro
+# por NF<3. Valores-sentinela (0 e INT64_MAX) são slots vazios do buffer.
+otm_fps_measure() {
+    _l="$1"
+    [ -n "$_l" ] || return 0
+    _raw="$(sh_get "dumpsys SurfaceFlinger --latency '$_l'" 2>/dev/null)"
+    [ -n "$_raw" ] || return 0
+    otm_echo "$_raw" | awk '
+        NF < 3 { next }
+        {
+            a = $2 + 0
+            if (a <= 0 || a >= 9223372036854775807) next
+            if (n == 0) first = a
+            last = a
+            n++
+        }
+        END {
+            if (n < 2) exit
+            d = last - first
+            if (d <= 0) exit
+            printf "%d\t%d\t%.1f", int((n - 1) * 1000000000 / d + 0.5), n, d / 1000000000
+        }'
+}
+
+# otm_fps_now [pkg] -> FPS real do app (vazio quando não dá para medir).
+otm_fps_now() {
+    _l="$(otm_fps_layer "${1:-}")"
+    [ -n "$_l" ] || return 0
+    otm_fps_measure "$_l" | cut -f1
+}
+
+# otm_keep_list -> tudo que a limpeza NUNCA deve encerrar, separado por espaço:
+# o jogo escolhido (Modo Competitivo), os protegidos no anti-relog, o app do
+# pack e o que está em primeiro plano agora. É a lista que o clean/ram-boost usa.
+otm_keep_list() {
+    k=""
+    [ -s "$ST/game/pkg" ] && k="$k $(tr '\n' ' ' < "$ST/game/pkg")"
+    [ -s "$ST/keepalive/apps" ] && k="$k $(tr '\n' ' ' < "$ST/keepalive/apps")"
+    # exceções do gerenciador de processos ("X app não vai encerrar"): valem para
+    # o encerrar-todos do flutuante E para o clean/ram-boost/game-clean.
+    [ -s "$ST/procmgr/keep" ] && k="$k $(tr '\n' ' ' < "$ST/procmgr/keep")"
+    fg="$(otm_fg_pkg)"
+    [ -n "$fg" ] && k="$k $fg"
+    # jogos de FPS conhecidos: nunca encerrar (o usuário pode estar no meio da partida)
+    k="$k com.dts.freefireth com.dts.freefiremax com.activision.callofduty.shooter com.tencent.ig com.pubg.imobile com.garena.game.kgth com.miHoYo.GenshinImpact com.epicgames.fortnite com.riotgames.league.wildrift com.mobile.legends"
+    printf '%s' "$k" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' '
 }
 
 # otm_bg_kill <poupados...> -> encerra apps de 3º plano, poupando os citados.
@@ -307,17 +763,6 @@ otm_cache_trim() {
     printf '%s' "$out" | awk '/space free/{print $1; exit}'
 }
 
-# otm_drop_caches -> manda o kernel soltar pagecache/dentries/inodes (root)
-otm_drop_caches() {
-    sh_ok || return 1
-    if [ -w /proc/sys/vm/drop_caches ]; then
-        sh_run 'echo 3 > /proc/sys/vm/drop_caches' >/dev/null 2>&1
-        return 0
-    fi
-    sh_run 'sync' >/dev/null 2>&1
-    return 1
-}
-
 # otm_temp -> temperatura em °C da melhor zona disponível (vazio se não der)
 otm_temp() {
     for z in /sys/class/thermal/thermal_zone*; do
@@ -330,7 +775,7 @@ otm_temp() {
         echo "$v"
         return 0
     done
-    v="$(sh_get 'dumpsys battery' | awk -F': ' '/ temperature:/{print $2}')"
+    v="$(otm_batt_get temperature)"
     case "$v" in '' | *[!0-9]*) return 0 ;; esac
     echo "$((v / 10))"
 }

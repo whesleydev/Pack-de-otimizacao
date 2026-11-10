@@ -209,11 +209,20 @@ otm_refresh_now() {
         if [ -z "$_r" ]; then
             _id="$(otm_echo "$_out" | grep -m1 -oE 'modeId[ =:]+[0-9]+' | grep -oE '[0-9]+$')"
             if [ -n "$_id" ]; then
-                _r="$(otm_echo "$_out" | awk -v id="$_id" '
-                    $0 ~ ("modeId[ =:]+" id "([^0-9]|$)") {
-                        if (match($0, /@[0-9.]+/))        { print substr($0, RSTART+1, RLENGTH-1); exit }
-                        if (match($0, /fps=[0-9.]+/))      { print substr($0, RSTART+4, RLENGTH-4); exit }
-                    }')"
+                # Pega o fps do modo cujo id casa — e SÓ dele. Antes o awk casava
+                # a linha inteira do DisplayDeviceInfo e pegava o PRIMEIRO `fps=`
+                # (o modo 0, quase sempre 60), então num aparelho de 120 Hz com o
+                # modo ativo em 120 o monitor mostrava 60. O `[^}]*` prende o fps
+                # dentro do mesmo modo `{id=N, …, fps=X}`.
+                _r="$(otm_echo "$_out" \
+                    | grep -oE "id=$_id,[^}]*fps=[0-9.]+" \
+                    | grep -oE 'fps=[0-9.]+' | head -1 | cut -d= -f2)"
+                # formatos antigos: "1080x2400@120" no lugar de "fps=120"
+                if [ -z "$_r" ]; then
+                    _r="$(otm_echo "$_out" \
+                        | grep -oE "[0-9]+x[0-9]+@[0-9.]+[^}]*" \
+                        | grep -oE "@[0-9.]+" | head -1 | cut -c2-)"
+                fi
             fi
         fi
     fi
