@@ -3,6 +3,18 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.59.1] - 2026-11-11
+
+### Corrigido
+- **O 3º caminho (IA) ficava com metade da largura e sobrava espaço vazio.** Os
+  três caminhos agora são 2 em cima e o de baixo (IA) fecha a linha inteira, com
+  o texto à esquerda e as ações à direita; no celular os três empilham.
+- **Botões repetidos na aba Geral.** "Aplicar o pack recomendado" e "Otimizador
+  inteligente" saíram da categoria Geral (já tinham botão no card dos três
+  caminhos da Home). As ações continuam no catálogo e no card da Home.
+- **Acesso à segurança num só lugar.** Salvar/restaurar configurações, snapshot
+  e "Reverter TUDO" agora ficam no card "Segurança e reversão" na aba Geral.
+
 ## [2.59.0] - 2026-11-10
 
 ### Adicionado
@@ -32,14 +44,6 @@ Versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `companion object` na mesma classe (um deles com a tabela das zonas térmicas),
   o que quebrava a compilação do Kotlin. As duas tabelas foram fundidas num
   único `companion object`.
-- **O 3º caminho (IA) ficava com metade da largura e sobrava espaço vazio.** Os
-  três caminhos agora são 2 em cima e o de baixo (IA) fecha a linha inteira, com
-  o texto à esquerda e as ações à direita; no celular os três empilham.
-- **Botões repetidos na aba Geral.** "Aplicar o pack recomendado" e "Otimizador
-  inteligente" saíram da categoria Geral (já tinham botão no card dos três
-  caminhos da Home). As ações continuam no catálogo e no card da Home.
-- **Acesso à segurança num só lugar.** Salvar/restaurar configurações, snapshot
-  e "Reverter TUDO" agora ficam no card "Segurança e reversão" na aba Geral.
 
 ## [2.57.1] - 2026-11-07
 
