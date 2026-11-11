@@ -228,6 +228,14 @@ sh scripts/device-profile.sh    # perfil do aparelho (SoC/GPU)
 ## Convenções
 
 - Shell POSIX (`#!/system/bin/sh`); roda em Android, então evite bashisms.
+- **`awk`: cuidado com builtins do `gawk`.** O Android usa `mawk` (ou busybox), mas o
+  CI roda em Ubuntu, onde `awk` é **gawk**. Nome de variável que é builtin do gawk
+  aborta o programa lá e passa aqui — foi o que derrubou 5 testes da IA (`load` como
+  variável; o gawk responde `cannot use gawk builtin 'load' as variable name`). Evite
+  como nome de variável (inclusive em `-v`): `load`, `and`, `or`, `xor`, `compl`,
+  `lshift`, `rshift`, `asort`, `asorti`, `gensub`, `patsplit`, `strtonum`, `systime`,
+  `strftime`, `mktime`, `isarray`, `typeof`. Antes de subir, rode a suíte com o awk do
+  CI: `PATH=/tmp/gawkbin:$PATH sh tests/run.sh` (com `ln -sf /usr/bin/gawk /tmp/gawkbin/awk`).
 - Transporte por `scripts/common.sh`: `OTM_MODE=adb|usb|rish|su|local` (auto-detectado).
   `usb` = `adb shell` no 1º aparelho do cabo (sem parear); `adb` = endereço fixo `OTM_ADB_SERIAL`.
   Quando o processo **já nasce privilegiado** (o app roda os scripts pelo Shizuku/ADB, uid
