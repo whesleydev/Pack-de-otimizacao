@@ -421,7 +421,10 @@ section[data-g] .head{animation:otmFade .3s both}
 .now b{color:var(--ink)}
 
 /* ---- três caminhos de otimização (card da Home) --------------------------- */
-.trio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:14px}
+.trio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+/* o 3º caminho (IA) fecha a linha ocupando toda a largura */
+.trio-card:last-child{grid-column:1/-1}
+@media (max-width:560px){.trio-grid{grid-template-columns:1fr}}
 .trio-card{position:relative;display:flex;flex-direction:column;gap:9px;padding:16px;
   border-radius:var(--r);border:1px solid var(--line-strong);background:var(--glass-2)}
 .trio-card h4{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;display:flex;
@@ -454,6 +457,13 @@ section[data-g] .head{animation:otmFade .3s both}
   background:color-mix(in srgb,var(--accent) 10%,var(--glass-2))}
 .trio-ia-row{display:flex;flex-direction:column;gap:7px;margin-top:auto}
 .trio-ia-row .trio-btn{margin-top:0}
+/* no card largo (linha inteira), o texto fica à esquerda e as ações à direita */
+@media (min-width:561px){
+  .trio-card--ia{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,300px);
+    gap:9px 26px;align-content:start;align-items:start}
+  .trio-card--ia .trio-ico,.trio-card--ia h4,.trio-card--ia p,.trio-card--ia .trio-list{grid-column:1}
+  .trio-card--ia .trio-ia-row{grid-column:2;grid-row:1/span 4;margin-top:0;justify-content:center;align-self:center}
+}
 .trio-mini{border:1px solid var(--line-strong);background:var(--glass-2);color:var(--ink);
   border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;cursor:pointer;
   transition:border-color .15s ease,transform .12s ease}
@@ -1294,16 +1304,6 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
                         aria-label="O que faz: <?= htmlspecialchars($a['label'], ENT_QUOTES) ?>" title="O que isso faz?">?</button>
               </div>
               <?php if (!empty($a['desc'])): ?><p><?= htmlspecialchars($a['desc']) ?></p><?php endif; ?>
-              <?php if ($a['id'] === 'smart.auto'): ?>
-                <p class="sub" style="margin:12px 0 6px">Pode demorar alguns minutos: ele mede e compara as opções no seu aparelho para achar o melhor.</p>
-                <div class="hub-sub-t">Segurança</div>
-                <div class="hub-grid" role="group" aria-label="Salvar e restaurar configurações">
-                  <button class="hbtn" type="button" data-hub="backup.export"><span class="opt-t">Salvar configurações</span><span class="opt-s">arquivo seguro no aparelho</span></button>
-                  <button class="hbtn" type="button" data-hub="backup.import"><span class="opt-t">Restaurar configurações</span><span class="opt-s">volta ao que foi salvo</span></button>
-                  <button class="hbtn" type="button" data-hub="snapshot_save"><span class="opt-t">Salvar snapshot</span><span class="opt-s">ponto de retorno</span></button>
-                  <button class="hbtn" type="button" data-hub="restore_all"><span class="opt-t">Reverter TUDO</span><span class="opt-s">estado de fábrica</span></button>
-                </div>
-              <?php endif; ?>
               <?php if (!empty($a['params'])): ?>
                 <div class="fields">
                   <?php foreach ($a['params'] as $p):
@@ -1360,6 +1360,21 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
               </div>
             </article>
           <?php endforeach; ?>
+          <?php if ($g === 'Geral'): ?>
+            <article class="card" data-security-card style="--i:2">
+              <div class="row">
+                <h3>Segurança e reversão</h3>
+                <span class="chip safe">seguro</span>
+              </div>
+              <p>Salve um ponto de retorno antes de mexer e volte atrás quando quiser. Vale para tudo o que o pack faz.</p>
+              <div class="hub-grid" role="group" aria-label="Salvar, restaurar e reverter">
+                <button class="hbtn" type="button" data-hub="backup.export"><span class="opt-t">Salvar configurações</span><span class="opt-s">arquivo seguro no aparelho</span></button>
+                <button class="hbtn" type="button" data-hub="backup.import"><span class="opt-t">Restaurar configurações</span><span class="opt-s">volta ao que foi salvo</span></button>
+                <button class="hbtn" type="button" data-hub="snapshot_save"><span class="opt-t">Salvar snapshot</span><span class="opt-s">ponto de retorno</span></button>
+                <button class="hbtn" type="button" data-hub="restore_all"><span class="opt-t">Reverter TUDO</span><span class="opt-s">estado de fábrica</span></button>
+              </div>
+            </article>
+          <?php endif; ?>
           <?php foreach (($togglesByGroup[$g] ?? []) as $tid => $tg): ?>
             <article class="card card-toggle" data-toggle="<?= htmlspecialchars($tid, ENT_QUOTES) ?>"
                      data-on="<?= htmlspecialchars($tg['on'], ENT_QUOTES) ?>"

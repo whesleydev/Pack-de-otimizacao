@@ -1875,6 +1875,18 @@ t_trio_home() {
     # CSS do card presente nos dois
     grep -q '\.trio-grid{' "$w" && grep -q '\.trio-grid{' "$a" \
         && ok "CSS dos 3 caminhos nos dois painéis" || bad "falta o CSS dos 3 caminhos"
+    # layout: 2 em cima e o 3º (IA) cobrindo a linha inteira, sem espaço vazio
+    for f in "$w" "$a"; do
+        grep -q '\.trio-card:last-child{grid-column:1/-1}' "$f" \
+            && ok "$(basename "$f"): o card de baixo cobre a largura toda" \
+            || bad "$(basename "$f"): card de baixo com largura parcial (espaço vazio)"
+        grep -q '\.trio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))' "$f" \
+            && ok "$(basename "$f"): 2 colunas em cima" \
+            || bad "$(basename "$f"): grade dos caminhos não é 2 colunas"
+        grep -q '@media (max-width:560px){.trio-grid{grid-template-columns:1fr}}' "$f" \
+            && ok "$(basename "$f"): 1 coluna no celular" \
+            || bad "$(basename "$f"): sem o empilhamento no celular"
+    done
 
     # as ações que os botões chamam existem de verdade no catálogo
     php -r 'require "'"$ROOT"'/web/lib.php"; $A = otm_actions();
@@ -2890,14 +2902,17 @@ t_smart_opt() {
     assert_contains "$TMP/so_risk" "cuidado" "aplicar o otimizador é 'cuidado' e pede confirmação"
     grep -q '"smart.auto"' "$ROOT/app/src/main/assets/panel/actions.json" \
         && ok "app: actions.json tem o otimizador" || bad "app: actions.json sem o otimizador"
+    # o otimizador NÃO tem mais card solto na aba Geral: o botão dele mora no
+    # card dos três caminhos da Home (data-trio-go="smart.auto").
     grep -q 'data-id="smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
-        && ok "app: card do otimizador no painel" || bad "app: painel sem o card do otimizador"
-    # o painel do app precisa do objeto ACTIONS com a ação nova (senão o card fica mudo)
+        && bad "app: ainda tem card solto do otimizador em Geral" \
+        || ok "app: otimizador sem card solto (só no card da Home)"
+    grep -q 'data-trio-go="smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app: otimizador no card dos 3 caminhos da Home" \
+        || bad "app: otimizador sumiu da Home"
+    # o painel do app precisa do objeto ACTIONS com a ação nova (senão o botão fica mudo)
     grep -q '"smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
         && ok "app: ACTIONS embutido tem o otimizador" || bad "app: ACTIONS sem o otimizador"
-    # nome único pedido: "Otimizador inteligente" (sem sufixo de sub-ação)
-    grep -q '<h3>Otimizador inteligente</h3>' "$ROOT/app/src/main/assets/panel/index.html" \
-        && ok "app: nome unico \"Otimizador inteligente\"" || bad "app: nome do card mudou"
     grep -q 'data-qa="smart.auto"' "$ROOT/app/src/main/assets/panel/index.html" \
         && grep -q 'data-qa="smart.auto"' "$ROOT/web/index.php" \
         && ok "botao unico na Home dos dois paineis" || bad "botao da Home divergiu"
@@ -3397,12 +3412,23 @@ t_smart_card_single() {
         grep -q 'data-p="perfil"' "$f" \
             && bad "$(basename "$f"): ainda tem select de perfil" \
             || ok "$(basename "$f"): sem select de perfil (decide sozinho)"
-        # os botões de segurança ficaram
+        # os botões de segurança ficaram (agora no card "Segurança e reversão")
         grep -q 'data-hub="backup.export"' "$f" && grep -q 'data-hub="backup.import"' "$f" \
             && ok "$(basename "$f"): salvar/restaurar presentes" || bad "$(basename "$f"): sem backup"
-        # e o aviso de que pode demorar
+        # e o aviso de que pode demorar (no botão da Home, que roda o otimizador)
         grep -q 'demorar' "$f" && ok "$(basename "$f"): avisa que pode demorar" \
             || bad "$(basename "$f"): sem aviso de demora"
+        # o otimizador saiu da aba Geral: o único acesso é o card dos 3 caminhos
+        grep -q 'data-id="smart.auto"' "$f" \
+            && bad "$(basename "$f"): card solto do otimizador voltou em Geral" \
+            || ok "$(basename "$f"): otimizador sem card solto em Geral"
+        grep -q 'data-id="apply"' "$f" \
+            && bad "$(basename "$f"): card solto do pack recomendado voltou em Geral" \
+            || ok "$(basename "$f"): pack recomendado sem card solto em Geral"
+        # o card de segurança reúne as 4 ações de recuperação num lugar só
+        grep -q 'data-security-card' "$f" \
+            && ok "$(basename "$f"): card de Segurança e reversão presente" \
+            || bad "$(basename "$f"): sem o card de Segurança"
     done
     # a ação virou comando único, com confirmação e 'cuidado'
     php -r 'require "'"$ROOT"'/web/lib.php"; $a=otm_action("smart.auto");

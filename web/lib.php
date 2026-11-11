@@ -449,11 +449,14 @@ function otm_actions(): array {
     };
 
     // ----- Rápido -----
-    $add(['id' => 'apply', 'group' => 'Geral', 'label' => 'Aplicar o pack recomendado',
+    // Sem card próprio na aba Geral: os dois já têm botão no card dos três
+    // caminhos da Home (data-trio-go="apply" / "smart.auto"). O id continua no
+    // catálogo (ACTIONS) — é o que o JS usa para rodar a ação.
+    $add(['id' => 'apply', 'group' => 'Geral', 'card' => false, 'label' => 'Aplicar o pack recomendado',
           'desc' => 'O "faz tudo" para novato: performance, RAM, GPU, rede, latência, jogo, bateria e touch.',
           'help' => 'É o botão para quem comprou o app e não sabe o que usar: aplica de uma vez tudo o que é seguro e não precisa de root. Em ordem: performance e animações mais rápidas, GPU na interface, RAM ajustada, DNS privado e buffers de rede, ajustes de latência/ping (BBR, low latency, ECN), Wi-Fi, modo de jogo, anti-relog do jogo, silêncio de notificações, tela, fluidez, limpeza de cache/RAM e, no fim, o limite de processos em segundo plano (4 apps) — que é o que sobra mais RAM para o jogo. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Depois de aplicar, se quiser mexer na mira, use a aba "Display & Touch" (que gera a sensi do seu aparelho) e, na próxima vez que abrir o app, use o "Clean phone" no dia a dia. Dá para desfazer em "Reverter TUDO".',
           'argv' => ['adb-tweaks.sh', 'all'], 'confirm' => true, 'timeout' => 420]);
-    $add(['id' => 'smart.auto', 'group' => 'Geral', 'label' => 'Otimizador inteligente',
+    $add(['id' => 'smart.auto', 'group' => 'Geral', 'card' => false, 'label' => 'Otimizador inteligente',
           'desc' => 'Um botão só: analisa, decide, aplica e testa o que é melhor para ESTE aparelho.',
           'help' => 'Um botão só — o resto acontece por dentro, sem você escolher nada. Ele LÊ o aparelho inteiro (modelo, processador, GPU, núcleos e frequências, RAM, taxa de tela, armazenamento, térmico, bateria, zram, MGLRU, rede, governador e pressão de memória), calcula a nota e a classe, salva um snapshot de segurança, decide item por item o que faz sentido para AQUELE modelo e aplica. Depois MEDE antes x depois e ainda TESTA as combinações plausíveis (ex.: Vulkan x GL, a maior taxa x 90Hz) para ficar com a que der o melhor resultado. Cada teste fica guardado numa memória por aparelho: da próxima vez ele já começa pela combinação que venceu aqui e vai melhorando a cada execução. O debloat fica de fora de propósito (remover app de fábrica é decisão sua, tem aba própria). Pode demorar alguns minutos — é o tempo de medir e comparar no seu aparelho. Se você tem um jogo escolhido no Modo Competitivo, ele também liga o anti-relog. No fim mostra UM resultado. É tudo reversível em "Reverter TUDO".',
           'argv' => ['smart-opt.sh', 'auto'], 'risk' => 'careful', 'confirm' => true,
