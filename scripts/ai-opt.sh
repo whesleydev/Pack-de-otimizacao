@@ -79,9 +79,11 @@ ai_score() {
     ram="$(ai_val "$1" ram_livre_mb)"
     hz="$(ai_val "$1" refresh_hz)"
     tmp="$(ai_val "$1" bat_temp_c)"
-    load="$(ai_val "$1" loadavg)"
-    awk -v ram="${ram:-0}" -v hz="${hz:-0}" -v tmp="${tmp:-0}" -v load="${load:-0}" 'BEGIN{
-        printf "%d", ram + hz * 10 - tmp * 10 - load * 100;
+    ld="$(ai_val "$1" loadavg)"
+    # `load` é builtin do gawk: usar como nome de variável aborta o programa no
+    # awk do Ubuntu/CI (no mawk do aparelho passa). Por isso a variável é `ld`.
+    awk -v ram="${ram:-0}" -v hz="${hz:-0}" -v tmp="${tmp:-0}" -v ld="${ld:-0}" 'BEGIN{
+        printf "%d", ram + hz * 10 - tmp * 10 - ld * 100;
     }'
 }
 

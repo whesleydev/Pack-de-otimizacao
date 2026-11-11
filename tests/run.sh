@@ -5092,8 +5092,12 @@ t_ai_opt() {
     grep -q 'ai_reward' "$f" && ok "calcula recompensa (ganho medido)" || bad "sem recompensa"
     grep -q 'ai_update' "$f" && ok "atualiza o modelo (fecha o ciclo)" || bad "não atualiza o modelo"
     # a função-objetivo penaliza calor e load: não é "ficou rápido e fervendo"
-    grep -q 'tmp \* 10' "$f" && grep -q 'load \* 100' "$f" \
+    grep -q 'tmp \* 10' "$f" && grep -q 'ld \* 100' "$f" \
         && ok "recompensa pune temperatura e load" || bad "recompensa ignora calor/load"
+    # `load` é builtin do gawk: como nome de variável o awk do CI aborta e a
+    # recompensa sai vazia (o mawk do aparelho aceitaria). Tem de ser outro nome.
+    ! grep -qE '\-v load=' "$f" && ok "não usa 'load' (builtin do gawk) como variável" \
+        || bad "usa 'load' como variável do awk (quebra no gawk)"
     # explora o que não conhece (UCB), sem depender de nuvem
     grep -q 'sqrt(log' "$f" && ok "exploração UCB (testa o desconhecido)" || bad "sem exploração"
     grep -q 'nunca tentada' "$f" && ok "ação nunca tentada é explorada primeiro" || bad "sem prioridade de exploração"
@@ -5374,17 +5378,21 @@ t_serve_index() {
     printf '\n  # serve/index.html: download aponta para a versao mais nova\n'
     local s="$ROOT/serve"
     [ -f "$s/index.html" ] && ok "pagina de downloads existe" || { bad "sem serve/index.html"; return; }
-    # a versao marcada RECOMENDADO precisa ser a maior entre os .apk presentes
+    # a versao marcada RECOMENDADO precisa ser a maior entre os .apk presentes.
+    # Os .apk sao gitignored (nao vao para o clone/CI), mas o .sha256 de cada um
+    # e versionado: e dele que a lista sai, para o teste valer tambem sem os APKs.
     python3 - "$s" <<'PY' > "$TMP/srv" 2>&1
 import glob, os, re, sys
 s = sys.argv[1]
 def ver(p):
     m = re.search(r'-v(\d[\d.]*)', os.path.basename(p))
     return [int(x) for x in m.group(1).rstrip('.').split('.')] if m else [0]
-apks = glob.glob(os.path.join(s, '*.apk'))
+def lista(pat):
+    return glob.glob(os.path.join(s, pat))
+apks = lista('*.apk') or lista('*.apk.sha256')
 if not apks:
     print('sem apk'); raise SystemExit
-newest = os.path.basename(max(apks, key=ver))
+newest = os.path.basename(max(apks, key=ver)).replace('.sha256', '')
 doc = open(os.path.join(s, 'index.html'), encoding='utf-8').read()
 m = re.search(r'class="card best"[\s\S]*?<strong>([^<]+)</strong>', doc)
 rec = m.group(1) if m else '(sem card best)'
