@@ -3,7 +3,6 @@
     <string name="app_name">Trix</string>
 
     <!-- Game Space -->
-    <string name="gs_eyebrow">TRIX · GAME SPACE</string>
     <string name="gs_title_game">Jogo</string>
     <string name="gs_title_perf">Desempenho</string>
     <string name="gs_title_batt">Bateria</string>
@@ -59,25 +58,13 @@
     <string name="gs_stat_ping">PING</string>
     <string name="gs_stat_batt">BATERIA</string>
 
-    <string name="gs_batt_charging">Carregando</string>
     <string name="gs_batt_discharging">Na bateria</string>
-    <string name="gs_batt_full">Cheia</string>
     <string name="gs_batt_temp_session">Temperatura da sessão</string>
-    <string name="gs_batt_health">Saúde</string>
     <string name="gs_batt_voltage">Voltagem</string>
     <string name="gs_batt_current">Corrente</string>
-    <string name="gs_batt_est">Tempo restante</string>
     <string name="gs_batt_saver">Economia de bateria</string>
     <string name="gs_temp_normal">Normal</string>
     <string name="gs_temp_warm">Morno</string>
     <string name="gs_temp_hot">Quente</string>
-    <string name="gs_temp_cold">Frio</string>
 
-    <string name="gs_need_access">Ative o Shizuku/ADB no painel para mexer aqui.</string>
-    <string name="gs_access_needed">Acesso necessário</string>
-    <string name="gs_checking">Verificando…</string>
-    <string name="gs_applied">Aplicado</string>
-    <string name="gs_failed">Falhou</string>
-    <string name="gs_restart_note">Reinicie o jogo para aplicar.</string>
-    <string name="gs_exit">Sair</string>
 </resources>
