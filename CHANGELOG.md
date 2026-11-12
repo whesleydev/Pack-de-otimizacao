@@ -3,6 +3,16 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.59.3] - 2026-11-12
+
+### Removido
+- **Botões "Flutuante" e "Conectar" do topo do painel.** Ficavam à direita da
+  engrenagem e saíram a pedido. O painel flutuante (overlay) continua sendo
+  ligado pela aba **Flutuante** ("Painel flutuante sobre o jogo") e a conexão
+  continua na tela de acesso (Shizuku / ADB por Wi-Fi / depuração USB), que
+  aparece quando o app abre sem acesso — além do Shizuku, que conecta sozinho
+  quando a permissão já foi dada.
+
 ## [2.59.2] - 2026-11-12
 
 ### Adicionado

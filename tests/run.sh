@@ -860,6 +860,14 @@ t_app_fixes() {
         ok "ícones: painel do app sem emojis"
     fi
     grep -q 'id="btnGear"' "$app" && ok "ícones: engrenagem preservada" || bad "ícones: engrenagem sumiu"
+    # os botões "Flutuante" e "Conectar" saíram do cabeçalho (pedido do dono):
+    # o overlay liga pela aba "Flutuante" e a conexão pela tela cheia/Configs.
+    grep -q 'otmFloat\|otmConnect' "$src/PanelActivity.kt" \
+        && bad "cabeçalho: botões Flutuante/Conectar ainda são injetados" \
+        || ok "cabeçalho: sem os botões Flutuante e Conectar"
+    grep -q 'injectHeaderButtons' "$src/PanelActivity.kt" \
+        && bad "cabeçalho: injectHeaderButtons ainda existe" \
+        || ok "cabeçalho: injeção de botões removida"
     grep -q 'class="stroke"' "$app" && ok "ícones: SVGs profissionais presentes" || bad "ícones: sem SVGs"
     # 9) atualizar sem desinstalar: keystore fixa e assinatura de release
     test -f "$ROOT/keystore/otm-release.jks" \
@@ -4634,25 +4642,6 @@ t_tap_only() {
             && bad "$(basename "$f"): botão de vitalidade ainda usa onclick puro" \
             || ok "$(basename "$f"): botão de vitalidade passa pelo guarda"
     done
-    # o gatilho nativo do app (o botão do cabeçalho) usa o mesmo critério
-    local pa="$ROOT/app/src/main/java/com/otm/pack/PanelActivity.kt"
-    grep -q 'function tapOnly(el, fn)' "$pa" \
-        && ok "app: o botão do cabeçalho (flutuante) usa o mesmo guarda" \
-        || bad "app: cabeçalho sem guarda de toque"
-    grep -q 'pointercancel' "$pa" \
-        && ok "app: o guarda do cabeçalho cancela no arrasto" \
-        || bad "app: guarda do cabeçalho sem pointercancel"
-    grep -q 'pointerup' "$pa" \
-        && ok "app: o guarda do cabeçalho confere a posição no fim do toque" \
-        || bad "app: guarda do cabeçalho não confere o pointerup"
-    if grep -qE "addEventListener\(['\"]pointerleave" "$pa"; then
-        bad "app: guarda do cabeçalho registra pointerleave (mata todo clique válido)"
-    else
-        ok "app: guarda do cabeçalho sem pointerleave no caminho do toque"
-    fi
-    grep -qE "addEventListener\(['\"]scroll['\"], cancel" "$pa" \
-        && ok "app: o guarda do cabeçalho cancela na rolagem" \
-        || bad "app: guarda do cabeçalho não cancela na rolagem"
 }
 
 t_shizuku_reconnect() {
