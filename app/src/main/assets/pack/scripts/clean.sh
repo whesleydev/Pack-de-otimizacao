@@ -5,17 +5,21 @@
 #  Motor único de limpeza: reúne num só lugar o que estava espalhado entre
 #  `adb-tweaks.sh clean`, `turbo.sh trim/killbg`, `ram-boost.sh` e `game-clean.sh`.
 #
-#  Em vez de "matar tudo", trabalha em FASES com o que o aparelho aguenta:
+#  Trabalha em FASES com o que o aparelho aguenta:
 #    fundo  - só libera RAM (encerra 2º plano + poda cache). Nada persistente.
 #    suave  - fundo + suavização (animações, blur, doze leve, trim,
 #             rede móvel e scan Wi-Fi). Reversível.
+#    tudo   - o "Clean Phone" de 1 toque: encerra TUDO (inclusive jogos e
+#             protegidos), poupando só o próprio pack e o que está na tela,
+#             poda cache, corta logs e, com root, solta as caches do kernel e
+#             roda o TRIM. Reversível como o suave.
 #
 #  Nada de número inventado: cada ajuste é lido de volta e contado
 #  (#OTM-RESULT applies/changed/failed). O que não pega aparece como falha.
 #
 #  Uso:
 #     clean.sh scan                 # só lê o que dá para limpar (não mexe)
-#     clean.sh now [fundo|suave]   # limpa/suaviza (padrão: suave)
+#     clean.sh now [fundo|suave|tudo]   # limpa/suaviza (padrão: suave)
 #     clean.sh status               # o que está ativo agora
 #     clean.sh off                  # desfaz a suavização (a limpeza é pontual)
 #
@@ -33,6 +37,12 @@ mkdir -p "$CL_ST" 2>/dev/null
 
 # app do jogo: nunca encerrar no clean (e poupar quem está no anti-relog)
 CL_KEEP="com.dts.freefireth com.dts.freefiremax"
+
+# pacotes que o "tudo" (Clean Phone de 1 toque) nunca encerra: o próprio pack
+# (senão o painel/overlay cairia no meio) e o que está em primeiro plano agora.
+cl_keep_tudo() {
+    printf 'com.otm.pack %s' "$(otm_fg_pkg)"
+}
 
 # =============================================================================
 #  LEITURA (scan / status) - não altera nada
@@ -79,11 +89,11 @@ cl_scan() {
 #  FASE 1 (sempre): liberar RAM de verdade - pontual, sem reverter nada
 # =============================================================================
 cl_free_ram() {
+    keep="$1"
     say "1/2  Liberando RAM (2º plano + cache)"
     before="$(otm_ram_livre_mb)"
     [ -n "$before" ] && say "RAM livre antes: ${before}MB"
 
-    keep="$CL_KEEP $(otm_keep_list)"
     n="$(otm_bg_kill $keep)"
     otm_v_inc apply
     if [ "${n:-0}" -gt 0 ] 2>/dev/null; then otm_v_inc changed; else otm_v_inc failed; fi
@@ -101,6 +111,34 @@ cl_free_ram() {
     after="$(otm_ram_livre_mb)"
     if [ -n "$before" ] && [ -n "$after" ]; then
         say "RAM livre: ${before}MB → ${after}MB (+$((after - before))MB)"
+    fi
+}
+
+# =============================================================================
+#  FASE 1b (tudo): limpezas extras do "Clean Phone" de 1 toque
+#  Best-effort: o que o aparelho não aceitar simplesmente não entra na conta.
+# =============================================================================
+cl_extra_clean() {
+    say "1b/2 Limpezas extras (logs, caches do kernel, TRIM)"
+
+    # corta os logs acumulados: libera RAM do logd e um pouco de disco
+    if sh_run "logcat -b all -c" >/dev/null 2>&1; then
+        otm_v_inc apply; otm_v_inc changed
+        say "logs do sistema limpos"
+    fi
+
+    sh_run "sync" >/dev/null 2>&1
+
+    # caches do kernel: só com root (exige uid 0). Sem root, é simplesmente pulado.
+    if [ "$(sh_get 'id -u')" = "0" ]; then
+        if sh_run "echo 3 > /proc/sys/vm/drop_caches" >/dev/null 2>&1; then
+            otm_v_inc apply; otm_v_inc changed
+            say "caches do kernel liberados (drop_caches)"
+        fi
+        if sh_run "fstrim -v /data" >/dev/null 2>&1; then
+            otm_v_inc apply; otm_v_inc changed
+            say "TRIM do armazenamento rodado"
+        fi
     fi
 }
 
@@ -128,13 +166,20 @@ cl_smooth_noroot() {
 # =============================================================================
 cmd_now() {
     fase="${1:-suave}"
-    case "$fase" in fundo|suave) ;; *) err "fase inválida: $fase (fundo|suave)"; return 1 ;; esac
+    case "$fase" in fundo|suave|tudo) ;; *) err "fase inválida: $fase (fundo|suave|tudo)"; return 1 ;; esac
     require_shell "limpar" || return 1
 
     printf '  %s◆%s  %sCLEAN%s  %s(%s)%s\n' "$C_A" "$C_R" "$C_A" "$C_R" "$C_D" "$fase" "$C_R"
     printf '  %s──────────────────────────────────────────%s\n' "$C_D" "$C_R"
 
-    cl_free_ram
+    if [ "$fase" = "tudo" ]; then
+        # "tudo": encerra TUDO (inclusive o jogo e os protegidos no anti-relog),
+        # poupando só o próprio pack e o que está na tela agora.
+        cl_free_ram "$(cl_keep_tudo)"
+        cl_extra_clean
+    else
+        cl_free_ram "$CL_KEEP $(otm_keep_list)"
+    fi
     [ "$fase" != "fundo" ] && cl_smooth_noroot
 
     printf '%s\n' "$fase" > "$CL_APPLIED"

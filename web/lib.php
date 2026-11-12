@@ -732,9 +732,9 @@ function otm_actions(): array {
           'help' => 'Deixa o sistema manter menos apps na memória para sobrar mais RAM para o jogo. Resultado: menos engasgo em partidas. Trade-off: alternar entre apps fica um pouco mais lento.',
           'argv' => ['adb-tweaks.sh', 'mem', 'gaming']]);
     $add(['id' => 'clean', 'group' => 'Desempenho', 'label' => 'Limpar cache e RAM',
-          'desc' => 'Libera RAM de verdade (fundo + cache) e suaviza a interface.',
-          'help' => 'Motor único de limpeza: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps e libera a memória na hora. Depois aplica uma suavização leve e reversível (animações mais curtas, blur off, doze mais rápido). Nada de seus dados é apagado — só cache. Para reverter a suavização, use "Clean: desfazer suavização".',
-          'argv' => ['adb-tweaks.sh', 'clean']]);
+          'desc' => 'Encerra tudo (menos o próprio app), poda o cache e libera a RAM na hora.',
+          'help' => 'O "Clean Phone" de um toque: encerra TODOS os apps de fundo — inclusive jogos e os que você protegeu no anti-relog — poupando só o próprio app e o que está na tela agora. Depois poda o cache de todos os apps, corta os logs do sistema e, se você tiver root, solta as caches do kernel e roda o TRIM do armazenamento. Nada de seus dados é apagado — só cache e logs. Por fim aplica a suavização leve e reversível (animações 0, blur off, doze rápido, Wi-Fi sem scan). Para reverter a suavização, use "Clean: desfazer suavização".',
+          'argv' => ['adb-tweaks.sh', 'clean', 'tudo']]);
     $add(['id' => 'clean.scan', 'group' => 'Desempenho', 'label' => 'Clean: ver o que dá para limpar',
           'desc' => 'Mostra RAM e espaço livre — sem alterar nada.',
           'help' => 'Só lê o aparelho: quanto de RAM está livre, quanto espaço sobra no armazenamento. Serve para você ver o que a limpeza vai liberar antes de rodar. Não altera nada.',

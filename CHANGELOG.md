@@ -3,6 +3,22 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.59.2] - 2026-11-12
+
+### Adicionado
+- **Clean Phone agora encerra tudo de verdade.** O botão de 1 toque passou a
+  usar a fase `tudo`: fecha TODOS os apps de fundo — inclusive jogos e os que
+  você protegeu no anti-relog — poupando só o próprio app (senão o painel cai)
+  e o que está na tela agora. Antes ele preservava jogos e protegidos.
+- **Limpezas extras no Clean Phone.** Além de encerrar tudo e podar o cache,
+  ele agora corta os logs do sistema (`logcat`) e, quando há root, solta as
+  caches do kernel (`drop_caches`) e roda o TRIM do armazenamento (`fstrim`).
+  Sem root, esses dois últimos são simplesmente pulados.
+
+### Alterado
+- **Texto do botão nos dois painéis** refletindo o comportamento novo: "Encerra
+  tudo, poda o cache e libera a RAM na hora."
+
 ## [2.59.1] - 2026-11-11
 
 ### Corrigido

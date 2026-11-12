@@ -1244,11 +1244,12 @@
         "id": "clean",
         "group": "Desempenho",
         "label": "Limpar cache e RAM",
-        "desc": "Libera RAM de verdade (fundo + cache) e suaviza a interface.",
-        "help": "Motor único de limpeza: encerra os apps que estão rodando atrás (sem tocar no jogo nem nos protegidos no anti-relog), poda o cache de todos os apps e libera a memória na hora. Depois aplica uma suavização leve e reversível (animações mais curtas, blur off, doze mais rápido). Nada de seus dados é apagado — só cache. Para reverter a suavização, use \"Clean: desfazer suavização\".",
+        "desc": "Encerra tudo (menos o próprio app), poda o cache e libera a RAM na hora.",
+        "help": "O \"Clean Phone\" de um toque: encerra TODOS os apps de fundo — inclusive jogos e os que você protegeu no anti-relog — poupando só o próprio app e o que está na tela agora. Depois poda o cache de todos os apps, corta os logs do sistema e, se você tiver root, solta as caches do kernel e roda o TRIM do armazenamento. Nada de seus dados é apagado — só cache e logs. Por fim aplica a suavização leve e reversível (animações 0, blur off, doze rápido, Wi-Fi sem scan). Para reverter a suavização, use \"Clean: desfazer suavização\".",
         "argv": [
             "adb-tweaks.sh",
-            "clean"
+            "clean",
+            "tudo"
         ],
         "params": [],
         "confirm": false,

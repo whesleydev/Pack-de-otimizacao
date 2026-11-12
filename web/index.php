@@ -917,7 +917,7 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
             <div class="hero-txt">
               <span class="hero-kicker">Otimização em 1 toque</span>
               <h2 class="hero-title">Clean Phone</h2>
-              <p class="hero-sub">Libera RAM, limpa cache e alivia o sistema.</p>
+              <p class="hero-sub">Encerra tudo, poda o cache e libera a RAM na hora.</p>
             </div>
           </div>
           <div class="hero-meta">
@@ -931,7 +931,7 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
             <span class="hb-txt">Otimizar agora</span>
             <span class="hb-load" aria-hidden="true"></span>
           </button>
-          <p class="hero-note">Nada é encerrado sem necessidade — o pack ajusta só o que está pesando.</p>
+          <p class="hero-note">Fecha tudo — menos este app e o que está na tela agora. Poda cache, corta logs e, com root, roda o TRIM.</p>
         </div>
       </section>
 

@@ -168,6 +168,12 @@ case "$*" in
 esac
 exec sh -c "$*"
 EOF
+    # logcat: só registra a chamada (o clean corta os logs no modo "tudo")
+    cat > "$TMP/bin/logcat" <<'EOF'
+#!/bin/sh
+[ -n "$TMP_CMD_LOG" ] && echo "logcat $*" >> "$TMP_CMD_LOG"
+exit 0
+EOF
     chmod +x "$TMP/bin/"*
     export TMP_STORE="$TMP/store"
     export PATH="$TMP/bin:$PATH"
@@ -3533,10 +3539,36 @@ t_clean() {
     assert_contains "$TMP_STORE/global.device_idle_constants" "light_after_inactive_to" "clean suave afina o doze"
     assert_contains "$HOME/.packotm/clean/applied" "suave" "clean grava a fase aplicada"
     assert_contains "$TMP/cl_suave" "Clean pronto" "clean conclui com o resumo"
-    # a fase 'normal' (suavização profunda root) saiu: agora só fundo|suave
+    # a fase 'normal' (suavização profunda root) saiu: agora só fundo|suave|tudo
     rm -rf "$HOME/.packotm"
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now normal > "$TMP/cl_normal" 2>&1
     assert_contains "$TMP/cl_normal" "inválida" "clean recusa a fase 'normal' (era root)"
+    # fase 'tudo' (Clean Phone de 1 toque): encerra TUDO, poupa só o pack e a tela
+    rm -rf "$HOME/.packotm"
+    printf 'com.instagram.android' > "$TMP_STORE/fg"        # em primeiro plano agora
+    mkdir -p "$HOME/.packotm/game"; printf 'com.example' > "$HOME/.packotm/game/pkg"
+    mkdir -p "$HOME/.packotm/keepalive"; printf 'com.whatsapp\n' > "$HOME/.packotm/keepalive/apps"
+    : > "$TMP_CMD_LOG"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" now tudo > "$TMP/cl_tudo" 2>&1
+    # fecha jogos e protegidos (o "tudo" é agressivo de propósito)
+    grep -q 'force-stop com.example' "$TMP_CMD_LOG" \
+        && ok "clean tudo encerra o jogo escolhido" || bad "clean tudo poupou o jogo"
+    grep -q 'force-stop com.whatsapp' "$TMP_CMD_LOG" \
+        && ok "clean tudo encerra os protegidos no anti-relog" || bad "clean tudo poupou o anti-relog"
+    # poupa SÓ o próprio pack e o app em primeiro plano
+    grep -q 'force-stop com.instagram.android' "$TMP_CMD_LOG" \
+        && bad "clean tudo fechou o app em primeiro plano" || ok "clean tudo poupa o app em primeiro plano"
+    grep -q 'force-stop com.otm.pack' "$TMP_CMD_LOG" \
+        && bad "clean tudo fechou o próprio app (derrubaria o overlay)" || ok "clean tudo poupa o próprio app"
+    grep -q 'com.otm.pack' "$f" && ok "o pack está na lista de protegidos do modo tudo" \
+        || bad "modo tudo sem o próprio app na proteção"
+    # limpezas extras + suavização
+    grep -q 'logcat -b all -c' "$TMP_CMD_LOG" && ok "clean tudo corta os logs (logcat)" \
+        || bad "clean tudo não cortou os logs"
+    grep -q 'trim-caches' "$TMP_CMD_LOG" && ok "clean tudo poda o cache" || bad "clean tudo sem trim-caches"
+    assert_contains "$TMP_STORE/global.window_animation_scale" "0" "clean tudo também suaviza"
+    assert_contains "$HOME/.packotm/clean/applied" "tudo" "clean grava a fase 'tudo'"
+    rm -f "$TMP_STORE/fg"; rm -rf "$HOME/.packotm/game" "$HOME/.packotm/keepalive"
     # status + off (desfaz a suavização)
     OTM_NO_COLOR=1 OTM_MODE=su sh "$f" status > "$TMP/cl_st" 2>&1
     assert_contains "$TMP/cl_st" "CLEAN" "clean status mostra o resumo"
