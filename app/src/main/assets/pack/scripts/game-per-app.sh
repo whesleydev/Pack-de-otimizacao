@@ -81,7 +81,12 @@ listar() {
     printf '   padrão deste aparelho: %b%s dp%b\n' "$C_A" "$(dpi_padrao_dp)" "$C_R"
     printf '   dpi <largura_dp>   aplica a largura exata (o painel sugere a faixa sã)\n'
     printf '   dpi padrao         volta ao padrão do aparelho\n'
-    printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | dpi <largura_dp> | reset <pkg>\n' "$0"
+    printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | dpi <largura_dp> | res <50-100|native|px WxH|preset n> | reset <pkg>\n' "$0"
+    printf '\n  Resolução do aparelho (renderiza menos pixels, mesma interface):\n'
+    res_presets
+    printf '   %bnative%b    volta à resolução de fábrica\n' "$C_A" "$C_R"
+    printf '   %b50-100%b  escala livre em %% (ex.: res 75)\n' "$C_A" "$C_R"
+    printf '   %bpx WxH%b  tamanho exato (ex.: res px 1280x720)\n' "$C_A" "$C_R"
 }
 
 # _resolver_pkg <pkg|auto> -> define RESOLVED_PKG. "auto" = o jogo escolhido no
@@ -317,6 +322,129 @@ dpi_atual() {
     printf '%s\n' "$_v"
 }
 
+# --- resolução real do aparelho (wm size + wm density juntos) -----------------
+#
+# Reduzir SÓ o `wm size` encolhe a largura em dp e a interface fica MAIOR (menos
+# conteúdo na tela). O objetivo do "resolução do jogo" é render MENOS pixels com
+# a MESMA cara: por isso tamanho E densidade são escalados juntos, e a largura em
+# dp fica igual à do aparelho. O resultado é menos trabalho de GPU por quadro.
+#
+# A resolução é global (mexe no `wm size` do sistema), então a reversão é o
+# `wm size reset`/`wm density reset` — o mesmo caminho que o "Reverter TUDO" usa.
+
+# imprime "px py densidade" do aparelho (físico, não o override)
+_res_dims() {
+    _dims="$(_dpi_dims)"
+    _px="$(echo "$_dims" | cut -d' ' -f1)"
+    _py="$(echo "$_dims" | cut -d' ' -f2)"
+    _den="$(echo "$_dims" | cut -d' ' -f5)"
+    [ -z "$_px" ] && _px=1080
+    [ -z "$_py" ] && _py=2400
+    [ -z "$_den" ] && _den=420
+    printf '%s %s %s' "$_px" "$_py" "$_den"
+}
+
+# presets comuns (menor lado em px) — o "opções de celulares" do painel
+res_presets() {
+    printf '   %b1080p%b  1920x1080 (nitidez total)\n' "$C_A" "$C_R"
+    printf '   %b900p%b  1600x900  (quase igual, mais leve)\n' "$C_A" "$C_R"
+    printf '   %b720p%b  1280x720  (equilíbrio clássico)\n' "$C_A" "$C_R"
+    printf '   %b540p%b  960x540   (muito leve)\n' "$C_A" "$C_R"
+    printf '   %b480p%b  854x480   (máximo FPS, imagem mole)\n' "$C_A" "$C_R"
+}
+
+# _res_pct_para_px <pct> -> imprime "WxH densidade" escalando o aparelho
+_res_pct_para_px() {
+    _pct="$1"
+    set -- $(_res_dims); _px="$1"; _py="$2"; _den="$3"
+    _nx=$(( _px * _pct / 100 )); _ny=$(( _py * _pct / 100 ))
+    _nden=$(( _den * _pct / 100 ))
+    [ "$_nden" -lt 72 ] && _nden=72
+    # sempre par (alguns drivers gostam de dimensões pares)
+    [ $(( _nx % 2 )) -ne 0 ] && _nx=$(( _nx + 1 ))
+    [ $(( _ny % 2 )) -ne 0 ] && _ny=$(( _ny + 1 ))
+    printf '%sx%s %s' "$_nx" "$_ny" "$_nden"
+}
+
+# _res_escreve <WxH> <densidade> <rotulo> -> aplica e confere
+_res_escreve() {
+    _wh="$1"; _den="$2"; _rot="$3"
+    bkp_begin
+    grep -q 'wm size reset' "$OFF_SH" 2>/dev/null || bkp_raw "wm size reset"
+    grep -q 'wm density reset' "$OFF_SH" 2>/dev/null || bkp_raw "wm density reset"
+    sh_run "wm size $_wh" >/dev/null 2>&1
+    sh_run "wm density $_den" >/dev/null 2>&1
+    agora="$(sh_get 'wm size' | sed -n 's/.*Override size: *\([0-9]*x[0-9]*\).*/\1/p' | tail -1)"
+    if [ "$agora" = "$_wh" ]; then
+        otm_v_inc apply; otm_v_inc changed
+        mkdir -p "$ST" 2>/dev/null
+        printf '%s\n' "$_rot" > "$ST/res_profile" 2>/dev/null
+        printf '   %bOK%b resolução %s (%s)\n' "$C_G" "$C_R" "$_wh" "$_rot"
+        say "pronto — reinicie o jogo para aplicar"
+    else
+        otm_v_inc apply; otm_v_inc failed
+        printf '   %bX%b resolução não mudou (lido: %s)\n' "$C_RD" "$C_R" "${agora:-vazio}"
+        return 1
+    fi
+}
+
+# res <50-100|native>  |  res px <WxH>  |  res preset <1080|900|720|540|480>
+aplicar_res() {
+    alvo="$1"
+    case "$alvo" in
+        ''|native|padrao|default|100) resetar_res; return $? ;;
+        px)
+            _wh="$2"
+            case "$_wh" in
+                [0-9]*x[0-9]*) ;;
+                *) err "uso: res px <LARGURAxALTURA> (ex.: 1280x720)"; return 1 ;;
+            esac
+            set -- $(_res_dims); _den="$3"
+            # mantém a densidade para o tamanho do conteúdo não pular
+            _res_escreve "$_wh" "$_den" "personalizado $_wh"
+            return $? ;;
+        preset)
+            _pre="$2"
+            case "$_pre" in
+                1080) _wh=1920x1080; _alvo_menor=1080 ;;
+                900)  _wh=1600x900;  _alvo_menor=900 ;;
+                720)  _wh=1280x720;  _alvo_menor=720 ;;
+                540)  _wh=960x540;   _alvo_menor=540 ;;
+                480)  _wh=854x480;   _alvo_menor=480 ;;
+                *) err "preset inválido: $_pre (use 1080|900|720|540|480)"; return 1 ;;
+            esac
+            set -- $(_res_dims); _px="$1"; _py="$2"; _den="$3"
+            # densidade acompanha para a interface não ficar gigante
+            _menor="$_px"; [ "$_py" -lt "$_px" ] 2>/dev/null && _menor="$_py"
+            _nden=$(( _den * _alvo_menor / _menor ))
+            [ "$_nden" -lt 72 ] && _nden=72
+            _res_escreve "$_wh" "$_nden" "${_pre}p"
+            return $? ;;
+    esac
+    case "$alvo" in
+        ''|*[!0-9]*) err "valor inválido: $alvo (use 50-100, native, px <WxH> ou preset <n>)"; return 1 ;;
+    esac
+    [ "$alvo" -lt 50 ] && alvo=50
+    [ "$alvo" -gt 100 ] && alvo=100
+    set -- $(_res_pct_para_px "$alvo")
+    _wh="$1"; _nden="$2"
+    _res_escreve "$_wh" "$_nden" "${alvo}%"
+}
+
+resetar_res() {
+    say "Voltando à resolução nativa do aparelho"
+    sh_run "wm size reset" >/dev/null 2>&1
+    sh_run "wm density reset" >/dev/null 2>&1
+    rm -f "$ST/res_profile" 2>/dev/null
+    printf '   %bOK%b resolução nativa\n' "$C_G" "$C_R"
+}
+
+# res-atual: imprime "WxH" em uso (override) ou "native"
+res_atual() {
+    _ov="$(sh_get 'wm size' 2>/dev/null | sed -n 's/.*Override size: *\([0-9]*x[0-9]*\).*/\1/p' | tail -1)"
+    if [ -n "$_ov" ]; then printf '%s\n' "$_ov"; else printf 'native\n'; fi
+}
+
 
 # --- execução ----------------------------------------------------------------
 [ $# -eq 0 ] && { listar; exit 0; }
@@ -331,6 +459,10 @@ case "$acao" in
     dpi)       aplicar_dpi "$1" ;;
     dpi-atual|dpi_atual) dpi_atual ;;
     dpi-reset) resetar_dpi ;;
+    res)       aplicar_res "$1" "$2" "$3" ;;
+    res-atual|res_atual) res_atual ;;
+    res-reset) resetar_res ;;
+    res-presets|res_presets) res_presets ;;
     reset)     resetar "$1"; resetar_dpi ;;
     reset-all) resetar_tudo; resetar_dpi ;;
     *)         err "ação desconhecida: $acao"; listar; exit 1 ;;

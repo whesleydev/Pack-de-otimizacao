@@ -278,7 +278,7 @@ class GameSpaceActivity : AppCompatActivity() {
         cg.addView(Gs.divider(this))
         cg.addView(Gs.row(this, getString(R.string.gs_fps_limit), getString(R.string.gs_fps_sub), segmentedFps()))
         cg.addView(Gs.divider(this))
-        cg.addView(Gs.row(this, getString(R.string.gs_game_res), getString(R.string.gs_game_res_sub), segmentedRes()))
+        cg.addView(Gs.row(this, getString(R.string.gs_downscale), getString(R.string.gs_downscale_sub), segmentedRes()))
         col.addView(cardGame, Gs.matchWrap())
         col.addView(Gs.vSpace(this, 12f))
 
@@ -430,6 +430,11 @@ class GameSpaceActivity : AppCompatActivity() {
 
         val (cardGfx, cg) = Gs.card(this, R.string.gs_label_gfx, R.drawable.ic_display_settings)
         cg.addView(Gs.divider(this))
+
+        // --- resolução do jogo (renderiza menos pixels, mesma interface) ---
+        cg.addView(resolutionBlock())
+        cg.addView(Gs.divider(this))
+
         cg.addView(Gs.row(this, getString(R.string.gs_refresh), getString(R.string.gs_refresh_sub), segmentedFps()))
         cg.addView(Gs.divider(this))
         cg.addView(Gs.row(this, getString(R.string.gs_gfx_driver), getString(R.string.gs_gfx_driver_sub), segmentedDriver()))
@@ -488,6 +493,127 @@ class GameSpaceActivity : AppCompatActivity() {
             Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 10f) })
         col.addView(cardReset, Gs.matchWrap())
         return scrollWrap(col)
+    }
+
+    /**
+     * Bloco de resolução: o que o usuário pediu — trocar a resolução do celular
+     * com presets prontos (720p, 540p…), escala livre (50–100%) e um campo pra
+     * digitar o tamanho exato. Tudo por baixo chama `game-per-app.sh res …`.
+     */
+    private fun resolutionBlock(): View {
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        // título + valor em uso + badge
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, Gs.dp(this@GameSpaceActivity, 9f), 0, Gs.dp(this@GameSpaceActivity, 4f))
+        }
+        val left = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        left.addView(Gs.label(this, getString(R.string.gs_res_title), 13f))
+        left.addView(Gs.label(this, getString(R.string.gs_res_sub), 10.5f, GsTheme.textDim, semi = false))
+        head.addView(left, Gs.lp(0, -2, 1f))
+        val (badgeRow, resValue) = Gs.valueWithBadge(this, "100%", getString(R.string.gs_res_badge))
+        head.addView(badgeRow)
+        col.addView(head)
+
+        // slider 50–100%
+        val slider = GsSlider(this).apply {
+            min = 50f; max = 100f; value = 100f
+            layoutParams = Gs.matchWrap().apply {
+                topMargin = Gs.dp(this@GameSpaceActivity, 6f)
+                height = Gs.dp(this@GameSpaceActivity, 22f)
+            }
+        }
+        col.addView(slider)
+        val scale = FrameLayout(this).apply { setPadding(0, Gs.dp(this@GameSpaceActivity, 4f), 0, 0) }
+        scale.addView(Gs.label(this, "50%", 10f, GsTheme.textDim, semi = false), FrameLayout.LayoutParams(-2, -2, Gravity.START))
+        scale.addView(Gs.label(this, "100%", 10f, GsTheme.textDim, semi = false), FrameLayout.LayoutParams(-2, -2, Gravity.END))
+        col.addView(scale)
+
+        fun mostraPct(pct: Int) {
+            resValue.text = "$pct%"
+            slider.value = pct.toFloat()
+        }
+        slider.onChanged = { v -> resValue.text = "${v.toInt()}%" }
+
+        // presets de celular
+        col.addView(Gs.label(this, getString(R.string.gs_res_phones), 10f, GsTheme.textDim, semi = false),
+            Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 10f) })
+        val presets = listOf("1080p", "900p", "720p", "540p", "480p", "Nativo")
+        val chips = Gs.chipRow(this, presets, -1) { i ->
+            if (i == presets.lastIndex) {
+                run("game-per-app.sh", listOf("res-reset"), "Resolução nativa")
+                mostraPct(100)
+            } else {
+                val n = presets[i].removeSuffix("p")
+                run("game-per-app.sh", listOf("res", "preset", n), "Resolução ${presets[i]}")
+            }
+        }
+        col.addView(chips, Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 6f) })
+
+        // aplicar a escala do slider
+        val applyRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, Gs.dp(this@GameSpaceActivity, 10f), 0, 0)
+        }
+        applyRow.addView(Gs.ghostButton(this, getString(R.string.gs_res_apply), R.drawable.ic_check) {
+            val pct = slider.value.toInt()
+            run("game-per-app.sh", listOf("res", pct.toString()), "Resolução $pct%")
+        })
+        applyRow.addView(View(this), Gs.lp(0, 1, 1f))
+        applyRow.addView(Gs.ghostButton(this, getString(R.string.gs_res_native), R.drawable.ic_restart_alt) {
+            run("game-per-app.sh", listOf("res-reset"), "Resolução nativa")
+            mostraPct(100)
+        })
+        col.addView(applyRow)
+
+        // personalizado (tamanho exato)
+        col.addView(Gs.label(this, getString(R.string.gs_res_custom), 10f, GsTheme.textDim, semi = false),
+            Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 12f) })
+        val customRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, Gs.dp(this@GameSpaceActivity, 6f), 0, 0)
+        }
+        val campo = Gs.field(this, "1280x720")
+        customRow.addView(campo, Gs.lp(0, -2, 1f).apply { marginEnd = Gs.dp(this@GameSpaceActivity, 6f) })
+        customRow.addView(Gs.accentButton(this, getString(R.string.gs_res_apply), null) {
+            val t = campo.text.toString().trim()
+            if (!t.matches(Regex("[0-9]{3,5}x[0-9]{3,5}"))) {
+                toast("Use o formato LARGURAxALTURA (ex.: 1280x720)")
+            } else {
+                run("game-per-app.sh", listOf("res", "px", t), "Resolução $t")
+                campo.setText("")
+            }
+        })
+        col.addView(customRow)
+
+        col.addView(Gs.label(this, getString(R.string.gs_res_note), 10.5f, GsTheme.textDim, semi = false),
+            Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 10f) })
+
+        // lê o que está em uso agora
+        scope.launch {
+            val res = OtmExec.run(this@GameSpaceActivity, OtmRunner.current, "game-per-app.sh", listOf("res-atual"))
+            val txt = res.stdout.trim().lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+            if (txt.isNotEmpty()) {
+                if (txt == "native") {
+                    resValue.text = getString(R.string.gs_res_native)
+                    slider.value = 100f
+                } else {
+                    resValue.text = txt
+                    val m = Regex("([0-9]+)x([0-9]+)").find(txt)
+                    if (m != null) {
+                        val menor = minOf(m.groupValues[1].toInt(), m.groupValues[2].toInt())
+                        val pct = ((menor * 100f) / 1080f).toInt().coerceIn(50, 100)
+                        slider.value = pct.toFloat()
+                    }
+                }
+            }
+        }
+
+        return col
     }
 
     private fun segmentedDriver(): View = Gs.segmented(this, listOf("Auto", "SkiaGL", "Vulkan"), 0) { i ->

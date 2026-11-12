@@ -324,6 +324,97 @@ object Gs {
     /** Espaçador flexível. */
     fun spacer(ctx: Context): View = View(ctx).apply { layoutParams = lp(0, 0, 1f) }
 
+    /**
+     * Linha de "chips" selecionáveis (usada nos presets de resolução). Rola na
+     * horizontal quando não cabe, em vez de espremer os rótulos.
+     */
+    fun chipRow(
+        ctx: Context,
+        options: List<String>,
+        selected: Int,
+        onSelect: (Int) -> Unit,
+    ): android.widget.HorizontalScrollView {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val chips = ArrayList<TextView>()
+        options.forEachIndexed { i, opt ->
+            val tv = GsText(ctx).apply {
+                text = opt
+                textSize = 12f
+                gravity = Gravity.CENTER
+                typeface = GsTheme.labelSemi(ctx)
+                setPadding(dp(ctx, 13f), dp(ctx, 7f), dp(ctx, 13f), dp(ctx, 7f))
+            }
+            chips.add(tv)
+            row.addView(tv, lp(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                if (i > 0) marginStart = dp(ctx, 6f)
+            })
+        }
+        fun paint(sel: Int) {
+            chips.forEachIndexed { i, tv ->
+                val on = i == sel
+                tv.setTextColor(if (on) GsTheme.onAccent else GsTheme.textSoft)
+                tv.background = if (on) {
+                    rounded(ctx, 10f, GsTheme.accent)
+                } else {
+                    rounded(ctx, 10f, GsTheme.white(4), GsTheme.white(10))
+                }
+            }
+        }
+        paint(selected)
+        chips.forEachIndexed { i, tv ->
+            tv.setOnClickListener { paint(i); onSelect(i) }
+        }
+        return android.widget.HorizontalScrollView(ctx).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(row)
+        }
+    }
+
+    /** Valor com uma etiqueta pequena ao lado (ex.: "100%" + "Android 13+"). */
+    fun valueWithBadge(ctx: Context, value: String, badge: String?): Pair<View, TextView> {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        if (badge != null) {
+            val b = GsText(ctx).apply {
+                text = badge
+                textSize = 9.5f
+                setTextColor(GsTheme.accent)
+                typeface = GsTheme.labelSemi(ctx)
+                setPadding(dp(ctx, 6f), dp(ctx, 1f), dp(ctx, 6f), dp(ctx, 1f))
+                background = rounded(ctx, 5f, GsTheme.accentA(0x1f))
+            }
+            row.addView(b)
+        }
+        val tv = GsText(ctx).apply {
+            text = value
+            textSize = 11f
+            setTextColor(GsTheme.accent)
+            typeface = GsTheme.numMed(ctx)
+            setPadding(dp(ctx, if (badge != null) 6f else 0f), 0, 0, 0)
+        }
+        row.addView(tv)
+        return row to tv
+    }
+
+    /** Campo de texto compacto (ex.: "1280x720" personalizado). */
+    fun field(ctx: Context, hint: String): android.widget.EditText =
+        android.widget.EditText(ctx).apply {
+            this.hint = hint
+            textSize = 13f
+            setTextColor(GsTheme.textHi)
+            setHintTextColor(GsTheme.textDim)
+            typeface = GsTheme.numMed(ctx)
+            background = rounded(ctx, 10f, GsTheme.white(4), GsTheme.white(10))
+            setPadding(dp(ctx, 11f), dp(ctx, 9f), dp(ctx, 11f), dp(ctx, 9f))
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            maxLines = 1
+        }
+
     fun vSpace(ctx: Context, v: Float): View =
         View(ctx).apply { layoutParams = lp(LinearLayout.LayoutParams.MATCH_PARENT, dp(ctx, v)) }
 

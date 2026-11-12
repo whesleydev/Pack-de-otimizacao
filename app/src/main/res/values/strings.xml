@@ -21,6 +21,17 @@
     <string name="gs_fps_sub">Trava a taxa de quadros do jogo</string>
     <string name="gs_game_res">Resolução do jogo</string>
     <string name="gs_game_res_sub">Reduz a renderização para ganhar FPS</string>
+    <string name="gs_downscale">Downscale por jogo</string>
+    <string name="gs_downscale_sub">Só este jogo (Game Mode). Ajuste fino na aba Gráficos.</string>
+    <string name="gs_res_title">Resolução do jogo</string>
+    <string name="gs_res_sub">Renderiza menos pixels com a mesma interface</string>
+    <string name="gs_res_phones">CELULARES</string>
+    <string name="gs_res_custom">PERSONALIZADO</string>
+    <string name="gs_res_apply">Aplicar</string>
+    <string name="gs_res_native">Nativo</string>
+    <string name="gs_res_in_use">Em uso</string>
+    <string name="gs_res_note">Vale para o sistema todo. Reinicie o jogo para aplicar.</string>
+    <string name="gs_res_badge">Android 13+</string>
     <string name="gs_gfx_driver">Driver gráfico</string>
     <string name="gs_gfx_driver_sub">Motor de renderização do sistema</string>
     <string name="gs_aa">Anti-aliasing</string>
