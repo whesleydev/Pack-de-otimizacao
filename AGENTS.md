@@ -304,8 +304,15 @@ assets do pack embutidos.
 O app é o painel web (Trix) dentro de uma WebView: nada de UI
 nativa além do necessário para conectar e rodar os comandos.
 
-- `PanelActivity` é o launcher: carrega `assets/panel/login.html` (tela de entrada)
-  numa WebView; acertando o login, carrega `assets/panel/index.html` (o painel).
+- `PanelActivity` é o launcher. A **página inicial depende da sessão**: já logado
+  (`AppLogin.isLogged`), carrega direto `assets/panel/index.html`; senão,
+  `assets/panel/login.html`. Antes sempre abria o login e o JS redirecionava, o
+  que fazia a tela de entrada **piscar** ~1 s a cada abertura para quem já tinha
+  sessão. A checagem nativa no `onCreate` mata o flash na raiz.
+- `login.html` também confirma a sessão **nativa** (`app_status`), não só a
+  bandeira `otm_session` do `localStorage`: se o armazenamento foi limpo mas a
+  sessão nativa continua, ele segue direto (para `termos.html` se o aceite
+  faltar, senão `index.html`).
 - **O binder do Shizuku chega DEPOIS do `onCreate`** (a resposta do
   `ShizukuProvider` volta por Binder). Checar `hasPermission()` só no `onCreate`
   faz o app concluir "não autorizado" com a permissão já concedida — e pedir de
@@ -592,6 +599,22 @@ nativa além do necessário para conectar e rodar os comandos.
   `PackBridge`). Nada fictício: campo ilegível volta `""` e a UI não mostra número
   inventado. Parâmetros com `'state' => '<chave>'` abrem o slider já no valor do
   aparelho.
+  O `panel-state.sh` também publica a chave **`overlay`** (`on`/`off`), mas ela é
+  só *fallback*: quem liga o serviço é o **app**. O `OverlayService` mantém uma
+  flag `running` (marcada em `onCreate`/`onDestroy`) e o `PackBridge.stateImpl()`
+  injeta o valor real por cima — o script nunca sabe se o flutuante está de pé.
+- **Painel flutuante é interruptor na Geral, não categoria.** O overlay virou uma
+  **chave** (`t.overlay` em `otm_toggles()`, par `overlay.on`/`overlay.off`) na
+  categoria **Geral**. A categoria **Flutuante** foi removida de `$GROUP_ORDER`
+  (web) e do nav/seções do painel do app. Não recriar a categoria: o pedido do
+  dono é que sobre um toggle comum na Geral.
+  A ponte recebe o **alvo explícito** (`on`/`off`), não alterna às cegas: o
+  `PanelActivity.askOverlay(want: String)` liga/desliga conforme o pedido. No
+  site (PC) a ação só avisa "ligue/desligue pelo app no celular" — o overlay
+  depende da janela `SYSTEM_ALERT_WINDOW` do Android.
+- **Contagem no nav saiu.** As badges `<span class="count">` (a "46" da Geral e
+  afins) foram removidas do nav nos dois painéis, junto com o CSS morto
+  `.nav .count`. O nav não mostra mais número de ações por categoria.
 - **Home com métricas reais** (`scripts/panel-stats.sh`, na whitelist do
   `lib.php`): lê RAM (`/proc/meminfo`), carga/núcleos/frequência de CPU, bateria
   (`dumpsys battery`), refresh, armazenamento (`df`) e uptime, devolvendo uma linha

@@ -245,6 +245,11 @@ printf ',"perm_pack":"%s"' "$(_clean "$_pp")"
 case "$_dw" in *com.dts.freefireth*|*com.dts.freefiremax*) _pf=1 ;; *) _pf=0 ;; esac
 printf ',"perm_ff":"%s"' "$(_clean "$_pf")"
 
+# painel flutuante (overlay): o serviço roda dentro do app, então só ele sabe
+# se está no ar. Quando o app injeta o estado real, este valor é substituído;
+# aqui fica "" (sem como saber) e a chave mostra "estado desconhecido".
+printf ',"overlay":"%s"' "$(_clean "${OTM_OVERLAY:-}")"
+
 printf ',"mode":"%s"' "$(_clean "${RUN_MODE:-local}")"
 printf '}\n'
 exit 0

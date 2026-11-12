@@ -190,6 +190,13 @@ function otm_choices(): array {
 //   neutral    -> true quando não há como saber o estado (chave mostra "?")
 function otm_toggles(): array {
     return [
+        // ----- Geral -----
+        // Não é script: quem liga/desliga é o próprio app (ui => 'overlay'). O
+        // estado real (o serviço está no ar?) é injetado pela ponte nativa.
+        't.overlay' => ['group' => 'Geral', 'title' => 'Painel flutuante sobre o jogo',
+            'desc' => 'Sensi e perfis de toque por cima do jogo, sem sair da partida.',
+            'help' => 'Liga o painel flutuante: uma janela arrastável sobre o jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Na primeira vez o Android pede a permissão "aparecer por cima de outros apps". Desligue na mesma chave.',
+            'on' => 'overlay.on', 'off' => 'overlay.off', 'state' => 'overlay', 'on_values' => ['on']],
         // ----- Desempenho -----
         't.anim' => ['group' => 'Desempenho', 'title' => 'Animações rápidas',
             'desc' => 'Animações pela metade: a interface parece mais ágil.',
@@ -688,10 +695,16 @@ function otm_actions(): array {
           'choice' => 'proclimit', 'option' => 'Padrão (automático)', 'state_value' => 'padrão',
           'argv' => ['adb-tweaks.sh', 'proc_limit', 'padrao']]);
 
-    // ----- Gerador de sensi (só leitura: calcula para o SEU aparelho) -----
-    $add(['id' => 'overlay.sensi', 'group' => 'Flutuante', 'label' => 'Painel flutuante sobre o jogo',
+    // ----- Painel flutuante (overlay): liga/desliga, é uma chave na Geral -----
+    // Não é script: quem liga o serviço é o próprio app (ui => 'overlay'). O
+    // estado real (o serviço está rodando?) vem de panel-state.sh.
+    $add(['id' => 'overlay.on', 'group' => 'Geral', 'card' => false, 'label' => 'Painel flutuante sobre o jogo',
           'desc' => 'Mostra a sensi e os perfis de toque por cima do jogo, sem sair da partida.',
-          'help' => 'Abre o painel flutuante: uma janela arrastável que fica por cima do jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Assim você confere e troca o ajuste sem fechar o jogo. Na primeira vez o Android pede a permissão "aparecer por cima de outros apps". Toque de novo no botão para desligar.',
+          'help' => 'Abre o painel flutuante: uma janela arrastável que fica por cima do jogo com a sensi calculada para o seu aparelho (Geral, Ponto vermelho, mira 2x, 4x, AWM e o tamanho do botão de atirar), os cinco perfis de toque (Equilibrado, Headshot, Spray, Sniper, Speed) e atalhos de latência e limpeza de RAM. Assim você confere e troca o ajuste sem fechar o jogo. Na primeira vez o Android pede a permissão "aparecer por cima de outros apps". Desligue na mesma chave.',
+          'argv' => [], 'ui' => 'overlay']);
+    $add(['id' => 'overlay.off', 'group' => 'Geral', 'card' => false, 'label' => 'Painel flutuante sobre o jogo: desligar',
+          'desc' => 'Fecha o painel flutuante (overlay).',
+          'help' => 'Encerra o painel flutuante que fica sobre o jogo. A permissão "aparecer por cima" continua concedida; ligar de novo não pede de novo.',
           'argv' => [], 'ui' => 'overlay']);
     $add(['id' => 'sensi.calc', 'group' => 'Display & Touch', 'label' => 'Gerar sensi do meu aparelho',
           'desc' => 'Calcula a sensi ideal para o seu aparelho, sem alterar nada.',

@@ -49,7 +49,7 @@ class PackBridge(
     private val context: Context,
     private val runnerProvider: () -> ShellRunner?,
     private val onConnect: () -> Unit,
-    private val onOverlay: () -> Unit,
+    private val onOverlay: (String) -> Unit,
     private val onSoundSet: (Boolean) -> Boolean,
     private val onLogin: () -> Unit,
     private val onLoginFail: () -> Unit,
@@ -108,7 +108,12 @@ class PackBridge(
                         okJson()
                     }
                     "connect" -> { withContext(Dispatchers.Main) { onConnect() }; okJson() }
-                    "overlay" -> { withContext(Dispatchers.Main) { onOverlay() }; okJson() }
+                    // payload "on"/"off" (vazio = alterna, como antes)
+                    "overlay" -> {
+                        val want = payload.trim().lowercase()
+                        withContext(Dispatchers.Main) { onOverlay(want) }
+                        okJson()
+                    }
                     "login" -> { withContext(Dispatchers.Main) { onLogin() }; okJson() }
                     "login_fail" -> { withContext(Dispatchers.Main) { onLoginFail() }; okJson() }
                     // Entrada local: confere usuário/senha no aparelho (sem banco).
@@ -225,8 +230,13 @@ class PackBridge(
             val l = line.trim()
             if (l.startsWith("{")) { state = try { JSONObject(l) } catch (e: Exception) { null }; if (state != null) break }
         }
+        // O painel flutuante roda dentro do app: só ele sabe se o serviço está no
+        // ar. O script não tem como ler isso, então injetamos o estado real aqui
+        // (a chave do painel mostra a verdade, não o que o usuário tocou).
+        state = state ?: JSONObject()
+        state.put("overlay", if (OverlayService.running) "on" else "off")
         return JSONObject().put("ok", true)
-            .put("state", state ?: JSONObject())
+            .put("state", state)
             .toString()
     }
 
