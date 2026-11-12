@@ -36,7 +36,7 @@ if (!otm_auth_logged_in()) {
 $actions = array_values(otm_actions());
 
 // Ordem fixa das categorias. Menu enxuto: 7 grupos (Rede/DNS separados) + a Home.
-$GROUP_ORDER = ['Geral', 'Flutuante', 'Display & Touch', 'Desempenho', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
+$GROUP_ORDER = ['Geral', 'Display & Touch', 'Desempenho', 'DNS e rede', 'Latência e ping', 'Processos', 'Debloat', 'Apps e jogos', 'Sistema'];
 $GROUP_ALIAS = ['Rede e conexão' => 'DNS e rede'];
 $byGroup = [];
 foreach ($actions as $a) {
@@ -55,7 +55,6 @@ foreach (otm_toggles() as $tid => $tg) {
 
 $meta = [
     'Geral'           => ['t' => 'Geral',            's' => 'Aplique o conjunto seguro, reverta tudo, salve snapshot e rode módulos.'],
-    'Flutuante'       => ['t' => 'Flutuante',        's' => 'Ative o painel flutuante (overlay) para usar a sensi e os perfis por cima do jogo.'],
     'Display & Touch' => ['t' => 'Display & Touch',  's' => 'Renderizador, motor gráfico e sensibilidade de toque (Free Fire).'],
     'Desempenho'      => ['t' => 'Desempenho',       's' => 'RAM, limpeza, turbo, tela/bateria, sono profundo, congelar apps e ajustes profundos (root).'],
     'DNS e rede'      => ['t' => 'DNS e rede',       's' => 'Escolha o DNS privado (30+ perfis), meça a latência e ajuste Wi-Fi e buffers TCP.'],
@@ -246,10 +245,14 @@ button{font:inherit;color:inherit}
 .burger{display:none}
 
 /* ---- faixa/banner --------------------------------------------------------- */
+/* A imagem (300x208) aparece INTEIRA (contain) por cima do fundo escuro — antes
+   o `cover` recortava boa parte dela e ainda deixava as barras pretas próprias
+   do arquivo à mostra. A camada de gradiente fica acima da imagem só para o
+   texto continuar legível. */
 .banner{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
-  background:url('assets/banner.jpeg') center/cover no-repeat #241f19;color:#fff}
-.banner::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(18,14,10,.9),rgba(18,14,10,.5) 60%,rgba(18,14,10,.78))}
+  background:linear-gradient(90deg,rgba(18,14,10,.74),rgba(18,14,10,.38) 58%,rgba(18,14,10,.68)),
+    url('assets/banner.jpeg') center/contain no-repeat #241f19;color:#fff;
+  min-height:clamp(150px,38vw,240px)}
 .banner .in{position:relative;z-index:1;max-width:1180px;margin:0 auto;
   padding:clamp(18px,5vw,38px) clamp(12px,3vw,22px)}
 .banner h1{margin:0;font-size:clamp(20px,4.6vw,33px);font-weight:800;letter-spacing:-.03em}
@@ -331,8 +334,6 @@ button{font:inherit;color:inherit}
 .nav a[aria-current="true"]::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;
   border-radius:3px;background:var(--accent);animation:otmPop .25s both}
 .nav a[aria-current="true"] .c{background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
-.nav .count{margin-left:auto;font-size:11px;color:var(--muted);font-weight:700;
-  background:var(--glass-2);border:1px solid var(--line);border-radius:999px;padding:1px 8px;min-width:22px;text-align:center}
 
 /* ---- conteúdo ------------------------------------------------------------- */
 .head h2{margin:0;font-size:clamp(18px,3.6vw,23px);font-weight:800;letter-spacing:-.02em}
@@ -888,12 +889,11 @@ html.otm-lite .live .dot,html.otm-lite .stat .m>i,html.otm-lite .vital-gauge i{a
       <button class="iconbtn side-close" id="sideClose" aria-label="Fechar"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <h2>Categorias</h2>
       <nav class="nav" id="nav">
-        <a href="#Painel" data-g="Painel" aria-current="true"><span class="c"></span>Painel<span class="count" id="navHomeCount" hidden></span></a>
+        <a href="#Painel" data-g="Painel" aria-current="true"><span class="c"></span>Painel</a>
         <?php foreach ($groups as $g => $items): ?>
           <a href="#<?= htmlspecialchars(rawurlencode($g), ENT_QUOTES) ?>" data-g="<?= htmlspecialchars($g, ENT_QUOTES) ?>"
              aria-current="false">
             <span class="c"></span><?= htmlspecialchars($meta[$g]['t'] ?? $g) ?>
-            <span class="count"><?= count($items) ?></span>
           </a>
         <?php endforeach; ?>
         <a href="#Terminal" data-g="Terminal" aria-current="false"><span class="c"></span>Terminal</a>
@@ -1948,7 +1948,7 @@ async function doRun(a, params, confirmed, btn){
   if (a.id === "appearance"){ syncGear(); $("#gearMask").classList.add("open"); return; }
   if (a.id === "profile.custom"){ openCustomProfile(); return; }
   if (a.id === "profile.custom.apply"){ return applyCustomProfile(a, btn); }
-  if (a.ui === "overlay"){ toast("Painel flutuante: use o app no celular (fica sobre o jogo).", "bad"); return; }
+  if (a.ui === "overlay"){ toast("O painel flutuante fica sobre o jogo: ligue/desligue pelo app no celular.", "bad"); return; }
   setBusy(true, btn);
   openConsole(a.label, "executando…");
   try{

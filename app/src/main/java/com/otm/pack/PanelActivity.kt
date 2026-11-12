@@ -80,7 +80,11 @@ class PanelActivity : AppCompatActivity() {
         tryAutoConnectShizuku()
 
         setupWeb()
-        web.loadUrl("file:///android_asset/panel/login.html")
+        // Já logado neste aparelho? Abre o painel direto. Antes o app sempre
+        // carregava o login e o JS redirecionava depois, então quem já tinha
+        // sessão via a tela de login piscar por ~1s a cada abertura.
+        val inicio = if (AppLogin.isLogged(this)) "index.html" else "login.html"
+        web.loadUrl("file:///android_asset/panel/$inicio")
         // O app NÃO pede mais nada ao abrir: só o pareamento (Shizuku/ADB), que
         // é o que dá poder de shell. Notificações, bateria e uso real o usuário
         // concede quando quiser, na área de permissões das Configurações.
@@ -169,7 +173,7 @@ class PanelActivity : AppCompatActivity() {
         context = applicationContext,
         runnerProvider = { runner },
         onConnect = { askConnect() },
-        onOverlay = { askOverlay() },
+        onOverlay = { want -> askOverlay(want) },
         onSoundSet = { on ->
             sound.muted = !on
             if (on) sound.play("ativando.mp3")
@@ -207,16 +211,20 @@ class PanelActivity : AppCompatActivity() {
      * usuário para a tela do sistema que libera "aparecer por cima de outros
      * apps" — é o único jeito de o Android deixar o painel ficar sobre o jogo.
      */
-    private fun askOverlay() {
+    private fun askOverlay(want: String) {
+        // want: "on"/"off" (a chave do painel manda o alvo) ou "" (alterna).
+        val ligar = when (want) {
+            "on" -> true
+            "off" -> false
+            else -> !OverlayService.running
+        }
         if (OverlayService.canDraw(this)) {
-            if (overlayRunning) {
-                OverlayService.stop(this)
-                overlayRunning = false
-                toast("Painel flutuante desligado.")
-            } else {
+            if (ligar) {
                 OverlayService.start(this)
-                overlayRunning = true
                 toast("Painel flutuante ligado — ele fica sobre o jogo.")
+            } else {
+                OverlayService.stop(this)
+                toast("Painel flutuante desligado.")
             }
             return
         }
@@ -241,8 +249,6 @@ class PanelActivity : AppCompatActivity() {
             .setNegativeButton("Agora não", null)
             .show()
     }
-
-    private var overlayRunning = false
 
     /**
      * Concede, sob demanda, uma permissão do próprio app. É o que o usuário pediu:

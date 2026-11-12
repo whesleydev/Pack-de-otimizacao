@@ -146,8 +146,17 @@ async function entrar(user, pass){
   }
 }
 
-/* Já entrou antes: vai direto (o painel confirma a sessão com o nativo). */
+/* Já entrou antes: vai direto. A bandeira local é só um atalho; a verdade é a
+   sessão nativa, então confirma com ela também (o localStorage pode ter sido
+   limpo sem a sessão nativa cair). */
 try { if (localStorage.getItem(SESSION_FLAG)) location.replace("index.html"); } catch(e){}
+otmCall("app_status", "").then(r => {
+  if (r && r.logged){
+    try { localStorage.setItem(SESSION_FLAG, "1"); localStorage.setItem("otm_user", r.user || ""); } catch(e){}
+    if (!r.terms && !localStorage.getItem("otm_terms")) { location.replace("termos.html"); return; }
+    location.replace("index.html");
+  }
+});
 </script>
 </body>
 </html>

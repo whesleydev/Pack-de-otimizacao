@@ -638,6 +638,21 @@ t_app_login() {
     grep -q 'function confirmarSessao' "$p/index.html" \
         && ok "painel confirma a sessao (nao confia so no localStorage)" \
         || bad "painel confia so no localStorage"
+    # abertura rapida: logado, o app carrega o painel DIRETO (sem piscar o login)
+    grep -q 'AppLogin.isLogged(this)) "index.html"' "$src/PanelActivity.kt" \
+        && ok "abertura: logado abre o painel direto (sem piscar o login)" \
+        || bad "abertura: app sempre carrega o login primeiro"
+    grep -q 'web.loadUrl("file:///android_asset/panel/login.html")' "$src/PanelActivity.kt" \
+        && bad "abertura: ainda carrega o login fixo" \
+        || ok "abertura: a pagina inicial depende da sessao"
+    # o login tambem confirma a sessao nativa (localStorage limpo nao forca login)
+    awk '/Já entrou antes/{f=1} f&&/app_status/{print; exit}' "$p/login.html" | grep -q 'app_status' \
+        && ok "login confirma a sessao nativa (app_status)" \
+        || bad "login so confia no localStorage"
+    # logado mas sem aceite: manda pros termos (nao entra no painel direto)
+    awk '/Já entrou antes/{f=1} f&&/termos.html/{print; exit}' "$p/login.html" | grep -q 'termos.html' \
+        && ok "login manda pros termos quando o aceite falta" \
+        || bad "login pula os termos"
     # primeiro acesso: aceitar os termos; recusar desloga e volta pro login
     grep -q 'terms_accept' "$p/termos.html" && ok "termos grava o aceite (terms_accept)" \
         || bad "termos sem terms_accept"
@@ -2436,16 +2451,15 @@ t_web() {
         [ "$n_cards" -ge 85 ] && ok "index.php renderiza os cards no servidor ($n_cards)" \
             || bad "poucos cards renderizados ($n_cards)"
         n_sec=$(grep -c '<section id=' "$TMP/web_html")
-        [ "$n_sec" -eq 12 ] && ok "index.php renderiza a home + 10 categorias + Terminal" || bad "seções: $n_sec (esperado 12)"
-        for cat in "Geral" "Flutuante" "Display &amp; Touch" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
+        [ "$n_sec" -eq 11 ] && ok "index.php renderiza a home + 9 categorias + Terminal" || bad "seções: $n_sec (esperado 11)"
+        for cat in "Geral" "Display &amp; Touch" "Desempenho" "DNS e rede" "Latência e ping" "Processos" "Debloat" "Apps e jogos" "Sistema"; do
             assert_contains "$TMP/web_html" "$cat" "index.php tem a categoria $cat"
         done
-        # "Sensi e mira" virou "Flutuante" e ficou só com o botão do painel flutuante
-        grep -q 'Sensi e mira' "$TMP/web_html" && bad "a categoria antiga 'Sensi e mira' ainda existe" \
-            || ok "categoria 'Sensi e mira' renomeada para 'Flutuante'"
-        n_flut=$(awk '/<section id="g-Flutuante"/{f=1} f&&/data-id=/{n++} /<\/section>/{if(f){print n; exit}}' "$TMP/web_html")
-        [ "$n_flut" = "1" ] && ok "a aba Flutuante tem só o botão do painel flutuante" \
-            || bad "aba Flutuante com ${n_flut:-0} ações (esperado 1)"
+        # o overlay deixou de ser categoria ("Flutuante") e virou chave na Geral
+        grep -q 'id="g-Flutuante"' "$TMP/web_html" && bad "a categoria 'Flutuante' ainda existe" \
+            || ok "categoria 'Flutuante' removida (overlay é chave na Geral)"
+        grep -q 'data-toggle="t.overlay"' "$TMP/web_html" \
+            && ok "overlay é um interruptor na Geral" || bad "overlay não virou interruptor"
         # Terminal: seção própria + campo de comando
         assert_contains "$TMP/web_html" 'id="g-Terminal"' "index.php tem a aba Terminal"
         assert_contains "$TMP/web_html" 'id="termInput"' "Terminal tem campo de comando"
@@ -4578,13 +4592,21 @@ PY
         && ok "overlay diz o que fazer quando falta o acesso" \
         || bad "overlay só diz 'falhou' sem orientar"
     # no site (PC) o overlay avisa que é só no celular
-    grep -q 'Painel flutuante: use o app no celular' "$ROOT/web/index.php" \
+    grep -q 'ligue/desligue pelo app no celular' "$ROOT/web/index.php" \
         && ok "site avisa que o overlay é só no app" || bad "site sem aviso do overlay"
     # a ação aparece no catálogo dos dois painéis (mesma fonte: lib.php)
-    grep -q 'overlay.sensi' "$ROOT/web/lib.php" \
-        && ok "lib.php registra a ação do painel flutuante" || bad "lib.php sem overlay.sensi"
-    grep -q 'overlay.sensi' "$ROOT/app/src/main/assets/panel/actions.json" \
-        && ok "catálogo do app tem a ação do painel flutuante" || bad "actions.json sem overlay.sensi"
+    grep -q "'overlay.on'" "$ROOT/web/lib.php" \
+        && ok "lib.php registra o par ligar/desligar do painel flutuante" || bad "lib.php sem overlay.on"
+    grep -q '"overlay.on"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "catálogo do app tem o ligar do painel flutuante" || bad "actions.json sem overlay.on"
+    grep -q '"overlay.off"' "$ROOT/app/src/main/assets/panel/actions.json" \
+        && ok "catálogo do app tem o desligar do painel flutuante" || bad "actions.json sem overlay.off"
+    # o app manda o alvo explícito (on/off) para a ponte, não alterna às cegas
+    grep -q 'window.OTM.call("overlay", want' "$ROOT/app/src/main/assets/panel/index.html" \
+        && ok "app manda o alvo (on/off) do overlay para a ponte" || bad "app alterna o overlay às cegas"
+    # o estado real do serviço é injetado pela ponte (não é inventado no painel)
+    grep -q 'OverlayService.running' "$ROOT/app/src/main/java/com/otm/pack/PackBridge.kt" \
+        && ok "ponte injeta o estado real do overlay" || bad "ponte não injeta o estado do overlay"
 }
 
 

@@ -3,6 +3,25 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [2.59.4] - 2026-11-12
+
+### Alterado
+- **O painel flutuante virou um interruptor na aba Geral.** A aba "Flutuante"
+  saiu: agora o overlay é uma chave ("Painel flutuante sobre o jogo") junto das
+  outras opções da Geral. A chave mostra o estado real do serviço (ligado só
+  quando ele está mesmo rodando) e o app manda o alvo (ligar/desligar) direto
+  para a ponte, sem alternar às cegas.
+- **Sem contadores falsos no menu.** Os números que apareciam do lado das abas
+  (ex.: "46") saíram; eles não refletiam nada.
+
+### Corrigido
+- **A tela de login não pisca mais ao abrir o app.** Quem já estava logado caía
+  no login por um instante e era jogado pro painel. Agora o app abre direto no
+  painel quando há sessão; o login só aparece para quem não entrou.
+- **O banner do topo mostra a imagem inteira.** Antes ele era cortado nas
+  laterais; agora aparece completo, com um leve escurecido só para o texto
+  continuar legível.
+
 ## [2.59.3] - 2026-11-12
 
 ### Removido

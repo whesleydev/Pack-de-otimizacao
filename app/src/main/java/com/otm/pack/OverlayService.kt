@@ -112,6 +112,7 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        running = true
         startForeground(NOTIF_ID, buildNotification())
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         OtmUi.load(this)
@@ -170,6 +171,7 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         OtmUi.onChanged = null
         shizukuListener?.let { runCatching { Shizuku.removeBinderReceivedListener(it) } }
         shizukuListener = null
@@ -1850,6 +1852,11 @@ class OverlayService : Service() {
         const val CHANNEL_ID = "otm_overlay"
         const val NOTIF_ID = 2
         const val ACTION_STOP = "com.otm.pack.overlay.STOP"
+
+        /** O serviço está no ar? É o estado real que a chave do painel lê. */
+        @Volatile
+        var running: Boolean = false
+            private set
 
         /** "Vidro": fundo translúcido e borda clara (o blur do sistema soma). */
         private const val C_GLASS = "#1FFFFFFF"
