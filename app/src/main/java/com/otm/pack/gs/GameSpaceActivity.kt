@@ -537,16 +537,16 @@ class GameSpaceActivity : AppCompatActivity() {
         }
         slider.onChanged = { v -> resValue.text = "${v.toInt()}%" }
 
-        // presets de celular
+        // presets de renderização
         col.addView(Gs.label(this, getString(R.string.gs_res_phones), 10f, GsTheme.textDim, semi = false),
             Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 10f) })
-        val presets = listOf("1080p", "900p", "720p", "540p", "480p", "Nativo")
+        val presets = listOf("100%", "90%", "75%", "60%", "50%", "Nativo")
         val chips = Gs.chipRow(this, presets, -1) { i ->
             if (i == presets.lastIndex) {
-                run("game-per-app.sh", listOf("res-reset"), "Resolução nativa")
+                run("game-per-app.sh", listOf("res", "native"), "Resolução nativa")
                 mostraPct(100)
             } else {
-                val n = presets[i].removeSuffix("p")
+                val n = presets[i].removeSuffix("%")
                 run("game-per-app.sh", listOf("res", "preset", n), "Resolução ${presets[i]}")
             }
         }
@@ -564,12 +564,12 @@ class GameSpaceActivity : AppCompatActivity() {
         })
         applyRow.addView(View(this), Gs.lp(0, 1, 1f))
         applyRow.addView(Gs.ghostButton(this, getString(R.string.gs_res_native), R.drawable.ic_restart_alt) {
-            run("game-per-app.sh", listOf("res-reset"), "Resolução nativa")
+            run("game-per-app.sh", listOf("res", "native"), "Resolução nativa")
             mostraPct(100)
         })
         col.addView(applyRow)
 
-        // personalizado (tamanho exato)
+        // personalizado (fator exato)
         col.addView(Gs.label(this, getString(R.string.gs_res_custom), 10f, GsTheme.textDim, semi = false),
             Gs.matchWrap().apply { topMargin = Gs.dp(this@GameSpaceActivity, 12f) })
         val customRow = LinearLayout(this).apply {
@@ -577,14 +577,16 @@ class GameSpaceActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, Gs.dp(this@GameSpaceActivity, 6f), 0, 0)
         }
-        val campo = Gs.field(this, "1280x720")
+        val campo = Gs.field(this, getString(R.string.gs_res_field_hint))
+        campo.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         customRow.addView(campo, Gs.lp(0, -2, 1f).apply { marginEnd = Gs.dp(this@GameSpaceActivity, 6f) })
         customRow.addView(Gs.accentButton(this, getString(R.string.gs_res_apply), null) {
-            val t = campo.text.toString().trim()
-            if (!t.matches(Regex("[0-9]{3,5}x[0-9]{3,5}"))) {
-                toast("Use o formato LARGURAxALTURA (ex.: 1280x720)")
+            val t = campo.text.toString().trim().replace(',', '.')
+            val f = t.toFloatOrNull()
+            if (f == null || f < 0.5f || f > 1f) {
+                toast("Use um fator de 0.5 a 1.0 (ex.: 0.65)")
             } else {
-                run("game-per-app.sh", listOf("res", "px", t), "Resolução $t")
+                run("game-per-app.sh", listOf("res", "px", t), "Resolução fator $t")
                 campo.setText("")
             }
         })
@@ -603,12 +605,8 @@ class GameSpaceActivity : AppCompatActivity() {
                     slider.value = 100f
                 } else {
                     resValue.text = txt
-                    val m = Regex("([0-9]+)x([0-9]+)").find(txt)
-                    if (m != null) {
-                        val menor = minOf(m.groupValues[1].toInt(), m.groupValues[2].toInt())
-                        val pct = ((menor * 100f) / 1080f).toInt().coerceIn(50, 100)
-                        slider.value = pct.toFloat()
-                    }
+                    val pct = txt.removeSuffix("%").toIntOrNull()
+                    if (pct != null) slider.value = pct.coerceIn(50, 100).toFloat()
                 }
             }
         }
