@@ -46,6 +46,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Game Space: tela cheia de otimização durante a partida, com as
+             estatísticas ao vivo. Aberta pelo painel flutuante. -->
+        <activity
+            android:name=".gs.GameSpaceActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.PackOtimizacao" />
+
         <!-- Painel flutuante (overlay) para usar durante o jogo: a sensi, os
              perfis de toque e atalhos de latência/RAM por cima do jogo. -->
         <service

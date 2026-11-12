@@ -1,4 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Trix</string>
+
+    <!-- Game Space -->
+    <string name="gs_eyebrow">TRIX · GAME SPACE</string>
+    <string name="gs_title_game">Jogo</string>
+    <string name="gs_title_perf">Desempenho</string>
+    <string name="gs_title_batt">Bateria</string>
+    <string name="gs_title_gfx">Gráficos</string>
+
+    <string name="gs_label_game">JOGO</string>
+    <string name="gs_label_perf">DESEMPENHO</string>
+    <string name="gs_label_gfx">GRÁFICOS</string>
+    <string name="gs_label_batt">BATERIA</string>
+
+    <string name="gs_game_mode">Modo do jogo</string>
+    <string name="gs_mode_perf">Performance</string>
+    <string name="gs_mode_saver">Econômico</string>
+    <string name="gs_mode_std">Padrão</string>
+    <string name="gs_fps_limit">Limite de FPS</string>
+    <string name="gs_fps_sub">Trava a taxa de quadros do jogo</string>
+    <string name="gs_game_res">Resolução do jogo</string>
+    <string name="gs_game_res_sub">Reduz a renderização para ganhar FPS</string>
+    <string name="gs_gfx_driver">Driver gráfico</string>
+    <string name="gs_gfx_driver_sub">Motor de renderização do sistema</string>
+    <string name="gs_aa">Anti-aliasing</string>
+    <string name="gs_aa_sub">Suaviza as bordas (custa FPS)</string>
+    <string name="gs_refresh">Taxa de tela</string>
+    <string name="gs_refresh_sub">Trava a atualização do painel</string>
+    <string name="gs_color_sat">Saturação de cor</string>
+    <string name="gs_color_mode">Modo de cor</string>
+    <string name="gs_reset_default">Restaurar padrão</string>
+    <string name="gs_reset_note">Tudo é revertido quando você sai do jogo.</string>
+
+    <string name="gs_anti_relog">Anti-relog</string>
+    <string name="gs_anti_relog_sub">Impede o jogo de fechar em segundo plano</string>
+    <string name="gs_open_game">Abrir o jogo</string>
+    <string name="gs_opt_now">Otimizar agora</string>
+    <string name="gs_opt_plus">Otimizar +</string>
+    <string name="gs_compile">Compilar o jogo</string>
+
+    <string name="gs_fixed_perf">Modo desempenho fixo</string>
+    <string name="gs_fixed_perf_sub">Trava as frequências para estabilidade</string>
+    <string name="gs_anim">Animação do sistema</string>
+    <string name="gs_anim_fast">Rápida</string>
+    <string name="gs_anim_normal">Normal</string>
+    <string name="gs_anim_off">Desligada</string>
+    <string name="gs_clean_ram">Limpar RAM</string>
+    <string name="gs_heavy_apps">APPS PESADOS EM SEGUNDO PLANO</string>
+    <string name="gs_no_heavy_apps">Nada pesado rodando agora</string>
+    <string name="gs_graph_60s">60 SEG</string>
+    <string name="gs_graph_now">AGORA</string>
+
+    <string name="gs_stat_temp">TEMP</string>
+    <string name="gs_stat_cpu">CPU</string>
+    <string name="gs_stat_ram">RAM</string>
+    <string name="gs_stat_fps">FPS</string>
+    <string name="gs_stat_ping">PING</string>
+    <string name="gs_stat_batt">BATERIA</string>
+
+    <string name="gs_batt_charging">Carregando</string>
+    <string name="gs_batt_discharging">Na bateria</string>
+    <string name="gs_batt_full">Cheia</string>
+    <string name="gs_batt_temp_session">Temperatura da sessão</string>
+    <string name="gs_batt_health">Saúde</string>
+    <string name="gs_batt_voltage">Voltagem</string>
+    <string name="gs_batt_current">Corrente</string>
+    <string name="gs_batt_est">Tempo restante</string>
+    <string name="gs_batt_saver">Economia de bateria</string>
+    <string name="gs_temp_normal">Normal</string>
+    <string name="gs_temp_warm">Morno</string>
+    <string name="gs_temp_hot">Quente</string>
+    <string name="gs_temp_cold">Frio</string>
+
+    <string name="gs_need_access">Ative o Shizuku/ADB no painel para mexer aqui.</string>
+    <string name="gs_access_needed">Acesso necessário</string>
+    <string name="gs_checking">Verificando…</string>
+    <string name="gs_applied">Aplicado</string>
+    <string name="gs_failed">Falhou</string>
+    <string name="gs_restart_note">Reinicie o jogo para aplicar.</string>
+    <string name="gs_exit">Sair</string>
 </resources>
