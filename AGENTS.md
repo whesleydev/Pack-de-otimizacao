@@ -756,6 +756,13 @@ O que **permanece** é o downscale **do jogo**, por app, via Android Game Mode
 flutuante): ele reduz só a resolução de renderização do jogo escolhido, sem
 tocar na resolução do telefone.
 
+O **Game Space** (aba **Gráficos**) expõe esse mesmo caminho como "Resolução do
+jogo": `game-per-app.sh res <50-100|native|preset n|px fator|pkg pkg fator>`,
+com `res-atual` (lê o `downscaleFactor` em uso) e `res-presets`. É o equivalente
+ao "Game resolution"/"Lite Mode" do Game Space: fator preso em 0.5-1.0,
+reversível pelo delete do overlay. **Nunca** implemente isso com `wm size` — o
+teste `t_res_jogo`/`t_resolution` barra qualquer script que volte a usar.
+
 ### "Menor largura": o DPI como o Android mostra (`game-per-app.sh dpi`)
 
 A ação de DPI usa a **largura em dp** como alvo — é o número que aparece em
