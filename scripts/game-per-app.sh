@@ -81,7 +81,12 @@ listar() {
     printf '   padrão deste aparelho: %b%s dp%b\n' "$C_A" "$(dpi_padrao_dp)" "$C_R"
     printf '   dpi <largura_dp>   aplica a largura exata (o painel sugere a faixa sã)\n'
     printf '   dpi padrao         volta ao padrão do aparelho\n'
-    printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | dpi <largura_dp> | reset <pkg>\n' "$0"
+    printf '\n  Uso: %s apply <pkg> <perfil> | custom <pkg> <downscale> [fps] | dpi <largura_dp> | res <50-100|native|preset n|px fator> | reset <pkg>\n' "$0"
+    printf '\n  Resolução do jogo (renderiza menos pixels SÓ no jogo, sem tocar no aparelho):\n'
+    res_presets
+    printf '   %bnative%b    volta à renderização de fábrica\n' "$C_A" "$C_R"
+    printf '   %b50-100%b  escala livre em %% (ex.: res 75)\n' "$C_A" "$C_R"
+    printf '   %bpx 0.5-1.0%b  fator exato (ex.: res px 0.65)\n' "$C_A" "$C_R"
 }
 
 # _resolver_pkg <pkg|auto> -> define RESOLVED_PKG. "auto" = o jogo escolhido no
@@ -317,6 +322,122 @@ dpi_atual() {
     printf '%s\n' "$_v"
 }
 
+# --- resolução de RENDERIZAÇÃO do jogo (Game Mode, sem tocar no aparelho) -----
+#
+# Igual ao "Lite Mode"/"Game resolution" do Game Space: mexe SÓ no downscaleFactor
+# do jogo escolhido, pelo Game Mode do Android (device_config game_overlay). A
+# resolução do TELEFONE não é tocada em momento nenhum — foi decisão explícita da
+# 2.56.0 tirar `wm size`/`wm density` do pack, porque mudar a resolução lógica
+# alterava a tela inteira, inclusive fora do jogo. Aqui o efeito é por app, o
+# sistema restaura sozinho ao sair, e a reversão é o `device_config delete`.
+
+# presets de renderização (fator de downscale) — o "opções de celulares" da tela
+res_presets() {
+    printf '   %b100%%%b  nativo (sem downscale)\n' "$C_A" "$C_R"
+    printf '   %b90%%%b   nitidez quase igual, já alivia a GPU\n' "$C_A" "$C_R"
+    printf '   %b75%%%b   equilíbrio (clássico)\n' "$C_A" "$C_R"
+    printf '   %b60%%%b   leve, imagem um pouco mole\n' "$C_A" "$C_R"
+    printf '   %b50%%%b   máximo FPS, imagem serrilhada\n' "$C_A" "$C_R"
+}
+
+# _res_aplica <pkg> <fator> <rotulo> -> grava o overlay com o downscale
+_res_aplica() {
+    pkg="$1"; fator="$2"; rot="$3"
+    [ -z "$pkg" ] && { err "faltou o jogo"; return 1; }
+    _resolver_pkg "$pkg" || return 1
+    pkg="$RESOLVED_PKG"
+    requer_android12 || return 1
+    case "$fator" in
+        ''|*[!0-9.]*) err "fator inválido: $fator (use 0.5-1.0)"; return 1 ;;
+    esac
+    # prende na faixa útil: abaixo de 0.5 a imagem desmancha, acima de 1.0 estoura
+    _abaixo="$(awk -v f="$fator" 'BEGIN{print (f<0.5)?1:0}')"
+    _acima="$(awk -v f="$fator" 'BEGIN{print (f>1.0)?1:0}')"
+    [ "$_abaixo" = "1" ] && { warn "fator $fator baixo demais; usando 0.5"; fator=0.5; }
+    [ "$_acima" = "1" ] && { warn "fator $fator acima de 1.0; usando 1.0"; fator=1.0; }
+    bkp_begin
+    antigo="$(sh_get "device_config get game_overlay $pkg")"
+    if [ -z "$antigo" ] || [ "$antigo" = "null" ]; then
+        bkp_raw "device_config delete game_overlay $pkg"
+    else
+        bkp_raw "device_config put game_overlay $pkg $antigo"
+    fi
+    cfg="mode=2,downscaleFactor=$fator:mode=3,downscaleFactor=$fator"
+    aplicar_overlay "$pkg" "$cfg"
+    cmd_game "$pkg" performance
+    agora="$(sh_get "device_config get game_overlay $pkg")"
+    case "$agora" in
+        *"downscaleFactor=$fator"*)
+            otm_v_inc apply; otm_v_inc changed
+            mkdir -p "$ST" 2>/dev/null
+            printf '%s\n' "$rot" > "$ST/res_profile" 2>/dev/null
+            printf '   %bOK%b resolução do jogo %s (downscale %s)\n' "$C_G" "$C_R" "$rot" "$fator"
+            say "pronto — reinicie o jogo para valer"
+            ;;
+        *)
+            otm_v_inc apply; otm_v_inc failed
+            printf '   %bX%b o overlay não mudou (lido: %s)\n' "$C_RD" "$C_R" "${agora:-vazio}"
+            return 1 ;;
+    esac
+}
+
+# res <50-100|native|preset n>  |  res px <fator 0.5-1.0>  |  res pkg <pkg> <fator>
+# "res" sem jogo explícito usa o "auto" (jogo escolhido no pack, senão o que
+# está em primeiro plano, senão Free Fire) — igual ao resto do script.
+aplicar_res() {
+    alvo="$1"
+    case "$alvo" in
+        ''|native|padrao|default|100)
+            # "native" limpa o overlay e devolve a renderização original
+            _resolver_pkg "auto" || return 1
+            pkg="$RESOLVED_PKG"
+            bkp_begin
+            bkp_raw "device_config delete game_overlay $pkg"
+            sh_run "device_config delete game_overlay $pkg" >/dev/null
+            rm -f "$ST/res_profile" 2>/dev/null
+            printf '   %bOK%b resolução nativa (sem downscale)\n' "$C_G" "$C_R"
+            say "pronto — reinicie o jogo"
+            return 0 ;;
+        preset)
+            _pre="$2"
+            case "$_pre" in
+                100) _f=1.0 ;;
+                90)  _f=0.9 ;;
+                75)  _f=0.75 ;;
+                60)  _f=0.6 ;;
+                50)  _f=0.5 ;;
+                *) err "preset inválido: $_pre (use 100|90|75|60|50)"; return 1 ;;
+            esac
+            _res_aplica "auto" "$_f" "${_pre}%" ;;
+        px)
+            # fator livre digitado (ex.: res px 0.65)
+            _res_aplica "auto" "$2" "personalizado $_2" ;;
+        pkg)
+            # jogo explícito (o painel usa quando há um jogo escolhido)
+            _res_aplica "$2" "$3" "jogo $2" ;;
+    esac
+    case "$alvo" in
+        ''|*[!0-9]*) err "valor inválido: $alvo (use 50-100, native, preset n, px fator ou pkg <pkg> <fator>)"; return 1 ;;
+    esac
+    [ "$alvo" -lt 50 ] && alvo=50
+    [ "$alvo" -gt 100 ] && alvo=100
+    # converte a porcentagem no fator (75% -> 0.75)
+    _f="$(awk -v p="$alvo" 'BEGIN{printf "%.2f", p/100}')"
+    _res_aplica "auto" "$_f" "${alvo}%"
+}
+
+# res-atual: imprime o downscale em uso (ex.: "75%") ou "native"
+res_atual() {
+    _resolver_pkg "auto" 2>/dev/null
+    _pkg="$RESOLVED_PKG"
+    [ -z "$_pkg" ] && { printf 'native\n'; return 0; }
+    _cfg="$(sh_get "device_config get game_overlay $_pkg" 2>/dev/null)"
+    _f="$(otm_echo "$_cfg" | grep -oE 'downscaleFactor=[0-9.]+' | head -1 | cut -d= -f2)"
+    if [ -z "$_f" ]; then printf 'native\n'; else
+        awk -v f="$_f" 'BEGIN{printf "%d%%\n", f*100+0.5}'
+    fi
+}
+
 
 # --- execução ----------------------------------------------------------------
 [ $# -eq 0 ] && { listar; exit 0; }
@@ -331,6 +452,9 @@ case "$acao" in
     dpi)       aplicar_dpi "$1" ;;
     dpi-atual|dpi_atual) dpi_atual ;;
     dpi-reset) resetar_dpi ;;
+    res)       aplicar_res "$1" "$2" "$3" ;;
+    res-atual|res_atual) res_atual ;;
+    res-presets|res_presets) res_presets ;;
     reset)     resetar "$1"; resetar_dpi ;;
     reset-all) resetar_tudo; resetar_dpi ;;
     *)         err "ação desconhecida: $acao"; listar; exit 1 ;;

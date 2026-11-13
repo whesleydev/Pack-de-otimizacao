@@ -1506,9 +1506,21 @@ class OverlayService : Service() {
             textSize = 14f
             setTypeface(bodyTypeface(), Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        bar.addView(iconButton("Game Space") { abrirGameSpace() })
         bar.addView(iconButton("—") { toggleMinimize() })
         bar.addView(iconButton("X") { stopSelf() })
         return bar
+    }
+
+    /** Abre o Game Space (tela cheia) por cima do jogo. */
+    private fun abrirGameSpace() {
+        runCatching {
+            val i = Intent(this, com.otm.pack.gs.GameSpaceActivity::class.java)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            startActivity(i)
+        }.onFailure {
+            Toast.makeText(this, "Não abriu o Game Space: ${it.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**

@@ -3657,6 +3657,52 @@ t_resolution() {
         && ok "catálogo do app sem resolution.sh" || bad "catálogo ainda chama resolution.sh"
 }
 
+# resolução de RENDERIZAÇÃO do jogo (Game Mode downscale) — nunca `wm size`.
+# É o caminho que a 2.56.0 preservou: reduz só o jogo escolhido, por app, e o
+# sistema restaura ao sair. O `wm size` (resolução do aparelho) segue proibido.
+t_res_jogo() {
+    printf '\n  # resolução do jogo por app (Game Mode downscale, sem tocar no aparelho)\n'
+    f="$ROOT/scripts/game-per-app.sh"
+    rm -rf "$HOME/.packotm"
+    printf '34' > "$TMP_STORE/prop.ro.build.version.sdk"
+    mkdir -p "$HOME/.packotm/game"; printf 'com.exemplo.escolhido\n' > "$HOME/.packotm/game/pkg"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res 75 > "$TMP/tres75" 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.75*) ok "res 75 grava downscale 0.75" ;;
+        *) bad "res 75 não gravou o overlay ($v)" ;; esac
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res preset 50 >/dev/null 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.5*) ok "res preset 50 grava 0.5" ;;
+        *) bad "res preset 50 não gravou ($v)" ;; esac
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res px 0.65 >/dev/null 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.65*) ok "res px 0.65 grava o fator exato" ;;
+        *) bad "res px 0.65 não gravou ($v)" ;; esac
+    out="$(OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res-atual 2>/dev/null | head -1)"
+    assert_eq "65%" "$out" "res-atual lê o downscale em uso"
+    # reversível: o delete do overlay entra no undo
+    grep -q 'game_overlay' "$HOME/.packotm/undo/game-per-app.sh" 2>/dev/null \
+        && ok "resolução do jogo é reversível (delete no undo)" || bad "sem reversão do overlay"
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res native >/dev/null 2>&1
+    test ! -f "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" \
+        && ok "res native limpa o overlay (volta à renderização de fábrica)" \
+        || bad "res native não limpou o overlay"
+    out="$(OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res-atual 2>/dev/null | head -1)"
+    assert_eq "native" "$out" "res-atual volta a native"
+    # fora da faixa é preso, não estoura
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res 20 > "$TMP/treslo" 2>&1
+    v="$(cat "$TMP_STORE/dc.game_overlay.com.exemplo.escolhido" 2>/dev/null)"
+    case "$v" in *downscaleFactor=0.5*) ok "res 20 prende no mínimo (0.5)" ;;
+        *) bad "res 20 não prendeu ($v)" ;; esac
+    OTM_NO_COLOR=1 OTM_MODE=su sh "$f" res preset 999 > "$TMP/tresbad" 2>&1
+    assert_contains "$TMP/tresbad" "preset inválido" "preset inválido é recusado"
+    # e, o mais importante: nada disso toca na resolução do aparelho
+    hits="$(grep -rlE "wm size [0-9]|wm size reset" \
+        "$ROOT/scripts" "$ROOT/app/src/main/assets/pack/scripts" 2>/dev/null)"
+    [ -z "$hits" ] && ok "resolução do jogo não toca em wm size (aparelho intacto)" \
+        || bad "algum script voltou a mexer em wm size: $hits"
+}
+
 t_dpi() {
     printf '\n  # Menor largura (DPI) — alvo é o dp, igual ao "Menor largura" do Android\n'
     local f="$ROOT/scripts/game-per-app.sh"
@@ -5247,6 +5293,7 @@ t_keepalive
 t_gameclean
 t_ramboost
 t_resolution
+t_res_jogo
 t_dpi
 t_smart_opt
 t_smart_bigdump
